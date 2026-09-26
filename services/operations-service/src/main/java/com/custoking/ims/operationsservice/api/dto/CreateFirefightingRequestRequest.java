@@ -24,5 +24,12 @@ public record CreateFirefightingRequestRequest(
         String summary,
         String referenceFileUrl,
         Long actorId,
-        String actorEmail
-) {}
+        String actorEmail,
+        @NotBlank(message = "Idempotency key is required")
+        @jakarta.validation.constraints.Pattern(regexp = "[A-Za-z0-9._:-]{1,128}", message = "Invalid idempotency key") String idempotencyKey
+) {
+    public CreateFirefightingRequestRequest(String title, String category, String urgency, String requiredByDate,
+            Long estimatedBudget, Long schoolId, String description, String summary, String referenceFileUrl, Long actorId, String actorEmail) {
+        this(title, category, urgency, requiredByDate, estimatedBudget, schoolId, description, summary, referenceFileUrl, actorId, actorEmail, null);
+    }
+}

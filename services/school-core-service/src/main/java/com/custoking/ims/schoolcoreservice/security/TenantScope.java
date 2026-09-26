@@ -88,6 +88,16 @@ public final class TenantScope {
         }
     }
 
+    public static void requireZoneRead(Long requestedZoneId) {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isSuperAdmin()) return;
+        if (!"ZONE_ADMIN".equalsIgnoreCase(ctx.role()) || ctx.zoneId() == null
+                || !ctx.zoneId().equals(requestedZoneId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "zone access denied");
+        }
+        requirePermission("zone:read");
+    }
+
     public static void requirePermission(String code) {
         TenantContext ctx = TenantContext.get();
         if (ctx.isSuperAdmin()) return;

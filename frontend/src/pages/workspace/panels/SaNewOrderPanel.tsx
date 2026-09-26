@@ -77,7 +77,7 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
     setErrors({}); setSaving(true);
     try {
       const value = computeSaOrderValue(activeCat || 'CUSTOM', form, eventItems);
-      const res = await api.post('/sa/orders', {
+      const res = await api.post('/catalog/orders', {
         schoolId: form.schoolId,
         category: activeCat,
         orderData: JSON.stringify({ ...form, eventItems, title: activeCat }),

@@ -491,7 +491,7 @@ export default function SchoolManagementPage() {
     try {
       setSaving(true);
       setError('');
-      await api.post(`/schools/${selectedSchool.id}/admin`, adminForm);
+      await api.post(`/users/provisioning/schools/${selectedSchool.id}/users/ADMIN`, adminForm);
       setShowAdminModal(false);
       setSelectedSchool(null);
       setNotice('Admin account added successfully.');
@@ -514,7 +514,7 @@ export default function SchoolManagementPage() {
       setSaving(true);
       setError('');
       const primarySchoolId = schoolIds[0];
-      const res = await api.post<{ userId?: number }>(`/schools/${primarySchoolId}/operations-user`, opsForm);
+      const res = await api.post<{ userId?: number }>(`/users/provisioning/schools/${primarySchoolId}/users/OPERATIONS`, opsForm);
       const userId = Number(res.data?.userId);
       if (userId) {
         await api.post(`/rbac/users/${userId}/operator-schools`, { schoolIds });

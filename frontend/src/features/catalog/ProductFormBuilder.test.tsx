@@ -127,7 +127,7 @@ describe('ProductFormBuilder, 2026-09-25 product decisions', () => {
     };
     const detail = savedNotebook('PROCESSING');
     vi.mocked(api.post).mockImplementation(async (url) => {
-      if (url === '/supply/orders') return { data: { id: 'ORD-42', formVersion: 2, version: 0 } };
+      if (url === '/catalog/orders') return { data: { id: 'ORD-42', formVersion: 2, version: 0 } };
       return { data: {} };
     });
     vi.mocked(api.get).mockResolvedValue({ data: detail });
@@ -137,7 +137,7 @@ describe('ProductFormBuilder, 2026-09-25 product decisions', () => {
     fireEvent.change(screen.getByLabelText('Quantity for Single rule'), { target: { value: '1000' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add to order' }));
     fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/supply/orders/ORD-42/place'));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/catalog/orders/ORD-42/place'));
     expect(screen.queryByText('Attach design artwork before placing this order.')).not.toBeInTheDocument();
   });
 });
@@ -180,7 +180,7 @@ describe('ProductFormBuilder', () => {
 
   it('files the order under its own category rather than defaulting to notebooks', async () => {
     vi.mocked(api.post).mockImplementation(async (url) => {
-      if (url === '/supply/orders') return { data: { id: 'ORD-9', formVersion: 1, version: 0 } };
+      if (url === '/catalog/orders') return { data: { id: 'ORD-9', formVersion: 1, version: 0 } };
       return { data: {} };
     });
     vi.mocked(api.get).mockImplementation(async () => ({ data: savedNotebook('DRAFT', false) }));
@@ -194,7 +194,7 @@ describe('ProductFormBuilder', () => {
     fireEvent.change(screen.getByLabelText('Count'), { target: { value: '4' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/supply/orders', expect.objectContaining({ category: 'FLEX' })));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/catalog/orders', expect.objectContaining({ category: 'FLEX' })));
   });
 
   it('saves an incomplete aggregate as draft and retries placement using that same id', async () => {
@@ -203,7 +203,7 @@ describe('ProductFormBuilder', () => {
     vi.mocked(api.get).mockImplementation(async () => ({ data: detail }));
     vi.mocked(api.patch).mockImplementation(async () => ({ data: detail }));
     vi.mocked(api.post).mockImplementation(async (url) => {
-      if (url === '/supply/orders') return { data: { id: 'ORD-42', formVersion: 2, version: 0 } };
+      if (url === '/catalog/orders') return { data: { id: 'ORD-42', formVersion: 2, version: 0 } };
       if (String(url).endsWith('/place')) { places++; if (places === 1) throw new Error('Temporary failure'); detail = savedNotebook('PROCESSING', false); }
       return { data: {} };
     });
@@ -217,7 +217,7 @@ describe('ProductFormBuilder', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Place order' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
     expect(await screen.findByText(/Order placed. Processing and pricing are pending/)).toBeInTheDocument();
-    expect(vi.mocked(api.post).mock.calls.filter(([url]) => url === '/supply/orders')).toHaveLength(1);
+    expect(vi.mocked(api.post).mock.calls.filter(([url]) => url === '/catalog/orders')).toHaveLength(1);
     expect(api.patch).toHaveBeenCalledWith('/supply/orders/ORD-42', expect.objectContaining({ version: 0 }));
     expect(vi.mocked(api.post).mock.calls[0][1]).toEqual(expect.objectContaining({ schoolId: 7, status: 'DRAFT', orderData: expect.objectContaining({ orderSelections: { CUSTOMIZATION: 'NON_CUSTOMIZED' } }) }));
     expect(vi.mocked(api.post).mock.calls[0][1]).not.toHaveProperty('totalAmount');

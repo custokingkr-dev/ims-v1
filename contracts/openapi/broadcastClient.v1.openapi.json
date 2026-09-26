@@ -1,0 +1,719 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking broadcast policy and dry-run dispatch",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "platform-service",
+  "x-ims-controller": "NotificationBroadcastCommandController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "BroadcastClient",
+  "x-ims-client-file": "broadcastClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/notifications/broadcasts": {
+      "get": {
+        "operationId": "listBroadcasts",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BroadcastRecord"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid draft"
+          },
+          "403": {
+            "description": "Superadmin and operation permission required"
+          },
+          "409": {
+            "description": "State, reviewed audience, or policy conflict"
+          },
+          "503": {
+            "description": "Recipient policy service unavailable"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createBroadcast",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BroadcastRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid draft"
+          },
+          "403": {
+            "description": "Superadmin and operation permission required"
+          },
+          "409": {
+            "description": "State, reviewed audience, or policy conflict"
+          },
+          "503": {
+            "description": "Recipient policy service unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBroadcastRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/broadcasts/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BroadcastCapabilities"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid draft"
+          },
+          "403": {
+            "description": "Superadmin and operation permission required"
+          },
+          "409": {
+            "description": "State, reviewed audience, or policy conflict"
+          },
+          "503": {
+            "description": "Recipient policy service unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/broadcasts/{id}/preview": {
+      "post": {
+        "operationId": "previewBroadcast",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipientPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid draft"
+          },
+          "403": {
+            "description": "Superadmin and operation permission required"
+          },
+          "409": {
+            "description": "State, reviewed audience, or policy conflict"
+          },
+          "503": {
+            "description": "Recipient policy service unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/broadcasts/{id}/approve": {
+      "post": {
+        "operationId": "approveBroadcast",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BroadcastRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid draft"
+          },
+          "403": {
+            "description": "Superadmin and operation permission required"
+          },
+          "409": {
+            "description": "State, reviewed audience, or policy conflict"
+          },
+          "503": {
+            "description": "Recipient policy service unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveBroadcastRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/broadcasts/{id}/send": {
+      "post": {
+        "operationId": "queueBroadcast",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BroadcastOutcomes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid draft"
+          },
+          "403": {
+            "description": "Superadmin and operation permission required"
+          },
+          "409": {
+            "description": "State, reviewed audience, or policy conflict"
+          },
+          "503": {
+            "description": "Recipient policy service unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/broadcasts/{id}/delivery-status": {
+      "get": {
+        "operationId": "getDeliveryStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BroadcastOutcomes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid draft"
+          },
+          "403": {
+            "description": "Superadmin and operation permission required"
+          },
+          "409": {
+            "description": "State, reviewed audience, or policy conflict"
+          },
+          "503": {
+            "description": "Recipient policy service unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/broadcasts/{id}/retry": {
+      "post": {
+        "operationId": "retryBroadcast",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BroadcastOutcomes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid draft"
+          },
+          "403": {
+            "description": "Superadmin and operation permission required"
+          },
+          "409": {
+            "description": "State, reviewed audience, or policy conflict"
+          },
+          "503": {
+            "description": "Recipient policy service unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "CreateBroadcastRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "message"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "module": {
+            "type": "string"
+          },
+          "audienceType": {
+            "type": "string"
+          },
+          "channels": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ]
+          },
+          "scheduledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdBy": {
+            "type": "integer"
+          },
+          "communicationCategory": {
+            "type": "string"
+          }
+        },
+        "description": "Policy-backed dispatch requires schoolId, ALL_PARENTS, SCHOOL_NOTICE and supported channels. Legacy drafts lacking these values cannot preview/queue.",
+        "x-ims-java-record": {
+          "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/dto/CreateBroadcastRequest.java",
+          "name": "CreateBroadcastRequest"
+        }
+      },
+      "ApproveBroadcastRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "previewFingerprint"
+        ],
+        "properties": {
+          "actorId": {
+            "type": "integer"
+          },
+          "previewFingerprint": {
+            "type": "string"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/dto/BroadcastActionRequest.java",
+          "name": "BroadcastActionRequest"
+        }
+      },
+      "BroadcastRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "schoolId",
+          "module",
+          "communicationCategory",
+          "title",
+          "message",
+          "audienceType",
+          "channels",
+          "status",
+          "scheduledAt",
+          "sentAt",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "module": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "communicationCategory": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "audienceType": {
+            "type": "string"
+          },
+          "channels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "scheduledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sentAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        }
+      },
+      "BroadcastCapabilities": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "canCreateDraft",
+          "canApprove",
+          "canPreview",
+          "canSend",
+          "canQueue",
+          "mode",
+          "sendUnavailableReason",
+          "queueUnavailableReason",
+          "supportedAudiences",
+          "supportedChannels",
+          "supportedCategories"
+        ],
+        "properties": {
+          "canCreateDraft": {
+            "type": "boolean"
+          },
+          "canApprove": {
+            "type": "boolean"
+          },
+          "canPreview": {
+            "type": "boolean"
+          },
+          "canSend": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "canQueue": {
+            "type": "boolean"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "OFF",
+              "DRY_RUN"
+            ]
+          },
+          "sendUnavailableReason": {
+            "type": "string"
+          },
+          "queueUnavailableReason": {
+            "type": "string"
+          },
+          "supportedAudiences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "supportedChannels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "supportedCategories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RecipientPreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "broadcastId",
+          "total",
+          "eligible",
+          "suppressed",
+          "duplicate",
+          "reasons",
+          "fingerprint",
+          "explanation"
+        ],
+        "properties": {
+          "broadcastId": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "eligible": {
+            "type": "integer"
+          },
+          "suppressed": {
+            "type": "integer"
+          },
+          "duplicate": {
+            "type": "integer"
+          },
+          "reasons": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string"
+          }
+        }
+      },
+      "BroadcastOutcomes": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "broadcastId",
+          "status",
+          "mode",
+          "total",
+          "delivered",
+          "counts",
+          "recipients"
+        ],
+        "properties": {
+          "broadcastId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "delivered": {
+            "type": "integer"
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "studentId",
+                "channel",
+                "status",
+                "reason",
+                "attempts",
+                "nextAttemptAt",
+                "provider",
+                "dryRun"
+              ],
+              "properties": {
+                "studentId": {
+                  "type": "integer"
+                },
+                "channel": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "attempts": {
+                  "type": "integer"
+                },
+                "nextAttemptAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "provider": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "dryRun": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-ims-gateway-service": "notification"
+}

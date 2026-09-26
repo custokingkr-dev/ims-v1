@@ -3,14 +3,9 @@ package com.custoking.ims.platformservice.api.dto;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * DTO for POST /notifications/broadcasts.
- * Maps to NotificationBroadcastCommandRepository.create(Map) keys:
- *   required: title, message
- *   optional: schoolId, module, audienceType (defaults to "ALL"),
- *             channels (defaults to "WHATSAPP" where the school has an approved WhatsApp
- *             template, otherwise "SMS" — WhatsApp utility is the cheaper channel but only
- *             sends once the school has completed WhatsApp onboarding),
- *             scheduledAt, createdBy
+ * Creates a draft only. Dispatch requires a positive school scope, SCHOOL_NOTICE category,
+ * ALL_PARENTS audience and explicitly supported channels, validated by the review workflow.
+ * Legacy optional fields remain accepted without implying that the draft can dispatch.
  */
 public record CreateBroadcastRequest(
         @NotBlank(message = "title is required") String title,
@@ -20,5 +15,6 @@ public record CreateBroadcastRequest(
         String audienceType,
         Object channels,
         String scheduledAt,
-        Long createdBy
+        Long createdBy,
+        String communicationCategory
 ) {}

@@ -49,8 +49,8 @@ function ItemStatusBadge({ status }: { status: ReviewItemDetail['status'] }) {
 function ProgressBar({ pct }: { pct: number }) {
   return (
     <div style={{ background: 'var(--ck-color-indigo-soft)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
-      <div style={{ width: `${Math.min(100, pct)}%`, height: '100%',
-                    background: 'linear-gradient(90deg, var(--ck-color-indigo-light), var(--ck-color-indigo))', transition: 'width .3s' }} />
+      <div style={{ width: `${Math.max(0, Math.min(100, pct))}%`, height: '100%',
+                    background: 'var(--ck-color-indigo)' }} />
     </div>
   );
 }
@@ -83,6 +83,7 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
   }, []);
 
   const loadItems = useCallback(async (campaignId: string, pg: number, statusFilter: string) => {
+    setError(null);
     try {
       const r = await fetchCampaignItems(campaignId, {
         page: pg, size: PAGE_SIZE, status: statusFilter || undefined,
@@ -90,7 +91,8 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
       setItems(r.content);
       setTotalElements(r.totalElements);
     } catch {
-      // silent — items are supplemental
+      setItems([]);
+      setError('Student review items could not be loaded. Retry to continue the review.');
     }
   }, []);
 
@@ -153,11 +155,12 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
   };
 
   if (loading) return <div style={{ padding: 24, color: 'var(--ck-text-muted)', textAlign: 'center' }}>Loading…</div>;
-  if (error)   return <div style={{ padding: 24, color: 'var(--ck-color-danger)' }}>{error}</div>;
+  if (error && !status) return <div role="alert" style={{ padding: 24, color: 'var(--ck-color-danger)' }}>{error}<button className="ck-btn ck-btn-ghost" onClick={loadStatus}>Retry</button></div>;
 
   if (!status?.campaignId) {
     return (
       <div style={{ padding: 24 }}>
+        {error && <p role="alert">{error}</p>}
         <p style={{ marginBottom: 16, color: 'var(--ck-text-secondary)' }}>
           No active ID Card Details review campaign. Initiate one to verify student card data across all enrolled students.
         </p>
@@ -187,6 +190,7 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <div>
+      {error && <div role="alert" className="ck-alert ck-alert-re">{error}<button className="ck-btn ck-btn-ghost" onClick={() => { void loadStatus(); if (status.campaignId) void loadItems(status.campaignId, page, filter); }}>Retry</button></div>}
       {/* Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
         {[
@@ -247,15 +251,15 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map(item => (
           <div key={item.itemId} style={{ border: '1px solid var(--ck-color-indigo-soft)', borderRadius: 8, overflow: 'hidden' }}>
-            <div onClick={() => setExpandedId(expandedId === item.itemId ? null : item.itemId)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            <button type="button" aria-expanded={expandedId === item.itemId} onClick={() => setExpandedId(expandedId === item.itemId ? null : item.itemId)}
+              style={{ border: 0, width: '100%', textAlign: 'left', font: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                        padding: '10px 14px', cursor: 'pointer', background: 'var(--ck-color-indigo-wash)' }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{item.studentName}</div>
                 <div style={{ fontSize: 12, color: 'var(--ck-text-muted)' }}>{item.admissionNo} · {item.className} {item.sectionName}</div>
               </div>
               <ItemStatusBadge status={item.status} />
-            </div>
+            </button>
 
             {expandedId === item.itemId && (
               <div style={{ padding: '12px 14px', background: 'var(--ck-bg-surface)', borderTop: '1px solid var(--ck-color-indigo-soft)' }}>
@@ -339,6 +343,7 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
   }, []);
 
   const loadItems = useCallback(async (campaignId: string, pg: number, statusFilter: string) => {
+    setError(null);
     try {
       const r = await fetchCampaignItems(campaignId, {
         page: pg, size: PAGE_SIZE, status: statusFilter || undefined,
@@ -346,7 +351,8 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
       setItems(r.content);
       setTotalElements(r.totalElements);
     } catch {
-      setError('Failed to load student review items.');
+      setItems([]);
+      setError('Student review items could not be loaded. Retry to continue the review.');
     }
   }, []);
 
@@ -402,11 +408,12 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
   };
 
   if (loading) return <div style={{ padding: 24, color: 'var(--ck-text-muted)', textAlign: 'center' }}>Loading…</div>;
-  if (error)   return <div style={{ padding: 24, color: 'var(--ck-color-danger)' }}>{error}</div>;
+  if (error && !status) return <div role="alert" style={{ padding: 24, color: 'var(--ck-color-danger)' }}>{error}<button className="ck-btn ck-btn-ghost" onClick={loadStatus}>Retry</button></div>;
 
   if (!status?.campaignId) {
     return (
       <div style={{ padding: 24 }}>
+        {error && <p role="alert">{error}</p>}
         <p style={{ marginBottom: 16, color: 'var(--ck-text-secondary)' }}>
           No active Full Name Verification campaign. This ensures student names match official records
           (Aadhaar, Birth Certificate, etc.).
@@ -444,6 +451,7 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
 
   return (
     <div>
+      {error && <div role="alert" className="ck-alert ck-alert-re">{error}<button className="ck-btn ck-btn-ghost" onClick={() => { void loadStatus(); if (status.campaignId) void loadItems(status.campaignId, page, filter); }}>Retry</button></div>}
       {/* Summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
         {[
@@ -628,7 +636,7 @@ export function StudentReviewDrawer({ open, onClose, onMetricsRefresh }: Props) 
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid var(--ck-color-indigo-soft)',
                     paddingBottom: 0 }}>
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <button key={t.key} aria-pressed={tab === t.key} onClick={() => setTab(t.key)}
             style={{ padding: '8px 16px', border: 'none', borderRadius: '6px 6px 0 0',
                      background: tab === t.key ? 'var(--ck-color-indigo)' : 'transparent',
                      color: tab === t.key ? 'var(--ck-text-inverse)' : 'var(--ck-color-indigo-light)',

@@ -165,7 +165,7 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
       if (savedRef.current) {
         detail = parseFormOrderDetail((await api.patch<unknown>(`/supply/orders/${savedRef.current.order.id}`, { ...body, version: savedRef.current.version })).data);
       } else {
-        const created = (await api.post('/supply/orders', { ...body, category: orderCategory, status: 'DRAFT', ...(schoolId ? { schoolId } : {}) })).data;
+        const created = (await api.post('/catalog/orders', { ...body, category: orderCategory, status: 'DRAFT', ...(schoolId ? { schoolId } : {}) })).data;
         if (!created || typeof created.id !== 'string') throw new Error('The saved order could not be read. Check your orders before retrying.');
         // Keep the id even if the subsequent detail request fails; retry must never create twice.
         const retained = { order: { id: created.id }, version: created.version, formDefinition: definition, assets: [], ...created } as FormOrderDetail;
@@ -183,7 +183,7 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
         detail = await getFormOrder(detail.order.id); recordSaved(detail);
       }
       if (queued.length) { setFiles({}); setReferenceFiles([]); }
-      if (place) { await api.post(`/supply/orders/${detail.order.id}/place`); detail = await getFormOrder(detail.order.id); recordSaved(detail); }
+      if (place) { await api.post(`/catalog/orders/${detail.order.id}/place`); detail = await getFormOrder(detail.order.id); recordSaved(detail); }
       setNotice(place ? customized ? 'Order placed. Design approval and pricing are pending.' : 'Order placed. Processing and pricing are pending; no design approval is required.' : `Draft ${detail.order.id} saved.`);
       onSaved?.(detail, place);
     } catch (error) {

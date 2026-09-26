@@ -3,6 +3,7 @@ package com.custoking.ims.schoolcoreservice.api;
 import com.custoking.ims.schoolcoreservice.api.dto.CreateAnnualPlanItemRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.CreateCatalogOrderRequest;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository;
+import com.custoking.ims.schoolcoreservice.persistence.AnnualPlanConfirmationRepository;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.AnnualPlanEntryRow;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.AnnualPlanItemRow;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.CatalogItemRow;
@@ -37,17 +38,24 @@ import java.util.Map;
 public class CatalogReadController {
 
     private final CatalogReadRepository catalog;
+    private final AnnualPlanConfirmationRepository annualPlans;
     private final String readToken;
     private final ModuleEntitlementGuard moduleGuard;
 
     @Autowired
     public CatalogReadController(
             CatalogReadRepository catalog,
+            AnnualPlanConfirmationRepository annualPlans,
             ModuleEntitlementGuard moduleGuard,
             @Value("${catalog.read-token:}") String readToken) {
         this.catalog = catalog;
+        this.annualPlans = annualPlans;
         this.moduleGuard = moduleGuard;
         this.readToken = readToken == null ? "" : readToken.trim();
+    }
+
+    public CatalogReadController(CatalogReadRepository catalog, ModuleEntitlementGuard moduleGuard, String readToken) {
+        this(catalog, null, moduleGuard, readToken);
     }
 
     public CatalogReadController(
@@ -85,6 +93,30 @@ public class CatalogReadController {
         return catalog.orders(scope, status, limit);
     }
 
+    /** Browser listing with stable page metadata and the existing Operations RLS scope. */
+    @GetMapping("/orders/page")
+    public Map<String, Object> ordersPage(
+            @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        requireToken(token, "catalog:read");
+        Long scope = TenantScope.resolvePlatformReadScope(schoolId);
+        requireOrderRead(scope != null ? scope : TenantContext.get().schoolId());
+        return catalog.ordersPage(scope, status, page, size);
+    }
+
+    @GetMapping("/orders/summary")
+    public Object platformOrderStats(
+            @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId) {
+        requireToken(token, "catalog:read");
+        Long scope = TenantScope.resolvePlatformReadScope(schoolId);
+        requireOrderRead(scope != null ? scope : TenantContext.get().schoolId());
+        return catalog.orderStats(scope);
+    }
+
     @GetMapping("/orders/pending-approval")
     public List<PendingCatalogOrderRow> pendingApprovalOrders(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
@@ -117,7 +149,8 @@ public class CatalogReadController {
         if (dto.subtotal() != null) body.put("subtotal", dto.subtotal());
         if (dto.gst() != null) body.put("gst", dto.gst());
         if (dto.totalAmount() != null) body.put("totalAmount", dto.totalAmount());
-        if (dto.status() != null) body.put("status", dto.status());
+        // New orders always enter the guarded lifecycle as drafts.
+        body.put("status", "DRAFT");
         if (dto.notes() != null) body.put("notes", dto.notes());
         body.put("actorId", TenantContext.get().userId());
         if (dto.requiredByDate() != null) body.put("requiredByDate", dto.requiredByDate());
@@ -148,6 +181,7 @@ public class CatalogReadController {
             @PathVariable String id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "catalog:write");
+        TenantScope.requireSuperAdmin();
         TenantScope.requirePermissionIfAuthenticated("order:update");
         requireOrderModule(TenantContext.get().schoolId());
         return runCommand(() -> catalog.updateOrderStatus(id, String.valueOf(request.getOrDefault("status", ""))));
@@ -200,6 +234,29 @@ public class CatalogReadController {
         return runCommand(() -> catalog.markVendorPaid(id, schoolId, actorId, notes));
     }
 
+    @PostMapping("/orders/{id}/deliver")
+    public CatalogOrderRow markDelivered(
+            @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+            @PathVariable String id) {
+        requireToken(token, "catalog:write");
+        TenantScope.requireAnyPermissionIfAuthenticated("order:fulfill", "order:update");
+        TenantContext ctx = TenantContext.get();
+        requireOrderModule(ctx.schoolId());
+        if (!(ctx.isSuperAdmin() || ctx.isOperations())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only superadmin or operations can mark orders delivered");
+        }
+        if (ctx.isOperations()) {
+            // Belt-and-suspenders with the RLS WITH CHECK on the update itself: give an explicit
+            // 403 for an out-of-scope order rather than relying solely on the DB-level guard.
+            Long orderSchoolId = catalog.orderSchoolId(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "catalog order not found"));
+            if (!ctx.operatorSchools().contains(orderSchoolId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "school not in operator scope");
+            }
+        }
+        return runCommand(() -> catalog.markDelivered(id, ctx.userId()));
+    }
+
     @GetMapping("/orders/stats")
     public Object orderStats(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
@@ -247,7 +304,7 @@ public class CatalogReadController {
     @PostMapping("/annual-plan/items")
     public AnnualPlanItemRow saveAnnualPlanItem(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
-            @RequestParam Long schoolId,
+            @RequestParam(required = false) Long schoolId,
             @Valid @RequestBody CreateAnnualPlanItemRequest dto) {
         requireToken(token, "catalog:write");
         TenantScope.requirePermissionIfAuthenticated("plan:manage");
@@ -266,13 +323,30 @@ public class CatalogReadController {
         return runCommand(() -> catalog.saveAnnualPlanItem(scope, body));
     }
 
+    @GetMapping("/annual-plan/review")
+    public Map<String, Object> reviewAnnualPlan(
+            @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId) {
+        requireToken(token, "catalog:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("plan:read", "plan:manage");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireOrderModule(scope);
+        if (annualPlans == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Annual plan review is unavailable");
+        return annualPlans.review(scope);
+    }
+
     @PostMapping("/annual-plan/confirm")
     public Map<String, Object> confirmAnnualPlan(
-            @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token) {
+            @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestBody(required = false) Map<String, Object> request) {
         requireToken(token, "catalog:write");
         TenantScope.requirePermissionIfAuthenticated("plan:manage");
-        requireOrderModule(TenantContext.get().schoolId());
-        return Map.of("ok", true, "message", "Annual plan confirmed and Custoking notified");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireOrderModule(scope);
+        if (annualPlans == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Annual plan confirmation is unavailable");
+        String fingerprint = request == null || request.get("fingerprint") == null ? null : String.valueOf(request.get("fingerprint"));
+        return annualPlans.confirm(scope, TenantContext.get().userId(), fingerprint);
     }
 
     @GetMapping("/annual-plan/entries")

@@ -19,6 +19,8 @@ import { formatAddress, formatPaise } from '../utils';
 import type { PanelKey } from '../config';
 import { StudentProfileForm } from './StudentProfileForm';
 import { StudentModuleTabs } from './StudentModuleTabs';
+import { useDraftDirty, useWorkspaceDraft } from '../WorkspaceDrafts';
+import { useDialogFocus } from '../../../hooks/useDialogFocus';
 import { GuardianConsentCard } from './GuardianConsentCard';
 import {
   fetchStudentVerificationSummary,
@@ -88,25 +90,25 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const canImportStudents = can('student:import');
   const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
 
-  const [studentFilters, setStudentFilters] = useState({ className: 'All', sectionName: 'All', feeStatus: 'All' });
-  const [studentSearchInput, setStudentSearchInput] = useState('');
-  const [studentSearch, setStudentSearch] = useState('');
-  const [studentsPage, setStudentsPage] = useState(0);
+  const [studentFilters, setStudentFilters] = useWorkspaceDraft('students.filters', { className: 'All', sectionName: 'All', feeStatus: 'All' });
+  const [studentSearchInput, setStudentSearchInput] = useWorkspaceDraft('students.searchInput', '');
+  const [studentSearch, setStudentSearch] = useWorkspaceDraft('students.search', '');
+  const [studentsPage, setStudentsPage] = useWorkspaceDraft('students.page', 0);
   const PAGE_SIZE = 50;
   const [studentsView, setStudentsView] = useState<any>({ items: [], filteredCount: 0, filteredSections: 0, totalPages: 1, filters: { classes: [], sections: [], feeStatuses: ['Paid', 'Overdue', 'Pending', 'Partial'] } });
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentsLoaded, setStudentsLoaded] = useState(false);
-  const [studentDetail, setStudentDetail] = useState<any | null>(null);
-  const [studentModalOpen, setStudentModalOpen] = useState(false);
+  const [studentDetail, setStudentDetail] = useWorkspaceDraft<any | null>('students.detail', null);
+  const [studentModalOpen, setStudentModalOpen] = useWorkspaceDraft('students.detailOpen', false);
   const [studentModalLoading, setStudentModalLoading] = useState(false);
   const [studentsError, setStudentsError] = useState<string | null>(null);
-  const [studentDetailLimited, setStudentDetailLimited] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [studentDetailLimited, setStudentDetailLimited] = useWorkspaceDraft('students.detailLimited', false);
+  const [editing, setEditing] = useWorkspaceDraft('students.editing', false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<StudentProfileFormState>(emptyStudentProfileForm());
+  const [form, setForm] = useWorkspaceDraft<StudentProfileFormState>('students.editForm', emptyStudentProfileForm);
   const [modalError, setModalError] = useState<string | null>(null);
-  const [classOptions, setClassOptions] = useState<StudentClassOption[]>([]);
-  const [sectionOptions, setSectionOptions] = useState<StudentSectionOption[]>([]);
+  const [classOptions, setClassOptions] = useWorkspaceDraft<StudentClassOption[]>('students.editClasses', []);
+  const [sectionOptions, setSectionOptions] = useWorkspaceDraft<StudentSectionOption[]>('students.editSections', []);
   const [studentHistory, setStudentHistory] = useState<StudentHistoryPayload | null>(null);
   const [studentHistoryLoading, setStudentHistoryLoading] = useState(false);
   const [studentHistoryError, setStudentHistoryError] = useState<string | null>(null);
@@ -131,6 +133,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [verificationPanelOpen, setVerificationPanelOpen] = useState(false);
   const studentsRequestId = useRef(0);
+  const studentDialogRef = useRef<HTMLDivElement>(null);
+  const profileDirty = editing && !!studentDetail && JSON.stringify(form) !== JSON.stringify(studentDetailToProfileForm(studentDetail));
+  const clearProfileDirty = useDraftDirty('student-profile', profileDirty);
+  useDialogFocus(studentDialogRef, studentModalOpen, () => closeStudentModal(), saving);
 
   const loadStudents = async (filters = studentFilters, page = studentsPage, search = studentSearch) => {
     const requestId = ++studentsRequestId.current;
@@ -175,7 +181,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   };
 
   useEffect(() => {
-    loadStudents(studentFilters, 0);
+    loadStudents(studentFilters, studentsPage, studentSearch);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -242,6 +248,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   };
 
   const closeStudentModal = () => {
+    if (saving || (profileDirty && !window.confirm('Discard unsaved changes to this student profile?'))) return;
+    clearProfileDirty();
     setStudentModalOpen(false);
     setEditing(false);
     setModalError(null);
@@ -351,7 +359,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setSaving(true);
     setModalError(null);
     try {
-      await api.put(`/workspace/students/${studentDetail.id}`, { ...studentProfileFormToUpdatePayload(form), ...(schoolScopedParams || {}) });
+      await api.put(`/students/${studentDetail.id}`, { ...studentProfileFormToUpdatePayload(form), ...(schoolScopedParams || {}) });
       const res = await api.get(`/students/${studentDetail.id}/workspace`);
       setStudentDetail(res.data);
       setVerificationSummary(null);
@@ -929,10 +937,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
 
       {studentModalOpen && (
         <div className="ck-modal-bg" onClick={closeStudentModal}>
-          <div className="ck-modal ck-student-detail-drawer" onClick={(e) => e.stopPropagation()}>
+          <div ref={studentDialogRef} role="dialog" aria-modal="true" aria-label="Student details" tabIndex={-1} className="ck-modal ck-student-detail-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Student details</div>
-              <button className="ck-modal-x" onClick={closeStudentModal}>×</button>
+              <button className="ck-modal-x" aria-label="Close student details" disabled={saving} onClick={closeStudentModal}>×</button>
             </div>
             <div className="ck-modal-body">
               {studentModalLoading || !studentDetail ? (

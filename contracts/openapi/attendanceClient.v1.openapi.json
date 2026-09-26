@@ -1,0 +1,380 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking attendance register",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "school-core-service",
+  "x-ims-controller": "AttendanceReadController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "AttendanceClient",
+  "x-ims-client-file": "attendanceClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/attendance/section-register": {
+      "get": {
+        "operationId": "getSectionRegister",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionRegister"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveSectionRegister",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionRegister"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveSectionRegisterRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attendance/submit-section": {
+      "post": {
+        "operationId": "submitSection",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionRegister"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitSectionRequest"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "SaveSectionRegisterRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "classId",
+          "sectionId"
+        ],
+        "properties": {
+          "classId": {
+            "type": "string"
+          },
+          "sectionId": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "integer"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttendanceInput"
+            }
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/dto/SaveSectionRegisterRequest.java",
+          "name": "SaveSectionRegisterRequest"
+        }
+      },
+      "SubmitSectionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "classId",
+          "sectionId"
+        ],
+        "properties": {
+          "classId": {
+            "type": "string"
+          },
+          "sectionId": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "integer"
+          },
+          "schoolId": {
+            "type": "integer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/dto/SubmitSectionRequest.java",
+          "name": "SubmitSectionRequest"
+        }
+      },
+      "AttendanceInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "studentId",
+          "status"
+        ],
+        "properties": {
+          "studentId": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PRESENT",
+              "ABSENT",
+              "LATE",
+              "LEAVE"
+            ]
+          },
+          "remarks": {
+            "type": "string"
+          }
+        }
+      },
+      "AttendanceStudent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "studentId",
+          "admissionNo",
+          "rollNo",
+          "fullName",
+          "photoUrl",
+          "status",
+          "remarks"
+        ],
+        "properties": {
+          "studentId": {
+            "type": "integer"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "rollNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "PRESENT",
+                  "ABSENT",
+                  "LATE",
+                  "LEAVE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "remarks": {
+            "type": "string"
+          }
+        }
+      },
+      "SectionRegister": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "date",
+          "classId",
+          "sectionId",
+          "sectionName",
+          "locked",
+          "totalStudents",
+          "presentCount",
+          "lateCount",
+          "leaveCount",
+          "absentCount",
+          "presentPercent",
+          "students"
+        ],
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "sectionId": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "locked": {
+            "type": "boolean"
+          },
+          "totalStudents": {
+            "type": "integer"
+          },
+          "presentCount": {
+            "type": "integer"
+          },
+          "lateCount": {
+            "type": "integer"
+          },
+          "leaveCount": {
+            "type": "integer"
+          },
+          "absentCount": {
+            "type": "integer"
+          },
+          "presentPercent": {
+            "type": "number"
+          },
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttendanceStudent"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-ims-gateway-service": "attendance"
+}

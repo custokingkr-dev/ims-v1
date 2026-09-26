@@ -115,7 +115,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       setFeeStructureLoading(true);
       setFeeStructureError('');
-      const res = await api.get('/fee-structure', { params: schoolScopedParams });
+      const res = await api.get('/fees/structure', { params: schoolScopedParams });
       setFeeStructureData(res.data || defaultFeeStructureData());
       setExpandedBandIds([]);
       const firstBandId = res.data?.bands?.[0]?.id || '';
@@ -135,7 +135,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
 
   const patchFeeBand = async (bandId: string, payload: any) => {
     try {
-      await api.patch(`/fee-structure/band/${encodeURIComponent(bandId)}`, payload);
+      await api.patch(`/fees/bands/${encodeURIComponent(bandId)}`, payload);
       await loadFeeStructure();
       await onRefresh();
     } catch (err: unknown) {
@@ -187,7 +187,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
       const params = feeStructureData.academicYearId
         ? { academicYearId: feeStructureData.academicYearId, format: 'pdf' }
         : { format: 'pdf' };
-      const res = await api.get('/fee-structure/export', { params, responseType: 'blob' });
+      const res = await api.get('/fees/structure/export', { params, responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
@@ -208,7 +208,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
       setSaving('fee-structure-add');
       setFeeStructureError('');
       // Send rupees; the backend's toPaise() converts to paise (multiplies by 100 for values <=100k).
-      await api.post('/fee-structure/item', { bandId: feeItemForm.bandId, itemName: feeItemForm.itemName, frequency: feeItemForm.frequency, amount: Number(feeItemForm.amount) });
+      await api.post('/fees/items', { bandId: feeItemForm.bandId, name: feeItemForm.itemName, frequency: feeItemForm.frequency, amount: Number(feeItemForm.amount) });
       const bandName = feeStructureData.bands.find((band: any) => band.id === feeItemForm.bandId)?.name || 'band';
       showFeeToast(`Item added to ${bandName}.`);
       setShowFeeItemForm(false);
@@ -227,7 +227,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     if (!editingFeeItem?.id) return;
     try {
       setSaving('fee-structure-edit');
-      await api.put(`/fee-structure/item/${encodeURIComponent(editingFeeItem.id)}`, {
+      await api.put(`/fees/items/${encodeURIComponent(editingFeeItem.id)}`, {
         itemName: editingFeeItem.name,
         frequency: editingFeeItem.frequency,
         // Send rupees; the backend's toPaise() converts to paise.
@@ -247,7 +247,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
   const removeFeeStructureItem = async (itemId: string) => {
     try {
       setSaving(`fee-structure-remove-${itemId}`);
-      await api.delete(`/fee-structure/item/${encodeURIComponent(itemId)}`);
+      await api.delete(`/fees/items/${encodeURIComponent(itemId)}`);
       showFeeToast('Item removed.');
       setConfirmRemoveFeeItemId('');
       await loadFeeStructure();
@@ -266,7 +266,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       setSaving('fee-band-add');
       setFeeStructureError('');
-      await api.post('/fee-structure/band', { name: bandForm.name, classFrom: Number(bandForm.classFrom), classTo: Number(bandForm.classTo), discount: Number(bandForm.discount || 0), schedules: bandForm.schedules, ...(schoolScopedParams || {}) });
+      await api.post('/fees/bands', { name: bandForm.name, classFrom: Number(bandForm.classFrom), classTo: Number(bandForm.classTo), discount: Number(bandForm.discount || 0), schedules: bandForm.schedules, ...(schoolScopedParams || {}) });
       showFeeToast(`Band '${bandForm.name}' created.`);
       setShowBandForm(false);
       setBandForm({ name: '', classFrom: '1', classTo: '5', discount: '0', schedules: ['Annual'] });
@@ -290,7 +290,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       setSaving(`fee-band-edit-${band.id}`);
       setFeeStructureError('');
-      await api.put(`/fee-structure/band/${encodeURIComponent(band.id)}`, { name: nextName, classFrom: nextClassFrom, classTo: nextClassTo, discount: nextDiscount, schedules });
+      await api.put(`/fees/bands/${encodeURIComponent(band.id)}`, { name: nextName, classFrom: nextClassFrom, classTo: nextClassTo, discount: nextDiscount, schedules });
       showFeeToast(`Updated ${nextName}.`);
       setEditingBandId('');
       await loadFeeStructure();
@@ -304,7 +304,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
   const deleteFeeBand = async (bandId: string, bandName: string) => {
     try {
       setSaving(`fee-band-remove-${bandId}`);
-      await api.delete(`/fee-structure/band/${encodeURIComponent(bandId)}`);
+      await api.delete(`/fees/bands/${encodeURIComponent(bandId)}`);
       showFeeToast('Band deleted.');
       setConfirmDeleteBandId('');
       await loadFeeStructure();
@@ -339,7 +339,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     setFeeAssignForm((prev) => ({ ...prev, studentId: '', bandId: '', paymentSchedule: '', bandDiscount: '0' }));
     if (!sectionId) return;
     try {
-      const res = await api.get(`/classes/${encodeURIComponent(assignSelection.classId)}/sections/${encodeURIComponent(sectionId)}/students`, { params: schoolScopedParams });
+      const res = await api.get('/students/roster', { params: { classId: assignSelection.classId, sectionId, ...(schoolScopedParams || {}) } });
       setAssignOptions((prev: any) => ({ ...prev, students: res.data || [] }));
     } catch (err: unknown) {
       setAssignOptions((prev: any) => ({ ...prev, students: [] }));
@@ -353,7 +353,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     setFeeAssignForm((prev) => ({ ...prev, studentId }));
     if (!studentId || !assignSelection.classId) { setFeeAssignHint(''); return; }
     try {
-      const res = await api.get('/fee-structure/match', { params: { classId: assignSelection.classId, ...(schoolScopedParams || {}) } });
+      const res = await api.get('/fees/structure/match', { params: { classId: assignSelection.classId, ...(schoolScopedParams || {}) } });
       const band = res.data || {};
       const schedules = Array.isArray(band.activeSchedules) ? band.activeSchedules : [];
       setFeeAssignForm((prev) => ({
@@ -386,7 +386,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
       const manualDiscountPct = Number(feeAssignForm.manualDiscount || 0);
       const surchargePct = feeAssignForm.paymentSchedule === 'Annual' ? 0 : Number(feeAssignForm.surcharge || 0);
       const netPayable = Math.round(total - Math.round(total * bandDiscountPct / 100) - Math.round(total * manualDiscountPct / 100) + (feeAssignForm.paymentSchedule === 'Annual' ? 0 : Math.round(total * surchargePct / 100)));
-      await api.post('/fee-assignments', {
+      await api.post('/fees/assignments', {
         studentId: feeAssignForm.studentId,
         bandId: feeAssignForm.bandId,
         schedule: feeAssignForm.paymentSchedule,

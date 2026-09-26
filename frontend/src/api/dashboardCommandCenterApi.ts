@@ -46,7 +46,7 @@ export async function fetchCommandCenterMetrics(): Promise<DashboardCommandCente
   }
   if (commandCenterRequest?.authSessionVersion === sessionVersion) return commandCenterRequest.promise;
 
-  const request = api.get<DashboardCommandCenterResponse>('/dashboard/command-center')
+  const request = api.get<DashboardCommandCenterResponse>('/reporting/dashboard-command-center')
     .then((res) => {
       if (getAuthSessionVersion() === sessionVersion) {
         commandCenterCache = { authSessionVersion: sessionVersion, loadedAt: Date.now(), data: res.data };
@@ -68,12 +68,12 @@ export async function fetchFeeDefaulters(params: {
   page?: number;
   size?: number;
 }): Promise<FeeDefaulterListResponse> {
-  const res = await api.get<FeeDefaulterListResponse>('/dashboard/finance/fee-defaulters', { params });
+  const res = await api.get<FeeDefaulterListResponse>('/reporting/fee-defaulters', { params });
   return res.data;
 }
 
 export async function sendFeeReminders(request: SendFeeRemindersRequest): Promise<SendFeeRemindersResult> {
-  const res = await api.post<SendFeeRemindersResult>('/dashboard/finance/fee-defaulters/reminders', request);
+  const res = await api.post<SendFeeRemindersResult>('/fees/reminders/fee', request);
   return res.data;
 }
 
@@ -85,7 +85,7 @@ export async function fetchClassPhotographyPaymentStatus(params: {
   size?: number;
 }): Promise<ClassPhotographyPaymentStatusResponse> {
   const res = await api.get<ClassPhotographyPaymentStatusResponse>(
-    '/dashboard/events/class-photography/payment-status',
+    '/reporting/class-photography/payment-status',
     { params }
   );
   return res.data;
@@ -220,7 +220,7 @@ export async function updateReviewItem(
   itemId: string,
   request: UpdateReviewItemRequest
 ): Promise<ReviewItemDetail> {
-  const res = await api.put<ReviewItemDetail>(`/student-review-items/${itemId}`, request);
+  const res = await api.post<ReviewItemDetail>(`/students/reviews/items/${encodeURIComponent(itemId)}`, request);
   return res.data;
 }
 
@@ -228,8 +228,8 @@ export async function verifyFullName(
   itemId: string,
   request: VerifyFullNameRequest
 ): Promise<ReviewItemDetail> {
-  const res = await api.put<ReviewItemDetail>(
-    `/student-review-items/${itemId}/full-name-verification`,
+  const res = await api.post<ReviewItemDetail>(
+    `/students/reviews/items/${encodeURIComponent(itemId)}/full-name-verification`,
     request
   );
   return res.data;
@@ -243,7 +243,7 @@ export async function completeReviewCampaign(campaignId: string): Promise<void> 
 
 export async function fetchLowAttendanceSections(date?: string): Promise<LowAttendanceSectionsResponse> {
   const res = await api.get<LowAttendanceSectionsResponse>(
-    '/dashboard/attendance/low-sections',
+    '/reporting/low-attendance/sections',
     { params: date ? { date } : undefined }
   );
   return res.data;
@@ -251,7 +251,7 @@ export async function fetchLowAttendanceSections(date?: string): Promise<LowAtte
 
 export async function fetchLowAttendanceStudents(sectionId: string): Promise<LowAttendanceStudentItem[]> {
   const res = await api.get<LowAttendanceStudentItem[]>(
-    `/dashboard/attendance/sections/${sectionId}/low-students`
+    `/reporting/low-attendance/sections/${encodeURIComponent(sectionId)}/students`
   );
   return res.data;
 }
@@ -269,7 +269,7 @@ export async function sendMeetingInvites(
 // ── Vendor Payment Dues ───────────────────────────────────────────────────────
 
 export async function fetchVendorDues(): Promise<VendorDuesListResponse> {
-  const res = await api.get<VendorDuesListResponse>('/dashboard/vendor-dues');
+  const res = await api.get<VendorDuesListResponse>('/reporting/vendor-dues');
   return res.data;
 }
 
@@ -277,19 +277,19 @@ export async function markCatalogOrderVendorPaid(
   orderId: string,
   request?: MarkVendorPaidRequest
 ): Promise<void> {
-  await api.post(`/dashboard/vendor-dues/catalog-orders/${orderId}/mark-paid`, request ?? {});
+  await api.post(`/catalog/orders/${encodeURIComponent(orderId)}/vendor-paid`, request ?? {});
 }
 
 export async function markFirefightingVendorPaid(
   code: string,
   request?: MarkVendorPaidRequest
 ): Promise<void> {
-  await api.post(`/dashboard/vendor-dues/firefighting/${code}/mark-paid`, request ?? {});
+  await api.post(`/ff/requests/${encodeURIComponent(code)}/vendor-paid`, request ?? {});
 }
 
 // ── Reorder Prediction ────────────────────────────────────────────────────────
 
 export async function fetchReorderSignals(): Promise<ReorderSignalsResponse> {
-  const res = await api.get<ReorderSignalsResponse>('/dashboard/reorder-signals');
+  const res = await api.get<ReorderSignalsResponse>('/reporting/reorder-signals');
   return res.data;
 }

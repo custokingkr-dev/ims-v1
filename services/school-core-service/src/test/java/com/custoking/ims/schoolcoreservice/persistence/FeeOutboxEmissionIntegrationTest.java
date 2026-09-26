@@ -170,7 +170,7 @@ class FeeOutboxEmissionIntegrationTest {
         String currentYear = AcademicCalendar.currentAcademicYear(
                 AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH).id();
         repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
-        repo.recordPayment(Map.of("studentId", 1L, "amount", 125000L));
+        repo.recordPayment(Map.of("idempotencyKey", java.util.UUID.randomUUID().toString(), "studentId", 1L, "amount", 125000L));
 
         jdbc.sql("""
                 INSERT INTO fee.fee_bands
@@ -200,7 +200,7 @@ class FeeOutboxEmissionIntegrationTest {
         repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
         long beforeAssignmentEvents = countOutbox("fee-assignment.upserted.v1");
 
-        Map<String, Object> payment = repo.recordPayment(Map.of("studentId", 1L, "amount", 500000L));
+        Map<String, Object> payment = repo.recordPayment(Map.of("idempotencyKey", java.util.UUID.randomUUID().toString(), "studentId", 1L, "amount", 500000L));
         String paymentId = String.valueOf(payment.get("paymentId"));
 
         assertThat(countOutbox("payment.recorded.v1")).isEqualTo(1);
@@ -231,7 +231,7 @@ class FeeOutboxEmissionIntegrationTest {
     void recordPaymentAcceptsExplicitAmountPaisePayload() {
         repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
 
-        Map<String, Object> payment = repo.recordPayment(Map.of("studentId", 1L, "amountPaise", 123456L));
+        Map<String, Object> payment = repo.recordPayment(Map.of("idempotencyKey", java.util.UUID.randomUUID().toString(), "studentId", 1L, "amountPaise", 123456L));
 
         Long storedAmount = jdbc.sql("SELECT amount FROM fee.payment_records WHERE id = :id")
                 .param("id", payment.get("paymentId"))
@@ -267,7 +267,7 @@ class FeeOutboxEmissionIntegrationTest {
     @SuppressWarnings("unchecked")
     void activeFeeOperationsIgnoreSoftDeletedStudentsButReceiptsRemainReadable() {
         repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
-        Map<String, Object> payment = repo.recordPayment(Map.of("studentId", 1L, "amount", 125000L));
+        Map<String, Object> payment = repo.recordPayment(Map.of("idempotencyKey", java.util.UUID.randomUUID().toString(), "studentId", 1L, "amount", 125000L));
         jdbc.sql("UPDATE student.students SET deleted_at = now(), deleted_reason = 'Transferred' WHERE id = 1")
                 .update();
 
@@ -288,7 +288,7 @@ class FeeOutboxEmissionIntegrationTest {
         Map<String, Object> receipt = repo.receiptByPaymentId(String.valueOf(payment.get("paymentId")));
         assertThat(receipt.get("amount")).isEqualTo(125000L);
 
-        assertThatThrownBy(() -> repo.recordPayment(Map.of("studentId", 1L, "amount", 1L)))
+        assertThatThrownBy(() -> repo.recordPayment(Map.of("idempotencyKey", java.util.UUID.randomUUID().toString(), "studentId", 1L, "amount", 1L)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Student not found");
         assertThatThrownBy(() -> repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual")))
@@ -362,7 +362,7 @@ class FeeOutboxEmissionIntegrationTest {
     void recordPaymentRejectsAmountGreaterThanRemainingDue() {
         repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
 
-        assertThatThrownBy(() -> repo.recordPayment(Map.of("studentId", 1L, "amount", 500001L)))
+        assertThatThrownBy(() -> repo.recordPayment(Map.of("idempotencyKey", java.util.UUID.randomUUID().toString(), "studentId", 1L, "amount", 500001L)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("remaining due");
     }
@@ -370,7 +370,7 @@ class FeeOutboxEmissionIntegrationTest {
     @Test
     void failedRecordPaymentEmitsNoEvent() {
         long before = countOutbox("payment.recorded.v1");
-        assertThatThrownBy(() -> repo.recordPayment(Map.of("studentId", 1L, "amount", 0L)))
+        assertThatThrownBy(() -> repo.recordPayment(Map.of("idempotencyKey", java.util.UUID.randomUUID().toString(), "studentId", 1L, "amount", 0L)))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(countOutbox("payment.recorded.v1")).isEqualTo(before);
     }

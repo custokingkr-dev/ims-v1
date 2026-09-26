@@ -283,7 +283,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-nav-item:hover { background: var(--bg); }
 .ck-nav-item.on { background: var(--g1); color: var(--g); border-left-color: var(--g); font-weight: 600; }
 .ck-nav-item.on > svg { color: var(--g); }
-.ck-nav-item.fire.on { background: var(--or1); color: var(--or); border-left-color: var(--or); }
+.ck-nav-item.fire.on { background: var(--or1); color: var(--ck-color-orange-dark); border-left-color: var(--or); }
 .ck-nav-item.fire.on > svg { color: var(--or); }
 .ck-nav-item:focus-visible { outline: 2px solid var(--g); outline-offset: -2px; }
 
@@ -338,6 +338,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-card-a { color:var(--g); font-size:12px; }
 .ck-alert { display:flex; gap:10px; padding:11px 14px; border-radius:8px; margin-bottom:16px; align-items:flex-start; }
 .ck-alert strong { display:block; margin-bottom:2px; }
+/* That block rule is right for an alert whose bold opens a label line ("Custoking note:"), and
+   wrong for bold used mid-sentence, which it shatters into one block per fragment — leaving,
+   on Approve & fulfill, a two-sentence instruction as seven lines with the closing full stop
+   stranded alone. An alert that is flowing prose says so. */
+.ck-alert .ck-alert-flow strong { display:inline; margin:0; }
 .ck-alert-am { background:var(--am1); border:1px solid var(--ck-color-warning-border); color:var(--am); }
 .ck-alert-g { background:var(--g1); border:1px solid var(--g2); color:var(--g); }
 .ck-inline-link { border:none; background:none; color:inherit; text-decoration:underline; padding:0; }

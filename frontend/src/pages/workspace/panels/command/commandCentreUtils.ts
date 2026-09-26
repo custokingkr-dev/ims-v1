@@ -29,13 +29,12 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       id: 'cc-fee-overdue',
       module: 'fees',
       urgency: overdueCount > 50 ? 'high' : 'medium',
-      confidence: 95,
       code: `FEES-OVERDUE-${overdueCount}`,
       title: `${overdueCount} student${overdueCount !== 1 ? 's' : ''} have overdue fees`,
-      why: `${overdueCount} families have missed the payment deadline. A reminder before 6 PM recovers dues 3× faster.`,
+      why: `${overdueCount} families have missed the payment deadline. Review the unpaid amounts and available reminder options.`,
       impact: outstandingLakh,
       state: 'Overdue → Reminded',
-      cta: 'Send reminders',
+      cta: 'Review overdue fees',
       count: overdueCount,
       amount: outstanding,
       primaryPolCode: 'FEE_REMINDER',
@@ -60,7 +59,6 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       id: 'cc-fee-collection',
       module: 'fees',
       urgency: 'medium',
-      confidence: 88,
       code: 'FEES-COLLECTION',
       title: collectedLakh
         ? `${collectedLakh} collected this term`
@@ -96,7 +94,6 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       id: 'cc-orders-pending',
       module: 'supply',
       urgency: 'high',
-      confidence: 93,
       code: `ORD-PENDING-${submittedOrders.length}`,
       title: `${submittedOrders.length} urgent procurement order${submittedOrders.length !== 1 ? 's' : ''} awaiting approval`,
       why: `${submittedOrders.length} urgent procurement order${submittedOrders.length !== 1 ? 's' : ''} need approval. Delays extend vendor lead time and risk stock-outs.`,
@@ -119,7 +116,6 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       id: 'cc-orders-delayed',
       module: 'supply',
       urgency: 'medium',
-      confidence: 85,
       code: `ORD-APPROVED-${approvedOrders.length}`,
       title: `${approvedOrders.length} approved order${approvedOrders.length !== 1 ? 's' : ''} awaiting fulfilment`,
       why: `${approvedOrders.length} order${approvedOrders.length !== 1 ? 's are' : ' is'} approved but not yet fulfilled. Follow up to confirm dispatch timeline.`,
@@ -140,11 +136,10 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       id: 'cc-ff-drafts',
       module: 'firefighting',
       urgency: 'high',
-      confidence: 91,
       code: `FF-OPEN-${ffOpen.length}`,
-      title: `${ffOpen.length} urgent procurement request${ffOpen.length !== 1 ? 's' : ''} awaiting quotation`,
-      why: `${ffOpen.length} open request${ffOpen.length !== 1 ? 's' : ''} need a quotation before they can proceed to approval. Safety SLAs may be at risk.`,
-      impact: 'Safety compliance · quotation needed',
+      title: `${ffOpen.length} open urgent procurement request${ffOpen.length !== 1 ? 's' : ''}`,
+      why: `${ffOpen.length} request${ffOpen.length !== 1 ? 's have' : ' has'} OPEN status. Review the details and any available quotations before submission.`,
+      impact: 'Open procurement requests',
       state: 'OPEN → IN_REVIEW',
       cta: 'View requests',
       count: ffOpen.length,
@@ -155,22 +150,19 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
 
   // ── 8. Urgent Procurement Approvals Pending ───────────────────────────────
   const ffInReview = ws.firefighting?.requests?.filter(r => r.status === 'IN_REVIEW') ?? [];
-  const ffApprovalCount = ffInReview.length > 0
-    ? ffInReview.length
-    : ws.dashboard.pendingApprovals ?? 0;
+  const ffApprovalCount = ffInReview.length;
 
   if (ffApprovalCount > 0) {
     cards.push({
       id: 'cc-ff-approval',
       module: 'firefighting',
       urgency: 'critical',
-      confidence: 97,
       code: `FF-APPROVE-${ffApprovalCount}`,
       title: `${ffApprovalCount} urgent procurement request${ffApprovalCount !== 1 ? 's' : ''} pending approval`,
-      why: `${ffApprovalCount} request${ffApprovalCount !== 1 ? 's' : ''} in review need sign-off. Safety equipment cannot be dispatched without approval.`,
-      impact: 'Safety dispatch blocked · act now',
+      why: `${ffApprovalCount} request${ffApprovalCount !== 1 ? 's' : ''} in review need sign-off. Review the request details before approving.`,
+      impact: 'Approval review pending',
       state: 'IN_REVIEW → APPROVED',
-      cta: 'Approve requests',
+      cta: 'Review requests',
       count: ffApprovalCount,
       cta2: 'View quotations',
       cta2PolCode: 'FF_QUOTATION_VIEW',
@@ -189,10 +181,9 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       id: 'cc-attendance-low',
       module: 'attendance',
       urgency: attendancePct < 80 ? 'high' : 'medium',
-      confidence: 86,
       code: 'ATT-LOW',
       title: `School attendance at ${attendancePct}% — below threshold`,
-      why: `Today's attendance (${attendancePct}%) is below the 88% threshold. Identifying low-attendance sections and notifying parents reduces chronic absenteeism.`,
+      why: `Today's attendance (${attendancePct}%) is below the 88% threshold. Review the attendance register for the underlying records.`,
       impact: `${100 - attendancePct}% absent today · target 88%`,
       state: `${attendancePct}% → 88% target`,
       cta: 'Review low attendance',
@@ -206,7 +197,16 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
   const ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
   cards.sort((a, b) => (ORDER[a.urgency] ?? 9) - (ORDER[b.urgency] ?? 9));
 
-  return cards;
+  const sources: Record<string, string> = {
+    'cc-fee-overdue': ws.fees?.summary?.overdueCount != null ? 'Workspace fee summary' : 'Workspace dashboard fee counter',
+    'cc-fee-collection': 'Workspace fee summary',
+    'cc-orders-pending': 'Workspace orders with SUBMITTED status',
+    'cc-orders-delayed': 'Workspace orders with APPROVED status',
+    'cc-ff-drafts': 'Workspace procurement requests with OPEN status',
+    'cc-ff-approval': ffInReview.length > 0 ? 'Workspace procurement requests with IN_REVIEW status' : 'Workspace pending-approval counter',
+    'cc-attendance-low': 'Workspace attendance summary · dashboard review threshold 88%',
+  };
+  return cards.map(card => ({ ...card, sourceKind: 'workspace', sourceLabel: sources[card.id] }));
 }
 
 /** Returns the primary navigation panel for a derived card's main CTA. */

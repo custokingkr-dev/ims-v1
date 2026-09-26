@@ -49,6 +49,21 @@ class FirefightingValidationTest {
     // ── POST /requests ───────────────────────────────────────────────────────
 
     @Test
+    void creationRequiresReplayKeyBeforeRepositoryAccess() throws Exception {
+        for (String keyJson : new String[]{"", ",\"idempotencyKey\":\"bad key\""}) {
+            mvc.perform(post("/api/v1/ff/requests")
+                            .header("X-Firefighting-Service-Token", VALID_TOKEN)
+                            .contentType("application/json").content("{\"title\":\"Repair\"" + keyJson + "}"))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.idempotencyKey").exists());
+            mvc.perform(post("/api/v1/ff/requests/FF-001/quotations")
+                            .header("X-Firefighting-Service-Token", VALID_TOKEN)
+                            .contentType("application/json").content("{\"vendorName\":\"Vendor\"" + keyJson + "}"))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.idempotencyKey").exists());
+        }
+        verifyNoInteractions(repo);
+    }
+
+    @Test
     void createRequest_missingTitle_returns400WithFieldError() throws Exception {
         mvc.perform(post("/api/v1/ff/requests")
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
@@ -69,7 +84,7 @@ class FirefightingValidationTest {
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
                         .contentType("application/json")
-                        .content("{\"title\":\"\"}"))
+                        .content("{\"idempotencyKey\":\"fixture-save-key\",\"title\":\"\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.fieldErrors.title").exists());
@@ -86,7 +101,7 @@ class FirefightingValidationTest {
                         .header("X-Authenticated-User-Id", "5")
                         .header("X-Authenticated-Email", "trusted@school.com")
                         .contentType("application/json")
-                        .content("{\"title\":\"Replace extinguishers\",\"category\":\"Health\",\"urgency\":\"HIGH\"," +
+                        .content("{\"idempotencyKey\":\"fixture-save-key\",\"title\":\"Replace extinguishers\",\"category\":\"Health\",\"urgency\":\"HIGH\"," +
                                 "\"estimatedBudget\":50000,\"schoolId\":10,\"actorId\":9,\"actorEmail\":\"admin@school.com\"}"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
@@ -112,7 +127,7 @@ class FirefightingValidationTest {
                         .header("X-Authenticated-School-Id", "10")
                         .header("X-Authenticated-Permissions", "firefighting:create")
                         .contentType("application/json")
-                        .content("{\"title\":\"Leaking roof\"}"))
+                        .content("{\"idempotencyKey\":\"fixture-save-key\",\"title\":\"Leaking roof\"}"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(repo).createRequest(captor.capture());
@@ -129,7 +144,7 @@ class FirefightingValidationTest {
                         .header("X-Authenticated-School-Id", "10")
                         .header("X-Authenticated-Permissions", "firefighting:create")
                         .contentType("application/json")
-                        .content("{\"title\":\"Leaking roof\",\"schoolId\":99}"))
+                        .content("{\"idempotencyKey\":\"fixture-save-key\",\"title\":\"Leaking roof\",\"schoolId\":99}"))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(repo);
     }
@@ -142,7 +157,7 @@ class FirefightingValidationTest {
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "SUPERADMIN")
                         .contentType("application/json")
-                        .content("{\"title\":\"Replace lights\",\"description\":\"Lights are broken\",\"summary\":\"Lights summary\",\"schoolId\":10}"))
+                        .content("{\"idempotencyKey\":\"fixture-save-key\",\"title\":\"Replace lights\",\"description\":\"Lights are broken\",\"summary\":\"Lights summary\",\"schoolId\":10}"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(repo).createRequest(captor.capture());
@@ -158,7 +173,7 @@ class FirefightingValidationTest {
         mvc.perform(post("/api/v1/ff/requests/FF-001/quotations")
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"amount\":120000}"))
+                        .content("{\"idempotencyKey\":\"fixture-save-key\",\"amount\":120000}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.fieldErrors.vendorName").exists());
@@ -170,7 +185,7 @@ class FirefightingValidationTest {
         mvc.perform(post("/api/v1/ff/requests/FF-001/quotations")
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"vendorName\":\"\",\"amount\":120000}"))
+                        .content("{\"idempotencyKey\":\"fixture-save-key\",\"vendorName\":\"\",\"amount\":120000}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.fieldErrors.vendorName").exists());
@@ -184,7 +199,7 @@ class FirefightingValidationTest {
         mvc.perform(post("/api/v1/ff/requests/FF-001/quotations")
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"vendorName\":\"ABC Traders\",\"amount\":95000,\"deliveryTimeline\":\"3 days\"," +
+                        .content("{\"idempotencyKey\":\"fixture-save-key\",\"vendorName\":\"ABC Traders\",\"amount\":95000,\"deliveryTimeline\":\"3 days\"," +
                                 "\"notes\":\"Includes GST\",\"documentUrl\":\"https://example.com/q.pdf\"}"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
@@ -203,7 +218,7 @@ class FirefightingValidationTest {
         mvc.perform(post("/api/v1/ff/requests/FF-001/quotations")
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"vendorName\":\"XYZ Supplies\"}"))
+                        .content("{\"idempotencyKey\":\"fixture-save-key\",\"vendorName\":\"XYZ Supplies\"}"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(repo).addQuotation(eq("FF-001"), captor.capture());

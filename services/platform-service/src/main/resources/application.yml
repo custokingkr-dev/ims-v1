@@ -97,6 +97,12 @@ internal:
     service-accounts: ${INTERNAL_OIDC_SERVICE_ACCOUNTS:}
 
 notification:
+  broadcast:
+    # OFF by default. DRY_RUN uses the existing policy/inbox pipeline but never enables live delivery.
+    mode: ${BROADCAST_DISPATCH_MODE:OFF}
+    worker-ready: ${BROADCAST_WORKER_READY:false}
+    policy-token: ${BROADCAST_POLICY_TOKEN:}
+    fixed-delay-ms: ${BROADCAST_DISPATCH_FIXED_DELAY_MS:30000}
   pubsub:
     push-token: ${NOTIFICATION_PUBSUB_PUSH_TOKEN:}
     require-shared-token: ${NOTIFICATION_PUBSUB_REQUIRE_SHARED_TOKEN:true}

@@ -29,6 +29,9 @@ public class AppUserEntity {
     private String passwordHash;
 
     @Column(nullable = false)
+    private long credentialVersion;
+
+    @Column(nullable = false)
     private String role;
 
     private Long branchId;
@@ -44,6 +47,7 @@ public class AppUserEntity {
     public String getFullName() { return fullName; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
+    public long getCredentialVersion() { return credentialVersion; }
     public String getRole() { return role; }
     public Long getBranchId() { return branchId; }
     public String getBranchName() { return branchName; }

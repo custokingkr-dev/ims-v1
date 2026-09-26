@@ -1,3 +1,4 @@
+import { catalogClient } from '../../../services/catalogApi';
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field, Info, PanelMessage, Stat } from '../ui';
@@ -50,7 +51,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
       const size = 200;
       let page = 0; let all: any[] = []; let totalPages = 1; let totalElements = 0;
       do {
-        const res = await api.get('/sa/orders', { params: { page, size } });
+        const res = await catalogClient.getOrderPage({ page, size }).then(data => ({ data }));
         const d = res.data;
         const content = Array.isArray(d) ? d : (d?.content ?? []);
         totalPages = Array.isArray(d) ? 1 : (d?.totalPages ?? 1);
@@ -59,7 +60,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
         page += 1;
       } while (page < totalPages && page < 25); // hard cap 25 pages (5000 orders) to avoid runaway
       setTruncated(all.length < totalElements);
-      const statsRes = await api.get('/sa/orders/stats');
+      const statsRes = await catalogClient.getOrderSummary().then(data => ({ data }));
       setOrders(all);
       setStats(statsRes.data || null);
     } catch (e: any) {
@@ -92,7 +93,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
   const openDetail = async (orderId: string) => {
     setDetailLoading(true); setDetailError(''); setDetailOpen(true); setDetailOrder(null);
     try {
-      const res = await api.get(`/supply/orders/${orderId}`);
+      const res = await api.get(`/catalog/orders/${orderId}`);
       if (Number(res.data?.formVersion) === 2) { setDetailOpen(false); setNotebookOrderId(orderId); return; }
       setDetailOrder(res.data); setNewStatus(res.data?.status || '');
     } catch (e: any) {
@@ -106,7 +107,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     if (!detailOrder) return;
     setStatusSaving(true); setDetailError('');
     try {
-      await api.patch(`/sa/orders/${detailOrder.id}/status`, { status: newStatus });
+      await catalogClient.updateOrderStatus({ id: detailOrder.id }, { status: newStatus });
       setDetailOpen(false); await load();
     } catch (e: any) {
       setDetailError(e?.response?.data?.message || 'Save failed.');
@@ -117,7 +118,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
 
   const acceptOrder = async (orderId: string) => {
     try {
-      await api.patch(`/sa/orders/${orderId}/status`, { status: 'IN_PROGRESS' });
+      await catalogClient.updateOrderStatus({ id: orderId }, { status: 'IN_PROGRESS' });
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Failed to accept order. Please try again.');
@@ -126,7 +127,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
 
   const markDelivered = async (orderId: string) => {
     try {
-      await api.post(`/supply/orders/${orderId}/deliver`);
+      await catalogClient.markDelivered({ id: orderId });
       await load();
     } catch (e: any) {
       setToast(e?.response?.data?.message || 'Could not mark delivered.');
@@ -136,7 +137,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
   const openInvoiceFromOrder = async (orderId: string, school: string, schoolId: number | null, valuePaise: number) => {
     setInvError(''); setInvEditing(false); setInvSaving(false);
     try {
-      const res = await api.get(`/sa/invoices/by-order/${orderId}`);
+      const res = await api.get(`/billing/sa/invoices/by-order/${orderId}`);
       if (res.data) {
         setInvData({ ...res.data }); setInvExistingId(res.data.id);
       } else {
@@ -170,7 +171,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     setInvSaving(true); setInvError('');
     try {
       const amount = Number(invData.qty || 0) * Number(invData.rate || 0);
-      const res = await api.post('/sa/invoices', { orderRef: invData.orderRef, school: invData.school, schoolId: invData.schoolId ?? null, description: invData.description, qty: Number(invData.qty || 0), rate: Number(invData.rate || 0), amount, notes: invData.notes || '' });
+      const res = await api.post('/billing/sa/invoices', { orderRef: invData.orderRef, school: invData.school, schoolId: invData.schoolId ?? null, description: invData.description, qty: Number(invData.qty || 0), rate: Number(invData.rate || 0), amount, notes: invData.notes || '' });
       setInvExistingId(res.data.id); setInvData({ ...res.data });
       setToast(`Invoice ${res.data.id} sent to ${invData.school}`);
     } catch (e: any) {
@@ -184,7 +185,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     if (!invExistingId) return;
     setInvSaving(true); setInvError('');
     try {
-      await api.patch(`/sa/invoices/${invExistingId}`, { description: invData.description, qty: Number(invData.qty || 0), rate: Number(invData.rate || 0), school: invData.school, status: invData.status });
+      await api.patch(`/billing/sa/invoices/${invExistingId}`, { description: invData.description, qty: Number(invData.qty || 0), rate: Number(invData.rate || 0), school: invData.school, status: invData.status });
       setInvEditing(false);
     } catch (e: any) {
       setInvError(e?.response?.data?.message || 'Save failed. Please try again.');

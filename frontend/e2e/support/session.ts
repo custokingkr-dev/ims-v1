@@ -38,7 +38,7 @@ export type SessionOverrides = {
   branchId?: number;
   /** Module codes returned by GET /schools/{branchId}/modules/active. */
   modules?: string[];
-  /** Pending count from GET /sa/invoices/stats - drives .ck-nav-badge. */
+  /** Pending count from GET /billing/sa/invoices/stats - drives .ck-nav-badge. */
   pendingInvoices?: number;
 };
 
@@ -55,10 +55,10 @@ export async function mockAuthenticatedApi(page: Page, overrides: SessionOverrid
     const pathname = new URL(route.request().url()).pathname;
     if (pathname === '/api/v1/auth/login') return json(route, sessionUser);
     if (pathname === '/api/v1/auth/refresh') return json(route, sessionUser);
-    if (pathname === '/api/v1/workspace') return json(route, workspace);
+    if (pathname === '/api/v1/reporting/workspace') return json(route, workspace);
     if (pathname.endsWith('/modules/active')) return json(route, activeModules);
-    if (pathname === '/api/v1/sa/invoices') return json(route, []);
-    if (pathname === '/api/v1/sa/invoices/stats') {
+    if (pathname === '/api/v1/billing/sa/invoices') return json(route, []);
+    if (pathname === '/api/v1/billing/sa/invoices/stats') {
       return json(route, { pending: pendingInvoices ?? 0, total: pendingInvoices ?? 0 });
     }
     if (pathname === '/api/v1/schools') return json(route, []);

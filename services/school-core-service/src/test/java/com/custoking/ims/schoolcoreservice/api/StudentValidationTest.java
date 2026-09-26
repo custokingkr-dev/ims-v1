@@ -377,4 +377,13 @@ class StudentValidationTest {
         assertEquals(4L, captured.get("schoolId"));
         assertEquals(1L, captured.get("actorId"));
     }
+    @Test
+    void canonicalCreatePreservesLegacyFreeTextAddress() throws Exception {
+        mvc.perform(post("/api/v1/students").header("X-Student-Service-Token", VALID_TOKEN)
+                .contentType("application/json").content("""
+                {"admissionNumber":"A-42","fullName":"Student","schoolId":7,"address":"Village road, near school"}
+                """))
+                .andExpect(status().isOk());
+        verify(repo).createStudent(argThat(body -> "Village road, near school".equals(body.get("address"))));
+    }
 }

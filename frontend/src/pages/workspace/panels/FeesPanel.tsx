@@ -1,5 +1,8 @@
+import { getFeeCollectionRows, getFeeOverdueRows } from '../../../services/feeApi';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../../../services/api';
+import '../../../styles/fee-payment.css';
+import { prepareFeePayment, confirmFeePayment, readFeePaymentRecovery, clearFeePaymentRecovery, type PendingFeePayment } from '../../../services/feeApi';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { ModuleShell, Field, Stat } from '../ui';
@@ -22,6 +25,8 @@ interface FeeSection {
 }
 
 interface PaymentStudent {
+  assignmentId: string;
+  academicYearId: string;
   id: string | number;
   name: string;
   admissionNo: string;
@@ -162,6 +167,12 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
   const [paymentDuePreview, setPaymentDuePreview] = useState<PaymentStudent | null>(null);
   const [paymentError, setPaymentError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState('');
+  const paymentScope = `${user?.userId ?? user?.email}:${user?.branchId ?? 'platform'}`;
+  const [initialPaymentRecovery] = useState(() => readFeePaymentRecovery(paymentScope));
+  const [pendingPayment, setPendingPayment] = useState<PendingFeePayment | null>(initialPaymentRecovery.pending);
+  const [recoveryProblem, setRecoveryProblem] = useState(initialPaymentRecovery.error);
+  const [recoveryReviewed, setRecoveryReviewed] = useState(false);
+  const paymentBusy = useRef(false);
 
   const [feeFilters, setFeeFilters] = useState({ className: '', sectionName: '' });
   const [reportOptions, setReportOptions] = useState<{ sections: FeeSection[] }>({ sections: [] });
@@ -175,8 +186,6 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
   const [reminderSaving, setReminderSaving] = useState(false);
   const [reminderNotice, setReminderNotice] = useState('');
   const [reminderError, setReminderError] = useState('');
-
-  const paymentTimerRef = useRef<number | null>(null);
 
   const loadFeeSummary = async () => {
     try {
@@ -224,9 +233,11 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
   const loadSectionStudents = async (classId: string, sectionId: string) => {
     try {
       setFeeLoadError('');
-      const res = await api.get('/fees/report', { params: { classId, sectionId, ...(schoolScopedParams || {}) } });
+      const res = await getFeeCollectionRows({ classId, sectionId, ...(schoolScopedParams || {}) });
       const students = (Array.isArray(res.data) ? res.data : []).map((r: any) => ({
         id: r.studentId,
+        assignmentId: r.assignmentId,
+        academicYearId: r.academicYearId,
         name: studentName(r),
         admissionNo: String(r.admissionNumber || r.admissionNo || ''),
         feePlan: feePlan(r),
@@ -249,8 +260,8 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
     setFeeLoadError('');
     try {
       const [reportRes, overdueRes] = await Promise.all([
-        api.get('/fees/report', { params: { classId, sectionId, ...(schoolScopedParams || {}) } }),
-        api.get('/fees/overdue', { params: { classId, sectionId, ...(schoolScopedParams || {}) } }),
+        getFeeCollectionRows({ classId, sectionId, ...(schoolScopedParams || {}) }),
+        getFeeOverdueRows({ classId, sectionId, ...(schoolScopedParams || {}) }),
       ]);
       const nextReportRows = Array.isArray(reportRes.data) ? reportRes.data : [];
       const nextOverdueRows = (Array.isArray(overdueRes.data) ? overdueRes.data : [])
@@ -276,7 +287,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
   const openReceiptPdf = async (receiptPaymentId: string) => {
     try {
       setPaymentError('');
-      const res = await api.get(`/fees/receipts/${encodeURIComponent(receiptPaymentId)}/pdf`, {
+      const res = await api.get(`/fees/payments/${encodeURIComponent(receiptPaymentId)}/receipt/pdf`, {
         params: schoolScopedParams,
         responseType: 'blob',
       });
@@ -340,52 +351,48 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
   };
 
   const handleRecordPayment = async () => {
-    if (!canCollectFees) {
-      setPaymentError('You need fee:collect or payment:create permission to record payments.');
-      return;
-    }
-
+    if (!canCollectFees || paymentBusy.current) return;
+    paymentBusy.current = true;
+    setSaving('payment');
+    setPaymentError('');
     try {
-      setSaving('payment');
-      setPaymentError('');
-      setPaymentSuccess('');
-      const due = Number(paymentDuePreview?.dueAmount || 0);
-      const amountPaise = Math.round(Number(paymentForm.amount || 0) * 100);
-      if (!paymentForm.studentId || amountPaise <= 0 || !paymentForm.paymentMode) {
-        setPaymentError('Select a student, amount, and payment mode before saving.');
-        return;
+      let attempt = pendingPayment ?? readFeePaymentRecovery(paymentScope).pending;
+      if (!attempt) {
+        const amount = Math.round(Number(paymentForm.amount || 0) * 100);
+        if (!paymentDuePreview || !Number.isSafeInteger(amount) || amount <= 0 || amount > paymentDuePreview.dueAmount) {
+          setPaymentError('Select a student and enter an amount greater than zero and no more than the balance.');
+          return;
+        }
+        attempt = prepareFeePayment(paymentScope, {
+          studentId: paymentForm.studentId, assignmentId: paymentDuePreview.assignmentId,
+          academicYearId: paymentDuePreview.academicYearId, amount,
+          mode: paymentForm.paymentMode, notes: paymentForm.notes, ...(schoolScopedParams || {}),
+        }, paymentForm.studentName);
+        setPendingPayment(attempt);
       }
-      if (paymentDuePreview && amountPaise > due) {
-        setPaymentError(`Amount Rs ${paiseToRupeeInput(amountPaise)} exceeds the due amount of Rs ${formatPaise(due)}.`);
-        return;
-      }
-
-      await api.post('/workspace/fees/record-payment', {
-        studentId: paymentForm.studentId,
-        amount: amountPaise,
-        mode: paymentForm.paymentMode,
-        notes: paymentForm.notes,
-        paidAt: new Date().toISOString(),
-        recordedBy: user?.userId || user?.email || 'current-user',
-        ...(schoolScopedParams || {}),
-      });
-      await Promise.resolve(onRefresh());
-      await loadFeeSummary();
-      if (feeFilters.className && feeFilters.sectionName) {
-        await loadFeeReports(feeFilters.className, feeFilters.sectionName);
-      }
-      if (paymentSelection.classId && paymentSelection.sectionId) {
-        await loadSectionStudents(paymentSelection.classId, paymentSelection.sectionId);
-      }
-      setPaymentSuccess(`Payment of Rs ${paiseToRupeeInput(amountPaise)} recorded for ${paymentForm.studentName || 'the selected student'}.`);
+      const result = await confirmFeePayment(paymentScope, attempt);
+      setPendingPayment(null);
+      setRecoveryProblem(result.recoveryWarning);
+      setRecoveryReviewed(false);
+      setPaymentSuccess(`Payment of Rs ${paiseToRupeeInput(attempt.request.amount)} recorded for ${attempt.studentName}. Receipt ${result.data.receiptNumber}.`);
       setPaymentForm({ studentId: '', studentName: '', amount: '', paymentMode: 'UPI', notes: '' });
       setPaymentSelection((prev) => ({ ...prev, studentId: '' }));
       setPaymentDuePreview(null);
-      if (paymentTimerRef.current) window.clearTimeout(paymentTimerRef.current);
-      paymentTimerRef.current = window.setTimeout(() => setPaymentSuccess(''), 4000);
+      try {
+        await Promise.resolve(onRefresh());
+        await loadFeeSummary();
+        if (feeFilters.className && feeFilters.sectionName) await loadFeeReports(feeFilters.className, feeFilters.sectionName);
+        if (paymentSelection.classId && paymentSelection.sectionId) await loadSectionStudents(paymentSelection.classId, paymentSelection.sectionId);
+      } catch {
+        setPaymentError('Payment is recorded. Reload the ledger to refresh its balance.');
+      }
     } catch (err) {
-      setPaymentError(errMessage(err, 'Could not record payment.'));
+      const recovery = readFeePaymentRecovery(paymentScope);
+      setPendingPayment(recovery.pending);
+      setRecoveryProblem(recovery.error);
+      setPaymentError(errMessage(err, 'Confirmation is unavailable. Retry this same payment to retrieve its receipt safely.'));
     } finally {
+      paymentBusy.current = false;
       setSaving('');
     }
   };
@@ -403,7 +410,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
     }
     try {
       setReminderSaving(true);
-      const res = await api.post('/fees/send-reminders', {
+      const res = await api.post('/fees/reminders/fee', {
         classId: feeFilters.className,
         sectionId: feeFilters.sectionName,
         ...(schoolScopedParams || {}),
@@ -421,9 +428,6 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
   useEffect(() => {
     void loadFeeClasses();
     void loadFeeSummary();
-    return () => {
-      if (paymentTimerRef.current) window.clearTimeout(paymentTimerRef.current);
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -548,6 +552,17 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
             <div className="ck-fees-card-body">
               {paymentSuccess ? <div className="ck-alert ck-alert-g"><span>OK</span><div>{paymentSuccess}</div></div> : null}
               {paymentError ? <div className="ck-alert ck-alert-re"><span>!</span><div>{paymentError}</div></div> : null}
+              {(pendingPayment || recoveryProblem) && <div className="fee-payment-recovery" role="status"><div>
+                {pendingPayment && <><p>{pendingPayment.studentName}: Rs {paiseToRupeeInput(pendingPayment.request.amount)} needs confirmation. Retry the same collection before recording another payment.</p>
+                  <button className="ck-btn ck-btn-ghost" disabled={!canCollectFees || saving === 'payment'} onClick={handleRecordPayment}>Retry payment confirmation</button></>}
+                {recoveryProblem && <p role="alert">{recoveryProblem}</p>}
+                <p>Clearing a saved entry does not cancel a payment. Check the ledger and receipts first.</p>
+                <label><input type="checkbox" checked={recoveryReviewed} onChange={event => setRecoveryReviewed(event.target.checked)} /> I have checked whether this collection is already recorded.</label>
+                <button className="ck-btn ck-btn-ghost" disabled={!recoveryReviewed || saving === 'payment'} onClick={() => {
+                  try { clearFeePaymentRecovery(paymentScope); setPendingPayment(null); setRecoveryProblem(''); setPaymentError(''); setRecoveryReviewed(false); }
+                  catch (error) { setRecoveryProblem(errMessage(error, 'The recovery entry could not be cleared.')); }
+                }}>Clear reviewed recovery entry</button>
+              </div></div>}
 
               <div className="ck-form-grid ck-fg-3">
                 <Field label="Class">
@@ -611,7 +626,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
               <div className="ck-actions-inline">
                 <button
                   type="button"
-                  disabled={!canCollectFees || !(paymentForm.studentId && Number(paymentForm.amount) > 0 && paymentForm.paymentMode) || saving === 'payment'}
+                  disabled={!canCollectFees || !(paymentForm.studentId && Number(paymentForm.amount) > 0 && paymentForm.paymentMode) || saving === 'payment' || !!pendingPayment || !!recoveryProblem}
                   className="ck-btn ck-btn-g"
                   onClick={handleRecordPayment}
                 >

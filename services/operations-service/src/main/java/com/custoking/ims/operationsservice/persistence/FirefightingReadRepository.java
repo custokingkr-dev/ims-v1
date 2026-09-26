@@ -1,6 +1,9 @@
 package com.custoking.ims.operationsservice.persistence;
 
 import com.custoking.ims.operationsservice.outbox.OutboxWriter;
+import com.custoking.ims.operationsservice.api.dto.QuotationDocumentResponse;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +17,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.TreeMap;
+import java.util.HexFormat;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @Repository
 public class FirefightingReadRepository {
@@ -81,13 +90,8 @@ public class FirefightingReadRepository {
     }
 
     public List<QuotationRow> quotations(String requestId) {
-        return jdbc.sql("""
-                SELECT id, vendor_name, amount, delivery_timeline, notes, document_url,
-                       is_custoking, is_recommended, created_at, request_id
-                FROM ff_quotations
-                WHERE request_id = :requestId
-                ORDER BY is_recommended DESC, amount ASC, created_at ASC NULLS LAST
-                """).param("requestId", requestId)
+        return jdbc.sql(quotationSelect() + " WHERE q.request_id = :requestId ORDER BY q.is_recommended DESC, q.amount ASC, q.created_at ASC NULLS LAST")
+                .param("requestId", requestId)
                 .query(QuotationRow.class)
                 .list();
     }
@@ -120,6 +124,16 @@ public class FirefightingReadRepository {
         }
         String code = nextCode();
         String category = str(request.get("category"), "Other");
+        var payload = new TreeMap<String, Object>();
+        payload.put("title", str(request.get("title"), "Request"));
+        payload.put("category", category);
+        payload.put("urgency", str(request.get("urgency"), "MEDIUM").toUpperCase(Locale.ROOT));
+        payload.put("requiredByDate", str(request.get("requiredByDate"), ""));
+        payload.put("estimatedBudget", longValue(request.get("estimatedBudget"), 0L));
+        payload.put("description", str(firstPresent(request, "description", "summary"), ""));
+        payload.put("referenceFileUrl", trimToNull(str(request.get("referenceFileUrl"), "")));
+        MutationTarget target = reserveCreation(schoolId, "request:create", request.get("idempotencyKey"), payload, code);
+        if (!target.fresh()) return detailRow(target.id());
         jdbc.sql("""
                 INSERT INTO firefighting_requests(code, title, category, urgency, required_by_date,
                                                   estimated_budget, description, reference_file_url,
@@ -150,7 +164,7 @@ public class FirefightingReadRepository {
 
     @Transactional
     public Map<String, Object> updateRequest(String code, Map<String, Object> request) {
-        Map<String, Object> current = requestMap(code);
+        Map<String, Object> current = requestMap(code, true);
         requireStatus(current, "DRAFT");
         jdbc.sql("""
                 UPDATE firefighting_requests
@@ -173,11 +187,20 @@ public class FirefightingReadRepository {
 
     @Transactional
     public Map<String, Object> addQuotation(String code, Map<String, Object> request) {
-        Map<String, Object> current = requestMap(code);
-        requireStatus(current, "DRAFT");
+        Map<String, Object> current = requestMap(code, true);
         String id = UUID.randomUUID().toString();
         String vendor = str(request.get("vendorName"), "Vendor");
         Long schoolId = longValue(current.get("schoolId"), null);
+        var payload = new TreeMap<String, Object>();
+        payload.put("vendorName", vendor);
+        payload.put("amount", longValue(request.get("amount"), 0L));
+        payload.put("deliveryTimeline", str(request.get("deliveryTimeline"), ""));
+        payload.put("notes", trimToNull(str(request.get("notes"), "")));
+        payload.put("documentUrl", trimToNull(str(request.get("documentUrl"), "")));
+        MutationTarget target = reserveCreation(schoolId, "quotation:create:" + code, request.get("idempotencyKey"), payload, id);
+        if (!target.fresh()) return quotationMapOptional(target.id()).orElseThrow(() ->
+                new ResponseStatusException(HttpStatus.GONE, "This saved quotation was removed. Review the request before adding another quotation."));
+        requireStatus(current, "DRAFT");
         jdbc.sql("""
                 INSERT INTO ff_quotations(id, vendor_name, amount, delivery_timeline, notes, document_url,
                                           is_custoking, is_recommended, created_at, request_id, school_id)
@@ -201,7 +224,7 @@ public class FirefightingReadRepository {
 
     @Transactional
     public Map<String, Object> updateQuotation(String code, String quotationId, Map<String, Object> request) {
-        Map<String, Object> current = requestMap(code);
+        Map<String, Object> current = requestMap(code, true);
         requireStatus(current, "DRAFT");
         Map<String, Object> quote = quotationMap(quotationId);
         String vendor = request.containsKey("vendorName") ? str(request.get("vendorName"), str(quote.get("vendorName"), "Vendor")) : str(quote.get("vendorName"), "Vendor");
@@ -226,7 +249,7 @@ public class FirefightingReadRepository {
 
     @Transactional
     public Map<String, Object> deleteQuotation(String code, String quotationId) {
-        Map<String, Object> current = requestMap(code);
+        Map<String, Object> current = requestMap(code, true);
         requireStatus(current, "DRAFT");
         jdbc.sql("DELETE FROM ff_quotations WHERE id = :id AND request_id = :requestId")
                 .param("id", quotationId)
@@ -238,12 +261,43 @@ public class FirefightingReadRepository {
 
     @Transactional
     public Map<String, Object> submit(String code) {
-        Map<String, Object> current = requestMap(code);
-        requireStatus(current, "DRAFT");
+        Map<String, Object> current = requestMap(code, true);
+        // Submission is monotonic: a lost response can be replayed without a second
+        // transition/event, even if another approver has already advanced the request.
+        if (!"DRAFT".equals(str(current.get("status"), ""))) return detailRow(code);
         updateStatus(code, "AWAITING_BURSAR");
         emitUpserted(code);
         return detailRow(code);
     }
+
+    private MutationTarget reserveCreation(Long schoolId, String operation, Object rawKey, Map<String, Object> payload, String entityId) {
+        if (!(rawKey instanceof String key) || !key.matches("[A-Za-z0-9._:-]{1,128}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A valid idempotencyKey is required. Reload or update your client before creating a request or quotation.");
+        }
+        String fingerprint;
+        try {
+            fingerprint = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(objectMapper.writeValueAsString(payload).getBytes(StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException ex) { throw new IllegalStateException(ex); }
+        int inserted = jdbc.sql("""
+                INSERT INTO firefighting.creation_replays(school_id,operation,idempotency_key,payload_sha256,entity_id)
+                VALUES (:school,:operation,:key,:fingerprint,:entity)
+                ON CONFLICT (school_id,operation,idempotency_key) DO NOTHING
+                """).param("school", schoolId).param("operation", operation).param("key", key)
+                .param("fingerprint", fingerprint).param("entity", entityId).update();
+        if (inserted == 1) return new MutationTarget(entityId, true);
+        var replay = jdbc.sql("""
+                SELECT entity_id,payload_sha256 FROM firefighting.creation_replays
+                WHERE school_id=:school AND operation=:operation AND idempotency_key=:key
+                """).param("school", schoolId).param("operation", operation).param("key", key)
+                .query(CreationReplay.class).single();
+        if (!fingerprint.equals(replay.payloadSha256())) throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "This save key was already used for different details. Recover the original save before making changes.");
+        return new MutationTarget(replay.entityId(), false);
+    }
+    record MutationTarget(String id, boolean fresh) {}
+    record CreationReplay(String entityId, String payloadSha256) {}
 
     @Transactional
     public Map<String, Object> approveBursar(String code, Map<String, Object> request) {
@@ -448,7 +502,11 @@ public class FirefightingReadRepository {
     }
 
     private Map<String, Object> requestMap(String code) {
-        return jdbc.sql(requestSelect() + " WHERE code = :code")
+        return requestMap(code, false);
+    }
+
+    private Map<String, Object> requestMap(String code, boolean lock) {
+        return jdbc.sql(requestSelect() + " WHERE code = :code" + (lock ? " FOR UPDATE" : ""))
                 .param("code", code)
                 .query((rs, rowNum) -> row(
                         "code", rs.getString("code"),
@@ -486,31 +544,26 @@ public class FirefightingReadRepository {
     }
 
     private Optional<Map<String, Object>> quotationMapOptional(String id) {
-        return jdbc.sql("""
-                SELECT id, vendor_name, amount, delivery_timeline, notes, document_url,
-                       is_custoking, is_recommended, created_at, request_id
-                FROM ff_quotations
-                WHERE id = :id
-                """)
-                .param("id", id)
-                .query((rs, rowNum) -> row(
-                        "id", rs.getString("id"),
-                        "vendorName", rs.getString("vendor_name"),
-                        "amount", rs.getLong("amount"),
-                        "deliveryTimeline", rs.getString("delivery_timeline"),
-                        "notes", rs.getString("notes"),
-                        "documentUrl", rs.getString("document_url"),
-                        "isCustoking", rs.getBoolean("is_custoking"),
-                        "isRecommended", rs.getBoolean("is_recommended"),
-                        "createdAt", rs.getObject("created_at", OffsetDateTime.class),
-                        "requestId", rs.getString("request_id")))
-                .optional();
+        return jdbc.sql(quotationSelect() + " WHERE q.id = :id").param("id", id)
+                .query(QuotationRow.class).optional().map(this::quotationRowMap);
+    }
+
+    private String quotationSelect() {
+        return """
+                SELECT q.id, q.vendor_name, q.amount, q.delivery_timeline, q.notes, q.document_url,
+                       q.is_custoking, q.is_recommended, q.created_at, q.request_id,
+                       d.id AS document_id, d.filename AS document_filename, d.content_type AS document_content_type,
+                       d.size_bytes AS document_size_bytes, d.uploaded_at AS document_uploaded_at
+                FROM ff_quotations q LEFT JOIN firefighting.quotation_documents d
+                  ON d.id = q.document_id AND d.school_id = q.school_id AND d.status = 'READY'
+                """;
     }
 
     private Map<String, Object> quotationRowMap(QuotationRow row) {
         return row("id", row.id(), "vendorName", row.vendorName(), "amount", row.amount(),
                 "deliveryTimeline", row.deliveryTimeline(), "notes", row.notes(), "documentUrl", row.documentUrl(),
                 "isCustoking", row.isCustoking(), "isRecommended", row.isRecommended(),
+                "requestId", row.requestId(), "document", row.document(),
                 "createdAt", row.createdAt() == null ? null : row.createdAt().toString());
     }
 
@@ -633,6 +686,19 @@ public class FirefightingReadRepository {
             Boolean isCustoking,
             Boolean isRecommended,
             OffsetDateTime createdAt,
-            String requestId) {
+            String requestId,
+            @JsonIgnore String documentId,
+            @JsonIgnore String documentFilename,
+            @JsonIgnore String documentContentType,
+            @JsonIgnore Long documentSizeBytes,
+            @JsonIgnore OffsetDateTime documentUploadedAt) {
+        public QuotationRow(String id, String vendorName, Long amount, String deliveryTimeline, String notes, String documentUrl,
+                Boolean isCustoking, Boolean isRecommended, OffsetDateTime createdAt, String requestId) {
+            this(id, vendorName, amount, deliveryTimeline, notes, documentUrl, isCustoking, isRecommended, createdAt, requestId, null, null, null, null, null);
+        }
+        @JsonProperty("document")
+        public QuotationDocumentResponse document() {
+            return documentId == null ? null : new QuotationDocumentResponse(documentId, documentFilename, documentContentType, documentSizeBytes, documentUploadedAt);
+        }
     }
 }
