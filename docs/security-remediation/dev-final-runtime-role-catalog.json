@@ -1,0 +1,1007 @@
+﻿{
+    "scope":  "Dev postcutover catalog-only dedicated runtime roles",
+    "notBefore":  "2026-10-06T21:03:33Z",
+    "capturedAtUtc":  "2026-10-06T21:06:52.992505+00:00",
+    "safe":  true,
+    "roles":  [
+                  {
+                      "role":  "ims_identity_rt",
+                      "safe":  true,
+                      "ownedSchemaTableCounts":  {
+                                                     "identity":  15
+                                                 },
+                      "ownedSchemaTables":  15,
+                      "ownedSchemaRlsTables":  0,
+                      "foreignTablesChecked":  119,
+                      "catalogTablesChecked":  134,
+                      "repairAuditTablesChecked":  0,
+                      "ownedPolicyCount":  0,
+                      "policyFingerprints":  [
+
+                                             ],
+                      "appRtCanLogin":  false,
+                      "unsafeNames":  [
+
+                                      ]
+                  },
+                  {
+                      "role":  "ims_school_core_rt",
+                      "safe":  true,
+                      "ownedSchemaTableCounts":  {
+                                                     "student":  22,
+                                                     "fee":  7,
+                                                     "tenant_school":  19,
+                                                     "attendance":  4,
+                                                     "catalog":  15
+                                                 },
+                      "ownedSchemaTables":  67,
+                      "ownedSchemaRlsTables":  50,
+                      "foreignTablesChecked":  67,
+                      "catalogTablesChecked":  134,
+                      "repairAuditTablesChecked":  2,
+                      "ownedPolicyCount":  55,
+                      "policyFingerprints":  [
+                                                 {
+                                                     "table":  "attendance.absentee_notifications",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "ce3fbf4c0e92a105c34d9a689fbc091e01e396b9f25a6303c5c9c1fb51815956"
+                                                 },
+                                                 {
+                                                     "table":  "attendance.attendance_daily",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "3f3393098b05326c27f123a52d4ffefdda8ac0c3bfa318667d1d2fc7e44be091"
+                                                 },
+                                                 {
+                                                     "table":  "attendance.attendance_student_records",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "9820effa063e77bf9736c6f90ff2c0b235b5c1be60cf1f0c367f90e671cc60d7"
+                                                 },
+                                                 {
+                                                     "table":  "catalog.annual_plan_confirmations",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "09c5ed594e452487fba32f22cd5322a9b865fba6c45f1ba8caed9da6eaeaac32"
+                                                 },
+                                                 {
+                                                     "table":  "catalog.annual_plan_items",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "7bf5021a723f126524d95ecb78a20da35e3bbb3927693ebd6150b70109255a48"
+                                                 },
+                                                 {
+                                                     "table":  "catalog.catalog_order_assets",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "57ae0f9826899461eebe4ee5b2416ad93ebd80b2a94536dbd919ac27efc61f80"
+                                                 },
+                                                 {
+                                                     "table":  "catalog.catalog_order_lines",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "6ee421580a6453e3c33730c915b969a6b1d170939108a84282a44bc02fdc5b60"
+                                                 },
+                                                 {
+                                                     "table":  "catalog.catalog_orders",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "4b9fd10f9cd49d18fce4e6c33d3e66d8d41316a8edb5d7cf736b11fd672fa27e"
+                                                 },
+                                                 {
+                                                     "table":  "fee.fee_assignments",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "546204285708e1b521d12dbc21447e72c5477ea0b29bf18019637c60ffb9d47b"
+                                                 },
+                                                 {
+                                                     "table":  "fee.fee_bands",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "83e98451cbc766e25c7a894f6be58ea139c70e7765d452b95af4276fe55e8862"
+                                                 },
+                                                 {
+                                                     "table":  "fee.fee_discount_rules",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "e48f75a28db0cd7de21a8582a869a395f1e997260c1d2750ae16b06b9194890e"
+                                                 },
+                                                 {
+                                                     "table":  "fee.fee_installments",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "a4b136845a9d09035cf18849370680bc6aa8a673d7ea66a851f918bbedf3aeac"
+                                                 },
+                                                 {
+                                                     "table":  "fee.fee_items",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "f77f28bf99e3a144b5780e53c9c57b97e79b8f13b46b49a75f445cc04e66cb41"
+                                                 },
+                                                 {
+                                                     "table":  "fee.payment_records",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "e1e8f82d12cb9436889283998133308147a0f8c16faba6687918805409f2413d"
+                                                 },
+                                                 {
+                                                     "table":  "student.guardian_safe_create_repair_actions",
+                                                     "name":  "repair_audit_deny_all",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "8948c00a61448f7ebc321ef5946e04de0d980bc3d7ad906975187f7fb2ae3991"
+                                                 },
+                                                 {
+                                                     "table":  "student.guardian_safe_create_repair_runs",
+                                                     "name":  "repair_audit_deny_all",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "b1a58d9097675da1c2f2305226e2144c238f48e2e16da3d78b35dfbfde08fd58"
+                                                 },
+                                                 {
+                                                     "table":  "student.guardians",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "6e3c2603c8d915c6cf9b6e9fcea5386c79740f7a8f299cac027ec496f8152145"
+                                                 },
+                                                 {
+                                                     "table":  "student.import_batches",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "c334ab0b2d1401c927a82fab292ad14559f8e7d9fc00f4c60f57d7e8fdbe3054"
+                                                 },
+                                                 {
+                                                     "table":  "student.import_job_progress",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "edb6a6c39d4213482f3901f7a40abf6201d3b1af36db9b97b283ae42d0f854b2"
+                                                 },
+                                                 {
+                                                     "table":  "student.import_rows",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "94e8504b472da37ed728741c3f0a870d2c72196c43add378726a738037879b2a"
+                                                 },
+                                                 {
+                                                     "table":  "student.photo_import_batches",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "a440f9373fcb62923db36a805adea19c66c5d7b2e3ab4571ee5778ebc3207805"
+                                                 },
+                                                 {
+                                                     "table":  "student.photo_import_column_mappings",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "660158e507a7cfb0ba4b743d06eae08501e262b43f4a08363e73d58f9d9dfbcb"
+                                                 },
+                                                 {
+                                                     "table":  "student.photo_import_drive_folders",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "e30f6dcd999c819b5cccadecf933b6f192d5007dcf5fdf1ba1ea80458a3cbd8a"
+                                                 },
+                                                 {
+                                                     "table":  "student.photo_import_recoveries",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "8df85bd02a648955a2d8a9ea8660e3f18dbebbfd777d64992cdf986798b52713"
+                                                 },
+                                                 {
+                                                     "table":  "student.photo_import_rows",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "17f815a92eeac17f852fe58296f94ab98c296f7b59851f503013368608e79502"
+                                                 },
+                                                 {
+                                                     "table":  "student.photo_import_sources",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "f8454b4ce1a0f954c4ec5e73b304e83e66238910dd9c7fe7dddbbca366457f19"
+                                                 },
+                                                 {
+                                                     "table":  "student.student_consent_events",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "6f4e4cf965bee0fa06d7027639dd8fb8b37ac7627e1ee336f972765437d46eca"
+                                                 },
+                                                 {
+                                                     "table":  "student.student_enrollments",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "113334799d55fd1dee604636377e94a8a61680739dcbd5061ae3692c77c2b9b5"
+                                                 },
+                                                 {
+                                                     "table":  "student.student_export_audit",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "64eb0e96badb031f265d30448f3331925c296744c3fc36fa8ac0d177f0fc0622"
+                                                 },
+                                                 {
+                                                     "table":  "student.student_guardians",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "b9e243fa80fef42cbb458201ff4fa1681fa7e5ddc9538ff9ceec936db864aed7"
+                                                 },
+                                                 {
+                                                     "table":  "student.student_promotion_batch_items",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "83f7353e80895645dc35cb4ba5e6771515f8c9ce0b5e808536987dcc582bd532"
+                                                 },
+                                                 {
+                                                     "table":  "student.student_promotion_batches",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "3c8a86ff5256e5253735308224b4c479f3c4c86126ff59f9674e524f5165c618"
+                                                 },
+                                                 {
+                                                     "table":  "student.student_review_campaigns",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "d49017e96d5172fb0eea8638ece8858254b231cecb26e32626e4f7064c86dd59"
+                                                 },
+                                                 {
+                                                     "table":  "student.student_review_items",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "24eeb436c2680bcd1a1ccfb5a0f351a2f1cb5412de02126489c7b5eb9bce49b0"
+                                                 },
+                                                 {
+                                                     "table":  "student.students",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "c4fb9caa78b79516035f81f02c0736c5c9ff7b72249271e8e09aa740ac43813a"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_bell_periods",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "d329b23ec9800acbc218d0aabd79b40f6f35b7c723b4a42890eef103e979a2f3"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_bell_schedules",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "eb4163a321d45ff03cc6b65144f27b30441ec2278651872165674cd33f3e52bd"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_class_bell_map",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "dd3d9978e98316089b99d8cae536ba27170edabe8ac428b0b928614d9cf5f1de"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_class_subjects",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "ae31650197c003748ad08435f60e824f7806949b092d787e7ce45ecb13014854"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_module_entitlements",
+                                                     "name":  "operator_catalog_read",
+                                                     "cmd":  "SELECT",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "55a8a28183bcc81edc08657b856b4324e8616319134e1b93740aec5f5988af78"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_module_entitlements",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "f915975c61ea0d3b3178c6ef18a94ed49c0f7002d5cca515940bb5b5e25c657b"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_rooms",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "8f1c1c000cab77932a7a029e5a1a3b33adb10fb82b70eb879aa9c8687d40b458"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_sections",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "32648f18e71faf0470c5a6e353f47a9991b5d9284d13ecb175e349dc1eb3d563"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_teacher_availability",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "20d9484dc2f7f14043de9e8fcdd02f822fc2db9a22b8e77b23694e36c39186f6"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_timetable_entries",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "5103e3edd96147c05d4e010b3366e0df7c014c235c048e60f86b0ca08effed81"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.school_timetable_publications",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "5a0e0ff09e8b3ce7c715148f0bd0761f467345874e4c0add36014ec842331896"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.schools",
+                                                     "name":  "operator_catalog_read",
+                                                     "cmd":  "SELECT",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "f1bd4b4870a07f0a5c671b8b47a636befe392af2fdaafbc10bb92726d11e0c19"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.schools",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "672d53d609d2ee162c8c7987b58257ed74465e3051ca316becd83963983d35ab"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.schools",
+                                                     "name":  "zone_admin_read",
+                                                     "cmd":  "SELECT",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "98eab6ea5819b4832f6b72739504c19a683908e1904d2f0ed9b4d5dc32ac2090"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.staff_members",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "a7567819068b1ab3d341260c0b7c64424c00c1a5647f96649ff628fa78002fee"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.zone_admin_assignments",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "1860a0e18d5c15285b8d57775f2225f560d70f6b0620d23b43821fb0117ea631"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.zone_school_mappings",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "19645e3b833589d10871252c0b649bb9704256fe8f43216a66e27c1705c3b749"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.zone_school_mappings",
+                                                     "name":  "zone_admin_read",
+                                                     "cmd":  "SELECT",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "3b94f49a59d1c81276636370a4359da0a4b95805ee148dcfed914f36de1f6769"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.zones",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "b0e281f99f3eb28771dcb34b624b98133e9f1bc4d2d2dd9711288305835f2634"
+                                                 },
+                                                 {
+                                                     "table":  "tenant_school.zones",
+                                                     "name":  "zone_admin_read",
+                                                     "cmd":  "SELECT",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "f588421392f46d645ad3ff36f638b944f132ccc672fdbdea35538163295c335a"
+                                                 }
+                                             ],
+                      "appRtCanLogin":  false,
+                      "unsafeNames":  [
+
+                                      ]
+                  },
+                  {
+                      "role":  "ims_operations_rt",
+                      "safe":  true,
+                      "ownedSchemaTableCounts":  {
+                                                     "workflow":  5,
+                                                     "firefighting":  6
+                                                 },
+                      "ownedSchemaTables":  11,
+                      "ownedSchemaRlsTables":  6,
+                      "foreignTablesChecked":  123,
+                      "catalogTablesChecked":  134,
+                      "repairAuditTablesChecked":  0,
+                      "ownedPolicyCount":  6,
+                      "policyFingerprints":  [
+                                                 {
+                                                     "table":  "firefighting.creation_replays",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "658e5641c60603aeb690e042262df196a9bc849c6591c4e87dd352ea897aebbb"
+                                                 },
+                                                 {
+                                                     "table":  "firefighting.ff_quotations",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "349fd7a11e1539240117b952333e0eefbbf4aec5c47778560be6ebd46b1ab10f"
+                                                 },
+                                                 {
+                                                     "table":  "firefighting.firefighting_requests",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "442365699536a4132c16624a61ac65707464a21bdf6ecbaa2007a9ad60ecb52e"
+                                                 },
+                                                 {
+                                                     "table":  "firefighting.quotation_documents",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "50a02e1aa7df5577647694bb472d2034cf11b4cf64eb7da707a837d5a7bb0154"
+                                                 },
+                                                 {
+                                                     "table":  "workflow.workflow_actions",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "080069bb6d0e5dbf9650d4574805e8b0a49a0c6d95393e3877596c33f24230f0"
+                                                 },
+                                                 {
+                                                     "table":  "workflow.workflow_instances",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "21adb76dc18321988b3d3481cee29593622be498d15a01dc250114a83910e621"
+                                                 }
+                                             ],
+                      "appRtCanLogin":  false,
+                      "unsafeNames":  [
+
+                                      ]
+                  },
+                  {
+                      "role":  "ims_platform_rt",
+                      "safe":  true,
+                      "ownedSchemaTableCounts":  {
+                                                     "notification":  11,
+                                                     "reporting":  19,
+                                                     "audit":  3
+                                                 },
+                      "ownedSchemaTables":  33,
+                      "ownedSchemaRlsTables":  18,
+                      "foreignTablesChecked":  101,
+                      "catalogTablesChecked":  134,
+                      "repairAuditTablesChecked":  0,
+                      "ownedPolicyCount":  18,
+                      "policyFingerprints":  [
+                                                 {
+                                                     "table":  "notification.broadcast_live_reports",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "82a347a3e8ecbaa273a829b8514aff225181de2cff255c1da7b034cbc450ad17"
+                                                 },
+                                                 {
+                                                     "table":  "notification.broadcast_live_submissions",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "b9f4bfadbe3ce42787976c66a762b06fd3be230089ac5f201d6baa3cd7adaeff"
+                                                 },
+                                                 {
+                                                     "table":  "notification.notification_broadcast_recipients",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "00f27924d0a17a931d27c8d26d3cd62babe5bbe482856244b7da1458ba3cc874"
+                                                 },
+                                                 {
+                                                     "table":  "notification.notification_broadcasts",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "69e54b4412087665c45189b0bb2490145ebcc48fbf83e86bb3d106e3a99ae659"
+                                                 },
+                                                 {
+                                                     "table":  "notification.notification_logs",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "0270a56c705044388f628beb32939a9b9f716747aaf684bbcff9b2cf09ee710e"
+                                                 },
+                                                 {
+                                                     "table":  "notification.whatsapp_onboarding_sessions",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "62ce12aa8480b3d423cfb4cf1e555d8b61ce1f34cf9f748cb26356d4328a78fb"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.academic_events",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "bd7063a362fee53f2e1f4edd4d4c67df12f5ce7233d93a6d3fcae34f2e0ec75c"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.command_center_actions",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "9ecc6a7baa752500aaf116c89b7ae68561fd6b066e176215650ce9d01a1fb185"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.dim_section",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "492f003cfa36c203ddaed73bcc766c691bc69815362e5ff1baaab267c4ddb78e"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.dim_student",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "798dc86e21dbea943495791f8327c9ab9ec2f7b89680b84f2b7ad741daa9ff1a"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.event_student_contributions",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "67dcaed72c3a75756c43917acd81e3846db16dd98caf47941535fe971f063deb"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.fact_attendance_daily",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "abec25a8254c7dd988c1000f50238ab5edb18ec6a73bead41438b9a6f6be6534"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.fact_catalog_order",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "3f44fa2485af97e02d1feffd5463e5d7ec7c6763977c1614dba110d3a0908fef"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.fact_fee_assignment",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "c4449cb3157fa24000f9649f139f3be47d453d563065a19bed2a875dc7cfdc1c"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.fact_firefighting_request",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "b0a72e8429dcc4e0b22c43d6705a3064195784c823fbb8ef03f4bc4b6db3c86a"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.fact_payment",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "fc86a7173eb25fbb7099f6cddd56354dcbff5289d667f6bac42f89fcf90b0085"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.fact_student_review_item",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "ebcb90ff306e91da30b9dfa8c3a64b1f5b43c80ea28dc1dbba2cc3b7a7639bdf"
+                                                 },
+                                                 {
+                                                     "table":  "reporting.trusted_command_audit",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "5f1e27c39b32fd198fcc66819245c17de3aeffe5058d93b58d6538df2d5d5e58"
+                                                 }
+                                             ],
+                      "appRtCanLogin":  false,
+                      "unsafeNames":  [
+
+                                      ]
+                  },
+                  {
+                      "role":  "ims_billing_rt",
+                      "safe":  true,
+                      "ownedSchemaTableCounts":  {
+                                                     "billing":  8
+                                                 },
+                      "ownedSchemaTables":  8,
+                      "ownedSchemaRlsTables":  5,
+                      "foreignTablesChecked":  126,
+                      "catalogTablesChecked":  134,
+                      "repairAuditTablesChecked":  0,
+                      "ownedPolicyCount":  5,
+                      "policyFingerprints":  [
+                                                 {
+                                                     "table":  "billing.billing_customers",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "78434e40cb25662dc5ec5dc10679c5a568d088d8ae89396d121ba1d5c8907308"
+                                                 },
+                                                 {
+                                                     "table":  "billing.billing_invoices",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "fdf25f40392da9e8c65f0bc8b87dd323800f53dea40c0b07a5dd783485782ddc"
+                                                 },
+                                                 {
+                                                     "table":  "billing.billing_payments",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "f882ea482ed84d03b65ee9861bf707e9d9435277b13efbb0388bbd76fc0a4ca8"
+                                                 },
+                                                 {
+                                                     "table":  "billing.superadmin_invoices",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "d3af1e39aea8d728bc2f86a7c6208c75f4266db7865438d063f32a1d874263f5"
+                                                 },
+                                                 {
+                                                     "table":  "billing.superadmin_order_seq",
+                                                     "name":  "tenant_isolation",
+                                                     "cmd":  "ALL",
+                                                     "permissive":  "PERMISSIVE",
+                                                     "roles":  [
+                                                                   "public"
+                                                               ],
+                                                     "sha256":  "653c99818b18ad233bf9d97f51676edbaab40af8f5729200806061e941409dbb"
+                                                 }
+                                             ],
+                      "appRtCanLogin":  false,
+                      "unsafeNames":  [
+
+                                      ]
+                  }
+              ],
+    "appRtNoLoginVerified":  true,
+    "policyReview":  {
+                         "rawPredicatesPersistedInFinalProof":  false,
+                         "scope":  "Catalog predicates reviewed against owner migrations; no business rows queried",
+                         "positiveTenantRowMatrixExecuted":  false,
+                         "sourceReferences":  [
+                                                  "student/V38__explicit_repair_audit_deny_policies.sql",
+                                                  "tenant_school/V27__operator_catalog_reference_reads.sql",
+                                                  "tenant_school/V28__zone_admin_reference_reads.sql",
+                                                  "catalog/V7__operator_scope.sql",
+                                                  "reporting/V22__enable_rls_facts_dims.sql"
+                                              ],
+                         "reviewed":  true,
+                         "tenantForms":  "School/branch equality plus approved transaction-local bypass; declared school operator/zone reference scopes; exact false/false repair audit policies",
+                         "identityRlsTables":  0
+                     },
+    "tooling":  {
+                    "collator":  "scripts/security/collate-dev-db-security.py",
+                    "captureSha256":  "08723ab87ced274702a268ea5484b59bdb547a428beaa2b2561b432d8f8e61ab",
+                    "collatorSha256":  "2851226f86c13452bc0b751a802f26d1951461f4e78eedcec2046fc400ee262a",
+                    "capture":  "scripts/security/capture-dev-db-security.ps1"
+                },
+    "temporaryJobs":  {
+                          "allFiveIndependentlyAbsent":  true,
+                          "checks":  {
+                                         "value":  [
+                                                       {
+                                                           "role":  "ims_identity_rt",
+                                                           "job":  "ims-security-db-inspection-20261006210401-d9355103",
+                                                           "absent":  true
+                                                       },
+                                                       {
+                                                           "role":  "ims_school_core_rt",
+                                                           "job":  "ims-security-db-inspection-20261006210401-8b15767e",
+                                                           "absent":  true
+                                                       },
+                                                       {
+                                                           "role":  "ims_operations_rt",
+                                                           "job":  "ims-security-db-inspection-20261006210401-cfe6e817",
+                                                           "absent":  true
+                                                       },
+                                                       {
+                                                           "role":  "ims_platform_rt",
+                                                           "job":  "ims-security-db-inspection-20261006210446-c716519e",
+                                                           "absent":  true
+                                                       },
+                                                       {
+                                                           "role":  "ims_billing_rt",
+                                                           "job":  "ims-security-db-inspection-20261006210446-5743cfff",
+                                                           "absent":  true
+                                                       }
+                                                   ],
+                                         "Count":  5
+                                     },
+                          "verification":  "Exact job names returned NOT_FOUND/absence after capture helper cleanup"
+                      }
+}

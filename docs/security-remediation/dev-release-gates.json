@@ -1,0 +1,980 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-06T21:08:24.739405+00:00",
+  "environment": "dev",
+  "source": {
+    "pullRequest": 314,
+    "pullRequestUrl": "https://github.com/custokingkr-dev/ims-v1/pull/314",
+    "mergedCommit": "bb59dc2f875b2d46530706a32113edda386a225c"
+  },
+  "ci": {
+    "runId": 37516333730,
+    "conclusion": "success",
+    "headSha": "b48dc73c3859bd0e8dfa209180561037b2babaa9",
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37516333730",
+    "countingMethod": "One final aggregate per matrix service; Java aggregates verified against unique test classes; no reactor/shared-report double counting.",
+    "serviceCounts": {
+      "identity-service": {
+        "tests": 183,
+        "passed": 182,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1,
+        "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37516333730/job/112450596992",
+        "jobConclusion": "success"
+      },
+      "platform-service": {
+        "tests": 380,
+        "passed": 380,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37516333730/job/112450597285",
+        "jobConclusion": "success"
+      },
+      "operations-service": {
+        "tests": 195,
+        "passed": 195,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37516333730/job/112450597089",
+        "jobConclusion": "success"
+      },
+      "billing-service": {
+        "tests": 95,
+        "passed": 95,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37516333730/job/112450596966",
+        "jobConclusion": "success"
+      },
+      "api-gateway": {
+        "tests": 90,
+        "passed": 90,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37516333730/job/112450596974",
+        "jobConclusion": "success"
+      },
+      "school-core-service": {
+        "tests": 892,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "jobConclusion": "success",
+        "passed": 892
+      },
+      "frontend-unit": {
+        "tests": 431,
+        "passed": 431,
+        "failures": 0,
+        "skipped": 0
+      },
+      "frontend-browser": {
+        "tests": 116,
+        "passed": 116,
+        "failures": 0,
+        "skipped": 0
+      }
+    },
+    "javaTotals": {
+      "tests": 1745,
+      "passed": 1744,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "intentionalSkip": "AuthoritativeAuthLocalBenchmarkTest opt-in benchmark",
+    "linuxCatalogStorage": {
+      "skipped": 0,
+      "errors": 0,
+      "tests": 8,
+      "symlinkCaseExecuted": true,
+      "failures": 0
+    }
+  },
+  "codeql": {
+    "runId": 37516332173,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37516332173",
+    "headSha": "b48dc73c3859bd0e8dfa209180561037b2babaa9",
+    "conclusion": "success",
+    "analyses": [
+      {
+        "name": "analyze (java-kotlin)",
+        "conclusion": "success"
+      },
+      {
+        "name": "analyze (javascript-typescript)",
+        "conclusion": "success"
+      }
+    ],
+    "reviewedOpenAlerts": {
+      "ref": "refs/pull/314/merge",
+      "count": 0,
+      "scope": "Reviewed PR ref only; not a repository-wide historical alert count.",
+      "verifiedBy": "Read-only GitHub code-scanning alerts API scoped to this ref."
+    }
+  },
+  "firstRelease": {
+    "runId": 37517387391,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37517387391",
+    "headSha": "bb59dc2f875b2d46530706a32113edda386a225c",
+    "workflowConclusion": "failure",
+    "releaseSuites": [
+      {
+        "service": "api-gateway",
+        "conclusion": "success"
+      },
+      {
+        "service": "frontend",
+        "conclusion": "success"
+      },
+      {
+        "service": "platform-service",
+        "conclusion": "success"
+      },
+      {
+        "service": "identity-service",
+        "conclusion": "success"
+      },
+      {
+        "service": "billing-service",
+        "conclusion": "success"
+      },
+      {
+        "service": "operations-service",
+        "conclusion": "success"
+      },
+      {
+        "service": "school-core-service",
+        "conclusion": "success"
+      }
+    ],
+    "imageScans": {
+      "scanner": "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25",
+      "scannedAtUtc": "2026-10-06T19:34:00.8925885Z",
+      "scannedCount": 7,
+      "cachedCount": 0,
+      "services": [
+        {
+          "service": "identity-service",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:3aeaec084ea6d87789286ec091a764e840d70e15bec2624464f1ac7f5e9336f1",
+          "highCriticalGate": "success",
+          "sarifScan": "success",
+          "source": "scanned",
+          "passed": true
+        },
+        {
+          "service": "school-core-service",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:63271178878d45884c98acda06f934a304093833acbf73616e67474603220e3d",
+          "highCriticalGate": "success",
+          "sarifScan": "success",
+          "source": "scanned",
+          "passed": true
+        },
+        {
+          "service": "operations-service",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:3a4fc7726c2e8018bb0527e6570f394251ebb34b3d8f43b9ee6173ec1cfdfd42",
+          "highCriticalGate": "success",
+          "sarifScan": "success",
+          "source": "scanned",
+          "passed": true
+        },
+        {
+          "service": "platform-service",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:31630da80961be3e62c95d62f0c3856e26e1bb1a3eea0ac32b16715a2b0b73d2",
+          "highCriticalGate": "success",
+          "sarifScan": "success",
+          "source": "scanned",
+          "passed": true
+        },
+        {
+          "service": "billing-service",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a79a8f59ab0eec85df0c08110aad12981bf1d8ad00a48e23171b804384c7ccda",
+          "highCriticalGate": "success",
+          "sarifScan": "success",
+          "source": "scanned",
+          "passed": true
+        },
+        {
+          "service": "frontend",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:8995c02e5f4b0033b0e5045fad87e475d822c223744044c40173b8d7bf9bc470",
+          "highCriticalGate": "success",
+          "sarifScan": "success",
+          "source": "scanned",
+          "passed": true
+        },
+        {
+          "service": "api-gateway",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:f7018e1785c230642d2e66ac3d25b0cf3063b7acf89b54da860a6f100f7bf69a",
+          "highCriticalGate": "success",
+          "sarifScan": "success",
+          "source": "scanned",
+          "passed": true
+        }
+      ]
+    },
+    "partialRolloutHistory": [
+      {
+        "service": "api-gateway",
+        "release": "rel-dev-bb59dc2f875b-2",
+        "rollout": "rel-dev-bb59dc2f875b-2-to-api-gateway-dev-0001",
+        "state": "SUCCEEDED"
+      },
+      {
+        "service": "identity-service",
+        "release": "rel-dev-bb59dc2f875b-2",
+        "rollout": "rel-dev-bb59dc2f875b-2-to-identity-service-dev-0001",
+        "state": "SUCCEEDED"
+      },
+      {
+        "service": "frontend",
+        "release": "rel-dev-bb59dc2f875b-2",
+        "rollout": "rel-dev-bb59dc2f875b-2-to-frontend-dev-0001",
+        "state": "SUCCEEDED"
+      },
+      {
+        "service": "school-core-service",
+        "release": "rel-dev-bb59dc2f875b-2",
+        "rollout": "rel-dev-bb59dc2f875b-2-to-school-core-service-dev-0001",
+        "state": "FAILED"
+      }
+    ],
+    "pendingServicesAtStop": [
+      "school-core-service",
+      "operations-service",
+      "platform-service",
+      "billing-service"
+    ],
+    "stopReason": "School pretraffic runtime guard rejected two owner-only student repair tables with FORCE RLS but zero policies. Explicit deny policy forward migration required; guard was not bypassed."
+  },
+  "followUp": {
+    "status": "source-ci-and-final-dev-release-verified-live-acceptance-pending",
+    "sourceHead": "1dfb03c31f78fdec0f5c377df5ae6b09795447ea",
+    "ci": {
+      "runId": 37523104488,
+      "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37523104488",
+      "conclusion": "success",
+      "serviceCounts": {
+        "identity-service": {
+          "tests": 183,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 1,
+          "passed": 182,
+          "uniqueClassSumVerified": true,
+          "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37523104488/job/112473315598",
+          "jobConclusion": "success"
+        },
+        "platform-service": {
+          "tests": 380,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 380,
+          "uniqueClassSumVerified": true,
+          "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37523104488/job/112473315459",
+          "jobConclusion": "success"
+        },
+        "operations-service": {
+          "tests": 195,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 195,
+          "uniqueClassSumVerified": true,
+          "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37523104488/job/112473315500",
+          "jobConclusion": "success"
+        },
+        "billing-service": {
+          "tests": 95,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 95,
+          "uniqueClassSumVerified": true,
+          "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37523104488/job/112473315369",
+          "jobConclusion": "success"
+        },
+        "school-core-service": {
+          "tests": 893,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "passed": 893,
+          "uniqueClassSumVerified": true,
+          "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37523104488/job/112473315405",
+          "jobConclusion": "success"
+        },
+        "api-gateway": {
+          "tests": 99,
+          "passed": 99,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "jobUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37523104488/job/112473315403",
+          "jobConclusion": "success"
+        },
+        "frontend-unit": {
+          "tests": 431,
+          "passed": 431,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "frontend-browser": {
+          "tests": 116,
+          "passed": 116,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "javaTotals": {
+        "tests": 1746,
+        "passed": 1745,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1
+      },
+      "countingMethod": "Final per-service aggregates once, independently checked against unique Java test classes; frontend repeated notice lines not added."
+    },
+    "codeql": {
+      "runId": 37523104002,
+      "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37523104002",
+      "conclusion": "success",
+      "analyses": [
+        {
+          "name": "analyze (javascript-typescript)",
+          "conclusion": "success"
+        },
+        {
+          "name": "analyze (java-kotlin)",
+          "conclusion": "success"
+        }
+      ],
+      "reviewedOpenAlerts": {
+        "ref": "refs/pull/316/merge",
+        "count": 0,
+        "scope": "Reviewed PR ref only; not repository-wide historical alerts.",
+        "verifiedBy": "Read-only scoped GitHub code-scanning alerts API."
+      }
+    },
+    "verifiedAtUtc": "2026-10-06T20:06:45.378342+00:00",
+    "scope": "Follow-up source CI/CodeQL and final seven-service dev release verified; remaining live acceptance criteria remain pending.",
+    "completePlanClosed": false,
+    "productionChanged": false
+  },
+  "sanitization": "Contains aggregate counts, public workflow URLs, immutable image references and rollout states only; no raw logs, environment configuration, local paths, credentials or user data.",
+  "orchestrationFollowup": {
+    "source": {
+      "pullRequest": 317,
+      "pullRequestUrl": "https://github.com/custokingkr-dev/ims-v1/pull/317",
+      "mergedCommit": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8"
+    },
+    "ci": {
+      "runId": 37524381259,
+      "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37524381259",
+      "headSha": "66a570fbf90b46560ee13caf45d6a06a6bc8d8c1",
+      "conclusion": "success",
+      "applicationSuites": "skipped because orchestration-only changes; prior follow-up full application counts remain the last completed evidence",
+      "staticFixtureBatch": {
+        "tests": 51,
+        "conclusion": "success"
+      }
+    },
+    "codeql": {
+      "runId": 37524380978,
+      "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37524380978",
+      "headSha": "66a570fbf90b46560ee13caf45d6a06a6bc8d8c1",
+      "conclusion": "success",
+      "analyses": [
+        {
+          "name": "analyze (javascript-typescript)",
+          "conclusion": "success"
+        },
+        {
+          "name": "analyze (java-kotlin)",
+          "conclusion": "success"
+        }
+      ],
+      "reviewedOpenAlerts": {
+        "ref": "refs/pull/317/merge",
+        "count": 0,
+        "scope": "Reviewed PR ref only",
+        "verifiedBy": "Read-only scoped GitHub code-scanning alerts API."
+      }
+    },
+    "controlledTests": {
+      "routingTruthAndReadiness": {
+        "tests": 2,
+        "passed": 2,
+        "includedWithinReleaseFixtureBatch": true
+      },
+      "releaseFixtureBatch": {
+        "tests": 13,
+        "passed": 13
+      },
+      "deploymentReadinessTamperSuite": {
+        "tests": 4,
+        "passed": 4,
+        "includedWithinCiStaticFixtureBatch": true
+      },
+      "offlineArchitectureStages": {
+        "stages": 24,
+        "passed": 24
+      }
+    },
+    "operatorCanceledAttempts": [
+      {
+        "runId": 37523853545,
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37523853545",
+        "headSha": "61b96f7ce8b0262f81724726990fe6af2019531d",
+        "conclusion": "cancelled",
+        "deploymentJobExecuted": false,
+        "releaseJobStepCount": 0,
+        "operatorReason": "Operator canceled before deployment while correcting full-release routing."
+      },
+      {
+        "runId": 37524952911,
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37524952911",
+        "headSha": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8",
+        "conclusion": "cancelled",
+        "deploymentJobExecuted": false,
+        "releaseJobStepCount": 0,
+        "operatorReason": "Operator canceled mistaken origin/dev input before release jobs executed."
+      }
+    ],
+    "activeRelease": {
+      "runId": 37524985447,
+      "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37524985447",
+      "headSha": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8",
+      "status": "completed",
+      "conclusion": "success",
+      "allSevenApplicationSuitesSelected": true
+    },
+    "capturedAtUtc": "2026-10-06T20:18:26.975681+00:00",
+    "completePlanClosed": false,
+    "note": "Orchestration follow-up release completed; finalRelease records exact artifact evidence. Controlled test subsets are not added twice."
+  },
+  "finalRelease": {
+    "runId": 37524985447,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37524985447",
+    "headSha": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8",
+    "conclusion": "success",
+    "releaseSuites": [
+      {
+        "service": "frontend",
+        "conclusion": "success"
+      },
+      {
+        "service": "platform-service",
+        "conclusion": "success"
+      },
+      {
+        "service": "school-core-service",
+        "conclusion": "success"
+      },
+      {
+        "service": "operations-service",
+        "conclusion": "success"
+      },
+      {
+        "service": "api-gateway",
+        "conclusion": "success"
+      },
+      {
+        "service": "identity-service",
+        "conclusion": "success"
+      },
+      {
+        "service": "billing-service",
+        "conclusion": "success"
+      }
+    ],
+    "imageScans": {
+      "scanner": "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25",
+      "scannedAtUtc": "2026-10-06T20:28:43.8612331Z",
+      "scannedCount": 1,
+      "cachedCount": 6,
+      "verdictCacheTtlHours": 24.0,
+      "services": [
+        {
+          "service": "identity-service",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:3aeaec084ea6d87789286ec091a764e840d70e15bec2624464f1ac7f5e9336f1",
+          "highCriticalGate": "skipped",
+          "sarifScan": "skipped",
+          "source": "cached",
+          "passed": true,
+          "verifiedPriorScanRunId": 37517387391,
+          "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:90910d585d57029bb8cf5daa22360cf97626a5d21ac7a8868df726a9aeac3d91"
+        },
+        {
+          "service": "school-core-service",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:ee80ff97d88359b26199da199118cda6dd080eef58d2fcb3650ffa299a0ac711",
+          "highCriticalGate": "success",
+          "sarifScan": "success",
+          "source": "scanned",
+          "passed": true,
+          "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:4e32fa51ca240ffc94da3b81c754f04428ecc91a762e3a504bb980770fbb8d05"
+        },
+        {
+          "service": "operations-service",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:3a4fc7726c2e8018bb0527e6570f394251ebb34b3d8f43b9ee6173ec1cfdfd42",
+          "highCriticalGate": "skipped",
+          "sarifScan": "skipped",
+          "source": "cached",
+          "passed": true,
+          "verifiedPriorScanRunId": 37517387391,
+          "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:9ef0e46faa2e480dd2d98ac750fd7121110f1701e5823533265b07a5f707c673"
+        },
+        {
+          "service": "platform-service",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:31630da80961be3e62c95d62f0c3856e26e1bb1a3eea0ac32b16715a2b0b73d2",
+          "highCriticalGate": "skipped",
+          "sarifScan": "skipped",
+          "source": "cached",
+          "passed": true,
+          "verifiedPriorScanRunId": 37517387391,
+          "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:1f2646ddd866dd85c5df1f705c9bfb0a388440c0fa95e1ffb8fb8c3f608a24b2"
+        },
+        {
+          "service": "billing-service",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a79a8f59ab0eec85df0c08110aad12981bf1d8ad00a48e23171b804384c7ccda",
+          "highCriticalGate": "skipped",
+          "sarifScan": "skipped",
+          "source": "cached",
+          "passed": true,
+          "verifiedPriorScanRunId": 37517387391,
+          "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:954094266973ea921699840e143ae6a897f8d7f8e4224b16d2d864bfd6eb6963"
+        },
+        {
+          "service": "frontend",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:8995c02e5f4b0033b0e5045fad87e475d822c223744044c40173b8d7bf9bc470",
+          "highCriticalGate": "skipped",
+          "sarifScan": "skipped",
+          "source": "cached",
+          "passed": true,
+          "verifiedPriorScanRunId": 37517387391,
+          "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963"
+        },
+        {
+          "service": "api-gateway",
+          "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:f7018e1785c230642d2e66ac3d25b0cf3063b7acf89b54da860a6f100f7bf69a",
+          "highCriticalGate": "skipped",
+          "sarifScan": "skipped",
+          "source": "cached",
+          "passed": true,
+          "verifiedPriorScanRunId": 37517387391,
+          "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8"
+        }
+      ],
+      "scope": "One newly scanned school digest and six verified digest-identical cached passing verdicts; cached scans were skipped, not rerun."
+    },
+    "migrations": [
+      {
+        "service": "identity-service",
+        "schemas": [
+          {
+            "version": "10",
+            "schema": "identity",
+            "migrationsExecuted": 0
+          }
+        ],
+        "elapsedSeconds": 31.418,
+        "environment": "dev",
+        "imageDigest": "sha256:90910d585d57029bb8cf5daa22360cf97626a5d21ac7a8868df726a9aeac3d91",
+        "commitSha": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8",
+        "success": true
+      },
+      {
+        "service": "school-core-service",
+        "schemas": [
+          {
+            "version": "29",
+            "schema": "tenant_school",
+            "migrationsExecuted": 0
+          },
+          {
+            "version": "38",
+            "schema": "student",
+            "migrationsExecuted": 1
+          },
+          {
+            "version": "11",
+            "schema": "attendance",
+            "migrationsExecuted": 0
+          },
+          {
+            "version": "11",
+            "schema": "fee",
+            "migrationsExecuted": 0
+          },
+          {
+            "version": "26",
+            "schema": "catalog",
+            "migrationsExecuted": 0
+          }
+        ],
+        "elapsedSeconds": 36.797,
+        "environment": "dev",
+        "imageDigest": "sha256:4e32fa51ca240ffc94da3b81c754f04428ecc91a762e3a504bb980770fbb8d05",
+        "commitSha": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8",
+        "success": true
+      },
+      {
+        "service": "operations-service",
+        "schemas": [
+          {
+            "version": "7",
+            "schema": "workflow",
+            "migrationsExecuted": 2
+          },
+          {
+            "version": "14",
+            "schema": "firefighting",
+            "migrationsExecuted": 1
+          }
+        ],
+        "elapsedSeconds": 31.978,
+        "environment": "dev",
+        "imageDigest": "sha256:9ef0e46faa2e480dd2d98ac750fd7121110f1701e5823533265b07a5f707c673",
+        "commitSha": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8",
+        "success": true
+      },
+      {
+        "service": "billing-service",
+        "schemas": [
+          {
+            "version": "10",
+            "schema": "billing",
+            "migrationsExecuted": 3
+          }
+        ],
+        "elapsedSeconds": 25.161,
+        "environment": "dev",
+        "imageDigest": "sha256:954094266973ea921699840e143ae6a897f8d7f8e4224b16d2d864bfd6eb6963",
+        "commitSha": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8",
+        "success": true
+      },
+      {
+        "service": "platform-service",
+        "schemas": [
+          {
+            "version": "35",
+            "schema": "reporting",
+            "migrationsExecuted": 5
+          },
+          {
+            "version": "14",
+            "schema": "notification",
+            "migrationsExecuted": 2
+          },
+          {
+            "version": "3",
+            "schema": "audit",
+            "migrationsExecuted": 2
+          }
+        ],
+        "elapsedSeconds": 27.874,
+        "environment": "dev",
+        "imageDigest": "sha256:1f2646ddd866dd85c5df1f705c9bfb0a388440c0fa95e1ffb8fb8c3f608a24b2",
+        "commitSha": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8",
+        "success": true
+      }
+    ],
+    "rollouts": [
+      {
+        "service": "api-gateway",
+        "release": "rel-dev-9509d20c4413-1",
+        "rollout": "rel-dev-9509d20c4413-1-to-api-gateway-dev-0001",
+        "state": "SUCCEEDED"
+      },
+      {
+        "service": "identity-service",
+        "release": "rel-dev-9509d20c4413-1",
+        "rollout": "rel-dev-9509d20c4413-1-to-identity-service-dev-0001",
+        "state": "SUCCEEDED"
+      },
+      {
+        "service": "frontend",
+        "release": "rel-dev-9509d20c4413-1",
+        "rollout": "rel-dev-9509d20c4413-1-to-frontend-dev-0001",
+        "state": "SUCCEEDED"
+      },
+      {
+        "service": "school-core-service",
+        "release": "rel-dev-9509d20c4413-1",
+        "rollout": "rel-dev-9509d20c4413-1-to-school-core-service-dev-0001",
+        "state": "SUCCEEDED"
+      },
+      {
+        "service": "operations-service",
+        "release": "rel-dev-9509d20c4413-1",
+        "rollout": "rel-dev-9509d20c4413-1-to-operations-service-dev-0001",
+        "state": "SUCCEEDED"
+      },
+      {
+        "service": "billing-service",
+        "release": "rel-dev-9509d20c4413-1",
+        "rollout": "rel-dev-9509d20c4413-1-to-billing-service-dev-0001",
+        "state": "SUCCEEDED"
+      },
+      {
+        "service": "platform-service",
+        "release": "rel-dev-9509d20c4413-1",
+        "rollout": "rel-dev-9509d20c4413-1-to-platform-service-dev-0001",
+        "state": "SUCCEEDED"
+      }
+    ],
+    "serviceReadiness": {
+      "checkedAtUtc": "2026-10-06T20:45:47.6014650Z",
+      "services": [
+        {
+          "service": "api-gateway",
+          "revision": "custoking-api-gateway-dev-mux4t5el",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8",
+          "ready": true,
+          "latestTrafficPercent": 100,
+          "httpStatus": null
+        },
+        {
+          "service": "billing-service",
+          "revision": "custoking-billing-service-dev-mux57mc7",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:954094266973ea921699840e143ae6a897f8d7f8e4224b16d2d864bfd6eb6963",
+          "ready": true,
+          "latestTrafficPercent": 100,
+          "httpStatus": null
+        },
+        {
+          "service": "frontend",
+          "revision": "custoking-frontend-dev-mux4y4gz",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+          "ready": true,
+          "latestTrafficPercent": 100,
+          "httpStatus": 200
+        },
+        {
+          "service": "identity-service",
+          "revision": "custoking-identity-service-dev-mux4vvwa",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:90910d585d57029bb8cf5daa22360cf97626a5d21ac7a8868df726a9aeac3d91",
+          "ready": true,
+          "latestTrafficPercent": 100,
+          "httpStatus": null
+        },
+        {
+          "service": "operations-service",
+          "revision": "custoking-operations-service-dev-mux54kwl",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:9ef0e46faa2e480dd2d98ac750fd7121110f1701e5823533265b07a5f707c673",
+          "ready": true,
+          "latestTrafficPercent": 100,
+          "httpStatus": null
+        },
+        {
+          "service": "platform-service",
+          "revision": "custoking-platform-service-dev-mux5ano8",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:1f2646ddd866dd85c5df1f705c9bfb0a388440c0fa95e1ffb8fb8c3f608a24b2",
+          "ready": true,
+          "latestTrafficPercent": 100,
+          "httpStatus": null
+        },
+        {
+          "service": "school-core-service",
+          "revision": "custoking-school-core-service-dev-mux510y8",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:4e32fa51ca240ffc94da3b81c754f04428ecc91a762e3a504bb980770fbb8d05",
+          "ready": true,
+          "latestTrafficPercent": 100,
+          "httpStatus": null
+        }
+      ],
+      "scope": "Cloud Run revision readiness/image/traffic plus frontend HTTP200; null private-service HTTP statuses are not authenticated application health proof."
+    },
+    "gatewayHealth": {
+      "environment": "dev",
+      "service": "custoking-api-gateway-dev",
+      "status": "UP",
+      "checkedAtUtc": "2026-10-06T20:45:50.0471601Z"
+    },
+    "devImageApprovals": {
+      "commit": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8",
+      "approvedAtUtc": "2026-10-06T20:48:25.0277160Z",
+      "services": [
+        {
+          "service": "api-gateway",
+          "sourceId": "cbed0bfb695c64a557a53e0ccf6cb138ccde93e2ac34f7783fa41f9e4b29b3e0",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:f7018e1785c230642d2e66ac3d25b0cf3063b7acf89b54da860a6f100f7bf69a"
+        },
+        {
+          "service": "billing-service",
+          "sourceId": "1d8dd78bccea89c97f76a5448dc044a00310095e3663c386957c9c186c704542",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a79a8f59ab0eec85df0c08110aad12981bf1d8ad00a48e23171b804384c7ccda"
+        },
+        {
+          "service": "frontend",
+          "sourceId": "43000258ba7bded11dde9ecb540f72f5408dfd309ed74b0206e84d629f44cb54",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:8995c02e5f4b0033b0e5045fad87e475d822c223744044c40173b8d7bf9bc470"
+        },
+        {
+          "service": "identity-service",
+          "sourceId": "5e111659919d77da42f1fa6b920ca12fd37de5811fa64ccbed17712be015fc29",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:3aeaec084ea6d87789286ec091a764e840d70e15bec2624464f1ac7f5e9336f1"
+        },
+        {
+          "service": "operations-service",
+          "sourceId": "ba66c2354cd5882725ccacd5236f343bcd3636233674697fc6c4f59f0c85e2e6",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:3a4fc7726c2e8018bb0527e6570f394251ebb34b3d8f43b9ee6173ec1cfdfd42"
+        },
+        {
+          "service": "platform-service",
+          "sourceId": "ac0d23d1d88557333b942fbbd1e57df359e74db3b8d5d1d1a14a9c7a7c03fc47",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:31630da80961be3e62c95d62f0c3856e26e1bb1a3eea0ac32b16715a2b0b73d2"
+        },
+        {
+          "service": "school-core-service",
+          "sourceId": "79b8f74aac6aedf04b81d13f2beb43e6ebf53c367b6da95d73f234190c44a187",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:ee80ff97d88359b26199da199118cda6dd080eef58d2fcb3650ffa299a0ac711"
+        }
+      ]
+    },
+    "completePlanClosed": false,
+    "productionChanged": false,
+    "pendingLiveAcceptance": [
+      "Actual tenant/user/object positive and negative matrix and real privileged WebAuthn enrollment/recovery",
+      "Managed key rotation/revocation and emergency two-person owner procedure rehearsal",
+      "External SMTP/provider receipt, alerts and durable delivery under idle/scale-zero",
+      "Broker message delivery/restart/replay/dead-letter and cross-replica tombstone restoration drill",
+      "Real workload/load/SLO certification, old-instance drain and conflicting database memory gauge review",
+      "Multi-store privacy erasure, provider/object/import/photo retention, backup restore/deletion replay and agreed RPO/RTO",
+      "Dashboard live shared-state TTL/cross-instance verification, protected edge/custom-domain and repository/admin-owned production controls"
+    ],
+    "liveAcceptance": {
+      "imageConfiguredUser": {
+        "status": "passed",
+        "evidence": "dev-image-config-user-proof.json",
+        "scope": "Configured image User, not observed process UID"
+      },
+      "frontendHttpBrowser": {
+        "status": "passed",
+        "evidence": "dev-frontend-live-proof.json",
+        "scope": "Anonymous final frontend revision"
+      },
+      "negativeAuthorization": {
+        "status": "passed",
+        "evidence": "dev-live-authorization-proof.json",
+        "cases": 27,
+        "realTenantUserMatrix": false
+      },
+      "runtimeSecretAccessRevocation": {
+        "status": "passed",
+        "evidence": "dev-runtime-secret-revocation-proof.json",
+        "removedMemberships": 11,
+        "sharedRoleRetirementIncluded": false
+      },
+      "sharedRoleRetirement": {
+        "status": "passed",
+        "evidence": "dev-shared-role-retirement-proof.json",
+        "canLogin": false,
+        "sessions": 0,
+        "baselineAclRetained": true
+      },
+      "pubsubConfiguration": {
+        "status": "passed",
+        "evidence": "dev-pubsub-metadata-proof.json",
+        "topics": 4,
+        "subscriptions": 4,
+        "configurationFindings": 0,
+        "brokerDeliveryTested": false
+      },
+      "finalRuntimeRoleCatalog": {
+        "status": "passed",
+        "evidence": "dev-final-runtime-role-catalog.json",
+        "roles": 5,
+        "ownedSchemaRlsTables": 79,
+        "foreignTableCrudObserved": false,
+        "positiveTenantRowMatrixExecuted": false,
+        "appRtCanLogin": false,
+        "existingRlsEnabledRelationsOnly": true,
+        "identityRlsTables": 0,
+        "scope": "79 existing RLS-enabled relations, not all database tables; identity relies on authoritative application authorization; no positive tenant-row matrix executed."
+      },
+      "capacityMetadata": {
+        "status": "passed-with-explicit-limits",
+        "evidence": "dev-final-capacity.json",
+        "sevenExactReadyRevisions": true,
+        "scaleCapsVerified": true,
+        "oldInstanceDrain": "UNKNOWN_NOT_PROVEN",
+        "loadCertification": false,
+        "source198ModelProven": false
+      },
+      "schedulerRequestDelivery": {
+        "status": "passed",
+        "configurationEvidence": "dev-final-scheduler-config.json",
+        "requestEvidence": "dev-final-scheduler-delivery.json",
+        "enabledJobs": 5,
+        "latestTargets2xx": 5,
+        "observedRequests": 37,
+        "statusHistory": {
+          "403": 10,
+          "200": 27
+        },
+        "providerDeliveryVerified": false
+      }
+    }
+  },
+  "operationalCorrections": {
+    "evidence": "dev-operational-corrections.md",
+    "pythonPowerShellWrapperTests": 4,
+    "nodeSignedProbeTests": 3,
+    "schedulerBranches": 2,
+    "secretRevocationReadinessTests": 13,
+    "definitiveInitialProbeFailureCauseEstablished": false
+  },
+  "proofToolingFollowup": {
+    "status": "source-promoted-local-controlled-tests-passed",
+    "sourceFiles": [
+      {
+        "repositoryFile": "scripts/security/read-dev-image-config-user.py",
+        "sha256": "b1f49c1cd417ba694ac4a00e36f94657a5741e9593a33ef81fe6950dcd57e7cd"
+      },
+      {
+        "repositoryFile": "scripts/security/collate-dev-db-security.py",
+        "sha256": "2851226f86c13452bc0b751a802f26d1951461f4e78eedcec2046fc400ee262a"
+      },
+      {
+        "repositoryFile": "scripts/tests/dev_image_config_user_proof_test.py",
+        "sha256": "47f67934db493abde2138188519ed5a125b8dfecdd1966f193959dbd179f531a"
+      },
+      {
+        "repositoryFile": "scripts/tests/dev_db_security_collator_test.py",
+        "sha256": "fb78e392714d672d63dec1a457dbdf582073baf0c5c28d0962fa51875226845b"
+      },
+      {
+        "repositoryFile": "scripts/tests/signed_probe_serialization_test.py",
+        "sha256": "e30d1a2ee8b8105a9dea16a5d671b8c1a9bdaa82d0f93b775581800530e8c0f9"
+      },
+      {
+        "repositoryFile": "scripts/tests/pubsub_native_progress_test.py",
+        "sha256": "3883fcc735fdd16accd906d3c6da7aabe1ca214c3669ab4b16bcf9fcbf1144c6"
+      },
+      {
+        "repositoryFile": "scripts/tests/signed_transport_probe.test.cjs",
+        "sha256": "ae66ed9019ccf358bae424fefe308b4f83c74783ee20f964c99696c157deebb2"
+      }
+    ],
+    "localToolingBatch": {
+      "tests": 13,
+      "imageReaderCases": 6,
+      "catalogCollatorCases": 3,
+      "wrapperCases": 4,
+      "passed": true
+    },
+    "controlledNodeCases": 3,
+    "schedulerArgumentBranches": 2,
+    "secretRevocationReadinessCases": 13,
+    "followUpRemoteCiVerified": false,
+    "scope": "Postrelease proof/orchestration tooling only; not evidence of new application image deployment. Test subsets overlap and are not summed."
+  }
+}

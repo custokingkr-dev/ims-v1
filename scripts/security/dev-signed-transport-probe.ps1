@@ -25,10 +25,12 @@ foreach($service in @('identity-service','school-core-service','operations-servi
  }
 }
 $job='ims-dev-carrier-probe-'+[datetime]::UtcNow.ToString('yyyyMMddHHmmss')+'-'+[guid]::NewGuid().ToString('N').Substring(0,8)
-$code=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'dev-signed-transport-probe.js') -Raw
+# Read a plain string: PowerShell5 Get-Content attaches provider metadata that
+# ConvertTo-Json can traverse recursively when embedded in a deep job manifest.
+$code=[IO.File]::ReadAllText((Join-Path $PSScriptRoot 'dev-signed-transport-probe.js'))
 New-Item -ItemType Directory -Force -Path $OutputDirectory|Out-Null
 $jobFile=Join-Path $OutputDirectory 'probe-job.json'
-$definition=@{apiVersion='run.googleapis.com/v1';kind='Job';metadata=@{name=$job};spec=@{template=@{metadata=@{annotations=@{'run.googleapis.com/network-interfaces'='[{"network":"default","subnetwork":"default"}]';'run.googleapis.com/vpc-access-egress'='private-ranges-only'}};spec=@{taskCount=1;template=@{spec=@{serviceAccountName='ims-api-gateway-dev@custoking-dev.iam.gserviceaccount.com';maxRetries=0;timeoutSeconds=120;containers=@(@{image=$image;command=@('node');args=@('-e',$code);resources=@{limits=@{cpu='1';memory='512Mi'}};env=@(@{name='PROBE_TARGETS';value=($targets|ConvertTo-Json -Compress)})})}}}}}}
+$definition=@{apiVersion='run.googleapis.com/v1';kind='Job';metadata=@{name=$job};spec=@{template=@{metadata=@{annotations=@{'run.googleapis.com/network-interfaces'='[{"network":"default","subnetwork":"default"}]';'run.googleapis.com/vpc-access-egress'='private-ranges-only'}};spec=@{taskCount=1;template=@{spec=@{serviceAccountName='ims-api-gateway-dev@custoking-dev.iam.gserviceaccount.com';maxRetries=0;timeoutSeconds=300;containers=@(@{image=$image;command=@('node');args=@('-e',$code);resources=@{limits=@{cpu='1';memory='512Mi'}};env=@(@{name='PROBE_TARGETS';value=($targets|ConvertTo-Json -Compress)})})}}}}}}
 $definition|ConvertTo-Json -Depth 25|Set-Content -LiteralPath $jobFile -Encoding UTF8
 if(-not $Execute){@{execute=$false;project=$project;jobFile=$jobFile;maximumRequests=15;principal='ims-api-gateway-dev';noCredentialsOrResponseBodies=$true}|ConvertTo-Json;exit 0}
 $attempted=$false

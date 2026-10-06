@@ -1,8 +1,8 @@
 'use strict';
 const targets = JSON.parse(process.env.PROBE_TARGETS || '[]');
-const end = Date.now() + 110000;
+const end = Date.now() + 240000;
 const audienceHost = /^https:\/\/custoking-(identity-service|school-core-service|operations-service|platform-service|billing-service)-dev-[a-z0-9]+-em\.a\.run\.app$/;
-function signal() { return AbortSignal.timeout(Math.max(1, Math.min(10000, end - Date.now()))); }
+function signal() { return AbortSignal.timeout(Math.max(1, Math.min(30000, end - Date.now()))); }
 async function metadataToken(audience) {
   const response = await fetch('http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=' + encodeURIComponent(audience) + '&format=full', {headers: {'Metadata-Flavor': 'Google'}, redirect: 'error', signal: signal()});
   if (!response.ok) throw Error('METADATA_FAILED');
@@ -26,7 +26,7 @@ async function probe(target, name, path, token, forged, expected) {
     const passed = expected.includes(status);
     console.log(JSON.stringify({service:target.service, case:name, status, passed}));
     return passed;
-  } catch (_) { console.log(JSON.stringify({service:target.service, case:name, passed:false, error:'REQUEST_FAILED'})); return false; }
+  } catch (error) { console.log(JSON.stringify({service:target.service, case:name, passed:false, error:error?.name === 'TimeoutError' ? 'REQUEST_TIMEOUT' : 'REQUEST_FAILED'})); return false; }
 }
 (async () => {
   const expected = ['identity-service','school-core-service','operations-service','platform-service','billing-service'];

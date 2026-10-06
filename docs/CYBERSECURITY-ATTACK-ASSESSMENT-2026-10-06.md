@@ -1,5 +1,7 @@
 # IMS cybersecurity attack assessment
 
+Current implementation, deployment and remaining acceptance criteria are tracked in [the security implementation ledger](security-remediation/IMPLEMENTATION-STATUS.md) and [the dev release report](security-remediation/dev-security-release.md). This document preserves the original 2026-10-06 assessment; its initial status is historical.
+
 The consolidated [findings and fix plan](SECURITY-FINDINGS-AND-FIX-PLAN-2026-10-06.md) tracks remediation and verification work from both reviews.
 
 The review found meaningful protections against unauthorized access, alongside weaknesses that should be addressed before treating the platform as hardened. The most important newly identified issue is workflow authorization: a tenant user with the general workflow action permission can reach actions that do not enforce the configured approval step authority or completion prerequisites. A separate local experiment reproduced an image download exceeding its configured request timeout.

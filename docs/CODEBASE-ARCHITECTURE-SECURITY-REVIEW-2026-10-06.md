@@ -1,5 +1,7 @@
 # Custoking IMS architecture features and security review
 
+Current implementation, deployment and remaining acceptance criteria are tracked in [the security implementation ledger](security-remediation/IMPLEMENTATION-STATUS.md) and [the dev release report](security-remediation/dev-security-release.md). This document preserves the original 2026-10-06 assessment; its initial status is historical.
+
 The consolidated [findings and fix plan](SECURITY-FINDINGS-AND-FIX-PLAN-2026-10-06.md) tracks remediation and verification work from this review and the subsequent attack assessment.
 
 Custoking IMS implements a substantial school ERP and procurement platform. Its strongest architectural controls are authoritative session introspection, application scope checks backed by PostgreSQL row security, durable event publication, and promotion of signed immutable container digests. The highest priority improvements are dependency remediation, security headers on the actual frontend document, sensitive photo cache policy, bounded gateway streaming, and stronger database privilege checks.

@@ -1,8 +1,10 @@
 # Security findings and fix plan
 
+Current implementation, deployment and remaining acceptance criteria are tracked in [the security implementation ledger](security-remediation/IMPLEMENTATION-STATUS.md) and [the dev release report](security-remediation/dev-security-release.md). This document preserves the original 2026-10-06 assessment; its initial status is historical.
+
 This is the consolidated remediation register for the IMS reviews dated 6 October 2026. It preserves findings from both the [architecture and security review](CODEBASE-ARCHITECTURE-SECURITY-REVIEW-2026-10-06.md) and the [attack assessment](CYBERSECURITY-ATTACK-ASSESSMENT-2026-10-06.md), including code weaknesses, conditional risks, reliability/privacy debt and verification gaps. Those reports retain detailed source references, research links and test evidence.
 
-Reviewed commit: `df3f894a3c87951d2dc7dd78f8dda6791f01252e`, plus the working tree at review time. **Implementation is underway in the isolated security worktree. The [implementation and verification ledger](security-remediation/IMPLEMENTATION-STATUS.md) records current evidence and outstanding acceptance criteria. The original finding descriptions below are retained; source implementation alone does not certify deployed security.** Suggested owners are responsibilities, not assignments to named people. Priorities describe execution order, not scanner severity or proven production exploitability.
+Reviewed commit: `df3f894a3c87951d2dc7dd78f8dda6791f01252e`, plus the working tree at review time. **All seven application services are now deployed to dev at `9509d20c`; final operational proofs and remaining acceptance criteria are recorded in the current ledger. Production was not changed. The [implementation and verification ledger](security-remediation/IMPLEMENTATION-STATUS.md) records current evidence and outstanding acceptance criteria. The original finding descriptions below are retained; source implementation alone does not certify deployed security.** Suggested owners are responsibilities, not assignments to named people. Priorities describe execution order, not scanner severity or proven production exploitability.
 
 ## Evidence and priorities
 
