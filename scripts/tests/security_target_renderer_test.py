@@ -12,6 +12,12 @@ POWERSHELL=shutil.which("pwsh") or shutil.which("powershell.exe") or shutil.whic
 if not POWERSHELL: raise RuntimeError("PowerShell is required for renderer security tests")
 ROLES={"identity-service":"ims_identity_rt","school-core-service":"ims_school_core_rt","operations-service":"ims_operations_rt","platform-service":"ims_platform_rt","billing-service":"ims_billing_rt"}
 
+def normalize_powershell_diagnostic(value):
+    # PS7 error rendering adds ANSI and wraps messages into a table gutter on narrow CI terminals.
+    plain=re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]","",value)
+    plain=re.sub(r"(?m)^\s*\|\s*","",plain)
+    return " ".join(plain.split())
+
 class SecurityTargetRendererTest(unittest.TestCase):
     def render(self,environment="dev",tamper=None):
         text=(ROOT/f"deploy/clouddeploy/targets-{environment}.yaml").read_text()
@@ -24,6 +30,7 @@ class SecurityTargetRendererTest(unittest.TestCase):
             for key,value in values.items(): env[key]=value;env[environment.upper()+"_"+key]=value
             result=subprocess.run([POWERSHELL,"-NoProfile","-ExecutionPolicy","Bypass","-File",str(ROOT/"scripts/render-clouddeploy-targets.ps1"),"-Environment",environment,"-TemplatePath",str(template),"-OutputPath",str(output)],env=env,capture_output=True,text=True,timeout=30)
             rendered=output.read_text(encoding="utf-8-sig") if output.exists() else None
+            result.stderr=normalize_powershell_diagnostic(result.stderr)
             return result,rendered
     @staticmethod
     def change(text,service,key,value,duplicate=False,remove=False):
@@ -40,6 +47,9 @@ class SecurityTargetRendererTest(unittest.TestCase):
                 if count!=1: raise AssertionError("Fixture must modify exactly one declared parameter")
         if found!=1: raise AssertionError("Fixture must select exactly one service target")
         return "---".join(blocks)
+    def test_ps7_colored_wrapped_diagnostic_normalizes_without_changing_semantics(self):
+        raw="\x1b[31;1m     | Unreviewed identity-service security target parameter:\x1b[0m\n\x1b[31;1m     | runtime_db_password_secret.\x1b[0m\n"
+        self.assertEqual("Unreviewed identity-service security target parameter: runtime_db_password_secret.",normalize_powershell_diagnostic(raw))
     def test_reviewed_dev_and_prod_render_exact_roles_secrets_audiences_and_carriers(self):
         for environment in ["dev","prod"]:
             with self.subTest(environment=environment):

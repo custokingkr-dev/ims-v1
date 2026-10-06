@@ -57,6 +57,10 @@ const RATE_LIMIT_RPS = Number(process.env.GATEWAY_RATE_LIMIT_RPS || 50);
 const RATE_LIMIT_BURST = Number(process.env.GATEWAY_RATE_LIMIT_BURST || 100);
 const RATE_LIMIT_MAX_KEYS = Number(process.env.GATEWAY_RATE_LIMIT_MAX_KEYS || 50_000);
 const rateBuckets = new Map();
+// Budget grouping only: never cached authentication or JWT claims.
+const verifiedRateAssociations = new Map();
+const VERIFIED_RATE_ASSOCIATION_TTL_MS = 60_000;
+const VERIFIED_RATE_ASSOCIATION_MAX_KEYS = 2_000;
 const TRUSTED_PROXY_HOPS = Math.max(0, Math.min(8, Number(process.env.GATEWAY_TRUSTED_PROXY_HOPS || 0) || 0));
 const PROXY_TIMEOUT_MS = boundedMilliseconds(process.env.GATEWAY_PROXY_TIMEOUT_MS, 30_000);
 const EXPORT_TIMEOUT_MS = boundedMilliseconds(process.env.GATEWAY_EXPORT_TIMEOUT_MS, 180_000);
@@ -291,7 +295,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     // Per-replica rate limit (token-bucket) before any upstream work.
-    const limit = checkRateLimit(req);
+    const preAuthBudgetKey = preAuthRateLimitKey(req);
+    const limit = checkRateLimit(req, { key: preAuthBudgetKey });
     if (!limit.allowed) {
       res.setHeader('Retry-After', String(limit.retryAfter));
       sendJson(res, 429, { message: 'Too many requests' });
@@ -321,7 +326,14 @@ const server = http.createServer(async (req, res) => {
       if (requiresUserAuth(parsed.pathname) && AUTH_MODE !== 'permissive') {
         const principal = await authenticate(req, requestId);
         if (!principal) {
+          forgetVerifiedRatePrincipal(req);
           sendJson(res, 401, { message: 'Unauthorized' });
+          return;
+        }
+        const actorLimit = checkVerifiedUserRateLimit(req, principal, preAuthBudgetKey);
+        if (!actorLimit.allowed) {
+          res.setHeader('Retry-After', String(actorLimit.retryAfter));
+          sendJson(res, 429, { message: 'Too many requests' });
           return;
         }
         schoolId = principal.branchId ?? null;
@@ -516,21 +528,23 @@ async function authenticate(req, requestId, opts = {}) {
   const token = parseBearerToken(req.headers.authorization);
   if (!token) return reject('missing_bearer');
 
+  let localFailure = null;
   if (localVerify && secret) {
     const detail = {};
     const previous = opts.previousSecret ?? process.env.APP_JWT_PREVIOUS_SECRET;
-    const claims = verifyJwtLocally(token, secret, now, detail)
-      || (previous ? verifyJwtLocally(token, previous, now, detail) : null);
-    if (!claims) return reject(detail.reason || 'token_invalid'); // no fallback
-    // The verifier already requires access purpose; introspection is mandatory for every accepted token.
-    const introspected = await introspectFn(req, requestId);
-    return introspected || reject('introspection_rejected');
+    const currentClaims = verifyJwtLocally(token, secret, now, detail);
+    const previousClaims = previous ? verifyJwtLocally(token, previous, now, detail) : null;
+    const claims = currentClaims || previousClaims;
+    if (!claims) localFailure = detail.reason || 'token_invalid';
   }
   if (localVerify && !secret && !warnedMissingJwtSecret) {
     warnedMissingJwtSecret = true;
     console.warn('gateway.localjwt: GATEWAY_LOCAL_JWT_VERIFY enabled but APP_JWT_SECRET unset; using introspection');
   }
+  // Authentication authority is unconditional: no client claim can skip server-side validation.
+  // Optional local verification can only add a rejection after identity has evaluated the token.
   const introspected = await introspectFn(req, requestId);
+  if (localFailure) return reject(localFailure);
   return introspected || reject('introspection_rejected');
 }
 
@@ -822,6 +836,55 @@ function rateLimitKey(req) {
   return `ip:${clientIp(req)}`;
 }
 
+function verifiedActorBudgetKey(principal) {
+  const raw = principal?.userId;
+  const id = typeof raw === 'string' && /^[1-9][0-9]*$/.test(raw) ? Number(raw) : raw;
+  return Number.isSafeInteger(id) && id > 0 ? `verified-user:${id}` : null;
+}
+
+function bearerBudgetFingerprint(req) {
+  const token = parseBearerToken(req.headers.authorization);
+  return token ? crypto.createHash('sha256').update(token, 'ascii').digest('base64url') : null;
+}
+
+function preAuthRateLimitKey(req, opts = {}) {
+  const now = opts.now ?? Date.now();
+  const associations = opts.associations || verifiedRateAssociations;
+  const fingerprint = bearerBudgetFingerprint(req);
+  const known = fingerprint && associations.get(fingerprint);
+  if (known && known.expiresAt > now) return known.key;
+  if (fingerprint) associations.delete(fingerprint);
+  return `ip:${clientIp(req, opts.trustedHops ?? TRUSTED_PROXY_HOPS)}`;
+}
+
+function rememberVerifiedRatePrincipal(req, principal, opts = {}) {
+  const key = verifiedActorBudgetKey(principal);
+  const fingerprint = bearerBudgetFingerprint(req);
+  if (!key || !fingerprint) return false;
+  const associations = opts.associations || verifiedRateAssociations;
+  const now = opts.now ?? Date.now();
+  const ttlMs = Math.max(1, Math.min(Number(opts.ttlMs) || VERIFIED_RATE_ASSOCIATION_TTL_MS, VERIFIED_RATE_ASSOCIATION_TTL_MS));
+  const maxKeys = Math.max(1, Math.min(Math.floor(Number(opts.maxAssociations) || VERIFIED_RATE_ASSOCIATION_MAX_KEYS), VERIFIED_RATE_ASSOCIATION_MAX_KEYS));
+  for (const [digest, entry] of associations) if (entry.expiresAt <= now) associations.delete(digest);
+  if (!associations.has(fingerprint) && associations.size >= maxKeys) return false;
+  associations.set(fingerprint, { key, expiresAt: now + ttlMs });
+  return true;
+}
+
+function forgetVerifiedRatePrincipal(req, opts = {}) {
+  const fingerprint = bearerBudgetFingerprint(req);
+  if (fingerprint) (opts.associations || verifiedRateAssociations).delete(fingerprint);
+}
+
+function checkVerifiedUserRateLimit(req, principal, preAuthKey, opts = {}) {
+  const key = verifiedActorBudgetKey(principal);
+  if (!key) return { allowed: false, retryAfter: 60 };
+  rememberVerifiedRatePrincipal(req, principal, opts);
+  // The known token already consumed this user's budget before introspection.
+  // First use/token rotation must also consume the same user budget, after validation.
+  return preAuthKey === key ? { allowed: true } : checkRateLimit(req, { ...opts, key });
+}
+
 // Token-bucket limiter. `opts` (rps/burst/buckets/now) is for deterministic unit tests.
 function checkRateLimit(req, opts = {}) {
   const rps = opts.rps !== undefined ? opts.rps : RATE_LIMIT_RPS;
@@ -1087,6 +1150,10 @@ module.exports = {
   buildUpstreamTarget,
   rateLimitKey,
   checkRateLimit,
+  preAuthRateLimitKey,
+  rememberVerifiedRatePrincipal,
+  forgetVerifiedRatePrincipal,
+  checkVerifiedUserRateLimit,
   bodyTooLarge,
   boundedRequestBody,
   isPayloadTooLargeError,

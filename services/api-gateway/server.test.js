@@ -700,6 +700,101 @@ test('pre-auth rate limiter does not reset a budget under bearer/header churn', 
   assert.equal(buckets.has('ip:127.0.0.1'), true);
 });
 
+test('verified users sharing one socket receive independent budgets; valid token rotation preserves user budget', async () => {
+  const { preAuthRateLimitKey, rememberVerifiedRatePrincipal, checkVerifiedUserRateLimit } = require('./server');
+  const associations = new Map(); const buckets = new Map();
+  const request = (token) => ({ headers: { authorization: `Bearer ${token}` }, socket: { remoteAddress: '127.0.0.1' } });
+  const first = request('user-one-original'); const second = request('user-two-original');
+  const options = { associations, buckets, now: 1000, rps: 1, burst: 1 };
+  let introspections = 0;
+  for (const [req, id] of [[first, 1], [second, 2]]) {
+    const principal = await authenticate(req, 'association-proof', { localVerify: false, introspect: async () => { introspections++; return { userId: id }; } });
+    assert.equal(rememberVerifiedRatePrincipal(req, principal, options), true);
+  }
+  assert.equal(introspections, 2);
+  assert.equal(preAuthRateLimitKey(first, options), 'verified-user:1');
+  assert.equal(preAuthRateLimitKey(second, options), 'verified-user:2');
+  assert.equal(checkRateLimit(first, { ...options, key: preAuthRateLimitKey(first, options) }).allowed, true);
+  assert.equal(checkRateLimit(first, { ...options, key: preAuthRateLimitKey(first, options) }).allowed, false);
+  assert.equal(checkRateLimit(second, { ...options, key: preAuthRateLimitKey(second, options) }).allowed, true);
+  const rotated = request('user-one-rotated');
+  const unknownKey = preAuthRateLimitKey(rotated, options);
+  assert.equal(unknownKey, 'ip:127.0.0.1');
+  const principal = await authenticate(rotated, 'rotation-proof', { localVerify: false, introspect: async () => { introspections++; return { userId: 1 }; } });
+  assert.equal(checkVerifiedUserRateLimit(rotated, principal, unknownKey, options).allowed, false);
+  assert.equal(preAuthRateLimitKey(rotated, options), 'verified-user:1');
+  assert.equal(introspections, 3);
+  assert.equal([...associations.keys()].some((key) => key.includes('user-one')), false);
+});
+
+test('unknown token churn stays on shared-IP admission and association capacity never evicts active entries', () => {
+  const { preAuthRateLimitKey, rememberVerifiedRatePrincipal } = require('./server');
+  const associations = new Map(); const buckets = new Map();
+  const req = (token) => ({ headers: { authorization: `Bearer ${token}` }, socket: { remoteAddress: '127.0.0.1' } });
+  const options = { associations, buckets, now: 1000, rps: 1, burst: 2, maxAssociations: 2, ttlMs: 999999 };
+  assert.equal(rememberVerifiedRatePrincipal(req('verified-one'), { userId: 1 }, options), true);
+  assert.equal(rememberVerifiedRatePrincipal(req('verified-two'), { userId: 2 }, options), true);
+  assert.equal(rememberVerifiedRatePrincipal(req('verified-three'), { userId: 3 }, options), false);
+  assert.equal(preAuthRateLimitKey(req('verified-three'), options), 'ip:127.0.0.1');
+  assert.equal(associations.size, 2);
+  assert.equal([...associations.values()].every((value) => value.expiresAt <= 61000), true);
+  for (let index = 0; index < 20; index++) {
+    const unknown = req(`random-unverified-${index}`);
+    assert.equal(checkRateLimit(unknown, { ...options, key: preAuthRateLimitKey(unknown, options) }).allowed, index < 2);
+  }
+  assert.equal(buckets.size, 1);
+  assert.equal(preAuthRateLimitKey(req('verified-one'), { ...options, now: 61000 }), 'ip:127.0.0.1');
+});
+
+test('expired/revoked budget associations never authenticate or suppress authoritative introspection', async () => {
+  const { preAuthRateLimitKey, rememberVerifiedRatePrincipal, forgetVerifiedRatePrincipal } = require('./server');
+  const associations = new Map();
+  const req = { headers: { authorization: 'Bearer previously-verified-token' }, socket: { remoteAddress: '127.0.0.1' } };
+  const options = { associations, now: 1000 };
+  rememberVerifiedRatePrincipal(req, { userId: 7 }, options);
+  assert.equal(preAuthRateLimitKey(req, options), 'verified-user:7');
+  let introspections = 0;
+  assert.equal(await authenticate(req, 'revoked-proof', { localVerify: false, introspect: async () => { introspections++; return null; } }), null);
+  forgetVerifiedRatePrincipal(req, options);
+  assert.equal(preAuthRateLimitKey(req, options), 'ip:127.0.0.1');
+  rememberVerifiedRatePrincipal(req, { userId: 7 }, options);
+  assert.equal(preAuthRateLimitKey(req, { ...options, now: 61000 }), 'ip:127.0.0.1');
+  assert.equal(await authenticate(req, 'expired-proof', { localVerify: false, introspect: async () => { introspections++; return null; } }), null);
+  assert.equal(introspections, 2);
+});
+
+test('actual loopback routing learns budgets only after introspection and preserves a second shared-socket user', async () => {
+  const baseUrl = await listen(); const originalFetch = global.fetch;
+  const agent = new http.Agent({ keepAlive: true, maxSockets: 16 });
+  let introspections = 0; let revoked = false;
+  const request = (token) => new Promise((resolve, reject) => {
+    const outgoing = http.get(`${baseUrl}/api/v1/students`, { agent, headers: { authorization: `Bearer ${token}` } }, (response) => {
+      response.resume(); response.on('end', () => resolve(response.statusCode));
+    });
+    outgoing.on('error', reject);
+  });
+  try {
+    global.fetch = async (url, init) => {
+      if (String(url).includes('/auth/introspect')) {
+        introspections++;
+        const token = JSON.parse(init.body).token;
+        const id = token === 'shared-valid-user-901' ? 901 : token === 'shared-valid-user-902' ? 902 : null;
+        return new Response(JSON.stringify({ active: Boolean(id) && !revoked, principal: { userId: id, role: 'SCHOOL_ADMIN', branchId: 1 } }), { status: 200 });
+      }
+      return new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+    assert.equal(await request('shared-valid-user-901'), 200);
+    assert.equal(await request('shared-valid-user-902'), 200);
+    const firstUser = await Promise.all(Array.from({ length: 160 }, () => request('shared-valid-user-901')));
+    assert.equal(firstUser.includes(429), true);
+    assert.equal(await request('shared-valid-user-902'), 200);
+    const beforeRevocation = introspections;
+    revoked = true;
+    assert.equal(await request('shared-valid-user-902'), 401);
+    assert.equal(introspections, beforeRevocation + 1);
+  } finally { global.fetch = originalFetch; agent.destroy(); }
+});
+
 test('outbound headers strip client-supplied authenticated and service-token headers', () => {
   const headers = outboundHeaders({
     headers: {
@@ -905,25 +1000,25 @@ test('authenticate falls back to introspection for a valid un-enriched token', a
   assert.equal(principal.userId, 5);
 });
 
-test('authenticate rejects a refresh token without introspection', async () => {
+test('authenticate rejects a refresh token after mandatory introspection', async () => {
   let calls = 0;
   const introspectStub = async () => { calls += 1; return { userId: 5 }; };
   const refresh = signHS512({ sub: 'a@b.com', role: 'ADMIN', type: 'refresh', exp: NOW + 900 }, JWT_SECRET);
   const principal = await authenticate(reqWithToken(refresh), 'req-refresh', {
     localVerify: true, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
   });
-  assert.equal(calls, 0);
+  assert.equal(calls, 1);
   assert.equal(principal, null);
 });
 
-test('authenticate returns null (no introspection) for a bad-signature token', async () => {
+test('authenticate rejects a bad-signature token after mandatory introspection', async () => {
   let calls = 0;
   const introspectStub = async () => { calls += 1; return { userId: 1 }; };
   const bad = `${signHS512(enrichedClaims, JWT_SECRET).slice(0, -2)}xx`;
   const principal = await authenticate(reqWithToken(bad), 'req-3', {
     localVerify: true, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
   });
-  assert.equal(calls, 0);
+  assert.equal(calls, 1);
   assert.equal(principal, null);
 });
 
@@ -1037,7 +1132,7 @@ test('JWT purpose, issuer, audience, expiration and algorithm are mandatory befo
     }), null);
   }
   for (const alg of ['HS384', 'HS512']) assert.equal(verifyJwtLocally(signJwt(enrichedClaims, JWT_SECRET, { alg }), JWT_SECRET, NOW), null);
-  assert.equal(calls, 0);
+  assert.equal(calls, 4);
   const principal = { userId: 42, sessionId: 'authoritative-session' };
   assert.deepEqual(await authenticate(reqWithToken(signJwt(enrichedClaims, 'previous-secret')), 'rotation', {
     localVerify: true, secret: JWT_SECRET, previousSecret: 'previous-secret', now: NOW, introspect: async () => principal,
