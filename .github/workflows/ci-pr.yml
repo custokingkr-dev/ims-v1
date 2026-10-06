@@ -97,6 +97,7 @@ jobs:
           scripts.tests.service_authorization_machine_proof_test
           scripts.tests.principal_carrier_release_order_test
           scripts.tests.direct_release_profile_test
+          scripts.tests.full_release_routing_test
           scripts.tests.deployment_readiness_audit_test
           scripts.tests.runtime_secret_revocation_test
       - name: Test OpenAPI CI routing invariants

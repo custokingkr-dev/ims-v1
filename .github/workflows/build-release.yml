@@ -138,6 +138,8 @@ jobs:
           ./scripts/audit-microservice-test-catalog.ps1
           ./scripts/audit-microservice-build-catalog.ps1
           ./scripts/audit-security-governance-controls.ps1
+      - name: Verify full release uses rendered serial deployment
+        run: python3 -m unittest discover -s scripts/tests -p full_release_routing_test.py -v
       - name: Verify guarded duplicate classes
         run: python3 scripts/check-duplicate-class-drift.py
 
@@ -1161,7 +1163,7 @@ jobs:
           }
 
       - name: Fast dev deployment
-        if: ${{ needs.resolve-target.outputs.target_env == 'dev' && needs.detect.outputs.deployment_config_changed != 'true' }}
+        if: ${{ needs.resolve-target.outputs.target_env == 'dev' && needs.detect.outputs.deployment_config_changed != 'true' && inputs.force_full_deploy != true }}
         shell: pwsh
         run: |
           ./scripts/invoke-direct-cloudrun-release.ps1 `
@@ -1172,7 +1174,7 @@ jobs:
             -OutputPath release-evidence/deployment.json
 
       - name: Create and serially promote Cloud Deploy releases
-        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' }}
+        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' || inputs.force_full_deploy == true }}
         shell: pwsh
         run: |
           $arguments = @{
@@ -1191,7 +1193,7 @@ jobs:
           ./scripts/invoke-clouddeploy-release.ps1 @arguments
 
       - name: Confirm Cloud Deploy rollouts
-        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' }}
+        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' || inputs.force_full_deploy == true }}
         shell: pwsh
         run: |
           $arguments = @{
