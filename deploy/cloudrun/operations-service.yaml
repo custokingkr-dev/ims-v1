@@ -2,8 +2,11 @@ apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   name: custoking-operations-service-dev # from-param: custoking-operations-service-${env}
+  annotations:
+    run.googleapis.com/maxScale: "2" # from-param: ${domain_max_instances}
   labels:
     app: custoking-ims
+    security-profile: dedicated-runtime-v1
     component: cloud-run
     service: operations-service
     env: dev # from-param: ${env}

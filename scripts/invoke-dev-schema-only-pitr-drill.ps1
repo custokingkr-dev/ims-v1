@@ -37,7 +37,7 @@ function AwaitSqlOperation([string]$Operation,[int]$Minutes) {
 }
 function AssertAbsent([string[]]$Arguments) {
   try { $null=Cloud $Arguments; return $false }
-  catch {if($_.Exception.Message -match '(?i)(404|not found|does not exist)'){return $true};throw}
+  catch {if($_.Exception.Message -match '(?i)(404|not found|does not exist|cannot find job)'){return $true};throw}
 }
 try {
   $principal=(Cloud @('auth','list','--filter=status:ACTIVE','--format=value(account)')).Trim()

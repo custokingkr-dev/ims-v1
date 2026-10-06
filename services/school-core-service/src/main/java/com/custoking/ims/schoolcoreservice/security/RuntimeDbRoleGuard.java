@@ -37,7 +37,7 @@ public class RuntimeDbRoleGuard implements org.springframework.beans.factory.Sma
                 && environment.getProperty("K_SERVICE") == null) return;
         boolean safe = jdbc.sql("""
             WITH reachable AS (
-                SELECT oid, rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb
+                SELECT oid, rolname, rolsuper, rolbypassrls, rolcreaterole, rolcreatedb, rolreplication
                 FROM pg_roles
                 WHERE oid = (SELECT oid FROM pg_roles WHERE rolname = current_user)
                    OR pg_has_role(current_user, oid, 'MEMBER')
@@ -45,7 +45,7 @@ public class RuntimeDbRoleGuard implements org.springframework.beans.factory.Sma
             SELECT current_user = :expectedRole
               AND session_user = current_user
               AND NOT EXISTS (SELECT 1 FROM reachable
-                    WHERE rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb)
+                    WHERE rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolreplication)
               AND NOT EXISTS (SELECT 1 FROM pg_database WHERE datdba IN (SELECT oid FROM reachable))
               AND NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
                     WHERE n.nspname NOT IN ('pg_catalog','information_schema')

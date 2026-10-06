@@ -25,6 +25,14 @@ class RuntimeDbRoleGuardIntegrationTest {
         return new RuntimeDbRoleGuard(jdbc,env);
     }
     @AfterAll static void stop() { if(pg != null) pg.stop(); }
+    @Test void directAndReachableReplicationPrivilegesAreRejected() {
+        owner.sql("ALTER ROLE app_rt REPLICATION").update();
+        try { assertThrows(IllegalStateException.class, () -> guard(client("app_rt","runtime")).verifyRuntimeRole()); }
+        finally { owner.sql("ALTER ROLE app_rt NOREPLICATION").update(); }
+        owner.sql("CREATE ROLE replication_capability REPLICATION; GRANT replication_capability TO app_rt").update();
+        try { assertThrows(IllegalStateException.class, () -> guard(client("app_rt","runtime")).verifyRuntimeRole()); }
+        finally { owner.sql("REVOKE replication_capability FROM app_rt; DROP ROLE replication_capability").update(); }
+    }
     @Test void runtimeIsSafeButOwnerRejected() {
         assertDoesNotThrow(() -> guard(client("app_rt","runtime")).verifyRuntimeRole());
         assertThrows(IllegalStateException.class,() -> guard(owner).verifyRuntimeRole());

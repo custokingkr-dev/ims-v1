@@ -9,8 +9,39 @@ import java.util.Map;
 
 /** Runtime disablement is authoritative over profile/command-line Flyway settings. */
 public final class MigrationRuntimePolicy implements EnvironmentPostProcessor, Ordered {
+    private static final Map<String, String> IMAGE_ROLES = Map.of(
+        "com.custoking.ims.identityservice.IdentityServiceApplication", "ims_identity_rt",
+        "com.custoking.ims.schoolcoreservice.SchoolCoreServiceApplication", "ims_school_core_rt",
+        "com.custoking.ims.operationsservice.OperationsServiceApplication", "ims_operations_rt",
+        "com.custoking.ims.platformservice.PlatformServiceApplication", "ims_platform_rt",
+        "com.custoking.ims.billingservice.BillingServiceApplication", "ims_billing_rt");
+
+    // Bind to the packaged application, never a caller-controlled service-name setting.
+    static String imageRuntimeRole() {
+        String role = null;
+        for (var entry : IMAGE_ROLES.entrySet()) {
+            try {
+                Class.forName(entry.getKey(), false, MigrationRuntimePolicy.class.getClassLoader());
+                if (role != null) throw new IllegalStateException("Ambiguous runtime application image");
+                role = entry.getValue();
+            } catch (ClassNotFoundException absent) {
+                // Each service image contains exactly one known application class.
+            }
+        }
+        if (role == null) throw new IllegalStateException("Unknown runtime application image");
+        return role;
+    }
     @Override public int getOrder() { return Ordered.LOWEST_PRECEDENCE; }
     @Override public void postProcessEnvironment(ConfigurableEnvironment env, SpringApplication application) {
+        if (!env.getProperty("K_SERVICE", "").isBlank()) {
+            if (!"false".equalsIgnoreCase(env.getProperty("APP_MIGRATIONS_ENABLED")))
+                throw new IllegalStateException("Cloud Run runtime requires explicit APP_MIGRATIONS_ENABLED=false");
+            String expectedRole = imageRuntimeRole();
+            if (!expectedRole.equals(env.getProperty("RUNTIME_DB_ROLE")))
+                throw new IllegalStateException("Cloud Run runtime requires its image-specific dedicated RUNTIME_DB_ROLE: " + expectedRole);
+            env.getPropertySources().addFirst(new MapPropertySource("cloud-run-runtime-role",
+                Map.of("app.runtime-db-role", expectedRole)));
+        }
         String enabled = env.getProperty("APP_MIGRATIONS_ENABLED", env.getProperty("app.migrations.enabled", "true"));
         if (!enabled.equalsIgnoreCase("true") && !enabled.equalsIgnoreCase("false"))
             throw new IllegalStateException("APP_MIGRATIONS_ENABLED must be true or false");

@@ -10,6 +10,46 @@ import static org.assertj.core.api.Assertions.*;
 class MigrationRuntimePolicyTest {
     @org.springframework.context.annotation.Configuration(proxyBeanMethods=false)
     static class EmptyApplication {}
+    private SpringApplication cloudRunApplication(Map<String, Object> overrides) {
+        var application = new SpringApplication(EmptyApplication.class);
+        application.setWebApplicationType(org.springframework.boot.WebApplicationType.NONE);
+        application.setBannerMode(org.springframework.boot.Banner.Mode.OFF);
+        application.setLogStartupInfo(false);
+        var properties = new java.util.HashMap<String, Object>();
+        properties.put("K_SERVICE", "fixture-cloud-service");
+        properties.put("spring.profiles.active", "prod");
+        properties.putAll(overrides);
+        application.setDefaultProperties(properties);
+        return application;
+    }
+    @Test void realCloudRunBootRejectsMissingAndEnabledMigrationFlagsEvenWithLowercaseDisablement() {
+        assertThatThrownBy(cloudRunApplication(Map.of("app.migrations.enabled", "false"))::run)
+            .isInstanceOf(IllegalStateException.class).hasMessageContaining("APP_MIGRATIONS_ENABLED=false");
+        assertThatThrownBy(cloudRunApplication(Map.of("APP_MIGRATIONS_ENABLED", "true"))::run)
+            .isInstanceOf(IllegalStateException.class).hasMessageContaining("APP_MIGRATIONS_ENABLED=false");
+    }
+    @Test void realCloudRunBootRejectsMissingSharedAndOtherImageRoles() {
+        String expected = MigrationRuntimePolicy.imageRuntimeRole();
+        for (String wrong : new String[]{"", "app_rt", "postgres", expected.equals("ims_identity_rt") ? "ims_platform_rt" : "ims_identity_rt"}) {
+            var properties = new java.util.HashMap<String, Object>();
+            properties.put("APP_MIGRATIONS_ENABLED", "false");
+            if (!wrong.isEmpty()) properties.put("RUNTIME_DB_ROLE", wrong);
+            assertThatThrownBy(cloudRunApplication(properties)::run).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("image-specific dedicated RUNTIME_DB_ROLE");
+        }
+    }
+    @Test void realCloudRunBootAcceptsOnlyExplicitDisabledMigrationsAndPackagedServiceRole() {
+        try (var context = cloudRunApplication(Map.of("APP_MIGRATIONS_ENABLED", "false",
+                "RUNTIME_DB_ROLE", MigrationRuntimePolicy.imageRuntimeRole(), "spring.flyway.enabled", "true", "app.runtime-db-role", "app_rt")).run()) {
+            assertThat(context.getEnvironment().getProperty("spring.flyway.enabled")).isEqualTo("false");
+            assertThat(context.getEnvironment().getProperty("app.runtime-db-role"))
+                .isEqualTo(MigrationRuntimePolicy.imageRuntimeRole());
+        }
+        assertThatThrownBy(cloudRunApplication(Map.of("APP_MIGRATIONS_ENABLED", "false",
+            "RUNTIME_DB_ROLE", MigrationRuntimePolicy.imageRuntimeRole(), "FLYWAY_PASSWORD", "owner-secret"))::run)
+            .isInstanceOf(IllegalStateException.class).hasMessageContaining("Migration-disabled runtime")
+            .hasMessageNotContaining("owner-secret");
+    }
     @Test void realBootProdProfileFailsClosedWhenServerStillReceivesOwnerSecret() {
         var application = new SpringApplication(EmptyApplication.class);
         application.setWebApplicationType(org.springframework.boot.WebApplicationType.NONE);
@@ -60,7 +100,14 @@ class MigrationRuntimePolicyTest {
         assertThat(SpringFactoriesLoader.loadFactoryNames(org.springframework.boot.EnvironmentPostProcessor.class,getClass().getClassLoader()))
             .contains(MigrationRuntimePolicy.class.getName());
         assertThatThrownBy(() -> MigrationOnlyMain.plan("untrusted-service")).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> MigrationOnlyMain.migrate(Map.of("APP_MIGRATION_SERVICE","platform-service")))
+        assertThatThrownBy(() -> MigrationOnlyMain.migrate(Map.of("APP_MIGRATION_SERVICE", switch (MigrationRuntimePolicy.imageRuntimeRole()) {
+            case "ims_identity_rt" -> "identity-service";
+            case "ims_school_core_rt" -> "school-core-service";
+            case "ims_operations_rt" -> "operations-service";
+            case "ims_platform_rt" -> "platform-service";
+            case "ims_billing_rt" -> "billing-service";
+            default -> throw new IllegalStateException("Unknown fixture image");
+        })))
             .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("FLYWAY_URL");
     }
 }

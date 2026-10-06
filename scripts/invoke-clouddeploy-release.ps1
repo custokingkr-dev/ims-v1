@@ -43,17 +43,22 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $skaffoldFile = Join-Path $repoRoot "deploy/skaffold.yaml"
 $images = @((Get-Content -Raw -Path $ImagesJson | ConvertFrom-Json).services)
 $releaseOrder = @(
-  "school-core-service",
+  "api-gateway",
   "identity-service",
+  "frontend",
+  "school-core-service",
   "operations-service",
   "billing-service",
-  "platform-service",
-  "api-gateway",
-  "frontend"
+  "platform-service"
 )
 $byService = @{}
 foreach ($image in $images) {
   $byService[[string]$image.service] = $image
+}
+if (-not $WaitForRollout -and @($images | Where-Object {
+  $_.service -in @('api-gateway','identity-service','school-core-service','operations-service','billing-service','platform-service')
+}).Count -gt 0) {
+  throw 'Carrier/backend releases require -WaitForRollout to preserve serial readiness before subsequent services.'
 }
 
 $shortSha = $CommitSha.Substring(0, [Math]::Min(12, $CommitSha.Length))

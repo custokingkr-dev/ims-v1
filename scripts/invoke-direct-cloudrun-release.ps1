@@ -17,6 +17,77 @@ param(
 
 $ErrorActionPreference = "Stop"
 $GcloudCommand = if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" }
+function Invoke-DirectCloudRunDeployment {
+  param([string[]]$Arguments)
+  # Preserve true serial readiness and bound a stalled CLI/control-plane wait.
+  $worker=Start-Job -ScriptBlock {
+    param($command,$arguments)
+    $ErrorActionPreference='Continue'
+    $null=& $command @arguments 2>$null
+    @{ExitCode=$LASTEXITCODE}
+  } -ArgumentList $GcloudCommand,$Arguments
+  try {
+    $deadline=(Get-Date).AddMinutes(10)
+    do { $done=Wait-Job $worker -Timeout 30 } while(-not $done -and (Get-Date) -lt $deadline)
+    if(-not $done){Stop-Job $worker;throw 'Cloud Run synchronous readiness deadline exceeded; subsequent services remain blocked.'}
+    $result=Receive-Job $worker -ErrorAction Stop
+    if($result.ExitCode -ne 0){throw 'Cloud Run synchronous deployment failed; subsequent services remain blocked.'}
+  } finally { Remove-Job $worker -Force -ErrorAction SilentlyContinue }
+}
+function Get-DirectReleaseService {
+  param([string]$Service)
+  $previousPreference=$ErrorActionPreference
+  try {
+    $ErrorActionPreference='Continue'
+    $json=& $GcloudCommand run services describe "custoking-$Service-$Environment" "--project=$ProjectId" "--region=$Region" --format=json 2>$null
+    $nativeExitCode=$LASTEXITCODE
+  } finally { $ErrorActionPreference=$previousPreference }
+  if($nativeExitCode -ne 0){throw "Direct release could not inspect $Service; reconcile configuration before retry."}
+  return ($json -join "`n" | ConvertFrom-Json)
+}
+function Assert-DirectReleaseProfile {
+  param([string]$Service,$Data)
+  $container=$Data.spec.template.spec.containers[0]
+  $settings=@{}
+  foreach($entry in @($container.env)) {
+    if($settings.ContainsKey([string]$entry.name)){throw "Duplicate runtime setting on $Service; reconcile configuration."}
+    $settings[[string]$entry.name]=$entry
+  }
+  $roles=@{'identity-service'='identity';'school-core-service'='school-core';'operations-service'='operations';'billing-service'='billing';'platform-service'='platform'}
+  if($roles.ContainsKey($Service)) {
+    $prefix=$roles[$Service];$expectedRole='ims_'+$prefix.Replace('-','_')+'_rt'
+    if([string]$settings['APP_MIGRATIONS_ENABLED'].value -ne 'false' -or
+       @($settings.Keys|Where-Object {$_ -match '^(FLYWAY_|SPRING_FLYWAY_)'}).Count -gt 0 -or
+       [string]$settings['SPRING_DATASOURCE_USERNAME'].value -ne $expectedRole -or
+       [string]$settings['RUNTIME_DB_ROLE'].value -ne $expectedRole){
+      throw "Direct release refuses old migration/shared-owner database profile on $Service; reconcile rendered deployment configuration first."
+    }
+    $secret=[string]$settings['SPRING_DATASOURCE_PASSWORD'].valueFrom.secretKeyRef.name
+    $expectedSecret="$prefix-runtime-db-password-$Environment"
+    if($secret -ne $expectedSecret -and $secret -ne "projects/$ProjectId/secrets/$expectedSecret"){
+      throw "Direct release requires the exact dedicated database secret on $Service."
+    }
+    $expectedPool=if($Service -eq 'school-core-service'){'8'}else{'3'}
+    if([string]$settings['DB_POOL_MAX'].value -ne $expectedPool){throw "Direct release requires reviewed database pool budget on $Service."}
+  }
+  if($Service -in @('api-gateway','frontend')){
+    $ports=@($container.ports)
+    if($ports.Count -ne 1 -or [int]$ports[0].containerPort -ne 8080){throw "Direct release requires reconciled port8080 on $Service."}
+  }
+  if($Service -eq 'api-gateway'){
+    if([string]$settings['GATEWAY_AUTH_MODE'].value -ne 'enforce' -or
+       [string]$settings['GATEWAY_CLOUD_RUN_AUTH'].value -notin @('auto','always') -or
+       [string]$settings['GATEWAY_LOCAL_JWT_VERIFY'].value -ne 'disabled' -or $settings.ContainsKey('APP_JWT_SECRET')){
+      throw 'Direct release requires the reconciled gateway authentication profile without a JWT signing secret.'
+    }
+    $ready=[string]$Data.status.latestReadyRevisionName
+    if(-not $ready -or $ready -ne [string]$Data.status.latestCreatedRevisionName -or
+       @($Data.spec.traffic|Where-Object {$_.latestRevision -eq $true -and [int]$_.percent -eq 100}).Count -ne 1 -or
+       @($Data.status.traffic|Where-Object {$_.revisionName -eq $ready -and [int]$_.percent -eq 100}).Count -ne 1){
+      throw 'Direct release requires ready gateway LATEST100 traffic; pinned traffic must be explicitly reconciled before any backend update.'
+    }
+  }
+}
 
 if (-not (Test-Path -LiteralPath $ImagesJson)) {
   throw "Release image evidence not found: $ImagesJson"
@@ -29,17 +100,27 @@ if ($commitSha -notmatch '^[0-9a-f]{40}$') {
   throw "Release image evidence has an invalid commit SHA."
 }
 $releaseOrder = @(
-  "school-core-service",
+  "api-gateway",
   "identity-service",
+  "frontend",
+  "school-core-service",
   "operations-service",
   "billing-service",
-  "platform-service",
-  "api-gateway",
-  "frontend"
+  "platform-service"
 )
 $byService = @{}
 foreach ($image in $images) {
   $byService[[string]$image.service] = $image
+}
+if($ProjectId -ne "custoking-$Environment"){throw 'Direct release project must match its explicit environment.'}
+# Complete the entire read-only profile check before any image update or owner migration.
+$preflightServices=@('api-gateway')+@($images|ForEach-Object {[string]$_.service})|Select-Object -Unique
+$runtimeProfiles=@{}
+foreach($preflightService in $preflightServices){
+  if($preflightService -notin $releaseOrder){throw 'Direct release contains an unknown service.'}
+  $profile=Get-DirectReleaseService -Service $preflightService
+  Assert-DirectReleaseProfile -Service $preflightService -Data $profile
+  $runtimeProfiles[$preflightService]=$profile
 }
 
 $deployments = @()
@@ -61,14 +142,7 @@ foreach ($service in $releaseOrder) {
   } else {
     [string]$image.immutableRef
   }
-  $serviceJson = & $GcloudCommand run services describe $cloudRunService `
-    "--project=$ProjectId" `
-    "--region=$Region" `
-    --format=json
-  if ($LASTEXITCODE -ne 0) {
-    throw "Could not describe existing Cloud Run service $cloudRunService."
-  }
-  $serviceData = $serviceJson | ConvertFrom-Json
+  $serviceData = $runtimeProfiles[$service]
   $currentResourceAttributes = [string](@($serviceData.spec.template.spec.containers[0].env | Where-Object {
     $_.name -eq "OTEL_RESOURCE_ATTRIBUTES"
   } | Select-Object -First 1).value)
@@ -109,16 +183,12 @@ foreach ($service in $releaseOrder) {
     "--image=$($image.immutableRef)",
     "--project=$ProjectId",
     "--region=$Region",
-    "--async",
     "--quiet"
   )
   if ($tracedService) {
     $deployArguments += "--update-env-vars=^@^OTEL_RESOURCE_ATTRIBUTES=$expectedResourceAttributes"
   }
-  & $GcloudCommand @deployArguments
-  if ($LASTEXITCODE -ne 0) {
-    throw "Cloud Run deployment failed for $cloudRunService."
-  }
+  Invoke-DirectCloudRunDeployment -Arguments $deployArguments
 
   $deployments += [ordered]@{
     service = $service

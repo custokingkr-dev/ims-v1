@@ -4,7 +4,7 @@ This records implemented controls and bounded verification, not a certificate of
 
 ## Implemented
 
-Gateway authentication fails closed on Cloud Run. Bound HS256 access JWTs require issuer, audience, purpose and expiry, and still require authoritative identity introspection. Client identity/carrier headers are discarded. Signed Google service ID tokens carry validated user context to private backends; gateway no longer holds the identity signing secret. Cookie mutations require an allowed Origin or exact same-origin fetch provenance. Independent preauthentication buckets resist arbitrary bearer churn; forwarded addresses are trusted only with explicit reviewed proxy hops.
+Gateway authentication fails closed on Cloud Run. Bound HS256 access JWTs require issuer, audience, purpose and expiry. Authoritative identity introspection runs unconditionally for every supplied bearer; optional local verification can only add a rejection after identity validation. Client identity/carrier headers are discarded. Signed Google service ID tokens carry validated user context to private backends; gateway no longer holds the identity signing secret. Cookie mutations require an allowed Origin or exact same-origin fetch provenance. Independent preauthentication buckets resist arbitrary bearer churn; forwarded addresses are trusted only with explicit reviewed proxy hops. Short bounded bearer fingerprints associate only server-verified users with quota groups; they never cache authentication. Cold tokens/login remain under the conservative shared-IP bootstrap budget.
 
 Proxy deadlines cover complete response bodies, disconnects cancel upstream work, and writable backpressure waits for drain. Identity token metadata and introspection calls have bounded deadlines. Sensitive operations preserve structured step-up denials; clients require a fresh session-bound passkey assertion and do not automatically replay financial mutations.
 
@@ -14,7 +14,7 @@ Generated source comparison normalizes CRLF while retaining meaningful content d
 
 ## Verified
 
-- 94 gateway tests passed under standard Node test concurrency, including slow-body deadlines and backpressure cancellation.
+- 99 gateway tests passed under standard Node test concurrency, including slow-body deadlines, backpressure cancellation, shared-socket verified-user quotas and mandatory identity introspection.
 - 428 frontend unit tests and production build passed;111 established browser tests and5 security browser tests passed at their recorded checkpoints.
 - Actual built nonroot nginx container verified headers/CSP/image preview/document download. See browser.md and browser-evidence.json.
 - Frontend and gateway npm audits report zero vulnerabilities; Java/container image scans remain release-gate evidence until fresh images are built.

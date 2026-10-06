@@ -68,14 +68,12 @@
             <version>0.13.0</version>
             <scope>runtime</scope>
         </dependency>
-        <!-- SB 4.0's BOM only manages Jackson 3 (tools.jackson); jjwt-jackson needs
-             Jackson 2 (com.fasterxml.jackson). Pin explicitly so the two majors'
-             coexistence on the classpath is deliberate, not an accident of whatever
-             version jjwt-jackson happens to transitively pull in. -->
+        <!-- JJWT and WebAuthn require Jackson 2 alongside Spring's Jackson 3.
+             Align the explicit databind dependency with the patched parent Jackson 2 BOM. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.22.2</version>
+            <version>2.21.7</version>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>

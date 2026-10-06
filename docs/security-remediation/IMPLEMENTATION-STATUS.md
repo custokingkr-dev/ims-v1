@@ -20,7 +20,7 @@ The requested multi-agent implementation covers all34 findings and12 assurance t
 | SEC-12 | Implemented enforced CSP and real built-container browser/header proof; live headers pending. |
 | SEC-13 | Updated dependency owners/lockfiles/Jackson/runtime patches; npm audits zero. Fresh complete image scan gate pending. |
 | SEC-14 | Clean gateway dependency install and lock alignment; standard94 tests passed. |
-| SEC-15 | Implemented preauth budgets and explicit proxy trust; tests passed. Protected edge/shared-IP live design pending domain. |
+| SEC-15 | Implemented preauth budgets, explicit proxy trust and bounded verified-user quota groups; real loopback two-user/revocation tests passed. Protected edge/shared-IP live design pending domain. |
 | SEC-16 | Implemented connect-bound DNS validation, redirects/HTTPS443 and private-address rejection; bounded fixtures passed. External egress policy remains separately reviewed. |
 | SEC-17 | Implemented multipart, workbook expansion/cells, decoding concurrency and body limits; boundary fixtures passed. |
 | SEC-18 | Implemented recursive PDF active-content rejection, root confinement and browser download behavior; Windows symlink test skipped, Linux CI pending. This is not antivirus/CDR. |
@@ -56,7 +56,7 @@ The requested multi-agent implementation covers all34 findings and12 assurance t
 | VER-09 | Signed machine caller/source event replay/reordering/tombstone tests passed; actual PubSub restart/caller graph drill pending. |
 | VER-10 | Admission budget and bounded local PostgreSQL pool probe passed; deployed load/SLO validation remains pending. |
 | VER-11 | WIF policy reviewed, release/image gates preserved. Branch protection requires repository admin; fresh signed/SBOM image scan evidence pending release. |
-| VER-12 | Dev backups/PITR/TLS enabled and fresh backup successful. Isolated recovery drill underway; agreed RPO/RTO and operational alert/revocation exercise pending. |
+| VER-12 | Dev backups/PITR/TLS enabled and fresh backup successful. Isolated schema-only PITR recovered all12 schemas in about12.6 minutes; exact temporary job and clone deletion verified; agreed RPO/RTO and operational alert/revocation exercise pending. |
 
 ## Evidence
 
@@ -69,6 +69,10 @@ The requested multi-agent implementation covers all34 findings and12 assurance t
 - [Browser](browser.md), [container evidence](browser-evidence.json)
 - [Dashboard](dashboard.md)
 - [Actual prepared dev role proof](dev-runtime-role-proof.json)
+- [Actual dev photo cache proof](dev-photo-cache-proof.json)
+- [Actual isolated dev PITR recovery and cleanup](dev-pitr.md)
+
+Final deployment fixture batch passed 46 tests; a further secret transport deadline test passed in the nine-test revocation suite. All24 offline architecture/deployment stages passed after service-wide Java scaling caps were added. Root applied those five dev service-wide caps to2 before application cutover; existing instances may persist temporarily, so this does not certify transition capacity. The final immutable image scans, CodeQL checks and application rollout remain required.
 
 ## Final release sequence
 
