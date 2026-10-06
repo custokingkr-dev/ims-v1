@@ -49,7 +49,7 @@ class TenantSchoolClientTest {
 
     @Test
     void slowUpstreamFailsFastWithGatewayTimeout() {
-        server.createContext("/api/v1/schools/5", exchange -> {
+        server.createContext("/api/v1/internal/identity-directory/schools/5", exchange -> {
             try {
                 Thread.sleep(1500); // exceeds the 200ms read timeout below
             } catch (InterruptedException ignored) {
@@ -68,7 +68,7 @@ class TenantSchoolClientTest {
 
     @Test
     void fastUpstreamParsesSchool() {
-        server.createContext("/api/v1/schools/5", exchange -> respond(exchange, 200, "{\"id\":5,\"name\":\"North\"}"));
+        server.createContext("/api/v1/internal/identity-directory/schools/5", exchange -> respond(exchange, 200, "{\"id\":5,\"name\":\"North\"}"));
 
         TenantSchoolClient client = client(5000, 3);
 
@@ -80,7 +80,7 @@ class TenantSchoolClientTest {
     @Test
     void retriesTransient503ThenSucceeds() {
         AtomicInteger calls = new AtomicInteger();
-        server.createContext("/api/v1/zones/9", exchange -> {
+        server.createContext("/api/v1/internal/identity-directory/zones/9", exchange -> {
             if (calls.incrementAndGet() < 3) {
                 respond(exchange, 503, "{\"message\":\"unavailable\"}");
             } else {
@@ -98,7 +98,7 @@ class TenantSchoolClientTest {
     @Test
     void exhaustsRetriesThenPropagatesStatus() {
         AtomicInteger calls = new AtomicInteger();
-        server.createContext("/api/v1/zones/9", exchange -> {
+        server.createContext("/api/v1/internal/identity-directory/zones/9", exchange -> {
             calls.incrementAndGet();
             respond(exchange, 503, "{\"message\":\"unavailable\"}");
         });
@@ -115,7 +115,7 @@ class TenantSchoolClientTest {
     @Test
     void clientErrorIsNotRetried() {
         AtomicInteger calls = new AtomicInteger();
-        server.createContext("/api/v1/schools/7", exchange -> {
+        server.createContext("/api/v1/internal/identity-directory/schools/7", exchange -> {
             calls.incrementAndGet();
             respond(exchange, 400, "{\"message\":\"bad request\"}");
         });

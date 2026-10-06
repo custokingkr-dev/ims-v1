@@ -11,11 +11,11 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 44,
-    "endpoints": 436,
-    "canonicalEndpoints": 338,
+    "controllers": 47,
+    "endpoints": 447,
+    "canonicalEndpoints": 345,
     "compatibilityEndpoints": 90,
-    "internalEndpoints": 8,
+    "internalEndpoints": 12,
     "diagnosticAliases": 12,
     "gatewayRoutes": 70,
     "frontendCompatibilityCalls": 0,
@@ -118,7 +118,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 105
+      "line": 119
     },
     {
       "order": 1,
@@ -130,7 +130,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 106
+      "line": 120
     },
     {
       "order": 2,
@@ -142,7 +142,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 107
+      "line": 121
     },
     {
       "order": 3,
@@ -154,7 +154,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 108
+      "line": 122
     },
     {
       "order": 4,
@@ -166,7 +166,7 @@
         "POST"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 109
+      "line": 123
     },
     {
       "order": 5,
@@ -178,7 +178,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 110
+      "line": 124
     },
     {
       "order": 6,
@@ -190,7 +190,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 111
+      "line": 125
     },
     {
       "order": 7,
@@ -202,7 +202,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 112
+      "line": 126
     },
     {
       "order": 8,
@@ -214,7 +214,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 113
+      "line": 127
     },
     {
       "order": 9,
@@ -226,7 +226,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 114
+      "line": 128
     },
     {
       "order": 10,
@@ -238,7 +238,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 115
+      "line": 129
     },
     {
       "order": 11,
@@ -250,7 +250,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 116
+      "line": 130
     },
     {
       "order": 12,
@@ -262,7 +262,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 117
+      "line": 131
     },
     {
       "order": 13,
@@ -274,7 +274,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 118
+      "line": 132
     },
     {
       "order": 14,
@@ -286,7 +286,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 119
+      "line": 133
     },
     {
       "order": 15,
@@ -298,7 +298,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 120
+      "line": 134
     },
     {
       "order": 16,
@@ -310,7 +310,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 121
+      "line": 135
     },
     {
       "order": 17,
@@ -322,7 +322,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 122
+      "line": 136
     },
     {
       "order": 18,
@@ -334,7 +334,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 123
+      "line": 137
     },
     {
       "order": 19,
@@ -346,7 +346,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 124
+      "line": 138
     },
     {
       "order": 20,
@@ -358,7 +358,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 125
+      "line": 139
     },
     {
       "order": 21,
@@ -370,7 +370,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 126
+      "line": 140
     },
     {
       "order": 22,
@@ -382,7 +382,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 127
+      "line": 141
     },
     {
       "order": 23,
@@ -394,7 +394,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 128
+      "line": 142
     },
     {
       "order": 24,
@@ -406,7 +406,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 129
+      "line": 143
     },
     {
       "order": 25,
@@ -418,7 +418,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 130
+      "line": 144
     },
     {
       "order": 26,
@@ -430,7 +430,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 131
+      "line": 145
     },
     {
       "order": 27,
@@ -442,7 +442,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 132
+      "line": 146
     },
     {
       "order": 28,
@@ -454,7 +454,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 133
+      "line": 147
     },
     {
       "order": 29,
@@ -466,7 +466,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 134
+      "line": 148
     },
     {
       "order": 30,
@@ -478,7 +478,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 135
+      "line": 149
     },
     {
       "order": 31,
@@ -490,7 +490,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 136
+      "line": 150
     },
     {
       "order": 32,
@@ -502,7 +502,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 137
+      "line": 151
     },
     {
       "order": 33,
@@ -514,7 +514,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 138
+      "line": 152
     },
     {
       "order": 34,
@@ -526,7 +526,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 139
+      "line": 153
     },
     {
       "order": 35,
@@ -538,7 +538,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 140
+      "line": 154
     },
     {
       "order": 36,
@@ -550,7 +550,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 141
+      "line": 155
     },
     {
       "order": 37,
@@ -562,7 +562,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 142
+      "line": 156
     },
     {
       "order": 38,
@@ -574,7 +574,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 143
+      "line": 157
     },
     {
       "order": 39,
@@ -586,7 +586,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 144
+      "line": 158
     },
     {
       "order": 40,
@@ -598,7 +598,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 145
+      "line": 159
     },
     {
       "order": 41,
@@ -610,7 +610,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 146
+      "line": 160
     },
     {
       "order": 42,
@@ -622,7 +622,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 147
+      "line": 161
     },
     {
       "order": 43,
@@ -634,7 +634,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 148
+      "line": 162
     },
     {
       "order": 44,
@@ -646,7 +646,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 149
+      "line": 163
     },
     {
       "order": 45,
@@ -658,7 +658,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 150
+      "line": 164
     },
     {
       "order": 46,
@@ -670,7 +670,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 151
+      "line": 165
     },
     {
       "order": 47,
@@ -682,7 +682,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 152
+      "line": 166
     },
     {
       "order": 48,
@@ -694,7 +694,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 153
+      "line": 167
     },
     {
       "order": 49,
@@ -706,7 +706,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 154
+      "line": 168
     },
     {
       "order": 50,
@@ -718,7 +718,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 155
+      "line": 169
     },
     {
       "order": 51,
@@ -730,7 +730,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 156
+      "line": 170
     },
     {
       "order": 52,
@@ -742,7 +742,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 157
+      "line": 171
     },
     {
       "order": 53,
@@ -754,7 +754,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 158
+      "line": 172
     },
     {
       "order": 54,
@@ -766,7 +766,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 159
+      "line": 173
     },
     {
       "order": 55,
@@ -778,7 +778,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 160
+      "line": 174
     },
     {
       "order": 56,
@@ -790,7 +790,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 161
+      "line": 175
     },
     {
       "order": 57,
@@ -802,7 +802,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 162
+      "line": 176
     },
     {
       "order": 58,
@@ -815,7 +815,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 163
+      "line": 177
     },
     {
       "order": 59,
@@ -828,7 +828,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 164
+      "line": 178
     },
     {
       "order": 60,
@@ -841,7 +841,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 165
+      "line": 179
     },
     {
       "order": 61,
@@ -854,7 +854,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 166
+      "line": 180
     },
     {
       "order": 62,
@@ -867,7 +867,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 167
+      "line": 181
     },
     {
       "order": 63,
@@ -880,7 +880,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 168
+      "line": 182
     },
     {
       "order": 64,
@@ -893,7 +893,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 169
+      "line": 183
     },
     {
       "order": 65,
@@ -906,7 +906,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 170
+      "line": 184
     },
     {
       "order": 66,
@@ -919,7 +919,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 171
+      "line": 185
     },
     {
       "order": 67,
@@ -932,7 +932,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 172
+      "line": 186
     },
     {
       "order": 68,
@@ -945,7 +945,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 173
+      "line": 187
     },
     {
       "order": 69,
@@ -958,7 +958,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 174
+      "line": 188
     }
   ],
   "clientMigrationReferences": [],
@@ -1025,6 +1025,16 @@
     },
     {
       "service": "identity-service",
+      "controller": "PasskeyController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/auth/passkeys"
+      ],
+      "endpointCount": 7,
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java"
+    },
+    {
+      "service": "identity-service",
       "controller": "PasswordResetController",
       "classification": "canonical",
       "basePaths": [
@@ -1032,6 +1042,16 @@
       ],
       "endpointCount": 3,
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasswordResetController.java"
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasswordResetDrainController",
+      "classification": "internal",
+      "basePaths": [
+        "/api/v1/internal/password-reset"
+      ],
+      "endpointCount": 1,
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/internal/PasswordResetDrainController.java"
     },
     {
       "service": "identity-service",
@@ -1250,7 +1270,7 @@
       "basePaths": [
         "/api/v1/internal/notifications/broadcast-recipients"
       ],
-      "endpointCount": 1,
+      "endpointCount": 2,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/BroadcastRecipientPolicyController.java"
     },
     {
@@ -1323,6 +1343,16 @@
       ],
       "endpointCount": 5,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianConsentController.java"
+    },
+    {
+      "service": "school-core-service",
+      "controller": "IdentityDirectoryController",
+      "classification": "internal",
+      "basePaths": [
+        "/api/v1/internal/identity-directory"
+      ],
+      "endpointCount": 2,
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/IdentityDirectoryController.java"
     },
     {
       "service": "school-core-service",
@@ -1413,7 +1443,7 @@
       "path": "/api/v1/billing-payments",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 153
+      "line": 156
     },
     {
       "service": "billing-service",
@@ -1422,7 +1452,7 @@
       "path": "/api/v1/billing-payments",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 160
+      "line": 163
     },
     {
       "service": "billing-service",
@@ -1485,7 +1515,7 @@
       "path": "/api/v1/customers",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 99
+      "line": 102
     },
     {
       "service": "billing-service",
@@ -1494,7 +1524,7 @@
       "path": "/api/v1/customers",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 106
+      "line": 109
     },
     {
       "service": "billing-service",
@@ -1512,7 +1542,7 @@
       "path": "/api/v1/invoices",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 120
+      "line": 123
     },
     {
       "service": "billing-service",
@@ -1521,7 +1551,7 @@
       "path": "/api/v1/invoices",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 127
+      "line": 130
     },
     {
       "service": "billing-service",
@@ -1530,7 +1560,7 @@
       "path": "/api/v1/invoices/{id}/pdf",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 137
+      "line": 140
     },
     {
       "service": "billing-service",
@@ -1539,7 +1569,7 @@
       "path": "/api/v1/sa/invoices",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 36
+      "line": 39
     },
     {
       "service": "billing-service",
@@ -1548,7 +1578,7 @@
       "path": "/api/v1/sa/invoices",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 76
+      "line": 79
     },
     {
       "service": "billing-service",
@@ -1557,7 +1587,7 @@
       "path": "/api/v1/sa/invoices/{id}",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 65
+      "line": 68
     },
     {
       "service": "billing-service",
@@ -1566,7 +1596,7 @@
       "path": "/api/v1/sa/invoices/{id}",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 86
+      "line": 89
     },
     {
       "service": "billing-service",
@@ -1575,7 +1605,7 @@
       "path": "/api/v1/sa/invoices/by-order/{orderRef}",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 54
+      "line": 57
     },
     {
       "service": "billing-service",
@@ -1584,7 +1614,7 @@
       "path": "/api/v1/sa/invoices/stats",
       "classification": "compatibility",
       "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/compat/BillingPublicCompatibilityController.java",
-      "line": 47
+      "line": 50
     },
     {
       "service": "identity-service",
@@ -1593,7 +1623,7 @@
       "path": "/api/v1/auth/introspect",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 85
+      "line": 86
     },
     {
       "service": "identity-service",
@@ -1602,7 +1632,7 @@
       "path": "/api/v1/auth/login",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 56
+      "line": 57
     },
     {
       "service": "identity-service",
@@ -1611,7 +1641,70 @@
       "path": "/api/v1/auth/logout",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 76
+      "line": 77
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasskeyController",
+      "method": "GET",
+      "path": "/api/v1/auth/passkeys",
+      "classification": "canonical",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
+      "line": 28
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasskeyController",
+      "method": "POST",
+      "path": "/api/v1/auth/passkeys/assertion/options",
+      "classification": "canonical",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
+      "line": 37
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasskeyController",
+      "method": "POST",
+      "path": "/api/v1/auth/passkeys/assertion/verify",
+      "classification": "canonical",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
+      "line": 38
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasskeyController",
+      "method": "POST",
+      "path": "/api/v1/auth/passkeys/recovery/approve",
+      "classification": "canonical",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
+      "line": 48
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasskeyController",
+      "method": "POST",
+      "path": "/api/v1/auth/passkeys/recovery/request",
+      "classification": "canonical",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
+      "line": 44
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasskeyController",
+      "method": "POST",
+      "path": "/api/v1/auth/passkeys/registration/options",
+      "classification": "canonical",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
+      "line": 29
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasskeyController",
+      "method": "POST",
+      "path": "/api/v1/auth/passkeys/registration/verify",
+      "classification": "canonical",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
+      "line": 33
     },
     {
       "service": "identity-service",
@@ -1647,7 +1740,16 @@
       "path": "/api/v1/auth/refresh",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 64
+      "line": 65
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasswordResetDrainController",
+      "method": "POST",
+      "path": "/api/v1/internal/password-reset/drain",
+      "classification": "internal",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/internal/PasswordResetDrainController.java",
+      "line": 11
     },
     {
       "service": "identity-service",
@@ -2133,7 +2235,7 @@
       "path": "/api/v1/workflows/{instanceId}/actions",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/WorkflowReadController.java",
-      "line": 194
+      "line": 195
     },
     {
       "service": "operations-service",
@@ -2277,7 +2379,7 @@
       "path": "/api/v1/audit/events",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/AuditIngestController.java",
-      "line": 84
+      "line": 91
     },
     {
       "service": "platform-service",
@@ -2286,7 +2388,7 @@
       "path": "/api/v1/audit/events",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/AuditIngestController.java",
-      "line": 48
+      "line": 51
     },
     {
       "service": "platform-service",
@@ -3775,12 +3877,39 @@
     },
     {
       "service": "school-core-service",
+      "controller": "IdentityDirectoryController",
+      "method": "GET",
+      "path": "/api/v1/internal/identity-directory/schools/{id}",
+      "classification": "internal",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/IdentityDirectoryController.java",
+      "line": 14
+    },
+    {
+      "service": "school-core-service",
+      "controller": "IdentityDirectoryController",
+      "method": "GET",
+      "path": "/api/v1/internal/identity-directory/zones/{id}",
+      "classification": "internal",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/IdentityDirectoryController.java",
+      "line": 15
+    },
+    {
+      "service": "school-core-service",
       "controller": "BroadcastRecipientPolicyController",
       "method": "POST",
       "path": "/api/v1/internal/notifications/broadcast-recipients",
       "classification": "internal",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/BroadcastRecipientPolicyController.java",
       "line": 32
+    },
+    {
+      "service": "school-core-service",
+      "controller": "BroadcastRecipientPolicyController",
+      "method": "POST",
+      "path": "/api/v1/internal/notifications/broadcast-recipients/fee-reminders",
+      "classification": "internal",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/BroadcastRecipientPolicyController.java",
+      "line": 47
     },
     {
       "service": "school-core-service",
@@ -4230,7 +4359,7 @@
       "path": "/api/v1/students/{id}/verification",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 578
+      "line": 580
     },
     {
       "service": "school-core-service",
@@ -4239,7 +4368,7 @@
       "path": "/api/v1/students/{id}/verification/photo/verify",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 603
+      "line": 605
     },
     {
       "service": "school-core-service",
@@ -4248,7 +4377,7 @@
       "path": "/api/v1/students/{id}/verification/profile/verify",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 590
+      "line": 592
     },
     {
       "service": "school-core-service",
@@ -4338,7 +4467,7 @@
       "path": "/api/v1/students/import/confirm",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 386
+      "line": 388
     },
     {
       "service": "school-core-service",
@@ -4356,7 +4485,7 @@
       "path": "/api/v1/students/import/status/{jobId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 404
+      "line": 406
     },
     {
       "service": "school-core-service",
@@ -4365,7 +4494,7 @@
       "path": "/api/v1/students/import/template",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 411
+      "line": 413
     },
     {
       "service": "school-core-service",
@@ -4383,7 +4512,7 @@
       "path": "/api/v1/students/imports/batches",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 655
+      "line": 657
     },
     {
       "service": "school-core-service",
@@ -4392,7 +4521,7 @@
       "path": "/api/v1/students/imports/confirm",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 372
+      "line": 374
     },
     {
       "service": "school-core-service",
@@ -4410,7 +4539,7 @@
       "path": "/api/v1/students/imports/rows",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 666
+      "line": 668
     },
     {
       "service": "school-core-service",
@@ -4419,7 +4548,7 @@
       "path": "/api/v1/students/imports/status/{jobId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 393
+      "line": 395
     },
     {
       "service": "school-core-service",
@@ -4428,7 +4557,7 @@
       "path": "/api/v1/students/imports/usage",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 679
+      "line": 681
     },
     {
       "service": "school-core-service",
@@ -4437,7 +4566,7 @@
       "path": "/api/v1/students/promotion-batches",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 422
+      "line": 424
     },
     {
       "service": "school-core-service",
@@ -4446,7 +4575,7 @@
       "path": "/api/v1/students/promotion-batches/{batchId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 434
+      "line": 436
     },
     {
       "service": "school-core-service",
@@ -4455,7 +4584,7 @@
       "path": "/api/v1/students/promotion-batches/{batchId}/apply",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 460
+      "line": 462
     },
     {
       "service": "school-core-service",
@@ -4464,7 +4593,7 @@
       "path": "/api/v1/students/promotion-batches/{batchId}/items/{itemId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 446
+      "line": 448
     },
     {
       "service": "school-core-service",
@@ -4473,7 +4602,7 @@
       "path": "/api/v1/students/review-campaigns",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 691
+      "line": 693
     },
     {
       "service": "school-core-service",
@@ -4482,7 +4611,7 @@
       "path": "/api/v1/students/review-campaigns/{campaignId}/complete",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 642
+      "line": 644
     },
     {
       "service": "school-core-service",
@@ -4491,7 +4620,7 @@
       "path": "/api/v1/students/review-campaigns/{campaignId}/items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 719
+      "line": 721
     },
     {
       "service": "school-core-service",
@@ -4500,7 +4629,7 @@
       "path": "/api/v1/students/review-items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 705
+      "line": 707
     },
     {
       "service": "school-core-service",
@@ -4509,7 +4638,7 @@
       "path": "/api/v1/students/reviews/full-name/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 501
+      "line": 503
     },
     {
       "service": "school-core-service",
@@ -4518,7 +4647,7 @@
       "path": "/api/v1/students/reviews/full-name/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 519
+      "line": 521
     },
     {
       "service": "school-core-service",
@@ -4527,7 +4656,7 @@
       "path": "/api/v1/students/reviews/id-card/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 472
+      "line": 474
     },
     {
       "service": "school-core-service",
@@ -4536,7 +4665,7 @@
       "path": "/api/v1/students/reviews/id-card/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 490
+      "line": 492
     },
     {
       "service": "school-core-service",
@@ -4545,7 +4674,7 @@
       "path": "/api/v1/students/reviews/items/{itemId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 616
+      "line": 618
     },
     {
       "service": "school-core-service",
@@ -4554,7 +4683,7 @@
       "path": "/api/v1/students/reviews/items/{itemId}/full-name-verification",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 629
+      "line": 631
     },
     {
       "service": "school-core-service",
@@ -4563,7 +4692,7 @@
       "path": "/api/v1/students/reviews/photo/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 554
+      "line": 556
     },
     {
       "service": "school-core-service",
@@ -4572,7 +4701,7 @@
       "path": "/api/v1/students/reviews/photo/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 567
+      "line": 569
     },
     {
       "service": "school-core-service",
@@ -4581,7 +4710,7 @@
       "path": "/api/v1/students/reviews/profile/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 530
+      "line": 532
     },
     {
       "service": "school-core-service",
@@ -4590,7 +4719,7 @@
       "path": "/api/v1/students/reviews/profile/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 543
+      "line": 545
     },
     {
       "service": "school-core-service",

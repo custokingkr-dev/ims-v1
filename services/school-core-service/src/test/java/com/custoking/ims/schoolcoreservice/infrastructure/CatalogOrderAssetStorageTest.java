@@ -79,4 +79,47 @@ class CatalogOrderAssetStorageTest {
         assertThat(asset.contentType()).isEqualTo("image/webp");
         assertThat(asset.bytes()).isEqualTo(webp);
     }
+
+    @Test void rejectsPdfOpenActionsEvenWithoutDocumentJavaScript() throws Exception {
+        var output = new ByteArrayOutputStream();
+        try (Document document = new Document()) {
+            var writer = PdfWriter.getInstance(document, output);
+            document.open(); document.add(new Paragraph("Harmless fixture"));
+            writer.setOpenAction(com.lowagie.text.pdf.PdfAction.javaScript("void(0)", writer));
+        }
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        assertThatThrownBy(() -> storage.validate(output.toByteArray(), "action.pdf", "DESIGN"))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("permitted");
+    }
+
+    @Test void rejectsSymbolicParentsAndEncodedTraversal() throws Exception {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        assertThatThrownBy(() -> storage.read("%2e%2e/outside")).isInstanceOf(ResponseStatusException.class);
+        var outside = java.nio.file.Files.createDirectory(directory.resolveSibling(directory.getFileName() + "-outside"));
+        try {
+            java.nio.file.Files.writeString(outside.resolve("sensitive.txt"), "harmless");
+            try { java.nio.file.Files.createSymbolicLink(directory.resolve("linked"), outside); }
+            catch (java.nio.file.FileSystemException ex) { org.junit.jupiter.api.Assumptions.assumeTrue(false, "OS symlink privilege unavailable"); }
+            assertThatThrownBy(() -> storage.read("linked/sensitive.txt")).isInstanceOf(ResponseStatusException.class);
+        } finally {
+            java.nio.file.Files.deleteIfExists(outside.resolve("sensitive.txt"));
+            java.nio.file.Files.deleteIfExists(outside);
+        }
+    }
+
+    @Test void rejectsNestedPdfActionsAndLegacyActiveDocumentsOnRead() throws Exception {
+        var output = new ByteArrayOutputStream();
+        try (var document = new Document()) {
+            var writer = PdfWriter.getInstance(document, output);
+            document.open(); document.add(new Paragraph("Harmless nested fixture"));
+            var action = new com.lowagie.text.pdf.PdfDictionary();
+            action.put(com.lowagie.text.pdf.PdfName.S, new com.lowagie.text.pdf.PdfName("Launch"));
+            writer.getExtraCatalog().put(new com.lowagie.text.pdf.PdfName("NestedTest"), action);
+        }
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        assertThatThrownBy(() -> storage.validate(output.toByteArray(), "nested.pdf", "DESIGN"))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("permitted");
+        java.nio.file.Files.write(directory.resolve("legacy.pdf"), output.toByteArray());
+        assertThatThrownBy(() -> storage.read("legacy.pdf")).isInstanceOf(ResponseStatusException.class).hasMessageContaining("permitted");
+    }
 }

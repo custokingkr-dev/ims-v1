@@ -57,6 +57,17 @@ public class OutboxWriter {
         return "00-" + traceId.toLowerCase() + "-" + spanId.toLowerCase() + "-01";
     }
 
+    /** Replay-safe authoritative financial audit; callers hold the payment invoice lock. */
+    public void appendPaymentOnce(String paymentId, String payloadJson) {
+        jdbc.sql("""
+                INSERT INTO %s(event_key,event_type,aggregate_type,aggregate_id,school_id,payload,trace_parent,trace_state)
+                SELECT :key,'billing.payment-recorded.v1','BillingPayment',:id,NULL,:payload::jsonb,:trace,NULL
+                WHERE NOT EXISTS (SELECT 1 FROM %s WHERE event_key=:key)
+                """.formatted(outboxTable,outboxTable))
+                .param("key","BillingPaymentRecorded:"+paymentId).param("id",paymentId)
+                .param("payload",payloadJson).param("trace",currentTraceParent()).update();
+    }
+
     private String qualifiedTable(String schema) {
         String normalizedSchema = identifier(schema == null || schema.isBlank() ? "public" : schema);
         return normalizedSchema + "." + identifier("outbox_events");

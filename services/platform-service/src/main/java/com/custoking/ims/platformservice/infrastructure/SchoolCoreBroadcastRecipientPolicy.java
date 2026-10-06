@@ -23,7 +23,9 @@ import java.util.Set;
 
 @Component
 public class SchoolCoreBroadcastRecipientPolicy implements BroadcastRecipientPolicy {
-    private final RestClient client;
+    private final tools.jackson.databind.ObjectMapper mapper=new tools.jackson.databind.ObjectMapper();
+    private final HttpClient client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
+    private final java.util.concurrent.Semaphore capacity=new java.util.concurrent.Semaphore(2);
     private final String baseUrl;
     private final String token;
     private final HttpClient metadata = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
@@ -33,23 +35,41 @@ public class SchoolCoreBroadcastRecipientPolicy implements BroadcastRecipientPol
             @Value("${notification.broadcast.policy-token:}") String token) {
         this.baseUrl = baseUrl == null ? "" : baseUrl.replaceAll("/+$", "");
         this.token = token == null ? "" : token.trim();
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(3000); factory.setReadTimeout(15000);
-        this.client = builder.clone().baseUrl(this.baseUrl.isBlank() ? "http://localhost" : this.baseUrl).requestFactory(factory).build();
+
     }
 
     public boolean configured() { return !baseUrl.isBlank() && !token.isBlank(); }
 
     public List<Recipient> resolve(long schoolId, UUID broadcastId, List<String> channels, List<Long> studentIds) {
+        return resolveCurrent(schoolId,broadcastId,channels,studentIds,false);
+    }
+    public List<Recipient> resolveFeeReminders(long schoolId,String eventId,List<Long> studentIds) {
+        UUID correlation=UUID.nameUUIDFromBytes(("fee-reminder:"+schoolId+":"+eventId).getBytes(StandardCharsets.UTF_8));
+        return resolveCurrent(schoolId,correlation,List.of("SMS"),studentIds,true);
+    }
+    private List<Recipient> resolveCurrent(long schoolId,UUID broadcastId,List<String> channels,List<Long> studentIds,boolean feeReminder) {
         if (!configured()) throw new IllegalStateException("School recipient policy service is not configured");
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("schoolId", schoolId); body.put("broadcastId", broadcastId); body.put("channels", channels);
-        body.put("communicationCategory", "SCHOOL_NOTICE"); body.put("audienceType", "ALL_PARENTS");
+        body.put("communicationCategory", feeReminder ? "FEE_REMINDER" : "SCHOOL_NOTICE"); body.put("audienceType", feeReminder ? "EXPLICIT_STUDENTS" : "ALL_PARENTS");
         if (studentIds != null) body.put("studentIds", studentIds);
-        List<Recipient> recipients = client.post().uri("/api/v1/internal/notifications/broadcast-recipients")
-                .header("X-Broadcast-Policy-Token", token).headers(headers -> {
-                    if (URI.create(baseUrl).getHost().endsWith(".run.app")) headers.setBearerAuth(identityToken());
-                }).body(body).retrieve().body(new ParameterizedTypeReference<List<Recipient>>() {});
+        if(!capacity.tryAcquire()) throw new IllegalStateException("Recipient policy capacity unavailable");
+        List<Recipient> recipients;
+        java.util.concurrent.CompletableFuture<HttpResponse<byte[]>> response=null;
+        try {
+            var request=HttpRequest.newBuilder(URI.create(baseUrl+"/api/v1/internal/notifications/broadcast-recipients"+(feeReminder ? "/fee-reminders" : "")))
+                .timeout(Duration.ofSeconds(5)).header("Content-Type","application/json").header("X-Broadcast-Policy-Token",token);
+            if(URI.create(baseUrl).getHost().endsWith(".run.app")) {
+                String oidc=identityToken(); request.header("Authorization","Bearer "+oidc).header("X-Serverless-Authorization","Bearer "+oidc);
+            }
+            response=client.sendAsync(request.POST(HttpRequest.BodyPublishers.ofByteArray(mapper.writeValueAsBytes(body))).build(), info->new LimitedBody());
+            var answer=response.get(5,java.util.concurrent.TimeUnit.SECONDS);
+            if(answer.statusCode()!=200) throw new IllegalStateException("Recipient policy unavailable");
+            recipients=mapper.readValue(answer.body(),new tools.jackson.core.type.TypeReference<List<Recipient>>(){});
+        } catch(InterruptedException interrupted) {
+            Thread.currentThread().interrupt(); throw new IllegalStateException("Recipient policy interrupted");
+        } catch(Exception unavailable) { throw new IllegalStateException("Recipient policy unavailable"); }
+        finally { if(response!=null && !response.isDone()) response.cancel(true); capacity.release(); }
         if (recipients == null) throw new IllegalStateException("Recipient policy response is missing");
         Set<String> seen = new HashSet<>();
         for (Recipient recipient : recipients) {
@@ -65,6 +85,24 @@ public class SchoolCoreBroadcastRecipientPolicy implements BroadcastRecipientPol
             throw new IllegalStateException("Recipient policy response is incomplete");
         }
         return recipients;
+    }
+
+    /** Bounds the complete response, including a peer that continuously dribbles bytes. */
+    private static final class LimitedBody implements HttpResponse.BodySubscriber<byte[]> {
+        private final java.util.concurrent.CompletableFuture<byte[]> result=new java.util.concurrent.CompletableFuture<>();
+        private final java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();
+        private java.util.concurrent.Flow.Subscription subscription;
+        public java.util.concurrent.CompletionStage<byte[]> getBody() { return result; }
+        public void onSubscribe(java.util.concurrent.Flow.Subscription value) { subscription=value;value.request(1); }
+        public void onNext(List<java.nio.ByteBuffer> buffers) {
+            for(var buffer:buffers) {
+                if(bytes.size()+buffer.remaining()>2*1024*1024) { subscription.cancel();result.completeExceptionally(new IllegalStateException("Policy response too large"));return; }
+                byte[] part=new byte[buffer.remaining()];buffer.get(part);bytes.writeBytes(part);
+            }
+            subscription.request(1);
+        }
+        public void onError(Throwable error) { result.completeExceptionally(error); }
+        public void onComplete() { result.complete(bytes.toByteArray()); }
     }
 
     public static String eventId(UUID id, long studentId, String channel) { return "broadcast:" + id + ":" + studentId + ":" + channel; }

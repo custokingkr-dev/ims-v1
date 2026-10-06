@@ -27,6 +27,7 @@ public class BroadcastLiveWorker {
             BroadcastLiveProvider provider, BroadcastDispatchService workflows, LiveBroadcastConfiguration configuration, PlatformTransactionManager manager) {
         this.queue=queue; this.ledger=ledger; this.policy=policy; this.provider=provider; this.workflows=workflows; this.configuration=configuration;
         transaction = new TransactionTemplate(manager);
+        transaction.setTimeout(10);
     }
     @Scheduled(fixedDelayString="${notification.broadcast.fixed-delay-ms:30000}")
     public void scheduled() {

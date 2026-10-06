@@ -112,15 +112,25 @@ public class DimensionProjectionRepository {
     public void upsertStudent(long id, Long schoolId, String admissionNo, String fullName, String rollNo,
                                String classId, String sectionId, String parentContact, String phone,
                                boolean active, java.math.BigDecimal attendancePercent, String fatherName) {
+        upsertStudentVersioned(id, schoolId, admissionNo, fullName, rollNo, classId, sectionId,
+                parentContact, phone, active, attendancePercent, fatherName, 0L, OffsetDateTime.now(), null);
+    }
+
+    @Transactional
+    public void upsertStudentVersioned(long id, Long schoolId, String admissionNo, String fullName, String rollNo,
+                               String classId, String sectionId, String parentContact, String phone,
+                               boolean active, java.math.BigDecimal attendancePercent, String fatherName, long aggregateVersion,
+                               OffsetDateTime sourceOccurredAt, String sourceEventId) {
+        if (aggregateVersion < 0) throw new IllegalArgumentException("Invalid student aggregate version");
         ProjectorRls.allow(jdbc);
         lockStudentProjection(id);
         jdbc.sql("""
                         INSERT INTO reporting.dim_student (
                             id, school_id, admission_no, full_name, roll_no, class_id, section_id,
-                            parent_contact, phone, active, attendance_percent, father_name, updated_at
+                            parent_contact, phone, active, attendance_percent, father_name, updated_at, aggregate_version, source_occurred_at, source_event_id
                         ) SELECT
                             :id, :schoolId, :admissionNo, :fullName, :rollNo, :classId, :sectionId,
-                            :parentContact, :phone, :active, :attendancePercent, :fatherName, now()
+                            :parentContact, :phone, :active, :attendancePercent, :fatherName, now(), :aggregateVersion, :sourceOccurredAt, :sourceEventId
                         WHERE NOT EXISTS (
                             SELECT 1
                             FROM reporting.student_projection_tombstones
@@ -138,7 +148,12 @@ public class DimensionProjectionRepository {
                             active = EXCLUDED.active,
                             attendance_percent = EXCLUDED.attendance_percent,
                             father_name = EXCLUDED.father_name,
-                            updated_at = now()
+                            updated_at = now(), aggregate_version = EXCLUDED.aggregate_version, source_occurred_at=EXCLUDED.source_occurred_at, source_event_id=EXCLUDED.source_event_id
+                        WHERE EXCLUDED.aggregate_version > reporting.dim_student.aggregate_version
+                           OR (EXCLUDED.source_event_id IS NOT NULL AND EXCLUDED.source_event_id=reporting.dim_student.source_event_id)
+                           OR (EXCLUDED.aggregate_version = 0 AND reporting.dim_student.aggregate_version = 0
+                               AND (reporting.dim_student.source_occurred_at IS NULL
+                                    OR EXCLUDED.source_occurred_at > reporting.dim_student.source_occurred_at))
                         """)
                 .param("id", id)
                 .param("schoolId", schoolId)
@@ -152,6 +167,9 @@ public class DimensionProjectionRepository {
                 .param("active", active)
                 .param("attendancePercent", attendancePercent)
                 .param("fatherName", fatherName)
+                .param("aggregateVersion", aggregateVersion)
+                .param("sourceOccurredAt", sourceOccurredAt)
+                .param("sourceEventId", sourceEventId)
                 .update();
     }
 

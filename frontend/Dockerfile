@@ -10,7 +10,8 @@ COPY public ./public
 RUN npm run build
 
 FROM nginx:1.31.5-alpine3.24@sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3
-ENV API_UPSTREAM=http://api-gateway:80
+ENV API_UPSTREAM=http://api-gateway:8080
+ENV FRONTEND_CSP_HEADER=Content-Security-Policy
 ENV NGINX_RESOLVER="127.0.0.11 valid=10s ipv6=off"
 # The security-patch layer below must not be served from the build cache. Its cache key is the
 # base image plus this literal command, and neither changes when Alpine publishes a fix, so a
@@ -24,7 +25,10 @@ RUN echo "security patches for ${SECURITY_PATCH_EPOCH}" \
   && apk upgrade --no-cache libcrypto3 libssl3 libuuid libexpat pcre2
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
+RUN sed -i 's|^pid[[:space:]].*;|pid /tmp/nginx.pid;|' /etc/nginx/nginx.conf \
+  && chown -R nginx:nginx /etc/nginx/conf.d /var/cache/nginx
+USER nginx
+EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=10 \
-  CMD wget -q -O /dev/null http://127.0.0.1:80/ || exit 1
+  CMD wget -q -O /dev/null http://127.0.0.1:8080/frontend-health || exit 1
 CMD ["nginx", "-g", "daemon off;"]

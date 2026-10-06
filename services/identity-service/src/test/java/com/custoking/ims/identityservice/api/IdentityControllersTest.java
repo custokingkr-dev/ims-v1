@@ -34,6 +34,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class IdentityControllersTest {
+    @org.junit.jupiter.api.BeforeEach
+    void trustedActor() { TenantContext.set(new TenantContext(1L, "admin@test", "SUPERADMIN", null, null)); }
+
 
     @AfterEach
     void cleanup() { TenantContext.clear(); }

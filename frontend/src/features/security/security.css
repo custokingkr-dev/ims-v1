@@ -1,0 +1,11 @@
+.ck-passkey-intro { display: flex; align-items: flex-start; gap: var(--ck-space-4, 1rem); color: var(--ink); }
+.ck-passkey-intro svg { flex-shrink: 0; margin-top: .3rem; color: var(--ck-accent); }
+.ck-passkey-intro p { margin-top: 0; line-height: 1.6; }
+.ck-passkey-password { display: grid; gap: .5rem; font-weight: 600; }
+.ck-passkey-password input { min-width: 0; width: 100%; box-sizing: border-box; padding: .75rem; border: 1px solid var(--line); border-radius: var(--ck-radius-md, .5rem); background: var(--surface); color: var(--ink); }
+.ck-passkey-error { color: var(--danger); line-height: 1.5; }
+.ck-passkey-note { color: var(--ink3); font-size: var(--ck-text-sm, .875rem); line-height: 1.5; margin-bottom: 0; }
+.ck-security-recovery { max-width: 34rem; margin: 12vh auto; padding: 1.5rem; }
+.ck-security-recovery h1 { font-family: var(--ck-font-display); }
+.ck-security-recovery p { line-height: 1.6; }
+.ck-security-recovery button { margin-right: .75rem; margin-top: .5rem; }

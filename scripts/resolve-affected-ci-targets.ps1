@@ -66,6 +66,8 @@ $scriptTriggers = @(
   "scripts/verify-microservice-migration.ps1",
   "scripts/resolve-image-source-id.ps1",
   "scripts/invoke-direct-cloudrun-release.ps1",
+  "scripts/invoke-clouddeploy-release.ps1",
+  "scripts/invoke-service-migration-job.ps1",
   "scripts/verify-cloudrun-release.ps1",
   "scripts/smoke-gateway-routes.ps1",
   "scripts/smoke-microservice-features.ps1"
@@ -104,11 +106,13 @@ foreach ($file in $changedFiles) {
     $deploymentReconciliationRequired = $true
   }
   if ($file -eq "deploy/clouddeploy/delivery-pipelines.yaml" -or
+      $file -eq "infra/terraform/cicd/migration_jobs.tf" -or
       $file -eq "scripts/render-clouddeploy-targets.ps1" -or
       $file -eq "scripts/render-clouddeploy-pipelines.ps1") {
     $deploymentReconciliationRequired = $true
   }
   if ($file.StartsWith("deploy/cloudrun/") -or
+      $file -eq "infra/terraform/cicd/migration_jobs.tf" -or
       $file -eq "deploy/clouddeploy/delivery-pipelines.yaml" -or
       $file -eq "deploy/skaffold.yaml" -or
       $file -eq "scripts/render-clouddeploy-targets.ps1" -or

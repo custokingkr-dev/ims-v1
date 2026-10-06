@@ -55,7 +55,7 @@ public class OutboxRelay {
         this.jdbc = jdbc;
         this.publisher = publisher;
         this.outboxTable = qualifiedTable(schema);
-        this.batchSize = batchSize;
+        this.batchSize = Math.max(1, Math.min(batchSize, 10));
         this.maxAttempts = Math.max(1, maxAttempts);
     }
 
@@ -93,9 +93,17 @@ public class OutboxRelay {
                 .list();
 
         int published = 0;
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(10);
         for (OutboxRow row : rows) {
+            // At most 10 seconds plus one bounded publish, then release the transaction/locks.
+            if (System.nanoTime() >= deadline || Thread.currentThread().isInterrupted()) break;
             try {
-                publisher.publish(toEnvelope(row));
+                if (publisher instanceof PubSubDomainEventPublisher boundedPublisher) {
+                    long remainingMs = Math.max(1, java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime()));
+                    boundedPublisher.publishWithin(toEnvelope(row), remainingMs);
+                } else {
+                    publisher.publish(toEnvelope(row));
+                }
                 jdbc.sql("""
                                 UPDATE %s SET published_at = now(), attempts = attempts + 1,
                                     last_error = NULL, next_attempt_at = NULL

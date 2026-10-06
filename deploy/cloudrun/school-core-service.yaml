@@ -14,7 +14,7 @@ spec:
     metadata:
       annotations:
         autoscaling.knative.dev/minScale: "0" # from-param: ${domain_min_instances}
-        autoscaling.knative.dev/maxScale: "4" # from-param: ${domain_max_instances}
+        autoscaling.knative.dev/maxScale: "2" # from-param: ${domain_max_instances}
         run.googleapis.com/cpu-throttling: "true"
         run.googleapis.com/startup-cpu-boost: "false" # from-param: ${startup_cpu_boost}
         run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
@@ -47,20 +47,28 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           env:
+            - name: APP_MIGRATIONS_ENABLED
+              value: "false"
+            - name: USER_CONTEXT_CALLER_SERVICE_ACCOUNTS
+              value: ims-api-gateway-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${user_context_caller_service_accounts}
             - name: SPRING_PROFILES_ACTIVE
               value: prod
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://placeholder:5432/app?sslmode=require # from-param: jdbc:postgresql://${db_host}/${db_name}?sslmode=require
             - name: SPRING_DATASOURCE_USERNAME
-              value: app_rt
-            # Four peak instances x 20 connections = 80, leaving at least 120 of the
-            # dev/prod Cloud SQL max_connections=200 budget for other services/admin work.
+              value: app_rt # from-param: ${runtime_db_role}
             - name: DB_POOL_MAX
-              value: "20"
-            - name: FLYWAY_URL
-              value: jdbc:postgresql://placeholder:5432/app?sslmode=require # from-param: jdbc:postgresql://${db_host}/${db_name}?sslmode=require
-            - name: FLYWAY_USERNAME
-              value: appuser
+              value: "8"
+            - name: RUNTIME_DB_ROLE
+              value: app_rt # from-param: ${runtime_db_role}
+            - name: SERVICE_OIDC_AUDIENCES
+              value: https://custoking-school-core-service-dev-1087017280590.asia-south2.run.app # from-param: ${service_oidc_audiences}
+            - name: OUTBOX_RELAY_CALLER_SERVICE_ACCOUNTS
+              value: ims-async-scheduler-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${outbox_relay_caller_service_accounts}
+            - name: BROADCAST_POLICY_CALLER_SERVICE_ACCOUNTS
+              value: ims-platform-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${broadcast_policy_caller_service_accounts}
+            - name: IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS
+              value: ims-identity-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${identity_directory_caller_service_accounts}
             - name: SCHOOL_CORE_MERGED
               value: "true"
             - name: SCHOOL_CORE_DATASOURCE_SCHEMAS
@@ -136,12 +144,7 @@ spec:
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: app-rt-password-dev # from-param: app-rt-password-${env}
-                  key: latest
-            - name: FLYWAY_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: db-password-dev # from-param: db-password-${env}
+                  name: app-rt-password-dev # from-param: ${runtime_db_password_secret}
                   key: latest
             - name: TENANT_SCHOOL_READ_TOKEN
               valueFrom:

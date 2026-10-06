@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const http = require('node:http');
 const { Readable } = require('node:stream');
+const { EventEmitter } = require('node:events');
 const { context, trace } = require('@opentelemetry/api');
 
 for (const name of [
@@ -60,6 +61,9 @@ const {
   authenticate,
   introspect,
   proxyToUrl,
+  proxyLifecycle,
+  cookieAuthRequestAllowed,
+  requiresStepUp,
 } = require('./server');
 const {
   configuredResourceAttributes,
@@ -647,13 +651,13 @@ test('proxy targets reject encoded traversal and path-separator segments', () =>
   assert.throws(() => buildUpstreamTarget(upstream, 'api/v1/students'), /must be absolute/);
 });
 
-test('rate-limit key prefers a valid bearer token, falls back to forwarded client IP', () => {
+test('token diagnostics are hashed; untrusted forwarded IPs do not identify clients', () => {
   const tokenKey = rateLimitKey({ headers: { authorization: 'Bearer abc.def' }, socket: {} });
   assert.match(tokenKey, /^tok-sha256:[A-Za-z0-9_-]{43}$/);
   assert.equal(tokenKey.includes('abc.def'), false);
   assert.equal(rateLimitKey({ headers: { authorization: 'Bearer  abc.def', 'x-forwarded-for': '10.0.0.6' }, socket: {} }), tokenKey);
-  assert.equal(rateLimitKey({ headers: { 'x-forwarded-for': '10.0.0.5, 10.0.0.1' }, socket: {} }), 'ip:10.0.0.5');
-  assert.equal(rateLimitKey({ headers: { authorization: `Bearer ${'a'.repeat(8193)}`, 'x-forwarded-for': '10.0.0.8' }, socket: {} }), 'ip:10.0.0.8');
+  assert.equal(rateLimitKey({ headers: { 'x-forwarded-for': '10.0.0.5, 10.0.0.1' }, socket: {} }), 'ip:unknown');
+  assert.equal(rateLimitKey({ headers: { authorization: `Bearer ${'a'.repeat(8193)}`, 'x-forwarded-for': '10.0.0.8' }, socket: {} }), 'ip:unknown');
   assert.equal(clientIp({ headers: {}, socket: { remoteAddress: '10.0.0.9' } }), '10.0.0.9');
 });
 
@@ -682,18 +686,18 @@ test('rate limiter is disabled when rps is zero', () => {
   }
 });
 
-test('rate limiter never exceeds its configured key bound under active-key churn', () => {
+test('pre-auth rate limiter does not reset a budget under bearer/header churn', () => {
   const buckets = new Map();
-  const request = (token) => ({ headers: { authorization: `Bearer ${token}` }, socket: {} });
+  const request = (token) => ({ headers: { authorization: `Bearer ${token}`, 'x-forwarded-for': token }, socket: { remoteAddress: '127.0.0.1' } });
 
   checkRateLimit(request('one'), { rps: 1, burst: 2, buckets, maxKeys: 2, now: 1000 });
   checkRateLimit(request('two'), { rps: 1, burst: 2, buckets, maxKeys: 2, now: 1001 });
-  checkRateLimit(request('three'), { rps: 1, burst: 2, buckets, maxKeys: 2, now: 1002 });
+  assert.equal(checkRateLimit(request('three'), { rps: 1, burst: 2, buckets, maxKeys: 2, now: 1002 }).allowed, false);
 
-  assert.equal(buckets.size, 2);
+  assert.equal(buckets.size, 1);
   assert.equal([...buckets.keys()].some((key) => key.includes('one') || key.includes('two') || key.includes('three')), false);
   assert.equal(buckets.has(rateLimitKey(request('one'))), false);
-  assert.equal(buckets.has(rateLimitKey(request('three'))), true);
+  assert.equal(buckets.has('ip:127.0.0.1'), true);
 });
 
 test('outbound headers strip client-supplied authenticated and service-token headers', () => {
@@ -737,7 +741,7 @@ const TEST_HMAC_DIGESTS = {
   HS512: 'sha512',
 };
 
-function signJwt(payload, secret, header = { alg: 'HS512', typ: 'JWT' }) {
+function signJwt(payload, secret, header = { alg: 'HS256', typ: 'JWT' }) {
   const h = Buffer.from(JSON.stringify(header)).toString('base64url');
   const p = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const sig = crypto
@@ -747,15 +751,15 @@ function signJwt(payload, secret, header = { alg: 'HS512', typ: 'JWT' }) {
   return `${h}.${p}.${sig}`;
 }
 
-function signHS512(payload, secret, header = { alg: 'HS512', typ: 'JWT' }) {
+function signHS512(payload, secret, header = { alg: 'HS256', typ: 'JWT' }) {
   return signJwt(payload, secret, header);
 }
 
 const JWT_SECRET = 'test-jwt-secret-at-least-32-characters-long';
 const NOW = 1_000_000;
-const enrichedClaims = { sub: 'a@b.com', role: 'ADMIN', uid: 42, sid: 7, zid: 3, ver: 2, exp: NOW + 900 };
+const enrichedClaims = { sub: 'a@b.com', role: 'ADMIN', uid: 42, sid: 7, zid: 3, ver: 2, exp: NOW + 900, type: 'access', iss: 'ims-identity', aud: 'ims-api' };
 
-test('verifyJwtLocally accepts a valid enriched HS512 token', () => {
+test('verifyJwtLocally accepts the pinned enriched HS256 token', () => {
   const token = signHS512(enrichedClaims, JWT_SECRET);
   const claims = verifyJwtLocally(token, JWT_SECRET, NOW);
   assert.equal(claims.uid, 42);
@@ -893,7 +897,7 @@ test('authenticate rejects revoked enriched access tokens and propagates identit
 test('authenticate falls back to introspection for a valid un-enriched token', async () => {
   let calls = 0;
   const introspectStub = async () => { calls += 1; return { userId: 5, branchId: 8 }; };
-  const legacy = signHS512({ sub: 'a@b.com', role: 'ADMIN', exp: NOW + 900 }, JWT_SECRET);
+  const legacy = signHS512({ sub: 'a@b.com', role: 'ADMIN', exp: NOW + 900, type: 'access', iss: 'ims-identity', aud: 'ims-api' }, JWT_SECRET);
   const principal = await authenticate(reqWithToken(legacy), 'req-2', {
     localVerify: true, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
   });
@@ -966,7 +970,7 @@ test('authenticate records why it rejected the caller', async () => {
 });
 
 test('authenticate records an introspection rejection and leaves no reason on success', async () => {
-  const legacy = signHS512({ sub: 'a@b.com', role: 'ADMIN', exp: NOW + 900 }, JWT_SECRET);
+  const legacy = signHS512({ sub: 'a@b.com', role: 'ADMIN', exp: NOW + 900, type: 'access', iss: 'ims-identity', aud: 'ims-api' }, JWT_SECRET);
   const rejected = reqWithToken(legacy);
   assert.equal(await authenticate(rejected, 'req-i1', {
     localVerify: true, secret: JWT_SECRET, introspect: async () => null, now: NOW,
@@ -1006,5 +1010,86 @@ test('introspection passes canonical decoded operation context and preserves sha
     await assert.rejects(() => introspect({ headers: { authorization: 'Bearer test-token' }, method: 'POST', url: '/api/v1/students/%69mports/confirm?secret=not-copied' }, 'quota-test'),
       error => error.code === 'IDENTITY_QUOTA_EXCEEDED' && error.retryAfter === 120);
     assert.deepEqual(body, { token: 'test-token', method: 'POST', path: '/api/v1/students/imports/confirm' });
+  } finally { global.fetch = originalFetch; }
+});
+
+test('cookie authentication rejects originless and null-origin requests without proven same-origin metadata', () => {
+  for (const headers of [{}, { origin: 'null' }, { 'sec-fetch-site': 'cross-site', referer: 'https://app.custoking.com/' },
+    { 'sec-fetch-site': 'same-origin', referer: 'https://evil.example/' }]) {
+    assert.equal(cookieAuthRequestAllowed({ headers }), false);
+  }
+  assert.equal(cookieAuthRequestAllowed({ headers: { 'sec-fetch-site': 'same-origin', referer: 'https://app.custoking.com/work' } }), true);
+});
+
+test('trusted forwarding selects the configured right-hand hop and ignores attacker prefixes', () => {
+  const req = { socket: { remoteAddress: '127.0.0.1' }, headers: { 'x-forwarded-for': '6.6.6.6, 203.0.113.20, 192.0.2.1' } };
+  assert.equal(clientIp(req, 0), '127.0.0.1');
+  assert.equal(clientIp(req, 2), '203.0.113.20');
+  req.headers['x-forwarded-for'] = 'attacker, invalid';
+  assert.equal(clientIp(req, 1), '127.0.0.1');
+});
+
+test('JWT purpose, issuer, audience, expiration and algorithm are mandatory before authoritative introspection', async () => {
+  let calls = 0;
+  for (const change of [{ iss: 'foreign' }, { aud: 'foreign' }, { type: 'refresh' }, { exp: undefined }]) {
+    assert.equal(await authenticate(reqWithToken(signJwt({ ...enrichedClaims, ...change }, JWT_SECRET)), 'binding', {
+      localVerify: true, secret: JWT_SECRET, now: NOW, introspect: async () => { calls++; return {}; },
+    }), null);
+  }
+  for (const alg of ['HS384', 'HS512']) assert.equal(verifyJwtLocally(signJwt(enrichedClaims, JWT_SECRET, { alg }), JWT_SECRET, NOW), null);
+  assert.equal(calls, 0);
+  const principal = { userId: 42, sessionId: 'authoritative-session' };
+  assert.deepEqual(await authenticate(reqWithToken(signJwt(enrichedClaims, 'previous-secret')), 'rotation', {
+    localVerify: true, secret: JWT_SECRET, previousSecret: 'previous-secret', now: NOW, introspect: async () => principal,
+  }), principal);
+});
+
+test('step-up denial survives introspection as403 and privileged policies cover canonical billing mutations', async () => {
+  const originalFetch = global.fetch;
+  try {
+    global.fetch = async () => new Response(JSON.stringify({ code: 'STEP_UP_REQUIRED' }), { status: 403 });
+    await assert.rejects(() => introspect({ headers: { authorization: 'Bearer token' }, method: 'POST', url: '/api/v1/billing-payments' }, 'step-up'), error => error.code === 'STEP_UP_REQUIRED');
+  } finally { global.fetch = originalFetch; }
+  assert.equal(requiresStepUp('/api/v1/billing-payments', 'POST', { role: 'ACCOUNTANT' }), true);
+  assert.equal(requiresStepUp('/api/v1/auth/passkeys/assertion/verify', 'POST', { role: 'SUPERADMIN' }), false);
+});
+
+test('proxy whole-body deadline stops a slow body even while bytes continue arriving', async () => {
+  let disconnected = false;
+  const upstream = http.createServer((_req, res) => {
+    res.writeHead(200); res.write('first');
+    const timer = setInterval(() => res.write('slow'), 25);
+    res.on('close', () => { disconnected = true; clearInterval(timer); });
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const req = new EventEmitter(); Object.assign(req, { method: 'GET', headers: {}, socket: { remoteAddress: '127.0.0.1' } });
+  const res = new EventEmitter(); Object.assign(res, { setHeader() {}, write() { return true; }, end() {} });
+  const started = Date.now();
+  try {
+    await assert.rejects(() => proxyToUrl(req, res, new URL(`http://127.0.0.1:${upstream.address().port}/slow`), 'slow', null, null, { timeoutMs: 150 }));
+    assert.ok(Date.now() - started < 1500);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(disconnected, true);
+  } finally { upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('proxy backpressure waits for drain and client close cancels the pending body', async () => {
+  const originalFetch = global.fetch;
+  const req = new EventEmitter(); Object.assign(req, { method: 'GET', headers: {}, socket: { remoteAddress: '127.0.0.1' } });
+  let signal; let writes = 0;
+  const res = new EventEmitter(); Object.assign(res, { setHeader() {}, write() { writes++; return false; }, end() {} });
+  try {
+    global.fetch = async (_url, init) => {
+      signal = init.signal;
+      return { status: 200, headers: new Headers(), body: (async function* () { yield Buffer.from('one'); yield Buffer.from('two'); })() };
+    };
+    const pending = proxyToUrl(req, res, new URL('http://upstream.local/body'), 'drain', null, null, { timeoutMs: 1000 });
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(writes, 1);
+    res.emit('close');
+    await assert.rejects(() => pending);
+    assert.equal(signal.aborted, true);
+    assert.equal(writes, 1);
+    assert.equal(res.listenerCount('drain'), 0);
   } finally { global.fetch = originalFetch; }
 });

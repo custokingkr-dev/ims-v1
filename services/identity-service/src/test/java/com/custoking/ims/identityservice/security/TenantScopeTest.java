@@ -73,7 +73,12 @@ class TenantScopeTest {
     }
 
     @Test
-    void permissionIfAuthenticated_allowsInternalServiceTokenOnlyCalls() {
-        assertDoesNotThrow(() -> TenantScope.requirePermissionIfAuthenticated("user:read"));
+    void permissionIfAuthenticated_deniesServiceTokenOnlyCalls() {
+        assertThrows(ResponseStatusException.class, () -> TenantScope.requirePermissionIfAuthenticated("user:read"));
+    }
+    @Test
+    void contextlessServiceTokenCannotSkipUserPermission() {
+        assertThrows(ResponseStatusException.class, () -> TenantScope.requirePermissionIfAuthenticated("workflow:act"));
+        assertThrows(ResponseStatusException.class, () -> TenantScope.requireAnyPermissionIfAuthenticated("a", "b"));
     }
 }

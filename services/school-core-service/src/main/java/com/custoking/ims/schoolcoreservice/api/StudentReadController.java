@@ -202,7 +202,7 @@ public class StudentReadController {
         return students.studentPhotoContent(id)
                 .map(photo -> ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(photo.contentType()))
-                        .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePrivate())
+                        .cacheControl(CacheControl.noStore())
                         .header(HttpHeaders.VARY, "Authorization")
                         .body(photo.data()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "student photo not found"));
@@ -342,9 +342,11 @@ public class StudentReadController {
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "student:write");
         TenantScope.requirePermissionIfAuthenticated("student:import");
-        if (file.getSize() > 50L * 1024L * 1024L) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum file size is 50 MB");
+        if (file.getSize() > 10L * 1024L * 1024L) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum file size is 10 MB");
         }
+        if (rowsJson == null || rowsJson.length() > 2 * 1024 * 1024)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import row data exceeds the size limit");
         List<Map<String, Object>> rows;
         try {
             rows = objectMapper.readValue(rowsJson, new TypeReference<>() {});

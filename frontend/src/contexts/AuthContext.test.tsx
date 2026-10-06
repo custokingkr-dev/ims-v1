@@ -16,6 +16,11 @@ vi.mock('../services/api', () => ({
   },
   refreshToken: authFixture.refreshToken,
   setAccessToken: authFixture.setAccessToken,
+  withAuthSessionLock: (operation: () => Promise<unknown>) => operation(),
+  invalidateAuthSession: () => {
+    localStorage.removeItem('custoking_isLoggedIn');
+    authFixture.setAccessToken(null);
+  },
 }));
 
 const principal = {

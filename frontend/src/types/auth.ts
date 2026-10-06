@@ -13,4 +13,6 @@ export interface AuthUser {
   roles?: string[];
   permissions?: string[];
   operatorSchools?: number[];
+  sessionId?: string | null;
+  stepUpExpiresAt?: string | null;
 }

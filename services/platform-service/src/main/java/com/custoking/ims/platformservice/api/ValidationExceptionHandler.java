@@ -60,15 +60,22 @@ public class ValidationExceptionHandler {
         // that itself wraps another exception still surfaces as a 400.
         for (Throwable cause = ex.getCause(); cause != null; cause = cause.getCause()) {
             if (cause instanceof IllegalArgumentException) {
-                return message(HttpStatus.BAD_REQUEST, cause.getMessage());
+                return message(HttpStatus.BAD_REQUEST, "Invalid request");
             }
         }
         return message(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error");
     }
 
+    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+    public ResponseEntity<Map<String,Object>> onPersistenceFailure(org.springframework.dao.DataAccessException ex) {
+        return message(HttpStatus.INTERNAL_SERVER_ERROR,"Unexpected error");
+    }
+
     private ResponseEntity<Map<String, Object>> message(HttpStatus status, String detail) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("message", detail == null || detail.isBlank() ? status.getReasonPhrase() : detail);
+        String correlation=org.slf4j.MDC.get("requestId");
+        body.put("requestId",correlation!=null && correlation.matches("[A-Za-z0-9._:-]{1,128}") ? correlation:java.util.UUID.randomUUID().toString());
         return ResponseEntity.status(status).body(body);
     }
 }

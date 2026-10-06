@@ -31,7 +31,7 @@ class ReportingEventInboxProcessorRetryTest {
                 .processBatch();
 
         assertThat(processed).isZero();
-        verify(inbox).markFailed("retry-event-1", "transient projection failure");
+        verify(inbox).markFailed("retry-event-1", "PROJECTION_ATTEMPT_FAILED");
     }
 
     @Test

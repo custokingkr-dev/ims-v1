@@ -113,7 +113,7 @@ const inventory = {
 const rendered = `${JSON.stringify(inventory, null, 2)}\n`;
 if (checkOnly) {
   const current = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf8') : '';
-  if (current !== rendered) {
+  if (current.replace(/\r\n/g, '\n') !== rendered) {
     console.error(`API route inventory is stale. Run: node ${path.relative(repositoryRoot, __filename)}`);
     process.exit(1);
   }

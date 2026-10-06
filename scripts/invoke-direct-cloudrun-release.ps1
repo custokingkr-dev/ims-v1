@@ -100,6 +100,9 @@ foreach ($service in $releaseOrder) {
     }
   }
 
+  if ($service -in @('identity-service','school-core-service','operations-service','platform-service','billing-service')) {
+    & (Join-Path $PSScriptRoot 'invoke-service-migration-job.ps1') -ProjectId $ProjectId -Region $Region -Environment $Environment -Service $service -ImageRef $expectedRuntimeRef -CommitSha $commitSha -ConfigSource CloudRun -OutputDirectory (Join-Path (Split-Path -Parent $OutputPath) 'migrations') | Out-Null
+  }
   Write-Host "Deploying $cloudRunService with $($image.immutableRef)."
   $deployArguments = @(
     "run", "deploy", $cloudRunService,

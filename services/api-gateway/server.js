@@ -4,17 +4,22 @@ const { flushTracing } = require('./tracing');
 const { classifyCompatibilityRequest, applyDeprecationHeaders } = require('./api-contract');
 
 const http = require('http');
+const { once } = require('node:events');
+const { isIP } = require('node:net');
 const crypto = require('crypto');
 const { context: otelContext, trace: otelTrace, TraceFlags } = require('@opentelemetry/api');
 const { randomUUID } = crypto;
 
-const PORT = Number(process.env.PORT || 80);
+const PORT = Number(process.env.PORT || 8080);
 const AUTH_MODE = (process.env.GATEWAY_AUTH_MODE || 'enforce').toLowerCase();
 const CLOUD_RUN_AUTH = (process.env.GATEWAY_CLOUD_RUN_AUTH || 'auto').toLowerCase();
+if ((process.env.K_SERVICE || process.env.NODE_ENV === 'production') && AUTH_MODE !== 'enforce') {
+  throw new Error('Deployed gateways must enforce authentication');
+}
 
 // Optional signature prefilter. Current permissions and session revocation are always
 // resolved through identity; embedded claims are never authoritative for access scope.
-const LOCAL_JWT_VERIFY = (process.env.GATEWAY_LOCAL_JWT_VERIFY || 'enabled').toLowerCase() !== 'disabled';
+const LOCAL_JWT_VERIFY = (process.env.GATEWAY_LOCAL_JWT_VERIFY || 'disabled').toLowerCase() === 'enabled';
 const APP_JWT_SECRET = process.env.APP_JWT_SECRET || '';
 let warnedMissingJwtSecret = false;
 
@@ -52,9 +57,18 @@ const RATE_LIMIT_RPS = Number(process.env.GATEWAY_RATE_LIMIT_RPS || 50);
 const RATE_LIMIT_BURST = Number(process.env.GATEWAY_RATE_LIMIT_BURST || 100);
 const RATE_LIMIT_MAX_KEYS = Number(process.env.GATEWAY_RATE_LIMIT_MAX_KEYS || 50_000);
 const rateBuckets = new Map();
+const TRUSTED_PROXY_HOPS = Math.max(0, Math.min(8, Number(process.env.GATEWAY_TRUSTED_PROXY_HOPS || 0) || 0));
+const PROXY_TIMEOUT_MS = boundedMilliseconds(process.env.GATEWAY_PROXY_TIMEOUT_MS, 30_000);
+const EXPORT_TIMEOUT_MS = boundedMilliseconds(process.env.GATEWAY_EXPORT_TIMEOUT_MS, 180_000);
+const AUTH_TIMEOUT_MS = boundedMilliseconds(process.env.GATEWAY_AUTH_TIMEOUT_MS, 60_000);
+
+function boundedMilliseconds(value, fallback) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number >= 100 && number <= 600_000 ? number : fallback;
+}
 
 const upstreams = {
-  frontend: envUrl('FRONTEND_UPSTREAM', 'http://frontend:80'),
+  frontend: envUrl('FRONTEND_UPSTREAM', 'http://frontend:8080'),
   identity: envUrl('IDENTITY_UPSTREAM', 'http://identity-service:8080'),
   tenant: envUrl('TENANT_SCHOOL_UPSTREAM', 'http://school-core-service:8080'),
   student: envUrl('STUDENT_UPSTREAM', 'http://school-core-service:8080'),
@@ -177,6 +191,8 @@ const routes = [
 const idTokenCache = new Map();
 
 const server = http.createServer(async (req, res) => {
+  const requestLifecycle = proxyLifecycle(req, res, proxyDeadline(req.url));
+  req.gatewayAbortSignal = requestLifecycle.signal;
   let requestId = req.headers['x-request-id'] || randomUUID();
   let parsed = null;
   let matchedService = null;
@@ -269,7 +285,7 @@ const server = http.createServer(async (req, res) => {
     // Refresh and logout authenticate with a SameSite=None cookie. Unlike CORS response
     // filtering, rejecting a disallowed request Origin prevents a cross-site request from
     // rotating or revoking a user's refresh-token family.
-    if (corsDecision === 'blocked' && isCookieAuthPath(parsed.pathname)) {
+    if (isCookieAuthPath(parsed.pathname) && !cookieAuthRequestAllowed(req)) {
       sendJson(res, 403, { message: 'Origin not allowed' });
       return;
     }
@@ -310,6 +326,11 @@ const server = http.createServer(async (req, res) => {
         }
         schoolId = principal.branchId ?? null;
         userId = principal.userId ?? null;
+        if (requiresStepUp(parsed.pathname, req.method, principal)
+            && !(Date.parse(principal.stepUpExpiresAt) > Date.now())) {
+          sendJson(res, 403, { code: 'STEP_UP_REQUIRED', message: 'Verify your passkey before this action' });
+          return;
+        }
         await proxy(req, res, matched, parsed, requestId, principal, compatibility);
         return;
       }
@@ -325,6 +346,10 @@ const server = http.createServer(async (req, res) => {
     matchedService = 'frontend';
     await proxyFrontend(req, res, parsed, requestId);
   } catch (error) {
+    if (error?.code === 'STEP_UP_REQUIRED') {
+      sendJson(res, 403, { code: 'STEP_UP_REQUIRED', message: 'Verify your passkey before this action' });
+      return;
+    }
     if (error && error.code === 'IDENTITY_QUOTA_EXCEEDED') {
       res.setHeader('Retry-After', String(error.retryAfter));
       sendJson(res, 429, { message: 'Too many requests. Try again later.' });
@@ -345,10 +370,12 @@ const server = http.createServer(async (req, res) => {
       stack: error && error.stack ? error.stack : undefined,
     }, traceFields);
     if (!res.headersSent) {
-      sendJson(res, 502, { message: 'Gateway upstream error' });
+      sendJson(res, error?.code === 'GATEWAY_UPSTREAM_TIMEOUT' ? 504 : 502, { message: 'Gateway upstream error', requestId });
     } else {
       res.end();
     }
+  } finally {
+    requestLifecycle.dispose();
   }
 });
 
@@ -443,7 +470,7 @@ function verifyJwtLocally(token, secret, nowSeconds, detail = {}) {
     return fail('token_malformed');
   }
   // Allow only HMAC JWT algorithms emitted by the identity service; reject "none" and asymmetric algs.
-  const digest = header && HMAC_JWT_ALGORITHMS[header.alg];
+  const digest = header?.alg === 'HS256' ? HMAC_JWT_ALGORITHMS.HS256 : null;
   if (!digest) return fail('token_algorithm_rejected');
   const expected = crypto.createHmac(digest, secret).update(`${headerB64}.${payloadB64}`).digest('base64url');
   // base64url signatures are ASCII, so comparing the encoded text byte-for-byte is equivalent to comparing raw bytes.
@@ -453,6 +480,10 @@ function verifyJwtLocally(token, secret, nowSeconds, detail = {}) {
   if (!crypto.timingSafeEqual(provided, expectedBuf)) return fail('token_invalid');
   if (typeof payload.exp === 'number' && nowSeconds >= payload.exp) return fail('token_expired');
   if (typeof payload.nbf === 'number' && nowSeconds < payload.nbf) return fail('token_not_yet_valid');
+  if (payload.type === 'refresh') return fail('refresh_token_as_bearer');
+  if (!Number.isFinite(payload.exp) || payload.type !== 'access'
+      || payload.iss !== (process.env.APP_JWT_ISSUER || 'ims-identity')
+      || payload.aud !== (process.env.APP_JWT_AUDIENCE || 'ims-api')) return fail('token_binding_rejected');
   return payload;
 }
 
@@ -487,7 +518,9 @@ async function authenticate(req, requestId, opts = {}) {
 
   if (localVerify && secret) {
     const detail = {};
-    const claims = verifyJwtLocally(token, secret, now, detail);
+    const previous = opts.previousSecret ?? process.env.APP_JWT_PREVIOUS_SECRET;
+    const claims = verifyJwtLocally(token, secret, now, detail)
+      || (previous ? verifyJwtLocally(token, previous, now, detail) : null);
     if (!claims) return reject(detail.reason || 'token_invalid'); // no fallback
     // A refresh token is validly signed but is never a bearer credential. Do not send it to
     // introspection as an "un-enriched legacy token"; identity enforces the same boundary too.
@@ -525,9 +558,20 @@ async function introspect(req, requestId) {
     method: 'POST',
     headers,
     body: JSON.stringify({ token, method: req.method || 'GET', path: requestPath, ...(schoolId ? { schoolId } : {}) }),
-    signal: AbortSignal.timeout(10_000),
+    signal: req.gatewayAbortSignal
+      ? AbortSignal.any([req.gatewayAbortSignal, AbortSignal.timeout(10_000)])
+      : AbortSignal.timeout(10_000),
   });
-  if (response.status === 401 || response.status === 403) return null;
+  if (response.status === 401) return null;
+  if (response.status === 403) {
+    const denied = await response.json().catch(() => null);
+    if (denied?.code === 'STEP_UP_REQUIRED') {
+      const error = new Error('Passkey verification required');
+      error.code = 'STEP_UP_REQUIRED';
+      throw error;
+    }
+    return null;
+  }
   if (response.status === 429) {
     const error = new Error('Identity request quota exceeded');
     error.code = 'IDENTITY_QUOTA_EXCEEDED';
@@ -558,12 +602,16 @@ async function proxy(req, res, matched, parsed, requestId, principal, compatibil
 }
 
 async function proxyToUrl(req, res, target, requestId, service, principal, opts = {}) {
+  const lifecycle = proxyLifecycle(req, res, opts.timeoutMs ?? proxyDeadline(req.url));
+  try {
   const headers = outboundHeaders(req, requestId);
   if (service) {
     headers[tokenHeaders[service]] = serviceTokens[service];
   }
   if (principal) {
     headers['x-authenticated-user-id'] = stringOrEmpty(principal.userId);
+    headers['x-authenticated-session-id'] = stringOrEmpty(principal.sessionId);
+    headers['x-authenticated-step-up-expires-at'] = stringOrEmpty(principal.stepUpExpiresAt);
     headers['x-authenticated-email'] = stringOrEmpty(principal.email);
     headers['x-authenticated-role'] = stringOrEmpty(principal.role);
     headers['x-authenticated-school-id'] = stringOrEmpty(principal.branchId);
@@ -573,12 +621,13 @@ async function proxyToUrl(req, res, target, requestId, service, principal, opts 
     headers['x-authenticated-operator-schools'] =
       Array.isArray(principal.operatorSchools) ? principal.operatorSchools.join(',') : '';
   }
-  await addCloudRunAuthorization(headers, target);
+  await addCloudRunAuthorization(headers, target, Boolean(principal));
 
   const init = {
     method: req.method,
     headers,
     redirect: 'manual',
+    signal: req.gatewayAbortSignal ? AbortSignal.any([req.gatewayAbortSignal, lifecycle.signal]) : lifecycle.signal,
   };
   if (!['GET', 'HEAD'].includes(req.method)) {
     const maxBodyBytes = opts.maxBodyBytes !== undefined ? opts.maxBodyBytes : MAX_BODY_BYTES;
@@ -600,10 +649,40 @@ async function proxyToUrl(req, res, target, requestId, service, principal, opts 
   applyDeprecationHeaders(res, opts.compatibility);
   if (response.body) {
     for await (const chunk of response.body) {
-      res.write(chunk);
+      if (res.write(chunk) === false) await once(res, 'drain', { signal: init.signal });
     }
   }
   res.end();
+  } finally {
+    lifecycle.abort();
+    lifecycle.dispose();
+  }
+}
+
+function proxyDeadline(pathname = '') {
+  if (/\/(?:export|download|content)(?:[/?]|$)/i.test(pathname)) return EXPORT_TIMEOUT_MS;
+  if (pathname.startsWith('/api/v1/auth/')) return AUTH_TIMEOUT_MS;
+  return PROXY_TIMEOUT_MS;
+}
+
+function proxyLifecycle(req, res, timeoutMs) {
+  const controller = new AbortController();
+  const abort = () => controller.abort(new Error('Proxy client disconnected'));
+  const close = () => { if (!res.writableFinished) abort(); };
+  const timer = setTimeout(() => {
+    const error = new Error('Proxy operation exceeded its deadline');
+    error.code = 'GATEWAY_UPSTREAM_TIMEOUT';
+    controller.abort(error);
+  }, boundedMilliseconds(timeoutMs, PROXY_TIMEOUT_MS));
+  timer.unref();
+  req.on?.('aborted', abort);
+  res.on?.('close', close);
+  if (req.aborted || res.destroyed) abort();
+  return {
+    signal: controller.signal,
+    abort,
+    dispose() { clearTimeout(timer); req.off?.('aborted', abort); res.off?.('close', close); },
+  };
 }
 
 function outboundHeaders(req, requestId, activeContext = otelContext.active()) {
@@ -628,14 +707,15 @@ function outboundHeaders(req, requestId, activeContext = otelContext.active()) {
 // (from the verified JWT principal) and the correct per-service token after this.
 function isClientSpoofableHeader(name) {
   const n = name.toLowerCase();
-  return n.startsWith('x-authenticated-') || n.endsWith('-service-token');
+  return n.startsWith('x-authenticated-') || n.endsWith('-service-token') || n === 'x-ims-principal-carrier-token';
 }
 
-async function addCloudRunAuthorization(headers, target) {
+async function addCloudRunAuthorization(headers, target, principalCarrier = false) {
   const url = target instanceof URL ? target : new URL(target);
   const shouldAdd = CLOUD_RUN_AUTH === 'always' || (CLOUD_RUN_AUTH === 'auto' && url.hostname.endsWith('.run.app'));
   if (!shouldAdd) return;
   headers.authorization = `Bearer ${await cloudRunIdToken(url.origin)}`;
+  if (principalCarrier) headers['x-ims-principal-carrier-token'] = headers.authorization;
 }
 
 async function cloudRunIdToken(audience) {
@@ -645,7 +725,7 @@ async function cloudRunIdToken(audience) {
     return cached.token;
   }
   const metadataUrl = `http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encodeURIComponent(audience)}&format=full`;
-  const response = await fetch(metadataUrl, { headers: { 'Metadata-Flavor': 'Google' } });
+  const response = await fetch(metadataUrl, { headers: { 'Metadata-Flavor': 'Google' }, signal: AbortSignal.timeout(5_000) });
   if (!response.ok) {
     throw new Error(`metadata identity token request failed: ${response.status}`);
   }
@@ -717,12 +797,22 @@ function applyCors(req, res) {
   return 'blocked';
 }
 
-function clientIp(req) {
+function clientIp(req, trustedHops = TRUSTED_PROXY_HOPS) {
   const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    return String(forwarded).split(',')[0].trim();
+  if (forwarded && Number.isSafeInteger(trustedHops) && trustedHops > 0) {
+    const chain = String(forwarded).split(',').map(value => value.trim());
+    const selected = chain[chain.length - trustedHops];
+    if (selected && isIP(selected)) return selected;
   }
   return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+function cookieAuthRequestAllowed(req) {
+  if (req.headers.origin) return isOriginAllowed(req.headers.origin);
+  // Origin-less cookie requests must establish browser same-origin provenance.
+  // Nonbrowser callers send an explicit allowlisted Origin as part of the API contract.
+  if (req.headers['sec-fetch-site'] !== 'same-origin') return false;
+  try { return isOriginAllowed(new URL(req.headers.referer).origin); } catch { return false; }
 }
 
 function rateLimitKey(req) {
@@ -746,20 +836,22 @@ function checkRateLimit(req, opts = {}) {
     : 1;
   if (!rps || rps <= 0) return { allowed: true };
 
-  const key = rateLimitKey(req);
+  // Before verification, neither a bearer value nor client-supplied leftmost XFF
+  // can create a new budget. An optional verified actor budget is additive.
+  const key = opts.key ?? `ip:${clientIp(req, opts.trustedHops ?? TRUSTED_PROXY_HOPS)}`;
   let bucket = buckets.get(key);
   if (!bucket) {
     if (buckets.size >= maxKeys) pruneRateBuckets(buckets, now);
-    // A full map can contain only active buckets, so idle pruning alone is not a bound.
-    // Evict least-recently-used buckets until the configured hard cap has room.
-    while (buckets.size >= maxKeys) evictOldestRateBucket(buckets);
+    // A full map can contain active budgets: fail admission rather than letting
+    // attacker churn evict a depleted budget.
+    if (buckets.size >= maxKeys) return { allowed: false, retryAfter: 60 };
     bucket = { tokens: burst, last: now };
     buckets.set(key, bucket);
   }
   const elapsedSeconds = Math.max(0, (now - bucket.last) / 1000);
   bucket.tokens = Math.min(burst, bucket.tokens + elapsedSeconds * rps);
   bucket.last = now;
-  // Map insertion order is the LRU order used for constant-time eviction at capacity.
+  // Keep idle-pruning order consistent with last activity.
   buckets.delete(key);
   buckets.set(key, bucket);
   if (bucket.tokens >= 1) {
@@ -767,6 +859,15 @@ function checkRateLimit(req, opts = {}) {
     return { allowed: true };
   }
   return { allowed: false, retryAfter: Math.max(1, Math.ceil((1 - bucket.tokens) / rps)) };
+}
+
+function requiresStepUp(pathname, method, principal) {
+  if (/^\/api\/v1\/auth\/(?:passkeys|logout|refresh)(?:\/|$)/.test(pathname)) return false;
+  const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(method);
+  if (principal?.role === 'SUPERADMIN' && mutating) return true;
+  return /\/(?:export|exports)(?:\/|$)/i.test(pathname)
+    || (method === 'DELETE' && /\/students(?:\/|$)/.test(pathname))
+    || (mutating && /\/(?:payments|billing-payments|pay|refunds|invoices|purge|roles|permissions|assignments)(?:\/|$)/.test(pathname));
 }
 
 // Drop buckets idle for >60s to bound memory under key churn (e.g. per-token keys).
@@ -1002,4 +1103,8 @@ module.exports = {
   authenticate,
   introspect,
   proxyToUrl,
+  proxyLifecycle,
+  proxyDeadline,
+  cookieAuthRequestAllowed,
+  requiresStepUp,
 };

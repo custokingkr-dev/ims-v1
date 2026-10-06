@@ -47,16 +47,24 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           env:
+            - name: APP_MIGRATIONS_ENABLED
+              value: "false"
+            - name: USER_CONTEXT_CALLER_SERVICE_ACCOUNTS
+              value: ims-api-gateway-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${user_context_caller_service_accounts}
             - name: SPRING_PROFILES_ACTIVE
               value: prod
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://placeholder:5432/app?sslmode=require # from-param: jdbc:postgresql://${db_host}/${db_name}?sslmode=require
             - name: SPRING_DATASOURCE_USERNAME
-              value: app_rt
-            - name: FLYWAY_URL
-              value: jdbc:postgresql://placeholder:5432/app?sslmode=require # from-param: jdbc:postgresql://${db_host}/${db_name}?sslmode=require
-            - name: FLYWAY_USERNAME
-              value: appuser
+              value: app_rt # from-param: ${runtime_db_role}
+            - name: DB_POOL_MAX
+              value: "3"
+            - name: RUNTIME_DB_ROLE
+              value: app_rt # from-param: ${runtime_db_role}
+            - name: SERVICE_OIDC_AUDIENCES
+              value: https://custoking-operations-service-dev-1087017280590.asia-south2.run.app # from-param: ${service_oidc_audiences}
+            - name: OUTBOX_RELAY_CALLER_SERVICE_ACCOUNTS
+              value: ims-async-scheduler-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${outbox_relay_caller_service_accounts}
             - name: OPERATIONS_MERGED
               value: "true"
             - name: OPERATIONS_DB_SCHEMA
@@ -101,12 +109,7 @@ spec:
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: app-rt-password-dev # from-param: app-rt-password-${env}
-                  key: latest
-            - name: FLYWAY_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: db-password-dev # from-param: db-password-${env}
+                  name: app-rt-password-dev # from-param: ${runtime_db_password_secret}
                   key: latest
             - name: WORKFLOW_READ_TOKEN
               valueFrom:

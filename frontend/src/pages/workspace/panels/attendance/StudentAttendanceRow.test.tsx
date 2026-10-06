@@ -6,6 +6,7 @@ import type { StudentAttendanceRecord } from '../../../../types/attendance';
 
 vi.mock('../../../../services/api', () => ({
   default: { get: vi.fn() },
+  getAuthSessionVersion: () => 1,
 }));
 
 afterEach(cleanup);
@@ -37,7 +38,7 @@ describe('StudentAttendanceRow', () => {
 
   it('uses the shared full-frame student photo contract', async () => {
     renderRow({
-      student: { ...student, photoUrl: 'https://photos.example/asha.jpg' },
+      student: { ...student, photoUrl: 'https://storage.googleapis.com/custoking-dev-student-photos/asha.jpg' },
       status: null,
       remarks: '',
       locked: false,

@@ -38,8 +38,8 @@ import java.util.concurrent.TimeUnit;
  * signed URLs. Photos are faces of minors (sensitive PII), so the bucket stays private-only.
  *
  * <p>Uploads are resized/compressed to a small JPEG (the cost + latency lever); objects are
- * content-addressed and written with an immutable long cache header, so browsers cache them and
- * only the signed URL's TTL gates the first fetch. Cloud Run service accounts have no local
+ * content-addressed and served with private no-store cache policy. Signed capabilities expire
+ * within five minutes; previously downloaded copies cannot be revoked. Cloud Run service accounts have no local
  * private key, so URLs are signed via the IAM SignBlob API using {@link ImpersonatedCredentials}
  * self-impersonation (the runtime SA needs {@code roles/iam.serviceAccountTokenCreator} on itself).
  *
@@ -50,7 +50,7 @@ import java.util.concurrent.TimeUnit;
 public class StudentPhotoStorage {
 
     private static final Logger log = LoggerFactory.getLogger(StudentPhotoStorage.class);
-    private static final String IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
+    private static final String PRIVATE_CACHE = "private, max-age=0, no-store";
     private static final long MAX_DECODED_PIXELS = 40_000_000L;
 
     private final String bucket;
@@ -65,12 +65,12 @@ public class StudentPhotoStorage {
 
     public StudentPhotoStorage(
             @Value("${student.photo.bucket:}") String bucket,
-            @Value("${student.photo.signed-url-ttl-minutes:60}") int ttlMinutes,
+            @Value("${student.photo.signed-url-ttl-minutes:5}") int ttlMinutes,
             @Value("${student.photo.dimension:512}") int dimension,
             @Value("${student.photo.max-bytes:5242880}") long maxBytes,
             @Value("${student.photo.signer-sa:}") String signerSa) {
         this.bucket = bucket == null ? "" : bucket.trim();
-        this.ttlMinutes = ttlMinutes > 0 ? ttlMinutes : 60;
+        this.ttlMinutes = ttlMinutes > 0 ? Math.min(ttlMinutes, 5) : 5;
         this.dimension = dimension > 0 ? dimension : 512;
         this.maxBytes = maxBytes > 0 ? maxBytes : 2L * 1024 * 1024;
         this.configuredSignerSa = signerSa == null ? "" : signerSa.trim();
@@ -116,13 +116,13 @@ public class StudentPhotoStorage {
         try {
             BlobInfo blob = BlobInfo.newBuilder(bucket, key)
                     .setContentType("image/jpeg")
-                    .setCacheControl(IMMUTABLE_CACHE)
+                    .setCacheControl(PRIVATE_CACHE)
                     .build();
             storage().create(blob, jpegData);
         } catch (RuntimeException ex) {
             log.error("Failed to store student photo (bucket={}, key={})", bucket, key, ex);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "Could not store the photo: " + ex.getClass().getSimpleName() + ": " + ex.getMessage(), ex);
+                    "Could not store the photo", ex);
         }
         return key;
     }
@@ -163,7 +163,7 @@ public class StudentPhotoStorage {
         } catch (RuntimeException ex) {
             log.error("Failed to store student import file (bucket={}, key={})", bucket, key, ex);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "Could not store the import file: " + ex.getClass().getSimpleName() + ": " + ex.getMessage(), ex);
+                    "Could not store the import file", ex);
         }
     }
 
@@ -176,8 +176,14 @@ public class StudentPhotoStorage {
         if (!StringUtils.hasText(stored)) {
             return null;
         }
-        if (stored.startsWith("http://") || stored.startsWith("https://") || !isEnabled()) {
-            return stored;
+        if (!isEnabled()) return stored;
+        if (stored.startsWith("http://") || stored.startsWith("https://")) {
+            try {
+                URI uri = URI.create(stored);
+                return "https".equals(uri.getScheme()) && "storage.googleapis.com".equals(uri.getHost())
+                        && uri.getRawUserInfo() == null && (uri.getPort() == -1 || uri.getPort() == 443)
+                        && uri.getPath().startsWith("/" + bucket + "/schools/") ? stored : null;
+            } catch (IllegalArgumentException ex) { return null; }
         }
         try {
             URL url = storage().signUrl(
@@ -249,6 +255,7 @@ public class StudentPhotoStorage {
         }
         requireCropCoordinate(cropX, "cropX");
         requireCropCoordinate(cropY, "cropY");
+        try (var budget = MediaWorkBudget.acquire()) {
         validatePixelCount(data);
         try {
             BufferedImage oriented = Thumbnails.of(new ByteArrayInputStream(data))
@@ -265,6 +272,8 @@ public class StudentPhotoStorage {
         } catch (IOException | IllegalArgumentException ex) {
             throw new IllegalArgumentException("Could not read the image; upload a valid JPG, PNG, or WEBP", ex);
         }
+    }
+
     }
 
     private boolean isSupportedImage(String contentType) {

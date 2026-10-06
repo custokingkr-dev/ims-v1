@@ -20,7 +20,10 @@ LABEL org.opencontainers.image.title="${APP_NAME}" \
   org.opencontainers.image.version="${APP_VERSION}" \
   org.opencontainers.image.description="${APP_DESCRIPTION}"
 
-RUN apt-get update \
+ARG SECURITY_PATCH_EPOCH=unset
+RUN echo "security patches for ${SECURITY_PATCH_EPOCH}" \
+  && apt-get update \
+  && apt-get install -y --only-upgrade libssl3t64 openssl \
   && apt-get install -y --no-install-recommends curl \
   && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser

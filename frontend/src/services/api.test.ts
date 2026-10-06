@@ -44,7 +44,7 @@ vi.mock('axios', async () => {
 });
 
 // Import AFTER mocking so the module initialises with the mock axios.
-import { getAccessToken, identityAuthClient, refreshToken, setAccessToken } from './api';
+import { getAccessToken, identityAuthClient, invalidateAuthSession, refreshToken, setAccessToken } from './api';
 
 const authPrincipal = {
   accessToken: 'refreshed-access-token',
@@ -164,11 +164,30 @@ describe('generated identity refresh migration', () => {
   it('retains refresh failure cleanup for token and session markers', async () => {
     setAccessToken('expired-access-token');
     localStorage.setItem('custoking_isLoggedIn', 'true');
-    axiosFixture.post.mockRejectedValueOnce(new Error('refresh rejected'));
+    axiosFixture.post.mockRejectedValueOnce({ response: { status: 401 } });
 
     await expect(refreshToken()).resolves.toBeNull();
 
     expect(getAccessToken()).toBeNull();
     expect(localStorage.getItem('custoking_isLoggedIn')).toBeNull();
+  });
+
+  it.each([429, 500, 503, undefined])('preserves recoverable session state on %s', async (status) => {
+    setAccessToken('existing-token');
+    localStorage.setItem('custoking_isLoggedIn', 'true');
+    axiosFixture.post.mockRejectedValueOnce({ response: { status } });
+    await expect(refreshToken()).rejects.toThrow('session could not be restored');
+    expect(getAccessToken()).toBe('existing-token');
+    expect(localStorage.getItem('custoking_isLoggedIn')).toBe('true');
+  });
+
+  it('discards an in-flight refresh after logout', async () => {
+    let resolveRefresh!: (value: { data: typeof authPrincipal }) => void;
+    axiosFixture.post.mockReturnValueOnce(new Promise((resolve) => { resolveRefresh = resolve; }));
+    const pending = refreshToken();
+    invalidateAuthSession();
+    resolveRefresh({ data: authPrincipal });
+    await expect(pending).resolves.toBeNull();
+    expect(getAccessToken()).toBeNull();
   });
 });

@@ -378,7 +378,7 @@ public class PhotoImportService {
                                 + "driveFileId={} driveFileName={} reason={}",
                         id, row.id(), row.excelRow(), row.imageNo(),
                         row.driveFileId(), row.driveFileName(), ex.getMessage());
-                repository.markRowFailed(row.id(), schoolId, ex.getMessage());
+                repository.markRowFailed(row.id(), schoolId, safeRecoveryError(ex));
             }
         }
         return repository.finishExecution(id, schoolId);
@@ -752,6 +752,8 @@ public class PhotoImportService {
     }
 
     private static String safeRecoveryError(Exception ex) {
+        if (!(ex instanceof IllegalArgumentException) && !(ex instanceof DrivePhotoImportException))
+            return "Photo processing failed; retry or contact support with the request ID";
         String message = ex.getMessage();
         return message == null || message.isBlank()
                 ? "Photo recovery failed"
@@ -790,11 +792,7 @@ public class PhotoImportService {
     }
 
     private static String csv(String value) {
-        String safe = value == null ? "" : value;
-        if (!safe.isEmpty() && "=+-@".indexOf(safe.charAt(0)) >= 0) {
-            safe = "'" + safe;
-        }
-        return '"' + safe.replace("\"", "\"\"") + '"';
+        return com.custoking.ims.schoolcoreservice.infrastructure.SpreadsheetText.csv(value);
     }
 
     private long authorizedBatchSchool(UUID id) {

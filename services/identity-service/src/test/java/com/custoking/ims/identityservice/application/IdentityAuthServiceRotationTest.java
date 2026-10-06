@@ -197,6 +197,7 @@ class IdentityAuthServiceRotationTest {
     private void stubAccessToken() {
         Claims claims = mock(Claims.class);
         when(claims.getSubject()).thenReturn(EMAIL);
+        when(claims.get("type", String.class)).thenReturn("access");
         when(jwtService.claims("access-token")).thenReturn(claims);
         when(jwtService.isTokenValid("access-token", EMAIL)).thenReturn(true);
     }

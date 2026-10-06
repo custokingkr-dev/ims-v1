@@ -14,6 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -38,6 +40,7 @@ public class IdentityAuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthAuditRepository authAudit;
+    private JdbcClient jdbc;
 
     public IdentityAuthService(AppUserRepository users,
                                AuthSessionRepository sessions,
@@ -53,6 +56,14 @@ public class IdentityAuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authAudit = authAudit;
+    }
+
+    @Autowired
+    public IdentityAuthService(AppUserRepository users, AuthSessionRepository sessions, RbacLookupRepository rbac,
+            RbacReadRepository rbacRead, PasswordEncoder passwordEncoder, JwtService jwtService,
+            AuthAuditRepository authAudit, JdbcClient jdbc) {
+        this(users,sessions,rbac,rbacRead,passwordEncoder,jwtService,authAudit);
+        this.jdbc=jdbc;
     }
 
     public LoginResult login(LoginRequest request) {
@@ -129,7 +140,7 @@ public class IdentityAuthService {
             // Refresh tokens deliberately share the JWT signing key, but they are not bearer
             // credentials. Reject them before resolving a user so the gateway's legacy-token
             // introspection fallback cannot turn a stolen refresh token into an access token.
-            if ("refresh".equals(claims.get("type", String.class))) {
+            if (!"access".equals(claims.get("type", String.class))) {
                 return IntrospectionResponse.inactive();
             }
             email = claims.getSubject();
@@ -186,6 +197,16 @@ public class IdentityAuthService {
         // survive until an enriched JWT expires.
         List<Long> operatorSchools = rbacRead.operatorSchoolIds(user.getId());
         List<String> permissions = loginPermissions(user, operatorSchools);
+        AuthSessionEntity session = sessions.findByAccessTokenHash(tokenDigest(accessToken)).orElse(null);
+        OffsetDateTime stepUp = null;
+        if (jdbc != null && session != null) {
+            stepUp = jdbc.sql("""
+                SELECT expires_at FROM identity.session_step_up
+                WHERE family_id=:family AND user_id=:user AND credential_version=:version
+                AND expires_at>clock_timestamp()
+                """).param("family",session.getFamilyId()).param("user",user.getId())
+                    .param("version",user.getCredentialVersion()).query(OffsetDateTime.class).optional().orElse(null);
+        }
         return new AuthResponse(
                 accessToken,
                 user.getId(),
@@ -198,7 +219,7 @@ public class IdentityAuthService {
                 user.getZoneName(),
                 roles,
                 permissions,
-                operatorSchools);
+                operatorSchools, session == null ? null : session.getId(), stepUp);
     }
 
     /**
@@ -267,7 +288,12 @@ public class IdentityAuthService {
             String zoneName,
             List<String> roles,
             List<String> permissions,
-            List<Long> operatorSchools) {
+            List<Long> operatorSchools, String sessionId, OffsetDateTime stepUpExpiresAt) {
+        public AuthResponse(String accessToken, Long userId, String fullName, String email, String role,
+                Long branchId, String branchName, Long zoneId, String zoneName,
+                List<String> roles, List<String> permissions, List<Long> operatorSchools) {
+            this(accessToken,userId,fullName,email,role,branchId,branchName,zoneId,zoneName,roles,permissions,operatorSchools,null,null);
+        }
     }
 
     public record IntrospectionResponse(boolean active, AuthResponse principal) {

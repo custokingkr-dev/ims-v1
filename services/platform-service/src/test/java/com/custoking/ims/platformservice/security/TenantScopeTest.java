@@ -49,4 +49,9 @@ class TenantScopeTest {
         assertFalse(TenantContext.get().isSuperAdmin());
         assertThrows(ResponseStatusException.class, () -> TenantScope.resolveSchoolId(1L));
     }
+    @Test
+    void contextlessServiceTokenCannotSkipUserPermission() {
+        assertThrows(ResponseStatusException.class, () -> TenantScope.requirePermissionIfAuthenticated("workflow:act"));
+        assertThrows(ResponseStatusException.class, () -> TenantScope.requireAnyPermissionIfAuthenticated("a", "b"));
+    }
 }

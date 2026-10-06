@@ -88,9 +88,10 @@ class StudentDimensionProjectionIntegrationTest {
         dims = new DimensionProjectionRepository(jdbcClient);
         ObjectMapper objectMapper = new ObjectMapper();
         processor = new ReportingEventInboxProcessor(inbox, commands, java.util.List.of(
-                new StudentDimensionProjector(dims, objectMapper)), 50);
+                new StudentDimensionProjector(dims, objectMapper)), com.custoking.ims.platformservice.observability.TraceContextBridge.noop(),
+                50, new org.springframework.jdbc.datasource.DataSourceTransactionManager(dataSource));
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("TRUNCATE notification.notification_logs, reporting.event_student_contributions, "
+            st.execute("TRUNCATE notification.notification_inbox_events, notification.notification_logs, reporting.event_student_contributions, "
                     + "reporting.academic_events, reporting.fact_payment, reporting.fact_fee_assignment, "
                     + "reporting.reporting_event_inbox, reporting.command_center_feed, "
                     + "reporting.student_projection_tombstones, reporting.dim_student CASCADE");
@@ -320,4 +321,79 @@ class StudentDimensionProjectionIntegrationTest {
                         WHERE aggregate_id = '42' AND status = 'RECEIVED'
                         """).query(Long.class).single());
     }
+
+    @Test
+    void aggregateVersionRejectsReorderedAndLegacyEvents() {
+        String newer=UUID.randomUUID().toString();
+        feedStudentEvent(newer,42,7,"Current");
+        jdbcClient.sql("UPDATE reporting.reporting_event_inbox SET payload=replace(payload,'\"id\":42','\"aggregateVersion\":12,\"id\":42') WHERE event_id=:id").param("id",newer).update();
+        assertEquals(1,processor.processBatch());
+        String older=UUID.randomUUID().toString();
+        feedStudentEvent(older,42,7,"Old");
+        jdbcClient.sql("UPDATE reporting.reporting_event_inbox SET payload=replace(payload,'\"id\":42','\"aggregateVersion\":11,\"id\":42') WHERE event_id=:id").param("id",older).update();
+        assertEquals(1,processor.processBatch());
+        feedStudentEvent(UUID.randomUUID().toString(),42,7,"Legacy stale");
+        assertEquals(1,processor.processBatch());
+        assertEquals("Current",jdbcClient.sql("SELECT full_name FROM reporting.dim_student WHERE id=42").query(String.class).single());
+        assertEquals(12L,jdbcClient.sql("SELECT aggregate_version FROM reporting.dim_student WHERE id=42").query(Long.class).single());
+    }
+
+    @Test
+    void projectionCrashRollsBackRowsAndInboxCompletionAndRetryAppliesOnce() throws Exception {
+        String id=UUID.randomUUID().toString(); feedStudentEvent(id,42,7,"Committed after retry");
+        var real=new StudentDimensionProjector(dims,new ObjectMapper());
+        var crashing=new com.custoking.ims.platformservice.application.projection.ReportingEventProjector() {
+            public java.util.Set<String> handledEventTypes() { return real.handledEventTypes(); }
+            public boolean feedWorthy() { return true; }
+            public void project(ReportingEventInboxRepository.ReportingEventInboxProjectionRow event) {
+                real.project(event); throw new IllegalStateException("controlled crash after write");
+            }
+        };
+        var crashed=new ReportingEventInboxProcessor(inbox,commands,java.util.List.of(crashing),
+                com.custoking.ims.platformservice.observability.TraceContextBridge.noop(),50,
+                new org.springframework.jdbc.datasource.DataSourceTransactionManager(dataSource));
+        assertEquals(0,crashed.processBatch());
+        assertEquals(0,countStudentRows(42));
+        assertEquals(0L,jdbcClient.sql("SELECT count(*) FROM reporting.command_center_feed").query(Long.class).single());
+        assertEquals("FAILED",jdbcClient.sql("SELECT status FROM reporting.reporting_event_inbox WHERE event_id=:id").param("id",id).query(String.class).single());
+        jdbcClient.sql("UPDATE reporting.reporting_event_inbox SET next_attempt_at=now()-interval '1 second' WHERE event_id=:id").param("id",id).update();
+        assertEquals(1,processor.processBatch()); assertEquals(1,countStudentRows(42));
+        assertEquals(0,processor.processBatch());
+    }
+    @Test void deletionRedactsExistingAndLateInboxPiiAndRejectsLateFacts() {
+        String existing=UUID.randomUUID().toString();feedStudentEvent(existing,42,7,"Erase sensitive name");
+        assertEquals(1,processor.processBatch());
+        jdbcClient.sql("INSERT INTO notification.notification_inbox_events(event_id,event_type,payload,status) VALUES ('erase-old','notification.requested.v1','{\"studentId\":42,\"destination\":\"private@example.test\"}','RECEIVED')").update();
+        feedStudentDeletedEvent(UUID.randomUUID().toString(),42,7);assertEquals(1,processor.processBatch());
+        String stored=jdbcClient.sql("SELECT payload FROM reporting.reporting_event_inbox WHERE event_id=:id").param("id",existing).query(String.class).single();
+        assertTrue(stored.contains("redacted"));assertTrue(!stored.contains("sensitive name"));
+        assertEquals("SUPPRESSED",jdbcClient.sql("SELECT status FROM notification.notification_inbox_events WHERE event_id='erase-old'").query(String.class).single());
+        assertTrue(!jdbcClient.sql("SELECT payload FROM notification.notification_inbox_events WHERE event_id='erase-old'").query(String.class).single().contains("private@example"));
+        String late=UUID.randomUUID().toString();feedStudentEvent(late,42,7,"Late sensitive name");
+        assertTrue(!jdbcClient.sql("SELECT payload FROM reporting.reporting_event_inbox WHERE event_id=:id").param("id",late).query(String.class).single().contains("sensitive name"));
+        jdbcClient.sql("INSERT INTO notification.notification_inbox_events(event_id,event_type,payload,status) VALUES ('erase-late','notification.requested.v1','{\"studentId\":42,\"destination\":\"private@example.test\"}','RECEIVED')").update();
+        assertEquals("SUPPRESSED",jdbcClient.sql("SELECT status FROM notification.notification_inbox_events WHERE event_id='erase-late'").query(String.class).single());
+        var facts=new com.custoking.ims.platformservice.persistence.FeeFactReadRepository(jdbcClient);
+        facts.upsertFeeAssignment("late-erased-assignment",42L,7L,null,100L,0L,100L,"DUE",OffsetDateTime.now());
+        facts.upsertPayment("late-erased-payment","late-erased-assignment",7L,42L,100L,OffsetDateTime.now());
+        assertEquals(0L,jdbcClient.sql("SELECT count(*) FROM reporting.fact_fee_assignment WHERE student_id=42").query(Long.class).single());
+        assertEquals(0L,jdbcClient.sql("SELECT count(*) FROM reporting.fact_payment WHERE student_id=42").query(Long.class).single());
+    }
+
+    @Test void feeReminderTargetsUseLiveOwnerContactAndDenyAfterConsentWithdrawal() {
+        feedStudentEvent(UUID.randomUUID().toString(),42,7,"Student");assertEquals(1,processor.processBatch());
+        jdbcClient.sql("INSERT INTO reporting.academic_events(id,school_id,title,event_type,status) VALUES ('fee-event',7,'Event','ACADEMIC','ACTIVE'); INSERT INTO reporting.event_student_contributions(id,event_id,school_id,student_id,expected_amount) VALUES ('fee-contribution','fee-event',7,42,100)").update();
+        var policy=org.mockito.Mockito.mock(com.custoking.ims.platformservice.infrastructure.SchoolCoreBroadcastRecipientPolicy.class);
+        org.mockito.Mockito.when(policy.configured()).thenReturn(true);
+        var allowed=new com.custoking.ims.platformservice.application.BroadcastRecipientPolicy.Recipient(7,42,"SMS","request",true,"ALLOWED","guardian","live-owner-contact","hash",java.util.Map.of("purpose","SCHOOL_COMMUNICATIONS"));
+        org.mockito.Mockito.when(policy.resolveFeeReminders(7,"fee-event",java.util.List.of(42L))).thenReturn(java.util.List.of(allowed));
+        var repository=new ReportingCommandRepository(jdbcClient,policy);
+        var request=java.util.Map.<String,Object>of("eventId","fee-event","schoolId",7,"studentIds",java.util.List.of(42));
+        var result=repository.eventPaymentReminderTargets(request);
+        var targets=(java.util.List<java.util.Map<String,Object>>)result.get("targets");assertEquals("live-owner-contact",targets.getFirst().get("parentContact"));
+        org.mockito.Mockito.when(policy.resolveFeeReminders(7,"fee-event",java.util.List.of(42L))).thenReturn(java.util.List.of(new com.custoking.ims.platformservice.application.BroadcastRecipientPolicy.Recipient(7,42,"SMS","request",false,"SCHOOL_COMMUNICATIONS_NOT_GRANTED",null,null,null,null)));
+        assertEquals(java.util.List.of(),repository.eventPaymentReminderTargets(request).get("targets"));
+        org.mockito.Mockito.verify(policy,org.mockito.Mockito.times(2)).resolveFeeReminders(7,"fee-event",java.util.List.of(42L));
+    }
+
 }

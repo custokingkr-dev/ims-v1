@@ -31,6 +31,8 @@
         <google-cloud-libraries-bom.version>26.88.1</google-cloud-libraries-bom.version>
         <grpc.version>1.84.0</grpc.version>
         <postgresql.version>42.7.12</postgresql.version>
+        <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
+        <jackson-bom.version>3.1.7</jackson-bom.version>
         <!-- Ahead of spring-boot-dependencies 4.1.1 (11.0.24), which the Trivy
              HIGH/CRITICAL image gate rejects for CVE-2026-65182, CVE-2026-65905
              and CVE-2026-68525. Drop this once the managed version reaches 11.0.25. -->

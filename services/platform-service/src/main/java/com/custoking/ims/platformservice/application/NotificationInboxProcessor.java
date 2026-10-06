@@ -104,7 +104,7 @@ public class NotificationInboxProcessor {
             int attempts = event.getAttemptCount() + 1;
             event.setAttemptCount(attempts);
             event.setLastAttemptAt(attemptedAt);
-            event.setLastError(ex.getMessage());
+            event.setLastError("DELIVERY_ATTEMPT_FAILED");
             if (attempts >= maxAttempts) {
                 event.setStatus(NotificationInboxEvent.STATUS_DEAD_LETTER);
                 event.setDeadLetteredAt(attemptedAt);
@@ -114,7 +114,7 @@ public class NotificationInboxProcessor {
                 event.setNextAttemptAt(attemptedAt.plus(backoffFor(attempts)));
             }
             inboxRepository.save(event);
-            recordAttempt(event, NotificationDeliveryAttempt.STATUS_FAILED, ex.getMessage());
+            recordAttempt(event, NotificationDeliveryAttempt.STATUS_FAILED, "DELIVERY_ATTEMPT_FAILED");
             throw new NotificationDeliveryFailedException(event.getEventId(), ex);
         }
         event.setStatus(NotificationInboxEvent.STATUS_PROCESSED);

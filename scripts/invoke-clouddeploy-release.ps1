@@ -81,6 +81,10 @@ foreach ($service in $releaseOrder) {
   }
 
   $pipeline = "custoking-$service-$Environment"
+  if ($service -in @('identity-service','school-core-service','operations-service','platform-service','billing-service')) {
+    $migrationImage = if ($image.PSObject.Properties.Name -contains 'runtimeRef' -and $image.runtimeRef) { [string]$image.runtimeRef } else { [string]$image.immutableRef }
+    & (Join-Path $PSScriptRoot 'invoke-service-migration-job.ps1') -ProjectId $ProjectId -Region $Region -Environment $Environment -Service $service -ImageRef $migrationImage -CommitSha $CommitSha -ConfigSource CloudDeploy -OutputDirectory (Join-Path (Split-Path -Parent $OutputPath) 'migrations') | Out-Null
+  }
   Write-Host "Creating Cloud Deploy release $pipeline/$releaseId."
   $createArguments = @(
     "deploy"

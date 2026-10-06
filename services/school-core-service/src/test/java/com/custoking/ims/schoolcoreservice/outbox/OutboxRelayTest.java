@@ -90,6 +90,16 @@ class OutboxRelayTest {
     }
 
     @Test
+    void configuredBatchIsClampedAndRemainingRowsStayPending() throws Exception {
+        for (int i = 0; i < 12; i++) insertOutboxEvent("SchoolUpserted:bounded-" + i, "School", (long) i);
+        assertThat(relay.publishBatch()).isEqualTo(10);
+        assertThat(capturingPublisher.published).hasSize(10);
+        assertThat(jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events WHERE published_at IS NULL")
+                .query(Long.class).single()).isEqualTo(2);
+        assertThat(new OutboxRelay(jdbc, capturingPublisher, "tenant_school", 0).publishBatch()).isEqualTo(1);
+    }
+
+    @Test
     void publishBatch_publishesEnvelopesForBothRows_andMarksThemPublished() throws Exception {
         long idA = insertOutboxEvent("SchoolUpserted:A-" + System.nanoTime(), "School", 11L);
         long idB = insertOutboxEvent("SchoolSectionUpserted:B-" + System.nanoTime(), "SchoolSection", 22L);
