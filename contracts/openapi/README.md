@@ -5,20 +5,21 @@ and `node scripts/generate-openapi-typescript-client.js --check` in verification
 The route inventory must first be current (`node scripts/generate-api-route-inventory.js`).
 The always-run CI architecture job checks generation and the generator/routing tests.
 
-Current coverage is **42 canonical operations across 10 contract files/clients**:
+Current coverage is **52 canonical operations across 11 contract files/clients**:
 
 | Contract | Operations | Covered workflow |
 | --- | ---: | --- |
-| Identity | 6 | Login, refresh, logout, password-reset capabilities/request/confirmation |
+| Identity | 13 | Login, refresh, logout, password reset, MFA and passkey enrollment/authentication/recovery |
 | Fees | 6 | Idempotent payment, receipt JSON/PDF, collection/overdue reports, reminders |
 | Students | 5 | Admission, profile update, ID-based roster, multipart photo upload, authenticated photo download |
 | Attendance | 3 | Read/save register, submit section |
-| Billing | 1 | Complete invoice statistics and reporting period |
+| Billing | 1 | Complete invoice statistics; Java-bound payment DTO exported with exact compatibility-route binding |
 | Broadcasts | 8 | Draft/list, capabilities, preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
 | Quotation documents | 4 | Capabilities, multipart upload, authenticated download, removal |
 | Catalog | 6 | Paginated order read, scoped statistics, guarded status/delivery, annual-plan review/confirmation |
 | Reporting | 1 | Workspace dashboard envelope |
 | Firefighting creation | 2 | Stable-key request and quotation creation |
+| Workflow decisions | 3 | Read versioned instance, approve and reject with required reviewed expectedVersion |
 
 These are critical browser contracts, not a claim of complete coverage of every
 controller. Legacy report row extensions and receipt detail fields remain explicit
@@ -50,3 +51,5 @@ reconciliation using the same broadcast ID; the browser never resends them.
 The generator intentionally supports a bounded OpenAPI subset. New media formats
 or parameter locations must gain implementation and regression coverage before
 being added to a contract. No third-party code generation dependency is required.
+
+Workflow decisions send the version from the reviewed instance, including zero. A409 requires reloading and reviewing current state before another deliberate decision; generated clients never silently retry or refresh. The browser source currently has no generic workflow decision or B2B billing-payment callers: firefighting approvals use separate domain handlers and fee collections use their own stable-key client. The billing payment request schema documents POST /api/v1/billing-payments, explicitly classified compatibility and excluded from canonical client operations. It requires a stable idempotencyKey, invoiceId, integer amount and paymentMode; actor/branch are server-owned. There is no invented /billing/payments endpoint.

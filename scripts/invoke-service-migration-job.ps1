@@ -38,6 +38,11 @@ if(-not $DatabaseUrl){
   if($DryRun){throw 'DryRun requires an explicit DatabaseUrl; it never discovers cloud configuration.'}
   if($ConfigSource -eq 'CloudDeploy'){
     $target=Invoke-MigrationGcloud @('deploy','targets','describe',"$Service-$Environment","--project=$ProjectId","--region=$Region",'--format=json') | ConvertFrom-Json
+    # gcloud renders the Target alongside its Active Pipeline, unlike the bare REST resource.
+    if($target.PSObject.Properties.Name -contains 'Target') {
+      $target=$target.Target
+      if($null -eq $target -or $target -is [string] -or $target -is [array]){throw 'Cloud Deploy Target wrapper is malformed.'}
+    }
     $hostName=[string]$target.deployParameters.db_host;$databaseName=[string]$target.deployParameters.db_name
     if($hostName -notmatch '^[A-Za-z0-9.-]+$' -or $databaseName -notmatch '^[A-Za-z0-9_]+$'){throw 'Cloud Deploy target lacks explicit valid database host/name.'}
     $DatabaseUrl="jdbc:postgresql://$hostName/$databaseName`?sslmode=require"

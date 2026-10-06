@@ -5,13 +5,18 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import shutil
+
+POWERSHELL = shutil.which("pwsh") or shutil.which("powershell.exe") or shutil.which("powershell")
+if not POWERSHELL:
+    raise RuntimeError("PowerShell is required for deployment security regression tests")
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/invoke-service-migration-job.ps1"
 
 class MigrationJobTest(unittest.TestCase):
     def arguments(self, output):
-        return ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(SCRIPT), "-ProjectId", "custoking-dev", "-Region", "asia-south2", "-Environment", "dev", "-Service", "operations-service", "-ImageRef", "asia-south2-docker.pkg.dev/custoking-dev/custoking/operations@sha256:" + "a" * 64, "-CommitSha", "b" * 40, "-DatabaseUrl", "jdbc:postgresql://10.92.0.3/custoking_dev?sslmode=require", "-OutputDirectory", str(output)]
+        return [POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(SCRIPT), "-ProjectId", "custoking-dev", "-Region", "asia-south2", "-Environment", "dev", "-Service", "operations-service", "-ImageRef", "asia-south2-docker.pkg.dev/custoking-dev/custoking/operations@sha256:" + "a" * 64, "-CommitSha", "b" * 40, "-DatabaseUrl", "jdbc:postgresql://10.92.0.3/custoking_dev?sslmode=require", "-OutputDirectory", str(output)]
 
     def test_rendered_job_uses_exact_launcher_digest_owner_secret_and_limits(self):
         with tempfile.TemporaryDirectory(prefix="ims-migration-render-") as directory:
@@ -50,11 +55,17 @@ elif a[:2]==['logging','read']:
  schemas=['workflow'] if os.environ.get('IMS_FIXTURE_FAILURE')=='missing-schema' else ['workflow','firefighting']
  print(json.dumps([{'textPayload':f'OWNER_MIGRATION_RESULT service=operations-service schema={s} version=7 migrationsExecuted=0 success=true'} for s in schemas]))
 elif a[:3]==['deploy','targets','describe']:
- print(json.dumps({'deployParameters':{} if os.environ.get('IMS_FIXTURE_FAILURE')=='missing-config' else {'db_host':'10.92.0.3','db_name':'custoking_dev'}}))
+ target={'deployParameters':{} if os.environ.get('IMS_FIXTURE_FAILURE')=='missing-config' else {'db_host':'10.92.0.3','db_name':'custoking_dev'}}
+ print(json.dumps(target if os.environ.get('IMS_FIXTURE_FAILURE')=='bare-target' else {'Target':'invalid-target' if os.environ.get('IMS_FIXTURE_FAILURE')=='malformed-wrapper' else target,'Active Pipeline':{'name':'controlled-fixture'}}))
 elif a[:3]==['run','services','describe']:
  print(json.dumps({'spec':{'template':{'spec':{'containers':[{'env':[] if os.environ.get('IMS_FIXTURE_FAILURE')=='missing-config' else [{'name':'SPRING_DATASOURCE_URL','value':'jdbc:postgresql://10.92.0.3/custoking_dev?sslmode=require'}]}]}}}}))
 """)
-            (folder / "gcloud.cmd").write_text(f'@echo off\n"{os.sys.executable}" "{fixture}" %*\nexit /b %errorlevel%\n')
+            if os.name == "nt":
+                (folder / "gcloud.cmd").write_text(f'@echo off\n"{os.sys.executable}" "{fixture}" %*\nexit /b %errorlevel%\n')
+            else:
+                native=folder / "gcloud"
+                native.write_text(f"#!{os.sys.executable}\nimport runpy\nrunpy.run_path({str(fixture)!r},run_name='__main__')\n")
+                native.chmod(0o755)
             environment = os.environ.copy()
             environment.update(PATH=str(folder) + os.pathsep + environment["PATH"], IMS_FIXTURE_RECEIPT=str(receipt), IMS_FIXTURE_FAILURE=failure)
             arguments=self.arguments(folder / "evidence")
@@ -107,6 +118,20 @@ elif a[:3]==['run','services','describe']:
                 self.assertNotEqual(0,result.returncode)
                 self.assertEqual(1,len(calls))
                 self.assertIsNone(evidence)
+
+    def test_bare_rest_target_and_actual_gcloud_wrapper_are_both_supported(self):
+        for shape in ['', 'bare-target']:
+            with self.subTest(shape=shape):
+                result,calls,evidence=self.fixture(shape,'CloudDeploy')
+                self.assertEqual(0,result.returncode,result.stderr)
+                self.assertTrue(evidence['success'])
+
+    def test_malformed_gcloud_wrapper_cannot_create_job(self):
+        result,calls,evidence=self.fixture('malformed-wrapper','CloudDeploy')
+        self.assertNotEqual(0,result.returncode)
+        self.assertIn('Target wrapper is malformed',result.stderr)
+        self.assertEqual(1,len(calls))
+        self.assertIsNone(evidence)
 
 if __name__ == "__main__":
     unittest.main()

@@ -39,7 +39,7 @@ The requested multi-agent implementation covers all34 findings and12 assurance t
 | SEC-31 | Implemented bounded relay futures/batch/dispatch and authenticated reset drain; source tests passed. Policy HTTP remains bounded within short row-lock transaction; external mail/scale-zero proof pending. |
 | SEC-32 | Implemented explicit pool/scaling budgets and overlap/migration reserve;198/200 admitted budget. Local bounded pool probe passed; real workload load certificate pending. |
 | SEC-33 | Implemented CRLF-safe generated drift checks and LF attributes; checks passed. |
-| SEC-34 | Implemented typed financial/workflow mutations and contract convergence; final contract review ongoing. |
+| SEC-34 | Implemented typed financial/workflow mutations and contract convergence; contract schemas/wrappers and strict version parsing verified; current UI uses independent FF approval routes. |
 
 ## Verification tasks
 
@@ -50,7 +50,7 @@ The requested multi-agent implementation covers all34 findings and12 assurance t
 | VER-03 | JWT/session/CSRF/passkey/recovery tests passed; live reset delivery and session revocation drill pending. |
 | VER-04 | Real Chromium two-tab, WebAuthn and built nginx CSP/preview/header tests passed; final deployed browser checks pending. |
 | VER-05 | Prepared SQL/identifier analysis and bounded parser cases passed; broader injection surface review tracked in source reports. |
-| VER-06 | Controlled request parsing/header tests available; raw HTTP smuggling assurance ongoing. No live network stress. |
+| VER-06 | Controlled request parsing/header tests available; four actual loopback HTTP/1.1 ambiguous framing cases rejected400 before application dispatch. Edge/HTTP2/upstream parser assurance remains pending. No live network stress. |
 | VER-07 | Controlled slow body/DNS/redirect/hostile PDF/workbook/CSV tests passed. Windows symlink skip requires Linux evidence. |
 | VER-08 | Real PostgreSQL workflow/payment races, idempotency, outbox rollback and RLS tests passed. |
 | VER-09 | Signed machine caller/source event replay/reordering/tombstone tests passed; actual PubSub restart/caller graph drill pending. |

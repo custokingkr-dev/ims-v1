@@ -20,6 +20,7 @@ public record WorkflowActionRequest(
 
         /** Free-text notes or rejection reason, capped at 1 000 characters. */
         @Size(max = 1000) String notes,
+        @tools.jackson.databind.annotation.JsonDeserialize(using=StrictWorkflowVersionDeserializer.class)
         @jakarta.validation.constraints.PositiveOrZero Long expectedVersion
 ) {
     public WorkflowActionRequest(Long actorId, String actorEmail, String notes) {

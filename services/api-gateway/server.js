@@ -469,7 +469,7 @@ function verifyJwtLocally(token, secret, nowSeconds, detail = {}) {
   } catch {
     return fail('token_malformed');
   }
-  // Allow only HMAC JWT algorithms emitted by the identity service; reject "none" and asymmetric algs.
+  // Identity emits HS256; pin that algorithm before interpreting any claims.
   const digest = header?.alg === 'HS256' ? HMAC_JWT_ALGORITHMS.HS256 : null;
   if (!digest) return fail('token_algorithm_rejected');
   const expected = crypto.createHmac(digest, secret).update(`${headerB64}.${payloadB64}`).digest('base64url');
@@ -522,9 +522,7 @@ async function authenticate(req, requestId, opts = {}) {
     const claims = verifyJwtLocally(token, secret, now, detail)
       || (previous ? verifyJwtLocally(token, previous, now, detail) : null);
     if (!claims) return reject(detail.reason || 'token_invalid'); // no fallback
-    // A refresh token is validly signed but is never a bearer credential. Do not send it to
-    // introspection as an "un-enriched legacy token"; identity enforces the same boundary too.
-    if (claims.type === 'refresh') return reject('refresh_token_as_bearer');
+    // The verifier already requires access purpose; introspection is mandatory for every accepted token.
     const introspected = await introspectFn(req, requestId);
     return introspected || reject('introspection_rejected');
   }

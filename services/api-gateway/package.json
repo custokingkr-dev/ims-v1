@@ -11,7 +11,7 @@
   "scripts": {
     "contracts:generate": "node ../../scripts/generate-api-route-inventory.js && node ../../scripts/generate-openapi-typescript-client.js",
     "contracts:check": "node ../../scripts/generate-api-route-inventory.js --check && node ../../scripts/generate-openapi-typescript-client.js --check",
-    "test": "npm run contracts:check && node --test server.test.js api-contract.test.js"
+    "test": "node --test server.test.js api-contract.test.js ../../scripts/tests/gateway_raw_http_framing.test.js"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",

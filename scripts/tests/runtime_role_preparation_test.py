@@ -5,6 +5,11 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import shutil
+
+POWERSHELL = shutil.which("pwsh") or shutil.which("powershell.exe") or shutil.which("powershell")
+if not POWERSHELL:
+    raise RuntimeError("PowerShell is required for deployment security regression tests")
 import uuid
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,7 +27,7 @@ class RuntimeRolePreparationTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory(prefix="ims-managed-role-fixture-")
-        result = run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts/security/prepare-dev-runtime-roles.ps1"), "-OutputDirectory", cls.temp.name])
+        result = run([POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts/security/prepare-dev-runtime-roles.ps1"), "-OutputDirectory", cls.temp.name])
         cls.plan = json.loads(result.stdout)
         cls.job = load_json(cls.plan["reviewedJobFile"])
         cls.shell = cls.job["spec"]["template"]["spec"]["template"]["spec"]["containers"][0]["args"][1]
@@ -78,7 +83,7 @@ class RuntimeRolePreparationTest(unittest.TestCase):
                 self.assertNotIn("value", item)
 
     def test_apply_refuses_unreviewed_sql_before_any_cloud_action(self):
-        result = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts/security/prepare-dev-runtime-roles.ps1"), "-Apply", "-ExpectedSqlSha256", "0" * 64], capture_output=True, text=True)
+        result = subprocess.run([POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts/security/prepare-dev-runtime-roles.ps1"), "-Apply", "-ExpectedSqlSha256", "0" * 64], capture_output=True, text=True)
         self.assertNotEqual(0, result.returncode)
         self.assertIn("exact SQL SHA256", result.stderr)
 
