@@ -176,7 +176,7 @@ jobs:
       - name: Run gateway tests
         if: ${{ matrix.tool == 'node' }}
         working-directory: ${{ matrix.path }}
-        run: node --test server.test.js
+        run: npm test
       - name: Run frontend unit tests and production build
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}

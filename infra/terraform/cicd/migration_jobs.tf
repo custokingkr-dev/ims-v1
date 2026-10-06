@@ -55,3 +55,22 @@ resource "google_project_iam_member" "release_migration_job_cleanup" {
   role     = google_project_iam_custom_role.migration_job_cleanup.name
   member   = local.migration_release_members[each.value]
 }
+
+# The migration runner verifies per-schema stdout markers before permitting rollout.
+# Existing Cloud Run/Cloud Deploy roles do not grant logEntries.list. This is
+# project-scoped read access for the trusted release principal, not a job-name
+# IAM restriction; private-log access and Logging administration are excluded.
+resource "google_project_iam_custom_role" "migration_job_evidence_reader" {
+  project     = var.project_id
+  role_id     = "imsMigrationJobEvidenceReader"
+  title       = "IMS migration evidence reader"
+  description = "Read migration completion markers before application rollout"
+  permissions = ["logging.logEntries.list"]
+}
+
+resource "google_project_iam_member" "release_migration_job_evidence_reader" {
+  for_each = local.environments
+  project  = var.project_id
+  role     = google_project_iam_custom_role.migration_job_evidence_reader.name
+  member   = local.migration_release_members[each.value]
+}
