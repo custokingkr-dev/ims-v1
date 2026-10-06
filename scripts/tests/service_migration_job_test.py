@@ -39,7 +39,7 @@ class MigrationJobTest(unittest.TestCase):
             self.assertEqual({"name": "db-password-dev", "key": "latest"}, env["FLYWAY_PASSWORD"]["valueFrom"]["secretKeyRef"])
             self.assertNotIn("SPRING_DATASOURCE_PASSWORD", env)
 
-    def fixture(self, failure, config_source=None):
+    def fixture(self, failure, config_source=None, database_host="10.92.0.3"):
         with tempfile.TemporaryDirectory(prefix="ims-migration-native-") as directory:
             folder = Path(directory)
             receipt = folder / "calls.jsonl"
@@ -49,13 +49,18 @@ from pathlib import Path
 a=sys.argv[1:]
 with open(os.environ['IMS_FIXTURE_RECEIPT'],'a') as f: f.write(json.dumps(a)+'\\n')
 print('Normal CLI progress',file=sys.stderr)
+if a[:3]==['run','jobs','replace']:
+ job=json.loads(Path(a[3]).read_text(encoding='utf-8-sig'))
+ env={e['name']:e for e in job['spec']['template']['spec']['template']['spec']['containers'][0]['env']}
+ if os.environ.get('IMS_FIXTURE_HOST')=='10.92.0.3:5432':
+  assert env['FLYWAY_URL']['value']=='jdbc:postgresql://10.92.0.3:5432/custoking_dev?sslmode=require'
 if len(a)>2 and a[:3]==['run','jobs',os.environ.get('IMS_FIXTURE_FAILURE','')]: sys.exit(7)
 if a[:3]==['run','jobs','execute']: print(json.dumps({'status':{'conditions':[{'type':'Completed','status':'True'}]}}))
 elif a[:2]==['logging','read']:
  schemas=['workflow'] if os.environ.get('IMS_FIXTURE_FAILURE')=='missing-schema' else ['workflow','firefighting']
  print(json.dumps([{'textPayload':f'OWNER_MIGRATION_RESULT service=operations-service schema={s} version=7 migrationsExecuted=0 success=true'} for s in schemas]))
 elif a[:3]==['deploy','targets','describe']:
- target={'deployParameters':{} if os.environ.get('IMS_FIXTURE_FAILURE')=='missing-config' else {'db_host':'10.92.0.3','db_name':'custoking_dev'}}
+ target={'deployParameters':{} if os.environ.get('IMS_FIXTURE_FAILURE')=='missing-config' else {'db_host':os.environ['IMS_FIXTURE_HOST'],'db_name':'custoking_dev'}}
  print(json.dumps(target if os.environ.get('IMS_FIXTURE_FAILURE')=='bare-target' else {'Target':'invalid-target' if os.environ.get('IMS_FIXTURE_FAILURE')=='malformed-wrapper' else target,'Active Pipeline':{'name':'controlled-fixture'}}))
 elif a[:3]==['run','services','describe']:
  print(json.dumps({'spec':{'template':{'spec':{'containers':[{'env':[] if os.environ.get('IMS_FIXTURE_FAILURE')=='missing-config' else [{'name':'SPRING_DATASOURCE_URL','value':'jdbc:postgresql://10.92.0.3/custoking_dev?sslmode=require'}]}]}}}}))
@@ -67,7 +72,7 @@ elif a[:3]==['run','services','describe']:
                 native.write_text(f"#!{os.sys.executable}\nimport runpy\nrunpy.run_path({str(fixture)!r},run_name='__main__')\n")
                 native.chmod(0o755)
             environment = os.environ.copy()
-            environment.update(PATH=str(folder) + os.pathsep + environment["PATH"], IMS_FIXTURE_RECEIPT=str(receipt), IMS_FIXTURE_FAILURE=failure)
+            environment.update(PATH=str(folder) + os.pathsep + environment["PATH"], IMS_FIXTURE_RECEIPT=str(receipt), IMS_FIXTURE_FAILURE=failure, IMS_FIXTURE_HOST=database_host)
             arguments=self.arguments(folder / "evidence")
             if config_source:
                 index=arguments.index('-DatabaseUrl')
@@ -125,6 +130,22 @@ elif a[:3]==['run','services','describe']:
                 result,calls,evidence=self.fixture(shape,'CloudDeploy')
                 self.assertEqual(0,result.returncode,result.stderr)
                 self.assertTrue(evidence['success'])
+
+    def test_actual_wrapped_clouddeploy_host_with_explicit_default_port_succeeds(self):
+        result,calls,evidence=self.fixture('','CloudDeploy','10.92.0.3:5432')
+        self.assertEqual(0,result.returncode,result.stderr)
+        self.assertTrue(evidence['success'])
+        self.assertEqual(['describe','replace','execute','read','delete'],[call[2] if call[0] != 'logging' else call[1] for call in calls])
+
+    def test_clouddeploy_invalid_port_userinfo_and_injection_rejected_before_job_mutation(self):
+        for host in ['10.92.0.3:5433','10.92.0.3:0','owner@10.92.0.3:5432','10.92.0.3:5432/database?sslmode=disable','10.92.0.3:5432;DROP TABLE users','10.92.0.3:5432\n--args=evil']:
+            with self.subTest(host=host):
+                result,calls,evidence=self.fixture('','CloudDeploy',host)
+                self.assertNotEqual(0,result.returncode)
+                self.assertIn('explicit valid database host/name',result.stderr)
+                self.assertEqual(1,len(calls))
+                self.assertEqual(['deploy','targets','describe'],calls[0][:3])
+                self.assertIsNone(evidence)
 
     def test_malformed_gcloud_wrapper_cannot_create_job(self):
         result,calls,evidence=self.fixture('malformed-wrapper','CloudDeploy')

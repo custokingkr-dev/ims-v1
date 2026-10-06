@@ -44,7 +44,7 @@ if(-not $DatabaseUrl){
       if($null -eq $target -or $target -is [string] -or $target -is [array]){throw 'Cloud Deploy Target wrapper is malformed.'}
     }
     $hostName=[string]$target.deployParameters.db_host;$databaseName=[string]$target.deployParameters.db_name
-    if($hostName -notmatch '^[A-Za-z0-9.-]+$' -or $databaseName -notmatch '^[A-Za-z0-9_]+$'){throw 'Cloud Deploy target lacks explicit valid database host/name.'}
+    if($hostName -notmatch '^[A-Za-z0-9.-]+(?::5432)?$' -or $databaseName -notmatch '^[A-Za-z0-9_]+$'){throw 'Cloud Deploy target lacks explicit valid database host/name.'}
     $DatabaseUrl="jdbc:postgresql://$hostName/$databaseName`?sslmode=require"
   } else {
     $runtime=Invoke-MigrationGcloud @('run','services','describe',"custoking-$Service-$Environment","--project=$ProjectId","--region=$Region",'--format=json') | ConvertFrom-Json
