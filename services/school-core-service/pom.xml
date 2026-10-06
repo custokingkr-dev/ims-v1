@@ -14,6 +14,9 @@
     <description>Custoking IMS school-core microservice (tenant-school + student + attendance + fee + catalog)</description>
 
     <properties>
+        <!-- Same-line security patches for the JSON libraries in this service. -->
+        <jackson-2-bom.version>2.21.7</jackson-2-bom.version>
+        <jackson-bom.version>3.1.7</jackson-bom.version>
         <thumbnailator.version>0.4.21</thumbnailator.version>
         <apache-poi.version>5.5.1</apache-poi.version>
         <commons-csv.version>1.14.1</commons-csv.version>
