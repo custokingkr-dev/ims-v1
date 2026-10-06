@@ -12,8 +12,16 @@ deployParameters:
   runtime_service_account: ims-identity-dev@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
+  user_context_caller_service_accounts: ims-api-gateway-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  runtime_db_role: ims_identity_rt
+  runtime_db_password_secret: identity-runtime-db-password-dev
+  service_oidc_audiences: https://custoking-identity-service-dev-__PROJECT_NUMBER__.__REGION__.run.app,https://custoking-identity-service-dev-hd4wfwk7mq-em.a.run.app
+  password_reset_drain_caller_service_accounts: ims-async-scheduler-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  webauthn_rp_id: custoking-frontend-dev-hd4wfwk7mq-em.a.run.app
+  webauthn_origins: https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app
+  identity_cookie_allowed_origins: https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app,https://custoking-frontend-dev-__PROJECT_NUMBER__.__REGION__.run.app
   domain_min_instances: "0"
-  domain_max_instances: "4"
+  domain_max_instances: "2"
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
@@ -55,8 +63,15 @@ deployParameters:
   runtime_service_account: ims-school-core-dev@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
+  user_context_caller_service_accounts: ims-api-gateway-dev@__PROJECT_ID__.iam.gserviceaccount.com,ims-identity-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  runtime_db_role: ims_school_core_rt
+  runtime_db_password_secret: school-core-runtime-db-password-dev
+  service_oidc_audiences: https://custoking-school-core-service-dev-__PROJECT_NUMBER__.__REGION__.run.app,https://custoking-school-core-service-dev-hd4wfwk7mq-em.a.run.app
+  outbox_relay_caller_service_accounts: ims-async-scheduler-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  broadcast_policy_caller_service_accounts: ims-platform-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  identity_directory_caller_service_accounts: ims-identity-dev@__PROJECT_ID__.iam.gserviceaccount.com
   domain_min_instances: "0"
-  domain_max_instances: "4"
+  domain_max_instances: "2"
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
@@ -97,8 +112,13 @@ deployParameters:
   runtime_service_account: ims-operations-dev@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
+  user_context_caller_service_accounts: ims-api-gateway-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  runtime_db_role: ims_operations_rt
+  runtime_db_password_secret: operations-runtime-db-password-dev
+  service_oidc_audiences: https://custoking-operations-service-dev-__PROJECT_NUMBER__.__REGION__.run.app,https://custoking-operations-service-dev-hd4wfwk7mq-em.a.run.app
+  outbox_relay_caller_service_accounts: ims-async-scheduler-dev@__PROJECT_ID__.iam.gserviceaccount.com
   domain_min_instances: "0"
-  domain_max_instances: "4"
+  domain_max_instances: "2"
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
@@ -139,8 +159,14 @@ deployParameters:
   runtime_service_account: ims-platform-dev@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
+  user_context_caller_service_accounts: ims-api-gateway-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  async_drain_caller_service_accounts: ims-async-scheduler-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  notification_delivery_caller_service_accounts: ims-school-core-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  runtime_db_role: ims_platform_rt
+  runtime_db_password_secret: platform-runtime-db-password-dev
+  service_oidc_audiences: https://custoking-platform-service-dev-__PROJECT_NUMBER__.__REGION__.run.app,https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app
   domain_min_instances: "0"
-  domain_max_instances: "4"
+  domain_max_instances: "2"
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
@@ -166,7 +192,6 @@ deployParameters:
   reporting_topic: ims-reporting-events-v1
   reporting_pubsub_require_shared_token: "false"
   notification_pubsub_require_shared_token: "false"
-  service_oidc_audiences: https://custoking-platform-service-dev-__PROJECT_NUMBER__.__REGION__.run.app
   pubsub_push_service_accounts: ims-reporting-push-dev@__PROJECT_ID__.iam.gserviceaccount.com,ims-notification-push-dev@__PROJECT_ID__.iam.gserviceaccount.com
   internal_oidc_require: "true"
   internal_caller_service_accounts: ims-school-core-dev@__PROJECT_ID__.iam.gserviceaccount.com
@@ -201,8 +226,13 @@ deployParameters:
   runtime_service_account: ims-billing-dev@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
+  user_context_caller_service_accounts: ims-api-gateway-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  runtime_db_role: ims_billing_rt
+  runtime_db_password_secret: billing-runtime-db-password-dev
+  service_oidc_audiences: https://custoking-billing-service-dev-__PROJECT_NUMBER__.__REGION__.run.app,https://custoking-billing-service-dev-hd4wfwk7mq-em.a.run.app
+  outbox_relay_caller_service_accounts: ims-async-scheduler-dev@__PROJECT_ID__.iam.gserviceaccount.com
   domain_min_instances: "0"
-  domain_max_instances: "4"
+  domain_max_instances: "2"
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
@@ -245,7 +275,7 @@ deployParameters:
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
-  domain_max_instances: "4"
+  domain_max_instances: "2"
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
@@ -287,7 +317,7 @@ deployParameters:
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
-  domain_max_instances: "4"
+  domain_max_instances: "2"
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"

@@ -157,6 +157,27 @@ if ($runtimeAccounts.Count -ne $targetCount -or
   throw "Every Cloud Deploy $Environment target must use its environment-specific dedicated runtime identity."
 }
 
+# Security admission is source-controlled: fixed service roles, audiences and principal carriers.
+$securityRoles=@{ 'identity-service'='ims_identity_rt'; 'school-core-service'='ims_school_core_rt'; 'operations-service'='ims_operations_rt'; 'platform-service'='ims_platform_rt'; 'billing-service'='ims_billing_rt' }
+$reviewedHashes=@{ 'custoking-dev/dev/asia-south2'='hd4wfwk7mq'; 'custoking-prod/prod/asia-south2'='yter7sugpa' }
+$serviceHash=$reviewedHashes["$projectId/$Environment/$($replacements['__REGION__'])"]
+if(-not $serviceHash){throw 'Service authentication requires a reviewed project/environment/region alias.'}
+foreach($service in $securityRoles.Keys){
+ $blocks=@($text -split '(?m)^---\s*$' | Where-Object {$_ -match "(?m)^  name:\s*$service-$Environment\s*$"})
+ if($blocks.Count -ne 1){throw "Exactly one $service security target is required."}
+ $expected=@{
+  runtime_db_role=$securityRoles[$service]
+  runtime_db_password_secret=($service.Replace('-service','')+"-runtime-db-password-$Environment")
+  service_oidc_audiences="https://custoking-$service-$Environment-$($replacements['__PROJECT_NUMBER__']).$($replacements['__REGION__']).run.app,https://custoking-$service-$Environment-$serviceHash-em.a.run.app"
+  user_context_caller_service_accounts="ims-api-gateway-$Environment@$projectId.iam.gserviceaccount.com"
+ }
+ if($service -eq 'school-core-service'){$expected.user_context_caller_service_accounts+=",ims-identity-$Environment@$projectId.iam.gserviceaccount.com"}
+ foreach($key in $expected.Keys){
+  $declarations=[regex]::Matches($blocks[0],"(?m)^  $([regex]::Escape($key)):[ \t]*([^\r\n]*)")
+  if($declarations.Count -ne 1 -or $declarations[0].Groups[1].Value.Trim().Trim('"',"'") -cne $expected[$key]){throw "Unreviewed $service security target parameter: $key."}
+ }
+}
+
 $unresolved = [regex]::Matches($text, "__[A-Z0-9_]+__") | ForEach-Object { $_.Value } | Sort-Object -Unique
 if ($unresolved) {
   throw "Unresolved Cloud Deploy placeholders remain in ${TemplatePath}: $($unresolved -join ', ')"
