@@ -67,10 +67,11 @@ public class CatalogOrderFormService {
             throw bad("Create a draft, upload any required artwork, then place the saved order");
         }
         rejectPrices(request);
-        Map<String, Object> definition = products.form("NOTEBOOKS", false);
+        String categoryCode = string(request.get("category")).trim().toUpperCase(Locale.ROOT);
+        Map<String, Object> definition = products.form(categoryCode, false);
         Map<String, Object> category = map(definition.get("category"));
         if (Boolean.FALSE.equals(category.get("active")) || !Boolean.TRUE.equals(category.get("formEnabled"))) {
-            throw bad("Notebook ordering is currently unavailable");
+            throw bad("Ordering for this category is currently unavailable");
         }
         NormalisationResult result = normalise(definition, request.get("orderData"));
         String id = "CK-" + jdbc.sql("SELECT nextval('catalog.seq_catalog_order_id')").query(Long.class).single();
@@ -80,11 +81,12 @@ public class CatalogOrderFormService {
                     status, required_by_date, notes, estimated_delivery, design_status, superadmin_approval_status,
                     notebook_cover_logo, notebook_delivery_mode, notebook_spine_name, created_at, created_by,
                     form_version, order_selections, form_snapshot, pricing_status, quantity_rule_results)
-                VALUES (:id, :school, 'NOTEBOOKS', :data, 0, 0, 0, 'DRAFT', :date, :notes, '1-2 weeks',
+                VALUES (:id, :school, :category, :data, 0, 0, 0, 'DRAFT', :date, :notes,
+                    CASE WHEN :category = 'NOTEBOOKS' THEN '1-2 weeks' ELSE NULL END,
                     :design, 'NOT_SUBMITTED', :cover, 'SCHOOL', 'NO', now(), :actor,
                     2, CAST(:selections AS jsonb), CAST(:snapshot AS jsonb), 'PENDING_PRICING', CAST(:aggregate AS jsonb))
-                """).param("id", id).param("school", schoolId)
-                .param("data", Json.write(compatibility(result)))
+                """).param("id", id).param("school", schoolId).param("category", categoryCode)
+                .param("data", Json.write(compatibility(result, definition)))
                 .param("date", date(request.get("requiredByDate"))).param("notes", notes(request.get("notes")))
                 .param("design", custom ? "PENDING" : "NOT_REQUIRED").param("cover", custom ? "YES" : "NO")
                 .param("actor", actorString()).param("selections", Json.write(result.orderSelections()))
@@ -135,7 +137,7 @@ public class CatalogOrderFormService {
                     required_by_date = :date, notes = :notes, design_status = :design, notebook_cover_logo = :cover,
                     quantity_rule_results = CAST(:aggregate AS jsonb), updated_by = :actor, version = version + 1
                 WHERE id = :id
-                """).param("id", id).param("data", Json.write(compatibility(result)))
+                """).param("id", id).param("data", Json.write(compatibility(result, map(order.get("form_snapshot")))))
                 .param("selections", Json.write(result.orderSelections()))
                 .param("date", request.containsKey("requiredByDate") ? date(request.get("requiredByDate")) : order.get("required_by_date"))
                 .param("notes", request.containsKey("notes") ? notes(request.get("notes")) : order.get("notes"))
@@ -168,7 +170,7 @@ public class CatalogOrderFormService {
                 TenantScope.requireOperationsOrSuperAdmin();
                 TenantScope.requirePermissionIfAuthenticated("order:update");
                 requireStatus(order, "DESIGN_APPROVAL");
-                if (!custom) throw bad("Non-customized notebooks do not require design approval");
+                if (!custom) throw bad("This order does not require design approval");
                 requireStage(order, "ON_PLACE");
                 approvedAsset = currentAsset(id, "DESIGN");
                 if (approvedAsset == null) throw bad("Upload artwork before approving the design");
@@ -195,7 +197,7 @@ public class CatalogOrderFormService {
                 requireStage(order, "BEFORE_DELIVERY");
                 nextStatus = "DELIVERED";
             }
-            default -> throw bad("Unsupported notebook order transition");
+            default -> throw bad("Unsupported order transition");
         }
         jdbc.sql("""
                 UPDATE catalog.catalog_orders SET status = :status, design_status = :design,
@@ -450,7 +452,7 @@ public class CatalogOrderFormService {
     private NormalisationResult normalise(Map<String, Object> definition, Object value) {
         Map<String, Object> data = map(value);
         if (!data.containsKey("orderSelections") || !data.containsKey("lines")) {
-            throw bad("Notebook ordering has changed. Refresh the catalog and use the structured notebook form");
+            throw bad("Ordering has changed. Refresh the catalog and use the structured product form");
         }
         rejectPrices(data);
         List<Map<String, Object>> lines = objectList(data.get("lines"));
@@ -549,14 +551,18 @@ public class CatalogOrderFormService {
         outbox.append("catalog-order.upserted.v1", "CatalogOrderUpserted:" + id, "CatalogOrder", id, number(order.get("school_id")), payload);
     }
 
-    private Map<String, Object> compatibility(NormalisationResult result) {
+    private Map<String, Object> compatibility(NormalisationResult result, Map<String, Object> definition) {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("orderSelections", codes(result.orderSelections()));
         data.put("items", result.lines().stream().map(line -> {
             Map<String, Object> selections = map(line.get("optionSelections"));
             String name = selections.values().stream().map(option -> string(map(option).get("label")))
-                    .filter(label -> !label.isBlank()).reduce((a, b) -> a + " / " + b).orElse("Notebook");
-            return Map.<String, Object>of("name", name + " / " + line.get("pageCount") + " printed pages", "qty", line.get("bookCount"));
+                    .filter(label -> !label.isBlank()).reduce((a, b) -> a + " / " + b)
+                    .orElse(string(map(definition.get("category")).get("label")));
+            if (Boolean.TRUE.equals(map(definition.get("category")).get("paged"))) {
+                name += " / " + line.get("pageCount") + " printed pages";
+            }
+            return Map.<String, Object>of("name", name, "qty", line.get("bookCount"));
         }).toList());
         return data;
     }

@@ -6,6 +6,8 @@ import { errorMessage, fieldErrorsFrom, getFormOrder, parseFormOrderDetail } fro
 import { evaluateProductForm, matches } from './productFormRules';
 import { estimateLine, estimateRatesFrom } from './reportCardEstimate';
 import { OrderAssetField } from './OrderAssetField';
+import { TrophyCatalogue } from './trophies/TrophyCatalogue';
+import { trophyReferencePrice } from './trophies/catalogue';
 import { selectionCodes, type AssetKind, type FormDefinition, type FormInput, type FormLine, type FormOrderDetail, type ProductGroup, type ProductOption } from './types';
 import './product-form.css';
 
@@ -35,6 +37,8 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
   const contextGroups = lineGroups.filter((g) => g !== matrixGroup);
   // Notebooks count books and printed pages; every other category counts units and has no pages.
   const paged = definition.category.paged !== false;
+  const trophies = definition.category.code === 'TROPHIES';
+  const trophyOptions = lineGroups.find((group) => group.code === 'VARIANT')?.options || [];
   // The prototypes call this Quantity on the notebook form and Count everywhere else.
   const countLabel = paged ? 'Quantity' : 'Count';
   const defaultPageCount = paged ? 196 : 1;
@@ -141,6 +145,22 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
     setDraftCount('');
   };
 
+  const addTrophy = (variant: string, quantity: number) => {
+    if (saving || isPlaced) return false;
+    const currentLine = input.lines.find((line) => line.selections.VARIANT === variant);
+    if ((!currentLine && input.lines.length >= 500) || (currentLine && currentLine.bookCount + quantity > 2147483647)) {
+      setErrors({ lines: 'The order exceeds the supported line or quantity limit.' }); return false;
+    }
+    setInput((current) => {
+      const existing = current.lines.findIndex((line) => line.selections.VARIANT === variant);
+      if (existing >= 0) return { ...current, lines: current.lines.map((line, index) => index === existing
+        ? { ...line, bookCount: line.bookCount + quantity } : line) };
+      return { ...current, lines: [...current.lines, { selections: { VARIANT: variant }, bookCount: quantity, pageCount: 1 }] };
+    });
+    setErrors({});
+    return true;
+  };
+
   const save = async (place: boolean) => {
     if (preview || inFlight.current) return;
     const validation = { ...evaluation.fieldErrors };
@@ -236,9 +256,13 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
     return <label className="field" key={group.code}><span>{group.label}</span>{control}</label>;
   };
 
-  // Only report cards carry an estimate today. It is computed, never typed, and advisory.
+  // Report cards use rule-based estimates; trophies use the reviewed supplier catalogue.
+  // Both are advisory and never submitted as customer-owned prices.
   const estimateRates = estimateRatesFrom(definition.rules);
-  const estimate = estimateRates && input.lines.length ? input.lines.reduce((total, line) => {
+  const trophyEstimate = trophies && input.lines.length ? input.lines.reduce((total, line) =>
+    total + (trophyReferencePrice(line.selections.VARIANT) || 0) * line.bookCount, 0) : null;
+  const missingTrophyPrices = trophies && input.lines.some((line) => trophyReferencePrice(line.selections.VARIANT) === null);
+  const estimate = trophyEstimate ?? (estimateRates && input.lines.length ? input.lines.reduce((total, line) => {
     const pages = Number(labelFor('INNER_PAGES', line.selections.INNER_PAGES)) || 0;
     return total + estimateLine(estimateRates, {
       size: labelFor('SIZE', line.selections.SIZE),
@@ -246,7 +270,7 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
       folding: line.selections.FOLDING === 'YES',
       quantity: line.bookCount || 0,
     }).lineTotal;
-  }, 0) : null;
+  }, 0) : null);
 
   const builderSelections = { ...context, ...input.orderSelections };
   return <div className="ck-product-form">
@@ -258,9 +282,9 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
       <div className="ck-product-fields">
         {orderGroups.map((group) => groupField(group, input.orderSelections[group.code],
           (value) => setInput((current) => ({ ...current, orderSelections: { ...current.orderSelections, [group.code]: value } })), builderSelections))}
-        {contextGroups.map((group) => groupField(group, context[group.code],
+        {!trophies && contextGroups.map((group) => groupField(group, context[group.code],
           (value) => setContext((current) => ({ ...current, [group.code]: value })), builderSelections))}
-        {!matrixGroup && <label className="field"><span>{countLabel}</span>
+        {!trophies && !matrixGroup && <label className="field"><span>{countLabel}</span>
           <input aria-label={countLabel} type="number" min="1" step="1" value={draftCount} onChange={(e) => setDraftCount(e.target.value)} />
         </label>}
         <label className="field"><span>Required by date</span><input type="date" value={requiredByDate} onChange={(e) => setRequiredByDate(e.target.value)} /></label>
@@ -300,7 +324,8 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
         <p className="ck-product-muted">{String(referenceRule.message || '')}</p>
       </div>}</div>
 
-      {matrixGroup ? <div className="ck-product-matrix">
+      {trophies ? <TrophyCatalogue options={trophyOptions} disabled={saving || isPlaced}
+        onAdd={addTrophy} /> : matrixGroup ? <div className="ck-product-matrix">
         <table className="ck-product-matrix-table">
           <thead><tr><th>{matrixGroup.label}</th><th>{countLabel}</th>{paged && <th>Pages</th>}</tr></thead>
           <tbody>{activeOptions(matrixGroup).map((option) => <tr key={option.code}>
@@ -357,8 +382,8 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
     </fieldset>
 
     {estimate !== null && <div className="ck-product-estimate" role="status">
-      <span><strong>Estimated total</strong> {estimate.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 })}</span>
-      <span className="ck-product-muted">Estimate only. The Custoking quote is the price of record.</span>
+      <span><strong>{missingTrophyPrices ? 'Priced items estimate' : 'Estimated total'}</strong> {estimate.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 })}</span>
+      <span className="ck-product-muted">{missingTrophyPrices ? 'Some items require a quote. ' : ''}Estimate only. The Custoking quote is the price of record.</span>
     </div>}
     {!preview && !isPlaced && <div className="ck-product-footbar">
       <span className="ck-product-foot-summary">{totalUnits.toLocaleString('en-IN')} {paged ? 'books' : 'units'}{saved?.order.id ? ` · Draft ${saved.order.id}` : ''}</span>

@@ -6,6 +6,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json vite.config.ts index.html ./
 COPY src ./src
+COPY public ./public
 RUN npm run build
 
 FROM nginx:1.31.5-alpine3.24@sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3
@@ -20,7 +21,7 @@ ENV NGINX_RESOLVER="127.0.0.11 valid=10s ipv6=off"
 ARG SECURITY_PATCH_EPOCH=unset
 RUN echo "security patches for ${SECURITY_PATCH_EPOCH}" \
   && apk update \
-  && apk upgrade --no-cache libcrypto3 libssl3 libuuid libexpat
+  && apk upgrade --no-cache libcrypto3 libssl3 libuuid libexpat pcre2
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80

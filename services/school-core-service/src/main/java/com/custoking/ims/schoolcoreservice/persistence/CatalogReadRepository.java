@@ -256,6 +256,10 @@ public class CatalogReadRepository {
     @Transactional
     public CatalogOrderRow createOrder(Map<String, Object> request) {
         String category = normalize(str(request.get("category"), "STATIONERY"), "STATIONERY");
+        if ("TROPHIES".equals(category) && (forms == null || !forms.handlesCreation(category))) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "Trophy ordering is currently unavailable");
+        }
         if (forms != null && forms.handlesCreation(category)) {
             CatalogOrderRow created = requiredOrder(forms.create(request));
             emitOrderUpserted(created);

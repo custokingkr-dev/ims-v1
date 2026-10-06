@@ -1,5 +1,11 @@
 import type { FormDefinition, FormOrderDetail, ProductOption } from './types';
 const options = (groupId: number, values: [string, string][]): ProductOption[] => values.map(([code, label], i) => ({ id: groupId * 100 + i, groupId, code, label, specText: '', widthMm: null, heightMm: null, specStatus: ['KING', 'DRAWING_BOOK'].includes(code) ? 'PENDING_SPEC' : 'CONFIRMED', sortOrder: i, active: true }));
+export const trophyDefinition: FormDefinition = {
+  enabled: true, category: { code: 'TROPHIES', label: 'Trophies', emoji: '🏆', description: 'Trophies by model and size', orderType: 'One-time', formEnabled: true, active: true, paged: false, notesEnabled: true, sortOrder: 15 },
+  groups: [{ id: 30, categoryCode: 'TROPHIES', code: 'VARIANT', label: 'Trophy model and size', level: 1, scope: 'LINE', required: true, active: true, selectionType: 'SINGLE', render: 'SELECT',
+    options: options(30, [['T_WM001_A', 'WM001 / Size A'], ['T_WM001_B', 'WM001 / Size B'], ['T_A_3_A', 'A-3 / Size A'], ['T_A_3_B', 'A-3 / Size B'], ['T_9800_A', '9800 / Size A']]) }],
+  dependencies: [], rules: [],
+};
 export const notebookDefinition: FormDefinition = {
   enabled: true, category: { code: 'NOTEBOOKS', label: 'Notebooks', emoji: '', description: 'Notebook orders', orderType: 'Recurring', formEnabled: true, active: true, sortOrder: 2 }, dependencies: [],
   groups: [

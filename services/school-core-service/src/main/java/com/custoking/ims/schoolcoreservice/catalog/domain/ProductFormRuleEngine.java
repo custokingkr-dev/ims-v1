@@ -20,7 +20,7 @@ public class ProductFormRuleEngine {
         var groups = maps(definition.get("groups"));
         var order = selections(groups, orderSelections, "ORDER", "orderSelections");
         if (rawLines == null || rawLines.isEmpty() || rawLines.size() > 500) {
-            throw error("lines", "Include between 1 and 500 notebook lines");
+            throw error("lines", "Include between 1 and 500 product lines");
         }
         var rules = rules(definition);
         var normalized = new ArrayList<Map<String, Object>>();
@@ -32,7 +32,8 @@ public class ProductFormRuleEngine {
             combined.putAll(selected);
             checkDependencies(definition, groups, combined, path);
             int books = positiveInt(raw.get("bookCount"), path + ".bookCount");
-            int pages = positiveInt(raw.get("pageCount"), path + ".pageCount");
+            int pages = Boolean.FALSE.equals(map(definition.get("category")).get("paged"))
+                    ? 1 : positiveInt(raw.get("pageCount"), path + ".pageCount");
             var attributes = typedValues(groups, map(raw.get("selections")), "LINE", path + ".selections");
             var line = new LinkedHashMap<String, Object>();
             line.put("lineNo", index + 1);
