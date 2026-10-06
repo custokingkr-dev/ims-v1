@@ -30,12 +30,16 @@ BEGIN READ ONLY;
 SET LOCAL statement_timeout='10s';
 SELECT jsonb_build_object(
  'currentRole',current_user,
+ 'sessionRole',session_user,
+ 'reachableRoles',(SELECT jsonb_agg(jsonb_build_object('name',rolname,'superuser',rolsuper,'bypassRls',rolbypassrls,'createRole',rolcreaterole,'createDb',rolcreatedb,'replication',rolreplication)) FROM pg_roles WHERE rolname=current_user OR pg_has_role(current_user,oid,'MEMBER')),
+ 'ownedDatabases',(SELECT coalesce(jsonb_agg(datname),'[]') FROM pg_database WHERE datdba=(SELECT oid FROM pg_roles WHERE rolname=current_user)),
+ 'ownedSchemas',(SELECT coalesce(jsonb_agg(nspname),'[]') FROM pg_namespace WHERE nspowner=(SELECT oid FROM pg_roles WHERE rolname=current_user)),
  'ssl',(SELECT ssl FROM pg_stat_ssl WHERE pid=pg_backend_pid()),
  'maxConnections',current_setting('max_connections'),
  'connectionCount',(SELECT count(*) FROM pg_stat_activity),
  'roles',(SELECT jsonb_agg(jsonb_build_object('name',rolname,'canLogin',rolcanlogin,'superuser',rolsuper,'bypassRls',rolbypassrls,'createRole',rolcreaterole,'createDb',rolcreatedb,'inherit',rolinherit,'replication',rolreplication)) FROM pg_roles WHERE rolname='app_rt' OR rolname LIKE 'ims_%_rt'),
  'memberships',(SELECT coalesce(jsonb_agg(jsonb_build_object('member',m.rolname,'role',r.rolname)), '[]') FROM pg_auth_members a JOIN pg_roles m ON m.oid=a.member JOIN pg_roles r ON r.oid=a.roleid WHERE m.rolname='app_rt' OR m.rolname LIKE 'ims_%_rt'),
- 'tables',(SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'table',c.relname,'owner',pg_get_userbyid(c.relowner),'rls',c.relrowsecurity,'forced',c.relforcerowsecurity,'runtimeSelect',has_table_privilege(current_user,c.oid,'SELECT'),'runtimeInsert',has_table_privilege(current_user,c.oid,'INSERT'),'runtimeUpdate',has_table_privilege(current_user,c.oid,'UPDATE'),'runtimeDelete',has_table_privilege(current_user,c.oid,'DELETE'))) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('identity','tenant_school','student','attendance','fee','catalog','workflow','firefighting','billing','reporting','notification','audit') AND c.relkind='r'),
+ 'tables',(SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'table',c.relname,'owner',pg_get_userbyid(c.relowner),'rls',c.relrowsecurity,'forced',c.relforcerowsecurity,'policyCount',(SELECT count(*) FROM pg_policy p WHERE p.polrelid=c.oid),'runtimeSelect',has_table_privilege(current_user,c.oid,'SELECT'),'runtimeInsert',has_table_privilege(current_user,c.oid,'INSERT'),'runtimeUpdate',has_table_privilege(current_user,c.oid,'UPDATE'),'runtimeDelete',has_table_privilege(current_user,c.oid,'DELETE'))) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('identity','tenant_school','student','attendance','fee','catalog','workflow','firefighting','billing','reporting','notification','audit') AND c.relkind IN ('r','p')),
  'policyCount',(SELECT count(*) FROM pg_policies WHERE schemaname IN ('identity','tenant_school','student','attendance','fee','catalog','workflow','firefighting','billing','reporting','notification','audit'))
 )::text;
 COMMIT;

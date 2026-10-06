@@ -25,6 +25,26 @@ class RuntimeDbRoleGuardIntegrationTest {
         return new RuntimeDbRoleGuard(jdbc,env);
     }
     @AfterAll static void stop() { if(pg != null) pg.stop(); }
+    @Test void explicitRepairAuditDenyPoliciesPreserveIsolationAndSatisfyGuard() throws Exception {
+        owner.sql("CREATE SCHEMA student; CREATE TABLE student.guardian_safe_create_repair_runs(id int); CREATE TABLE student.guardian_safe_create_repair_actions(id int); ALTER TABLE student.guardian_safe_create_repair_runs ENABLE ROW LEVEL SECURITY; ALTER TABLE student.guardian_safe_create_repair_runs FORCE ROW LEVEL SECURITY; ALTER TABLE student.guardian_safe_create_repair_actions ENABLE ROW LEVEL SECURITY; ALTER TABLE student.guardian_safe_create_repair_actions FORCE ROW LEVEL SECURITY; INSERT INTO student.guardian_safe_create_repair_runs VALUES(1); INSERT INTO student.guardian_safe_create_repair_actions VALUES(1)").update();
+        try {
+            var runtime=client("app_rt","runtime");
+            assertThrows(IllegalStateException.class, () -> guard(runtime).verifyRuntimeRole());
+            try(var resource=getClass().getResourceAsStream("/db/migration/student/V38__explicit_repair_audit_deny_policies.sql")) {
+                assertNotNull(resource);
+                owner.sql(new String(resource.readAllBytes(),java.nio.charset.StandardCharsets.UTF_8)).update();
+            }
+            assertDoesNotThrow(() -> guard(runtime).verifyRuntimeRole());
+            for(String table : java.util.List.of("guardian_safe_create_repair_runs","guardian_safe_create_repair_actions")) {
+                assertFalse(owner.sql("SELECT has_table_privilege('app_rt', 'student."+table+"', 'SELECT')").query(Boolean.class).single());
+                assertTrue(owner.sql("SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid='student."+table+"'::regclass").query(Boolean.class).single());
+                // An accidental future runtime grant cannot defeat this policy.
+                owner.sql("GRANT USAGE ON SCHEMA student TO app_rt; GRANT SELECT,INSERT ON student."+table+" TO app_rt").update();
+                assertEquals(0, runtime.sql("SELECT count(*) FROM student."+table).query(Integer.class).single());
+                assertThrows(org.springframework.dao.DataAccessException.class, () -> runtime.sql("INSERT INTO student."+table+" VALUES(2)").update());
+            }
+        } finally { owner.sql("DROP SCHEMA student CASCADE").update(); }
+    }
     @Test void directAndReachableReplicationPrivilegesAreRejected() {
         owner.sql("ALTER ROLE app_rt REPLICATION").update();
         try { assertThrows(IllegalStateException.class, () -> guard(client("app_rt","runtime")).verifyRuntimeRole()); }

@@ -26,7 +26,15 @@ try {
       const response = await read(`${origin}${path}`); const headers = Object.fromEntries(required.map(name => [name, response.headers.get(name)]));
       item.responses.push({ resource: path.includes('/students/') ? 'synthetic-nonexistent-photo' : path, status: response.status, headers });
       for (const name of required) assert.ok(headers[name], `Missing ${name}`);
-      assert.equal(headers['x-content-type-options'], 'nosniff'); assert.equal(headers['x-frame-options'], 'DENY'); assert.match(headers['content-security-policy'], /object-src 'none'/); assert.match(headers['content-security-policy'], /script-src 'self'/);
+      // Proxied responses can carry independent gateway and frontend protections.
+      // Reject conflicting/empty tokens while accepting repeated identical protections.
+      const nosniff = headers['x-content-type-options'].split(',').map(value => value.trim().toLowerCase());
+      const frameOptions = headers['x-frame-options'].split(',').map(value => value.trim().toUpperCase());
+      assert.ok(nosniff.every(value => value === 'nosniff'));
+      assert.ok(frameOptions.every(value => value === 'DENY'));
+      for (const policy of headers['content-security-policy'].split(',')) {
+        assert.match(policy, /object-src 'none'/); assert.match(policy, /script-src 'self'/);
+      }
       if (path === '/frontend-health') assert.equal(response.status, 200);
       else if (path.includes('missing-security')) assert.equal(response.status, 404);
       else if (path.includes('/students/')) { assert.ok([401, 403].includes(response.status), 'Anonymous synthetic photo must be denied before resource lookup'); assert.ok(!response.headers.get('content-type')?.startsWith('image/')); }
