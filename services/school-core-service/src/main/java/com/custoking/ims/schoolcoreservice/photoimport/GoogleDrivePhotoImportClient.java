@@ -32,6 +32,7 @@ public class GoogleDrivePhotoImportClient {
     private static final String XLSX_MIME =
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private static final long DEFAULT_MAX_DOWNLOAD_BYTES = 20L * 1024 * 1024;
+    private static final java.util.concurrent.Semaphore DOWNLOAD_SLOTS = new java.util.concurrent.Semaphore(8);
     /**
      * The importer lists and downloads files that photographers uploaded, which this application did not
      * create, so the narrower drive.file scope cannot see them.
@@ -224,8 +225,10 @@ public class GoogleDrivePhotoImportClient {
                 ? API + "/" + encode(file.id()) + "/export?mimeType=" + encode(XLSX_MIME)
                 : API + "/" + encode(file.id()) + "?alt=media&supportsAllDrives=true";
         HttpRequest request = request(uri);
+        if (!DOWNLOAD_SLOTS.tryAcquire()) throw new DrivePhotoImportException("drive_rate_limited", "Photo downloading is busy; retry shortly");
         try {
-            HttpResponse<byte[]> response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            HttpResponse<byte[]> response = http.send(request, info ->
+                    new com.custoking.ims.schoolcoreservice.infrastructure.BoundedHttpBody(effectiveMax));
             if (response.statusCode() != 200) {
                 throw driveFailure(response.statusCode(), response.body());
             }
@@ -240,6 +243,8 @@ public class GoogleDrivePhotoImportClient {
             throw new DrivePhotoImportException("drive_unavailable", "Drive request was interrupted", ex);
         } catch (IOException ex) {
             throw new DrivePhotoImportException("drive_unavailable", "Could not download " + file.name(), ex);
+        } finally {
+            DOWNLOAD_SLOTS.release();
         }
     }
 

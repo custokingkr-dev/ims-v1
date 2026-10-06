@@ -32,6 +32,7 @@ public class BroadcastDeliveryWorker {
             PlatformTransactionManager transactions) {
         this.repository = repository; this.policy = policy; this.delivery = delivery; this.workflows = workflows; this.mapper = mapper;
         this.transaction = new TransactionTemplate(transactions);
+        this.transaction.setTimeout(10);
     }
 
     @Scheduled(fixedDelayString = "${notification.broadcast.fixed-delay-ms:30000}")

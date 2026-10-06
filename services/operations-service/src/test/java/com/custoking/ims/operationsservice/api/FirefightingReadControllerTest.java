@@ -29,6 +29,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class FirefightingReadControllerTest {
+    @org.junit.jupiter.api.BeforeEach
+    void authenticatedActor() { TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null)); }
 
     private final FirefightingReadRepository firefighting = mock(FirefightingReadRepository.class);
     private final FirefightingReadController controller = new FirefightingReadController(firefighting, "ff-token");

@@ -95,6 +95,16 @@ resource "google_cloud_run_v2_service" "dashboard" {
       }
 
       env {
+        name  = "DASHBOARD_AUTH"
+        value = "on"
+      }
+
+      env {
+        name  = "DASHBOARD_STATE_DATABASE"
+        value = google_firestore_database.dashboard_security[0].name
+      }
+
+      env {
         name  = "OAUTH_CLIENT_ID"
         value = var.dashboard_oauth_client_id
       }
@@ -133,10 +143,8 @@ resource "google_cloud_run_v2_service" "dashboard" {
       # client controls. Google's registered-URI check already refuses a spoofed origin, but that is an
       # external configuration doing the work; this makes it a property of the deployment.
       #
-      # It cannot read the service's own .uri -- that is a self-reference and Terraform rejects the
-      # cycle -- so it comes from a variable. Left empty the app falls back to the request headers,
-      # which is what a workstation needs, so an unset value degrades to the previous behaviour rather
-      # than breaking sign-in.
+      # It cannot read its own .uri without a Terraform self-reference. The explicit value is required
+      # by the service precondition; deployed applications reject an absent or non-HTTPS origin.
       env {
         name  = "DASHBOARD_PUBLIC_URL"
         value = var.dashboard_public_url
@@ -149,7 +157,14 @@ resource "google_cloud_run_v2_service" "dashboard" {
     percent = 100
   }
 
-  depends_on = [google_project_iam_member.dashboard_monitoring]
+  depends_on = [google_project_iam_member.dashboard_monitoring, google_project_iam_member.dashboard_security_state, google_firestore_field.dashboard_security_expiry]
+
+  lifecycle {
+    precondition {
+      condition     = can(regex("^https://[^/@?#]+/?$", var.dashboard_public_url))
+      error_message = "An enabled dashboard requires an explicitly pinned HTTPS public origin."
+    }
+  }
 }
 
 # IAP must be able to invoke the backend it is protecting.

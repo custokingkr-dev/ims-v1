@@ -189,7 +189,7 @@ function main() {
     const output = path.join(repositoryRoot, 'frontend/src/generated', basename);
     const rendered = renderClient(spec, filename);
     if (check) {
-      if (!fs.existsSync(output) || fs.readFileSync(output, 'utf8') !== rendered) throw new Error(`Generated client ${basename} is stale. Run: node scripts/generate-openapi-typescript-client.js`);
+      if (!fs.existsSync(output) || fs.readFileSync(output, 'utf8').replace(/\r\n/g, '\n') !== rendered) throw new Error(`Generated client ${basename} is stale. Run: node scripts/generate-openapi-typescript-client.js`);
     } else { fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, rendered); }
     count += operations(spec).length;
   }

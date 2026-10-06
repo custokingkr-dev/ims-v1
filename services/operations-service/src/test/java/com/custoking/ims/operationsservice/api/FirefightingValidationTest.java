@@ -38,6 +38,8 @@ class FirefightingValidationTest {
     void setUp() {
         repo = mock(FirefightingReadRepository.class);
         mvc = MockMvcBuilders.standaloneSetup(new FirefightingReadController(repo, VALID_TOKEN))
+                .defaultRequest(post("/").header("X-Authenticated-User-Id", "1")
+                        .header("X-Authenticated-Role", "SUPERADMIN").header("X-Authenticated-Email", "s@x"))
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .addFilters(new TenantContextFilter())
                 .build();

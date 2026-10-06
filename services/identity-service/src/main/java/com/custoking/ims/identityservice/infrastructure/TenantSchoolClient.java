@@ -67,12 +67,12 @@ public class TenantSchoolClient {
     }
 
     public TenantSchoolRef school(Long schoolId) {
-        Map<String, Object> row = get("/api/v1/schools/" + schoolId, "school not found");
+        Map<String, Object> row = get("/api/v1/internal/identity-directory/schools/" + schoolId, "school not found");
         return new TenantSchoolRef(longValue(row.get("id"), schoolId), text(row.get("name")));
     }
 
     public TenantSchoolRef zone(Long zoneId) {
-        Map<String, Object> row = get("/api/v1/zones/" + zoneId, "zone not found");
+        Map<String, Object> row = get("/api/v1/internal/identity-directory/zones/" + zoneId, "zone not found");
         return new TenantSchoolRef(longValue(row.get("id"), zoneId), text(row.get("name")));
     }
 
@@ -103,10 +103,10 @@ public class TenantSchoolClient {
             } catch (HttpClientErrorException.NotFound ex) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, notFoundMessage, ex);
             } catch (HttpClientErrorException ex) {
-                throw new ResponseStatusException(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getResponseBodyAsString(), ex);
+                throw new ResponseStatusException(HttpStatus.valueOf(ex.getStatusCode().value()), "Directory service rejected request", ex);
             } catch (HttpServerErrorException ex) {
                 if (!isRetryableStatus(ex.getStatusCode().value())) {
-                    throw new ResponseStatusException(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getResponseBodyAsString(), ex);
+                    throw new ResponseStatusException(HttpStatus.valueOf(ex.getStatusCode().value()), "Directory service rejected request", ex);
                 }
                 lastTransient = ex;
             } catch (ResourceAccessException ex) {
@@ -117,7 +117,7 @@ public class TenantSchoolClient {
             }
         }
         if (lastTransient instanceof HttpServerErrorException serverError) {
-            throw new ResponseStatusException(HttpStatus.valueOf(serverError.getStatusCode().value()), serverError.getResponseBodyAsString(), serverError);
+            throw new ResponseStatusException(HttpStatus.valueOf(serverError.getStatusCode().value()), "Directory service unavailable", serverError);
         }
         throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "tenant-school service did not respond in time", lastTransient);
     }
@@ -147,7 +147,7 @@ public class TenantSchoolClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (HttpClientErrorException ex) {
-            throw new ResponseStatusException(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getResponseBodyAsString(), ex);
+            throw new ResponseStatusException(HttpStatus.valueOf(ex.getStatusCode().value()), "Directory service rejected request", ex);
         } catch (ResourceAccessException ex) {
             throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "tenant-school service did not respond in time", ex);
         }
@@ -173,6 +173,8 @@ public class TenantSchoolClient {
         String identityToken = cloudRunIdentityToken();
         if (StringUtils.hasText(identityToken)) {
             headers.setBearerAuth(identityToken);
+            if(com.custoking.ims.identityservice.security.TenantContext.get().userId()!=null) headers.set("X-IMS-Principal-Carrier-Token","Bearer "+identityToken);
+            headers.set("X-Serverless-Authorization","Bearer "+identityToken);
         }
     }
 
@@ -182,16 +184,14 @@ public class TenantSchoolClient {
      * tenant-school with no scope and is rejected 403). No-op outside a servlet request (e.g. tests).
      */
     private void forwardAuthenticatedContext(HttpHeaders headers) {
-        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs)) {
-            return;
-        }
-        HttpServletRequest request = attrs.getRequest();
-        for (String name : AUTH_CONTEXT_HEADERS) {
-            String value = request.getHeader(name);
-            if (StringUtils.hasText(value)) {
-                headers.set(name, value);
-            }
-        }
+        var actor=com.custoking.ims.identityservice.security.TenantContext.get();
+        if(actor.userId()==null) return;
+        headers.set("X-Authenticated-User-Id",actor.userId().toString());
+        if(actor.email()!=null) headers.set("X-Authenticated-Email",actor.email());
+        if(actor.role()!=null) headers.set("X-Authenticated-Role",actor.role());
+        if(actor.schoolId()!=null) headers.set("X-Authenticated-School-Id",actor.schoolId().toString());
+        if(actor.zoneId()!=null) headers.set("X-Authenticated-Zone-Id",actor.zoneId().toString());
+        headers.set("X-Authenticated-Permissions",String.join(",",actor.permissions()));
     }
 
     private String cloudRunIdentityToken() {

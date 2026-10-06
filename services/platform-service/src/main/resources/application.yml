@@ -169,3 +169,7 @@ catalog:
 
 firefighting:
   read-token: ${FIREFIGHTING_READ_TOKEN:}
+
+app:
+  runtime-db-role: ${RUNTIME_DB_ROLE:app_rt}
+  runtime-db-schemas: reporting,notification,audit

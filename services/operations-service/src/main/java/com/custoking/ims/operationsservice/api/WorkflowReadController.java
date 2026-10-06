@@ -188,6 +188,7 @@ public class WorkflowReadController {
         m.put("actorId",    TenantContext.get().userId());
         m.put("actorEmail", TenantContext.get().email());
         if (req != null && req.notes() != null) m.put("notes", req.notes());
+        if (req != null && req.expectedVersion() != null) m.put("expectedVersion", req.expectedVersion());
         return m;
     }
 

@@ -60,4 +60,15 @@ class BroadcastRecipientPolicyIntegrationTest {
         owner.sql("UPDATE student.student_guardians SET receives_notifications = false WHERE student_id = 1").update();
         assertThat(resolve(10,id,List.of(1L)).getFirst()).containsEntry("reason","NOTIFICATION_PREFERENCE_DISABLED").doesNotContainKey("destination");
     }
+    @Test void explicitFeeReminderCapabilityReadsCurrentOwnerContactConsentAndSchoolScope() {
+        var controller=new com.custoking.ims.schoolcoreservice.api.internal.BroadcastRecipientPolicyController(repository,"peer");
+        var request=new com.custoking.ims.schoolcoreservice.api.internal.BroadcastRecipientPolicyController.ResolveRequest(10,UUID.randomUUID(),"FEE_REMINDER","EXPLICIT_STUDENTS",List.of("SMS"),List.of(1L,2L));
+        owner.sql("UPDATE student.guardians SET phone='8888888888' WHERE id='g'").update();
+        var current=transaction.execute(tx->controller.resolveFeeReminders("peer",request));
+        assertThat(current.getFirst()).containsEntry("destination","8888888888").containsEntry("allowed",true);
+        assertThat(current.get(1)).containsEntry("allowed",false).doesNotContainKey("destination");
+        owner.sql("INSERT INTO student.student_consent_events(id,school_id,student_id,guardian_id,purpose,status,notice_version,evidence_source) VALUES ('fee-withdrawn',10,1,'g','SCHOOL_COMMUNICATIONS','WITHDRAWN','v1','SCHOOL_RECORD')").update();
+        assertThat(transaction.execute(tx->controller.resolveFeeReminders("peer",request)).getFirst()).containsEntry("allowed",false).doesNotContainKey("destination");
+    }
+
 }

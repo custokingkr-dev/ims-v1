@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
@@ -27,6 +29,7 @@ public class ReportingEventInboxProcessor {
     private final Map<String, ReportingEventProjector> projectorsByEventType;
     private final TraceContextBridge traceContextBridge;
     private final int batchSize;
+    private TransactionTemplate transaction;
 
     public ReportingEventInboxProcessor(
             ReportingEventInboxRepository inbox,
@@ -36,7 +39,6 @@ public class ReportingEventInboxProcessor {
         this(inbox, commands, projectors, TraceContextBridge.noop(), batchSize);
     }
 
-    @Autowired
     public ReportingEventInboxProcessor(
             ReportingEventInboxRepository inbox,
             ReportingCommandRepository commands,
@@ -48,6 +50,16 @@ public class ReportingEventInboxProcessor {
         this.projectorsByEventType = indexByEventType(projectors);
         this.traceContextBridge = traceContextBridge;
         this.batchSize = batchSize;
+    }
+
+    @Autowired
+    public ReportingEventInboxProcessor(ReportingEventInboxRepository inbox, ReportingCommandRepository commands,
+            List<ReportingEventProjector> projectors, TraceContextBridge traceContextBridge,
+            @Value("${reporting.event-projection.batch-size:50}") int batchSize,
+            PlatformTransactionManager transactionManager) {
+        this(inbox, commands, projectors, traceContextBridge, batchSize);
+        this.transaction = new TransactionTemplate(transactionManager);
+        this.transaction.setTimeout(30);
     }
 
     private static Map<String, ReportingEventProjector> indexByEventType(List<ReportingEventProjector> projectors) {
@@ -77,10 +89,16 @@ public class ReportingEventInboxProcessor {
                         "reporting.project " + safe(event.eventType(), "event"),
                         event.traceParent(),
                         event.traceState(),
-                        () -> processOne(event));
+                        () -> {
+                            if (transaction == null) processOne(event); // Direct test construction only.
+                            else transaction.executeWithoutResult(status -> {
+                                inbox.lockForProcessing(event.eventId());
+                                processOne(event);
+                            });
+                        });
                 processed++;
             } catch (RuntimeException ex) {
-                inbox.markFailed(event.eventId(), ex.getMessage());
+                inbox.markFailed(event.eventId(), "PROJECTION_ATTEMPT_FAILED");
             }
         }
         return processed;

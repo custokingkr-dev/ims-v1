@@ -115,6 +115,12 @@ public class ReportingEventInboxRepository {
                 .update();
     }
 
+    /** Serialize reclaimed leases with an in-progress transaction on another replica. */
+    public void lockForProcessing(String eventId) {
+        jdbc.sql("SELECT event_id FROM reporting.reporting_event_inbox WHERE event_id=:eventId AND status='PROCESSING' FOR UPDATE")
+                .param("eventId", eventId).query(String.class).single();
+    }
+
     @Transactional
     public void markFailed(String eventId, String message) {
         jdbc.sql("""

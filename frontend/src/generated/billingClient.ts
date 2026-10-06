@@ -6,6 +6,8 @@ import type { AxiosInstance } from 'axios';
 
 export type InvoiceStatistics = { "sentThisMonth": number; "paid": number; "pending": number; "totalInvoiced": number; "periodStart": string; "periodEndExclusive": string; "reportingTimeZone": string; };
 
+export type CreateBillingPaymentRequest = { "invoiceId": number; "amount": number; "paymentDate"?: string | null; "paymentMode": "CASH" | "UPI" | "BANK_TRANSFER" | "CHEQUE" | "CARD" | "OTHER"; "referenceNo"?: string | null; "notes"?: string | null; "idempotencyKey": string; };
+
 export interface BillingClient {
   getInvoiceStatistics(): Promise<InvoiceStatistics>;
 }

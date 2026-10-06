@@ -14,9 +14,14 @@ import java.util.UUID;
 public class ReportingCommandRepository {
 
     private final JdbcClient jdbc;
+    private final com.custoking.ims.platformservice.infrastructure.SchoolCoreBroadcastRecipientPolicy recipientPolicy;
 
     public ReportingCommandRepository(JdbcClient jdbc) {
-        this.jdbc = jdbc;
+        this(jdbc,null);
+    }
+    @org.springframework.beans.factory.annotation.Autowired
+    public ReportingCommandRepository(JdbcClient jdbc,com.custoking.ims.platformservice.infrastructure.SchoolCoreBroadcastRecipientPolicy recipientPolicy) {
+        this.jdbc = jdbc;this.recipientPolicy=recipientPolicy;
     }
 
     @Transactional
@@ -37,7 +42,9 @@ public class ReportingCommandRepository {
                 .param("actorId", actorId)
                 .param("now", OffsetDateTime.now())
                 .update();
-        return actionRow(id);
+        Map<String,Object> saved=actionRow(id);
+        TrustedCommandAudit.record(jdbc,"COMMAND_ACTION_ACCEPTED",id.toString(),actorId,longObj(saved.get("schoolId")));
+        return saved;
     }
 
     @Transactional
@@ -59,7 +66,9 @@ public class ReportingCommandRepository {
                 .param("reason", reason)
                 .param("now", OffsetDateTime.now())
                 .update();
-        return actionRow(id);
+        Map<String,Object> saved=actionRow(id);
+        TrustedCommandAudit.record(jdbc,"COMMAND_ACTION_DISMISSED",id.toString(),actorId,longObj(saved.get("schoolId")));
+        return saved;
     }
 
     @Transactional
@@ -86,6 +95,7 @@ public class ReportingCommandRepository {
                 .param("actorUserId", longObj(request.get("actorUserId")))
                 .param("createdAt", OffsetDateTime.now())
                 .update();
+        TrustedCommandAudit.record(jdbc,"COMMAND_FEED_RECORDED",id.toString(),null,longObj(request.get("schoolId")));
         return feedRow(id);
     }
 
@@ -158,6 +168,7 @@ public class ReportingCommandRepository {
                 .param("schoolId", schoolId)
                 .param("studentIds", studentIds)
                 .update();
+        TrustedCommandAudit.record(jdbc,"EVENT_REMINDERS_MARKED",eventId,null,schoolId);
         return Map.of("updated", updated);
     }
 
@@ -197,9 +208,9 @@ public class ReportingCommandRepository {
         List<Map<String, Object>> rows = jdbc.sql("""
                         SELECT c.student_id, c.expected_amount, c.paid_amount,
                                s.full_name, s.father_name,
-                               COALESCE(NULLIF(s.father_contact, ''), s.phone) AS parent_contact
+                               NULL::text AS parent_contact
                         FROM reporting.event_student_contributions c
-                        JOIN student.students s ON s.id = c.student_id
+                        JOIN reporting.dim_student s ON s.id = c.student_id AND s.school_id=c.school_id
                         WHERE c.event_id = :eventId
                           AND c.school_id = :schoolId
                           AND c.student_id IN (:studentIds)
@@ -224,7 +235,19 @@ public class ReportingCommandRepository {
                 failed.add(row("studentId", studentId, "reason", "Student not found in this event"));
             }
         }
-        return row("eventId", eventId, "eventTitle", event.get("title"), "targets", rows, "failed", failed);
+        if(recipientPolicy==null || !recipientPolicy.configured()) throw new IllegalStateException("Owner fee-reminder policy unavailable");
+        List<Long> selected=rows.stream().map(target->longObj(target.get("studentId"))).toList();
+        if(selected.size()>100) throw new IllegalArgumentException("Fee-reminder audience exceeds review limit");
+        var decisions=selected.isEmpty() ? List.<com.custoking.ims.platformservice.application.BroadcastRecipientPolicy.Recipient>of()
+                : recipientPolicy.resolveFeeReminders(schoolId,eventId,selected);
+        Map<Long,com.custoking.ims.platformservice.application.BroadcastRecipientPolicy.Recipient> current=decisions.stream().collect(java.util.stream.Collectors.toMap(d->d.studentId(),d->d));
+        List<Map<String,Object>> allowed=new java.util.ArrayList<>();
+        for(var target:rows) {
+            long student=longObj(target.get("studentId")); var decision=current.get(student);
+            if(decision==null || !decision.allowed()) { failed.add(row("studentId",student,"reason",decision!=null && decision.reason()!=null && decision.reason().matches("[A-Z_]{3,100}") ? decision.reason():"OWNER_POLICY_DENIED"));continue; }
+            target.put("parentContact",decision.destination());target.put("guardianId",decision.guardianId());target.put("policyEvidence",decision.policyEvidence());allowed.add(target);
+        }
+        return row("eventId", eventId, "eventTitle", event.get("title"), "targets", allowed, "failed", failed);
     }
 
     private Map<String, Object> actionRow(UUID id) {

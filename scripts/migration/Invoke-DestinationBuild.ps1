@@ -197,6 +197,7 @@ if (Should-Run 30) {
       '--database-version=POSTGRES_16', '--edition=ENTERPRISE', "--tier=$tier", "--region=$Region",
       '--storage-type=SSD', '--storage-size=10', '--storage-auto-increase',
       '--availability-type=zonal', '--network=default', '--no-assign-ip',
+      '--ssl-mode=ENCRYPTED_ONLY',
       '--database-flags=max_connections=200',
       '--deletion-protection', "--project=$TargetProject")
     if ($Environment -eq 'prod') {
@@ -204,7 +205,8 @@ if (Should-Run 30) {
         '--retained-backups-count=14', '--retained-transaction-log-days=7')
     }
     else {
-      $sqlArgs += @('--no-backup')
+      $sqlArgs += @('--backup-start-time=00:00', '--enable-point-in-time-recovery',
+        '--retained-backups-count=7', '--retained-transaction-log-days=7')
     }
     Invoke-Gcloud $sqlArgs
     Write-Ok "instance $instance created"

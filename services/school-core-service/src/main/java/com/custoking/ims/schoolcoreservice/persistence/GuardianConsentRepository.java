@@ -439,7 +439,7 @@ public class GuardianConsentRepository {
         for (Long studentId : studentIds) {
             Map<String, Object> student = jdbc.sql("""
                             SELECT id, school_id, admission_no, full_name, roll_no, class_id, section_id,
-                                   father_contact, phone, deleted_at, attendance_percent, father_name
+                                   father_contact, phone, deleted_at, attendance_percent, father_name, aggregate_version
                             FROM student.students
                             WHERE id = :studentId
                             """)
@@ -456,7 +456,8 @@ public class GuardianConsentRepository {
                             "phone", rs.getString("phone"),
                             "active", rs.getObject("deleted_at") == null,
                             "attendancePercent", rs.getObject("attendance_percent", Double.class),
-                            "fatherName", rs.getString("father_name")))
+                            "fatherName", rs.getString("father_name"),
+                            "aggregateVersion", rs.getLong("aggregate_version")))
                     .single();
             Long schoolId = ((Number) student.get("schoolId")).longValue();
             outbox.append("student.upserted.v1", "StudentUpserted:" + studentId,

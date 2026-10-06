@@ -19,6 +19,7 @@ import javax.sql.DataSource;
  * exactly as it ran pre-merge (see ADR-001).
  */
 @Configuration
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.migrations.enabled", havingValue = "true", matchIfMissing = true)
 public class PlatformFlywayConfig {
 
     /**

@@ -71,7 +71,7 @@ public class CatalogOrderAssetStorage {
         else validateImage(bytes);
         String filename = originalFilename == null ? "attachment" : originalFilename.replaceAll("[^A-Za-z0-9._-]", "_");
         if (filename.length() > 200) filename = filename.substring(filename.length() - 200);
-        if (filename.isBlank()) filename = "attachment";
+        if (filename.isBlank() || filename.equals(".") || filename.equals("..")) filename = "attachment";
         try {
             return new ValidatedAsset(bytes, contentType, filename,
                     HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)));
@@ -88,7 +88,7 @@ public class CatalogOrderAssetStorage {
             try {
                 Path file = localPath(key);
                 Files.createDirectories(file.getParent());
-                Files.write(file, asset.bytes(), StandardOpenOption.CREATE_NEW);
+                Files.write(file, asset.bytes(), StandardOpenOption.CREATE_NEW, java.nio.file.LinkOption.NOFOLLOW_LINKS);
                 return key;
             } catch (IOException ex) {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not store the order attachment", ex);
@@ -108,8 +108,12 @@ public class CatalogOrderAssetStorage {
         if (local) {
             try {
                 Path file = localPath(key);
-                if (!Files.isRegularFile(file)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Attachment not found");
-                return Files.readAllBytes(file);
+                if (!Files.isRegularFile(file, java.nio.file.LinkOption.NOFOLLOW_LINKS)) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Attachment not found");
+                try (var input = Files.newInputStream(file, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                    byte[] bytes = input.readNBytes((int) ABSOLUTE_MAX_BYTES + 1);
+                    if (bytes.length > ABSOLUTE_MAX_BYTES) throw bad("Attachment exceeds the size limit");
+                    return validateStoredDocument(bytes);
+                }
             } catch (IOException ex) {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not load the order attachment", ex);
             }
@@ -117,7 +121,8 @@ public class CatalogOrderAssetStorage {
         try {
             var blob = storage().get(bucket, key);
             if (blob == null || !blob.exists()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Attachment not found");
-            return blob.getContent();
+            if (blob.getSize() == null || blob.getSize() > ABSOLUTE_MAX_BYTES) throw bad("Attachment exceeds the size limit");
+            return validateStoredDocument(blob.getContent());
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (RuntimeException ex) {
@@ -136,7 +141,8 @@ public class CatalogOrderAssetStorage {
     }
 
     private void validateImage(byte[] bytes) {
-        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+        try (var budget = MediaWorkBudget.acquire();
+             ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
             var readers = ImageIO.getImageReaders(input);
             if (!readers.hasNext()) throw bad("The image cannot be decoded");
             ImageReader reader = readers.next();
@@ -152,13 +158,37 @@ public class CatalogOrderAssetStorage {
     }
 
     private void validatePdf(byte[] bytes) {
-        try (PdfReader reader = new PdfReader(bytes)) {
+        try (var budget = MediaWorkBudget.acquire(); PdfReader reader = new PdfReader(bytes)) {
             if (reader.isEncrypted() || reader.getNumberOfPages() < 1 || reader.getNumberOfPages() > 200) {
                 throw bad("Upload an unencrypted PDF with 1 to 200 pages");
             }
             if (reader.getJavaScript() != null && !reader.getJavaScript().isBlank()) throw bad("PDF scripts are not permitted");
+            var visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<com.lowagie.text.pdf.PdfObject, Boolean>());
+            for (int index = 1; index < reader.getXrefSize(); index++) inspectPdfObject(reader.getPdfObject(index), visited, 0);
         } catch (IOException | IllegalArgumentException ex) {
             throw bad("Upload a valid, unencrypted PDF");
+        }
+    }
+
+    private byte[] validateStoredDocument(byte[] bytes) {
+        if (starts(bytes, "%PDF-".getBytes(StandardCharsets.US_ASCII))) validatePdf(bytes);
+        return bytes;
+    }
+
+    private void inspectPdfObject(com.lowagie.text.pdf.PdfObject input, java.util.Set<com.lowagie.text.pdf.PdfObject> visited, int depth) {
+        var object = PdfReader.getPdfObject(input);
+        if (object == null || !visited.add(object)) return;
+        if (depth > 100 || visited.size() > 100_000) throw bad("PDF structure exceeds the complexity limit");
+        var forbidden = java.util.Set.of("JavaScript", "JS", "OpenAction", "AA", "Launch", "EmbeddedFiles", "EF", "Filespec", "RichMedia", "XFA", "SubmitForm", "ImportData", "GoToR", "Rendition", "RichMediaExecute");
+        if (object instanceof com.lowagie.text.pdf.PdfName name && forbidden.contains(com.lowagie.text.pdf.PdfName.decodeName(name.toString())))
+            throw bad("PDF active content or attachments are not permitted");
+        if (object instanceof com.lowagie.text.pdf.PdfDictionary dictionary) {
+            for (var key : dictionary.getKeys()) {
+                if (forbidden.contains(com.lowagie.text.pdf.PdfName.decodeName(key.toString()))) throw bad("PDF active content or attachments are not permitted");
+                inspectPdfObject(dictionary.get(key), visited, depth + 1);
+            }
+        } else if (object instanceof com.lowagie.text.pdf.PdfArray array) {
+            for (int index = 0; index < array.size(); index++) inspectPdfObject(array.getPdfObject(index), visited, depth + 1);
         }
     }
 
@@ -180,8 +210,23 @@ public class CatalogOrderAssetStorage {
     }
 
     private Path localPath(String key) {
+        if (key == null || key.indexOf('\0') >= 0 || key.contains("%") || key.contains("\\")) throw bad("Invalid attachment path");
         Path target = localDirectory.resolve(key).normalize();
         if (!target.startsWith(localDirectory) || target.equals(localDirectory)) throw bad("Invalid attachment path");
+        // Local mode requires an isolated directory owned only by this process. Reject every
+        // existing symbolic parent and final link, including links leading back inside the root.
+        for (Path current = target; current != null; current = current.getParent()) {
+            if (Files.isSymbolicLink(current)) throw bad("Invalid attachment path");
+        }
+        try {
+            if (Files.exists(localDirectory, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+                Path realRoot = localDirectory.toRealPath();
+                for (Path current = target; current != null && current.startsWith(localDirectory); current = current.getParent()) {
+                    if (Files.exists(current, java.nio.file.LinkOption.NOFOLLOW_LINKS) && !current.toRealPath().startsWith(realRoot))
+                        throw bad("Invalid attachment path"); // Also rejects Windows junction/reparse parent escapes.
+                }
+            }
+        } catch (IOException ex) { throw bad("Invalid attachment path"); }
         return target;
     }
 

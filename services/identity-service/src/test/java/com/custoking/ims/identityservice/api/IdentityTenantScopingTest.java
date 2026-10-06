@@ -26,12 +26,14 @@ class IdentityTenantScopingTest {
 
     private final MockMvc usersMvc = MockMvcBuilders
             .standaloneSetup(new UserDirectoryController(users, "tok"))
-            .addFilters(new TenantContextFilter())
+            .addFilters(com.custoking.ims.identityservice.VerifiedSessionFixtures.filter())
+            .defaultRequest(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/").header("X-Authenticated-User-Id","1").header("X-Authenticated-Session-Id","verified-test-session"))
             .build();
 
     private final MockMvc rbacMvc = MockMvcBuilders
             .standaloneSetup(new RbacReadController(rbac, mock(RbacCommandRepository.class), mock(TenantSchoolClient.class), "tok"))
-            .addFilters(new TenantContextFilter())
+            .addFilters(com.custoking.ims.identityservice.VerifiedSessionFixtures.filter())
+            .defaultRequest(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/").header("X-Authenticated-User-Id","1").header("X-Authenticated-Session-Id","verified-test-session"))
             .build();
 
     @AfterEach

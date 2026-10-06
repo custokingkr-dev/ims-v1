@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../../services/api';
+import api, { getAuthSessionVersion } from '../../services/api';
 import { initials } from '../../pages/workspace/utils';
 
 interface StudentPhotoAvatarProps {
@@ -21,6 +21,7 @@ const FULL_FRAME_PHOTO_CLASS = 'ck-student-photo-full-frame';
 const objectUrlCache = new Map<string, string>();
 const pendingLoads = new Map<string, Promise<string | null>>();
 const MAX_CACHED_PHOTOS = 300;
+let cacheSession = -1;
 
 function isApiPhotoReference(value: string): boolean {
   return value.startsWith('/students/') && value.includes('/photo/content');
@@ -39,8 +40,19 @@ function rememberObjectUrl(key: string, value: string) {
 }
 
 async function resolvePhotoUrl(photoUrl: string): Promise<string | null> {
+  const session = getAuthSessionVersion();
+  if (cacheSession !== session) {
+    for (const url of objectUrlCache.values()) URL.revokeObjectURL(url);
+    objectUrlCache.clear();
+    pendingLoads.clear();
+    cacheSession = session;
+  }
   if (!isApiPhotoReference(photoUrl)) {
-    return photoUrl;
+    try {
+      const url = new URL(photoUrl);
+      return url.protocol === 'https:' && url.hostname === 'storage.googleapis.com'
+        && !url.username && !url.password ? url.href : null;
+    } catch { return null; }
   }
   const cached = objectUrlCache.get(photoUrl);
   if (cached) {
@@ -53,6 +65,7 @@ async function resolvePhotoUrl(photoUrl: string): Promise<string | null> {
       timeout: 15000,
     }).then((response) => {
       const objectUrl = URL.createObjectURL(response.data);
+      if (session !== getAuthSessionVersion()) { URL.revokeObjectURL(objectUrl); return null; }
       rememberObjectUrl(photoUrl, objectUrl);
       return objectUrl;
     }).catch(() => null).finally(() => {
@@ -104,6 +117,7 @@ export function StudentPhotoAvatar({
       className={`${className} ${FULL_FRAME_PHOTO_CLASS}`.trim()}
       loading="lazy"
       decoding="async"
+      referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
     />
   );

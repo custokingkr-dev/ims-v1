@@ -4,6 +4,10 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import com.custoking.ims.operationsservice.security.TenantContext;
+import com.custoking.ims.operationsservice.security.TenantScope;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
@@ -91,10 +95,16 @@ public class WorkflowReadRepository {
 
     @Transactional
     public Map<String, Object> createOrGetInstance(Map<String, Object> request) {
+        requireActor();
         String entityType = requireText(request.get("entityType"), "entityType is required");
+        requireCreationAuthority(entityType);
         String entityId = requireText(request.get("entityId"), "entityId is required");
-        Optional<Map<String, Object>> existing = instanceMapByEntity(entityType, entityId);
-        if (existing.isPresent()) return existing.get();
+        Long schoolId = TenantScope.resolveSchoolId(longValue(request.get("schoolId"), null));
+        if (schoolId == null || schoolId <= 0) throw new IllegalArgumentException("A positive schoolId is required for workflows");
+        String entityLock = schoolId + ":" + entityType.length() + ":" + entityType + ":" + entityId;
+        jdbc.sql("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))").param("key", entityLock).query((rs,n) -> 0).single();
+        Optional<Map<String, Object>> existing = instanceMapByEntity(entityType, entityId, schoolId);
+        if (existing.isPresent()) { requireTenant(existing.get()); return existing.get(); }
 
         String definitionId = requireText(request.get("definitionId"), "definitionId is required");
         long activeDefinition = jdbc.sql("SELECT COUNT(*) FROM " + definitionsTable + " WHERE id = :id AND active = true")
@@ -113,8 +123,8 @@ public class WorkflowReadRepository {
                 .param("definitionId", definitionId)
                 .param("entityType", entityType)
                 .param("entityId", entityId)
-                .param("schoolId", longValue(request.get("schoolId"), null))
-                .param("initiatedBy", longValue(request.get("initiatedBy"), null))
+                .param("schoolId", schoolId)
+                .param("initiatedBy", TenantContext.get().userId())
                 .query(Long.class)
                 .single();
         return instanceMap(id);
@@ -122,12 +132,17 @@ public class WorkflowReadRepository {
 
     @Transactional
     public Map<String, Object> submit(Long instanceId, Map<String, Object> request) {
-        Map<String, Object> instance = instanceMap(instanceId);
+        Map<String, Object> instance = lockedInstance(instanceId);
         if (!"PENDING".equals(instance.get("status"))) {
             throw new IllegalArgumentException("Workflow is not in PENDING state");
         }
+        requireInitiatorOrSuperAdmin(instance);
+        int firstStep = jdbc.sql("SELECT MIN(step_order) FROM " + stepsTable + " WHERE definition_id = :definitionId")
+                .param("definitionId", instance.get("definitionId")).query(Integer.class).optional().orElse(0);
+        if (firstStep <= 0) throw new IllegalArgumentException("Workflow has no approval steps");
         recordAction(instanceId, 0, "SUBMIT", request, longValue(instance.get("schoolId"), null));
-        jdbc.sql("UPDATE " + instancesTable + " SET current_step = 1, status = 'IN_PROGRESS' WHERE id = :id")
+        jdbc.sql("UPDATE " + instancesTable + " SET current_step = :firstStep, status = 'IN_PROGRESS', version = version + 1 WHERE id = :id")
+                .param("firstStep", firstStep)
                 .param("id", instanceId)
                 .update();
         return instanceMap(instanceId);
@@ -135,25 +150,29 @@ public class WorkflowReadRepository {
 
     @Transactional
     public Map<String, Object> approve(Long instanceId, Map<String, Object> request) {
-        Map<String, Object> instance = instanceMap(instanceId);
+        Map<String, Object> instance = lockedInstance(instanceId);
+        requireExpectedVersion(instance, request);
         if (!"IN_PROGRESS".equals(instance.get("status"))) {
             throw new IllegalArgumentException("Workflow is not IN_PROGRESS");
         }
         int currentStep = intValue(instance.get("currentStep"), 0);
+        requireStepAuthority(instance);
         recordAction(instanceId, currentStep, "APPROVE", request, longValue(instance.get("schoolId"), null));
         int maxStep = jdbc.sql("SELECT COALESCE(MAX(step_order), 0) FROM " + stepsTable + " WHERE definition_id = :definitionId")
                 .param("definitionId", instance.get("definitionId"))
                 .query(Integer.class)
                 .single();
         if (currentStep >= maxStep) {
-            jdbc.sql("UPDATE " + instancesTable + " SET status = 'APPROVED', completed_at = :completedAt WHERE id = :id")
+            jdbc.sql("UPDATE " + instancesTable + " SET status = 'APPROVED', completed_at = :completedAt, version = version + 1 WHERE id = :id")
                     .param("id", instanceId)
                     .param("completedAt", OffsetDateTime.now())
                     .update();
         } else {
-            jdbc.sql("UPDATE " + instancesTable + " SET current_step = :currentStep WHERE id = :id")
+            int nextStep = jdbc.sql("SELECT MIN(step_order) FROM " + stepsTable + " WHERE definition_id = :definitionId AND step_order > :step")
+                    .param("definitionId", instance.get("definitionId")).param("step", currentStep).query(Integer.class).single();
+            jdbc.sql("UPDATE " + instancesTable + " SET current_step = :currentStep, version = version + 1 WHERE id = :id")
                     .param("id", instanceId)
-                    .param("currentStep", currentStep + 1)
+                    .param("currentStep", nextStep)
                     .update();
         }
         return instanceMap(instanceId);
@@ -161,24 +180,31 @@ public class WorkflowReadRepository {
 
     @Transactional
     public Map<String, Object> reject(Long instanceId, Map<String, Object> request) {
-        Map<String, Object> instance = instanceMap(instanceId);
+        Map<String, Object> instance = lockedInstance(instanceId);
+        requireExpectedVersion(instance, request);
         if (!"IN_PROGRESS".equals(instance.get("status"))) {
             throw new IllegalArgumentException("Workflow is not IN_PROGRESS");
         }
+        requireStepAuthority(instance);
         recordAction(instanceId, intValue(instance.get("currentStep"), 0), "REJECT", request, longValue(instance.get("schoolId"), null));
         return finish(instanceId, "REJECTED");
     }
 
     @Transactional
     public Map<String, Object> cancel(Long instanceId, Map<String, Object> request) {
-        Map<String, Object> instance = instanceMap(instanceId);
+        Map<String, Object> instance = lockedInstance(instanceId);
+        if (!List.of("PENDING", "IN_PROGRESS").contains(instance.get("status")))
+            throw new IllegalArgumentException("Only pending or in-progress workflows can be cancelled");
+        requireInitiatorOrSuperAdmin(instance);
         recordAction(instanceId, intValue(instance.get("currentStep"), 0), "CANCEL", request, longValue(instance.get("schoolId"), null));
         return finish(instanceId, "CANCELLED");
     }
 
     @Transactional
     public Map<String, Object> complete(Long instanceId, Map<String, Object> request) {
-        Map<String, Object> instance = instanceMap(instanceId);
+        Map<String, Object> instance = lockedInstance(instanceId);
+        if (!"APPROVED".equals(instance.get("status"))) throw new IllegalArgumentException("Only approved workflows can be completed");
+        requireEntityPermission(String.valueOf(instance.get("entityType")), true);
         recordAction(instanceId, intValue(instance.get("currentStep"), 0), "COMPLETE", request, longValue(instance.get("schoolId"), null));
         return finish(instanceId, "COMPLETED");
     }
@@ -191,10 +217,11 @@ public class WorkflowReadRepository {
                 """.formatted(instancesTable);
     }
 
-    private Optional<Map<String, Object>> instanceMapByEntity(String entityType, String entityId) {
-        return jdbc.sql(instanceSelect() + " WHERE entity_type = :entityType AND entity_id = :entityId ORDER BY id LIMIT 1")
+    private Optional<Map<String, Object>> instanceMapByEntity(String entityType, String entityId, Long schoolId) {
+        return jdbc.sql(instanceSelect() + " WHERE entity_type = :entityType AND entity_id = :entityId AND school_id = :schoolId ORDER BY id LIMIT 1")
                 .param("entityType", entityType)
                 .param("entityId", entityId)
+                .param("schoolId", schoolId)
                 .query((rs, rowNum) -> instanceRowMap(rs))
                 .optional();
     }
@@ -224,26 +251,97 @@ public class WorkflowReadRepository {
 
     private void recordAction(Long instanceId, int stepOrder, String action, Map<String, Object> request, Long schoolId) {
         jdbc.sql("""
-                INSERT INTO %s(instance_id, step_order, action, actor_id, actor_email, notes, school_id)
-                VALUES (:instanceId, :stepOrder, :action, :actorId, :actorEmail, :notes, :schoolId)
+                INSERT INTO %s(instance_id, step_order, action, actor_id, actor_email, notes, school_id, request_correlation_id, authority)
+                VALUES (:instanceId, :stepOrder, :action, :actorId, :actorEmail, :notes, :schoolId, :requestId, 'SERVER')
                 """.formatted(actionsTable))
                 .param("instanceId", instanceId)
                 .param("stepOrder", stepOrder)
                 .param("action", action)
-                .param("actorId", longValue(request.get("actorId"), null))
-                .param("actorEmail", textOrNull(request.get("actorEmail")))
+                .param("actorId", TenantContext.get().userId())
+                .param("actorEmail", TenantContext.get().email())
                 .param("notes", textOrNull(request.get("notes")))
                 .param("schoolId", schoolId)
+                .param("requestId", correlationId())
                 .update();
     }
 
     private Map<String, Object> finish(Long instanceId, String status) {
-        jdbc.sql("UPDATE " + instancesTable + " SET status = :status, completed_at = :completedAt WHERE id = :id")
+        jdbc.sql("UPDATE " + instancesTable + " SET status = :status, completed_at = :completedAt, version = version + 1 WHERE id = :id")
                 .param("id", instanceId)
                 .param("status", status)
                 .param("completedAt", OffsetDateTime.now())
                 .update();
         return instanceMap(instanceId);
+    }
+
+    private void requireActor() {
+        if (TenantContext.get().userId() == null) deny("Authenticated workflow actor required");
+        TenantScope.requirePermission("workflow:act");
+    }
+
+    private void requireExpectedVersion(Map<String, Object> instance, Map<String, Object> request) {
+        Long expected = longValue(request.get("expectedVersion"), null);
+        if (expected == null || expected < 0) throw new IllegalArgumentException("expectedVersion is required for workflow decisions");
+        if (!expected.equals(instance.get("version")))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Workflow changed; reload before deciding");
+    }
+
+    private Map<String, Object> lockedInstance(Long id) {
+        requireActor();
+        Map<String, Object> instance = jdbc.sql(instanceSelect() + " WHERE id = :id FOR UPDATE")
+                .param("id", id).query((rs, rowNum) -> instanceRowMap(rs)).optional()
+                .orElseThrow(() -> new IllegalArgumentException("Workflow instance not found"));
+        requireTenant(instance);
+        return instance;
+    }
+
+    private void requireTenant(Map<String, Object> instance) {
+        TenantScope.resolveSchoolId(longValue(instance.get("schoolId"), null));
+    }
+
+    private void requireInitiatorOrSuperAdmin(Map<String, Object> instance) {
+        if (!TenantContext.get().isSuperAdmin() && !TenantContext.get().userId().equals(instance.get("initiatedBy")))
+            deny("Only the initiator or SUPERADMIN can submit or cancel this workflow");
+    }
+
+    private void requireStepAuthority(Map<String, Object> instance) {
+        TenantContext actor = TenantContext.get();
+        // Separation of duties is unconditional, including privileged administrators.
+        if (actor.userId().equals(instance.get("initiatedBy"))) deny("Initiators cannot decide their own workflow");
+        WorkflowStepRow step = steps(String.valueOf(instance.get("definitionId"))).stream()
+                .filter(s -> s.stepOrder().equals(intValue(instance.get("currentStep"), 0))).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Active workflow step not found"));
+        if (step.requiredPermission() != null && !step.requiredPermission().isBlank())
+            TenantScope.requirePermission(step.requiredPermission());
+        if (step.requiredRole() != null && !step.requiredRole().isBlank() && !actor.isSuperAdmin()
+                && !step.requiredRole().equalsIgnoreCase(actor.role())) deny("Active step role required");
+        requireEntityPermission(String.valueOf(instance.get("entityType")),
+                step.requiredPermission() != null && step.requiredPermission().endsWith(":fulfill"));
+    }
+
+    private void requireCreationAuthority(String entityType) {
+        switch (entityType.toUpperCase(java.util.Locale.ROOT)) {
+            case "ORDER", "SUPPLY_ORDER", "SUPPLYORDER" -> TenantScope.requirePermission("order:create");
+            case "FIREFIGHTING", "FIREFIGHTING_REQUEST", "FIREFIGHTINGREQUEST" -> TenantScope.requirePermission("firefighting:create");
+            default -> TenantScope.requireSuperAdmin();
+        }
+    }
+
+    private void requireEntityPermission(String entityType, boolean completion) {
+        String permission = switch (entityType.toUpperCase(java.util.Locale.ROOT)) {
+            case "ORDER", "SUPPLY_ORDER", "SUPPLYORDER" -> completion ? "order:fulfill" : "order:approve";
+            case "FIREFIGHTING", "FIREFIGHTING_REQUEST", "FIREFIGHTINGREQUEST" -> completion ? "firefighting:fulfill" : "firefighting:approve";
+            default -> null;
+        };
+        if (permission == null) { TenantScope.requireSuperAdmin(); return; }
+        TenantScope.requirePermission(permission);
+    }
+
+    private void deny(String message) { throw new ResponseStatusException(HttpStatus.FORBIDDEN, message); }
+
+    private String correlationId() {
+        String value = org.slf4j.MDC.get("requestId");
+        return value != null && value.matches("[A-Za-z0-9._:-]{1,128}") ? value : java.util.UUID.randomUUID().toString();
     }
 
     private String requireText(Object value, String message) {

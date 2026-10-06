@@ -1,0 +1,97 @@
+{
+  "stage": "prepared-before-service-cutover",
+  "roles": [
+    {
+      "role": "ims_identity_rt",
+      "tls": true,
+      "accessibleSchemas": [
+        "identity"
+      ],
+      "accessibleTables": 10,
+      "memberships": [],
+      "roleFlags": {
+        "bypassRls": false,
+        "createDb": false,
+        "createRole": false,
+        "inherit": false,
+        "name": "ims_identity_rt",
+        "superuser": false
+      }
+    },
+    {
+      "role": "ims_billing_rt",
+      "tls": true,
+      "accessibleSchemas": [
+        "billing"
+      ],
+      "accessibleTables": 7,
+      "memberships": [],
+      "roleFlags": {
+        "bypassRls": false,
+        "createDb": false,
+        "createRole": false,
+        "inherit": false,
+        "name": "ims_billing_rt",
+        "superuser": false
+      }
+    },
+    {
+      "role": "ims_operations_rt",
+      "tls": true,
+      "accessibleSchemas": [
+        "firefighting",
+        "workflow"
+      ],
+      "accessibleTables": 9,
+      "memberships": [],
+      "roleFlags": {
+        "bypassRls": false,
+        "createDb": false,
+        "createRole": false,
+        "inherit": false,
+        "name": "ims_operations_rt",
+        "superuser": false
+      }
+    },
+    {
+      "role": "ims_platform_rt",
+      "tls": true,
+      "accessibleSchemas": [
+        "audit",
+        "notification",
+        "reporting"
+      ],
+      "accessibleTables": 28,
+      "memberships": [],
+      "roleFlags": {
+        "bypassRls": false,
+        "createDb": false,
+        "createRole": false,
+        "inherit": false,
+        "name": "ims_platform_rt",
+        "superuser": false
+      }
+    },
+    {
+      "role": "ims_school_core_rt",
+      "tls": true,
+      "accessibleSchemas": [
+        "attendance",
+        "catalog",
+        "fee",
+        "student",
+        "tenant_school"
+      ],
+      "accessibleTables": 60,
+      "memberships": [],
+      "roleFlags": {
+        "bypassRls": false,
+        "createDb": false,
+        "createRole": false,
+        "inherit": false,
+        "name": "ims_school_core_rt",
+        "superuser": false
+      }
+    }
+  ]
+}

@@ -41,6 +41,7 @@ public class PhotoImportWorkbookParser {
         if (bytes.length > MAX_WORKBOOK_BYTES) {
             throw new IllegalArgumentException("The mapping file must be 10 MB or smaller");
         }
+        try (var budget = com.custoking.ims.schoolcoreservice.infrastructure.MediaWorkBudget.acquire()) {
         return switch (extension) {
             case "xlsx", "xls" -> parseExcel(bytes, extension);
             case "csv" -> parseDelimited(bytes, ',', "CSV");
@@ -48,13 +49,30 @@ public class PhotoImportWorkbookParser {
             default -> throw new IllegalArgumentException(
                     "The mapping file must be XLSX, XLS, CSV, or TSV");
         };
+        }
     }
 
     private ParsedWorkbook parseExcel(byte[] bytes, String extension) {
         if ("xlsx".equals(extension)) {
             ZipSecureFile.setMinInflateRatio(0.01);
+            ZipSecureFile.setMaxEntrySize(20L * 1024 * 1024);
+            ZipSecureFile.setMaxTextSize(10L * 1024 * 1024);
+            validateZipBudget(bytes);
         }
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
+            if (workbook.getNumberOfSheets() > 10) throw new IllegalArgumentException("The mapping workbook has too many sheets");
+            for (Sheet candidate : workbook) {
+                if (candidate.getLastRowNum() > 1100) throw new IllegalArgumentException("The mapping workbook has too many rows");
+                for (Row row : candidate) {
+                    if (row.getLastCellNum() > 32) throw new IllegalArgumentException("The mapping workbook has too many columns");
+                    for (Cell cell : row) {
+                        if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.FORMULA)
+                            throw new IllegalArgumentException("Mapping workbook formulas are not permitted; paste values instead");
+                        if (cell.getCellType() == org.apache.poi.ss.usermodel.CellType.STRING && cell.getStringCellValue().length() > 4096)
+                            throw new IllegalArgumentException("Mapping cells must be 4096 characters or shorter");
+                    }
+                }
+            }
             DataFormatter formatter = new DataFormatter(Locale.ROOT);
             FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
             Sheet sheet = mappingSheet(workbook, formatter, evaluator);
@@ -157,10 +175,12 @@ public class PhotoImportWorkbookParser {
                 throw new IllegalArgumentException("The mapping file has no header row");
             }
             CSVRecord header = iterator.next();
+            validateRecord(header);
             Map<String, Integer> headerIndexes = headerIndexes(values(header));
             List<WorkbookRow> rows = new ArrayList<>();
             while (iterator.hasNext()) {
                 CSVRecord record = iterator.next();
+                validateRecord(record);
                 if (isBlank(record)) {
                     continue;
                 }
@@ -271,6 +291,28 @@ public class PhotoImportWorkbookParser {
             throw new IllegalArgumentException(
                     formatName + " mapping files must use UTF-8 encoding", ex);
         }
+    }
+
+    private static void validateRecord(CSVRecord record) {
+        if (record.size() > 32) throw new IllegalArgumentException("Mapping files may have at most 32 columns");
+        for (String cell : record) if (cell.length() > 4096) throw new IllegalArgumentException("Mapping cells must be 4096 characters or shorter");
+    }
+
+    private static void validateZipBudget(byte[] bytes) {
+        long total = 0; int entries = 0;
+        try (var zip = new java.util.zip.ZipInputStream(new ByteArrayInputStream(bytes))) {
+            byte[] buffer = new byte[8192];
+            java.util.zip.ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (++entries > 100) throw new IllegalArgumentException("The mapping workbook has too many ZIP entries");
+                long size = 0; int read;
+                while ((read = zip.read(buffer)) != -1) {
+                    size += read; total += read;
+                    if (size > 20L * 1024 * 1024 || total > 30L * 1024 * 1024)
+                        throw new IllegalArgumentException("The mapping workbook expands beyond the safe size limit");
+                }
+            }
+        } catch (java.io.IOException ex) { throw new IllegalArgumentException("Invalid mapping workbook archive", ex); }
     }
 
     private static String extension(String fileName) {

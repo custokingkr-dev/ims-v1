@@ -2,6 +2,7 @@ package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.application.IdentityAuthService;
 import com.custoking.ims.identityservice.application.AuthAbuseProtection;
+import com.custoking.ims.identityservice.security.StepUpPolicy;
 import com.custoking.ims.identityservice.application.IdentityAuthService.AuthResponse;
 import com.custoking.ims.identityservice.application.IdentityAuthService.IntrospectionResponse;
 import com.custoking.ims.identityservice.application.IdentityAuthService.LoginRequest;
@@ -88,6 +89,11 @@ public class AuthController {
             @Valid @RequestBody IntrospectionRequest request) {
         requireToken(token, "identity:introspect");
         IntrospectionResponse result = authService.introspect(request.token());
+        if (result.active() && StepUpPolicy.required(result.principal().role(), request.method(), request.path())
+                && (result.principal().stepUpExpiresAt() == null
+                    || !result.principal().stepUpExpiresAt().isAfter(java.time.OffsetDateTime.now()))) {
+            throw new com.custoking.ims.identityservice.security.StepUpRequiredException();
+        }
         if (result.active()) abuse.authenticated(result.principal(), request.method(), request.path(), request.schoolId());
         return result;
     }

@@ -27,6 +27,12 @@
 
 import https from "node:https";
 import crypto from "node:crypto";
+import { securityConfiguration } from './security-config.mjs';
+import { memorySecurityState } from './security-state.mjs';
+import { wholeResponseDeadline } from './query-budget.mjs';
+const SECURITY = securityConfiguration();
+let sharedState = memorySecurityState();
+export function configureSecurityState(store) { sharedState = store; }
 
 const CLIENT_ID = process.env.OAUTH_CLIENT_ID || "";
 const CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET || "";
@@ -34,9 +40,8 @@ const CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET || "";
 // should lock the door, not remove it.
 const ALLOWED = (process.env.DASHBOARD_ALLOWED_EMAILS || "")
   .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-// Encrypts and authenticates browser cookies. Generated per revision when unset, which logs everyone out on deploy --
-// acceptable for a dashboard, and far better than a hardcoded default that would let anyone who read
-// this file mint their own session.
+// Deployed profiles require a stable managed >=32-byte secret. Random fallback is local-only;
+// production replay and logout revocation additionally use a dedicated durable state database.
 const COOKIE_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 const COOKIE_KEY = crypto.createSecretKey(Buffer.from(crypto.hkdfSync(
   "sha256",
@@ -61,6 +66,8 @@ let jwksCache = { keys: [], fetchedAt: 0 };
 function getJson(url) {
   return new Promise((resolve, reject) => {
     const req = https.get(url, (res) => {
+      res.once('error', reject);
+      res.once('aborted', () => reject(new Error('OAuth response aborted')));
       let body = "";
       res.on("data", (c) => {
         body += c;
@@ -75,6 +82,7 @@ function getJson(url) {
         try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
       });
     });
+    wholeResponseDeadline(req, UPSTREAM_TIMEOUT_MS);
     req.setTimeout(UPSTREAM_TIMEOUT_MS, () =>
       req.destroy(new Error(`OAuth upstream timed out after ${UPSTREAM_TIMEOUT_MS}ms`)));
     req.on("error", reject);
@@ -97,9 +105,10 @@ function b64urlToBuf(s) {
 // Verifies signature, issuer, audience and expiry. Returns the email or throws.
 export async function verifyIdToken(idToken, expectedNonce) {
   const [headB64, payloadB64, sigB64] = String(idToken).split(".");
-  if (!headB64 || !payloadB64 || !sigB64) throw new Error("malformed id_token");
+  if (String(idToken).length > 16384 || String(idToken).split(".").length !== 3 || !headB64 || !payloadB64 || !sigB64) throw new Error("malformed id_token");
 
   const header = JSON.parse(b64urlToBuf(headB64).toString("utf8"));
+  if (header.alg !== "RS256") throw new Error("wrong signing algorithm");
   const payload = JSON.parse(b64urlToBuf(payloadB64).toString("utf8"));
 
   const key = (await jwks()).find((k) => k.kid === header.kid);
@@ -216,10 +225,36 @@ export function revokeSession(cookieHeader) {
   try {
     const session = JSON.parse(plaintext);
     const expiresAt = Number(session.expires);
-    if (expiresAt > Date.now()) revokedSessions.set(raw, expiresAt);
+    if (expiresAt > Date.now()) {
+      purgeExpired(revokedSessions);
+      if (revokedSessions.size >= 10000) throw new Error('Session revocation capacity exceeded');
+      revokedSessions.set(raw, expiresAt);
+    }
   } catch {
     // Invalid cookies are already unauthenticated and need no server-side revocation entry.
   }
+}
+
+export async function readSessionAsync(cookieHeader) {
+  const email = readSession(cookieHeader);
+  if (!email) return null;
+  return await sharedState.contains('revoked', cookieValue(cookieHeader, 'ck_session')) ? null : email;
+}
+
+export async function revokeSessionAsync(cookieHeader) {
+  const raw = cookieValue(cookieHeader, 'ck_session');
+  const plaintext = raw && decryptCookiePayload('session', raw);
+  if (!plaintext) return;
+  const session = JSON.parse(plaintext);
+  if (Number(session.expires) > Date.now()) await sharedState.claim('revoked', raw, Number(session.expires));
+  revokeSession(cookieHeader);
+}
+
+export async function consumeAuthorizationAsync(cookieHeader, receivedState) {
+  const transaction = consumeAuthorization(cookieHeader, receivedState);
+  if (!await sharedState.claim('consumed', transaction.nonce, Date.now() + AUTHORIZATION_TTL_MINUTES * 60000))
+    throw new Error('OAuth state was already used');
+  return transaction;
 }
 
 export const clearSessionCookie =
@@ -262,6 +297,7 @@ export function consumeAuthorization(cookieHeader, receivedState) {
   }
   if (!safeEqual(receivedState, payload.nonce)) throw new Error("OAuth state did not match");
   if (consumedAuthorizationStates.has(payload.nonce)) throw new Error("OAuth state was already used");
+  if (consumedAuthorizationStates.size >= 10000) throw new Error('Authorization capacity exceeded');
   consumedAuthorizationStates.set(payload.nonce, Number(payload.expiresAt));
   return { destination: payload.destination, codeVerifier: payload.codeVerifier, nonce: payload.nonce };
 }
@@ -301,6 +337,8 @@ export function exchangeCode(code, redirectUri, codeVerifier) {
         "content-length": Buffer.byteLength(body),
       },
     }, (res) => {
+      res.once('error', reject);
+      res.once('aborted', () => reject(new Error('OAuth response aborted')));
       let out = "";
       res.on("data", (c) => {
         out += c;
@@ -321,6 +359,7 @@ export function exchangeCode(code, redirectUri, codeVerifier) {
       });
     });
     req.on("error", reject);
+    wholeResponseDeadline(req, UPSTREAM_TIMEOUT_MS);
     req.setTimeout(UPSTREAM_TIMEOUT_MS, () =>
       req.destroy(new Error(`OAuth token exchange timed out after ${UPSTREAM_TIMEOUT_MS}ms`)));
     req.end(body);

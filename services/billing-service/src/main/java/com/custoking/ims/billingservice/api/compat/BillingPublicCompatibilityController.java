@@ -2,6 +2,9 @@ package com.custoking.ims.billingservice.api.compat;
 
 import com.custoking.ims.billingservice.application.BillingInvoiceService;
 import com.custoking.ims.billingservice.security.TenantScope;
+import com.custoking.ims.billingservice.api.dto.CreateBillingPaymentRequest;
+import com.custoking.ims.billingservice.api.dto.*;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -77,20 +80,20 @@ public class BillingPublicCompatibilityController {
     @ResponseStatus(HttpStatus.CREATED)
     public Object create(
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateInvoiceRequest request) {
         requireToken(token, "billing:read");
         TenantScope.requireSuperAdmin();
-        return invoices.create(request);
+        return invoices.create(request.toMap());
     }
 
     @PatchMapping("/api/v1/sa/invoices/{id}")
     public Object update(
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @PathVariable String id,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody UpdateInvoiceRequest request) {
         requireToken(token, "billing:read");
         TenantScope.requireSuperAdmin();
-        Object invoice = invoices.update(id, request);
+        Object invoice = invoices.update(id, request.toMap());
         if (invoice == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "invoice not found");
         return invoice;
     }
@@ -107,10 +110,10 @@ public class BillingPublicCompatibilityController {
     @ResponseStatus(HttpStatus.CREATED)
     public Object createCustomer(
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateBillingCustomerRequest request) {
         requireToken(token, "billing:read");
         TenantScope.requireSuperAdmin();
-        return run(() -> invoices.createCustomer(request));
+        return run(() -> invoices.createCustomer(request.toMap()));
     }
 
     // /api/v1/invoices — school-level billing invoices. Judgment call: schoolInvoices() takes no
@@ -128,10 +131,10 @@ public class BillingPublicCompatibilityController {
     @ResponseStatus(HttpStatus.CREATED)
     public Object createSchoolInvoice(
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateSchoolInvoiceRequest request) {
         requireToken(token, "billing:read");
         TenantScope.requireSuperAdmin();
-        return run(() -> invoices.createSchoolInvoice(request));
+        return run(() -> invoices.createSchoolInvoice(request.toMap()));
     }
 
     @GetMapping(value = "/api/v1/invoices/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
@@ -161,7 +164,7 @@ public class BillingPublicCompatibilityController {
     @ResponseStatus(HttpStatus.CREATED)
     public Object createBillingPayment(
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateBillingPaymentRequest request) {
         requireToken(token, "billing:read");
         TenantScope.requireSuperAdmin();
         return run(() -> invoices.createBillingPayment(request));

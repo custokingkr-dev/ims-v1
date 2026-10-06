@@ -584,7 +584,7 @@ public class StudentReadRepository {
     private void emitStudentUpserted(Long id) {
         Map<String, Object> row = jdbc.sql("""
                 SELECT id, school_id, admission_no, full_name, roll_no, class_id, section_id,
-                       father_contact, phone, deleted_at, attendance_percent, father_name
+                       father_contact, phone, deleted_at, attendance_percent, father_name, aggregate_version
                 FROM student.students
                 WHERE id = :id
                 """)
@@ -603,6 +603,7 @@ public class StudentReadRepository {
                     m.put("active", rs.getObject("deleted_at") == null);
                     m.put("attendancePercent", rs.getObject("attendance_percent", Double.class));
                     m.put("fatherName", rs.getString("father_name"));
+                    m.put("aggregateVersion", rs.getLong("aggregate_version"));
                     return m;
                 })
                 .single();
@@ -750,6 +751,17 @@ public class StudentReadRepository {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rawRows = (List<Map<String, Object>>) request.getOrDefault("rows", List.of());
         if (rawRows.size() > 500) throw new IllegalArgumentException("Maximum 500 rows per import");
+        for (Map<String, Object> importRow : rawRows) {
+            if (importRow == null || importRow.size() > 64) throw new IllegalArgumentException("Import rows must contain at most 64 fields");
+            for (var field : importRow.entrySet()) {
+                if (field.getKey() == null || field.getKey().length() > 128)
+                    throw new IllegalArgumentException("Import field names must be 128 characters or shorter");
+                if (field.getValue() instanceof Map || field.getValue() instanceof java.util.Collection)
+                    throw new IllegalArgumentException("Import fields must contain scalar values");
+                if (field.getValue() != null && field.getValue().toString().length() > 4096)
+                    throw new IllegalArgumentException("Import values must be 4096 characters or shorter");
+            }
+        }
 
         String batchId = UUID.randomUUID().toString();
         String jobId = UUID.randomUUID().toString();

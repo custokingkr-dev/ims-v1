@@ -44,6 +44,9 @@ GUARDED = [
     "TenantDataSourceConfig.java",
     "LoggingDomainEventPublisher.java",
     "RuntimeDbRoleGuard.java",
+    "MachineCallerFilter.java",
+    "MigrationOnlyMain.java",
+    "MigrationRuntimePolicy.java",
     "OutboxPublisherConfiguration.java",
     "DomainEventPublisher.java",
 ]

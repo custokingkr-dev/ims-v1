@@ -1,6 +1,8 @@
 param(
   [string]$ProjectId = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "ProjectId is required: pass -ProjectId explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
   [string]$Region = "asia-south2",
+  [ValidateSet('dev', 'prod')]
+  [string]$Environment = 'prod',
   [string]$Repository = "custokingkr-dev/ims-v1",
   [string]$WorkloadIdentityPool = "github-pool",
   [string]$WorkloadIdentityProvider = "github-provider",
@@ -145,7 +147,7 @@ $wif = Invoke-GcloudJson iam workload-identity-pools providers describe $Workloa
 
 $runServices = @(Invoke-GcloudJson run services list --platform=managed `
     "--project=$ProjectId" "--region=$Region")
-$prodServices = @($runServices | Where-Object { $_.metadata.name -match "-prod$" })
+$prodServices = @($runServices | Where-Object { $_.metadata.name -match "-$Environment$" })
 $prodRun = @($prodServices | ForEach-Object {
     $serviceName = [string]$_.metadata.name
     [ordered]@{
@@ -166,14 +168,14 @@ $jobIdentities = @($runJobs | ForEach-Object {
   })
 
 $reportingSubscription = Invoke-GcloudJson pubsub subscriptions describe `
-  ims-reporting-service-push-prod "--project=$ProjectId"
+  "ims-reporting-service-push-$Environment" "--project=$ProjectId"
 $pushEndpoint = [uri][string]$reportingSubscription.pushConfig.pushEndpoint
 $reporting = [ordered]@{
-  subscription = "ims-reporting-service-push-prod"
+  subscription = "ims-reporting-service-push-$Environment" # default: ims-reporting-service-push-prod
   hasQueryString = -not [string]::IsNullOrWhiteSpace($pushEndpoint.Query)
   oidcServiceAccount = [string]$reportingSubscription.pushConfig.oidcToken.serviceAccountEmail
   audienceMatchesServiceUrl = [string]$reportingSubscription.pushConfig.oidcToken.audience -eq `
-    [string](($prodServices | Where-Object { $_.metadata.name -eq "custoking-platform-service-prod" }).status.url)
+    [string](($prodServices | Where-Object { $_.metadata.name -eq "custoking-platform-service-$Environment" }).status.url)
 }
 
 $token = (& $GcloudCommand auth print-access-token 2>$null | Select-Object -First 1).Trim()

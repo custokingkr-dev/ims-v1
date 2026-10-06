@@ -23,6 +23,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class WorkflowReadControllerTest {
+    @org.junit.jupiter.api.BeforeEach
+    void authenticatedActor() { TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null)); }
 
     private final WorkflowReadRepository workflows = mock(WorkflowReadRepository.class);
     private final WorkflowReadController controller = new WorkflowReadController(workflows, "workflow-token");

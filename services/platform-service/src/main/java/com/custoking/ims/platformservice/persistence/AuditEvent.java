@@ -23,6 +23,8 @@ public class AuditEvent {
 
     @Column(nullable = false)
     private String action;
+    @Column(nullable=false,length=32)
+    private String provenance = "CLIENT_TELEMETRY";
 
     private Long userId;
 
@@ -73,6 +75,8 @@ public class AuditEvent {
     }
 
     public Long getId() { return id; }
+    public String getProvenance() { return provenance; }
+    public void setProvenance(String provenance) { this.provenance=provenance; }
     public String getAction() { return action; }
     public void setAction(String action) { this.action = action; }
     public Long getUserId() { return userId; }

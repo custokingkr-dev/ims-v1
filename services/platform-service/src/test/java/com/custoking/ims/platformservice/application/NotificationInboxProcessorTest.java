@@ -38,6 +38,7 @@ class NotificationInboxProcessorTest {
 
         assertThat(event.getStatus()).isEqualTo(NotificationInboxEvent.STATUS_FAILED);
         assertThat(event.getAttemptCount()).isEqualTo(1);
+        assertThat(event.getLastError()).isEqualTo("DELIVERY_ATTEMPT_FAILED");
         assertThat(event.getNextAttemptAt()).isAfter(event.getLastAttemptAt().plusSeconds(29));
         assertThat(event.getDeadLetteredAt()).isNull();
         verify(inbox).save(event);

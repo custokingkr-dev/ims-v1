@@ -35,6 +35,7 @@ spec:
                   CATALOG_URL = required_env("CATALOG_URL").rstrip("/")
                   TENANT_URL = required_env("TENANT_URL").rstrip("/")
                   SCHOOL_ID = os.environ.get("SMOKE_SCHOOL_ID", "").strip()
+                  USER_ID = os.environ.get("SMOKE_USER_ID", "").strip()
                   CATALOG_TOKEN = required_env("CATALOG_TOKEN")
                   TENANT_TOKEN = required_env("TENANT_TOKEN")
                   META = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience={}&format=full"
@@ -47,10 +48,10 @@ spec:
                       req = urllib.request.Request(url, data=data, headers=merged_headers, method=method)
                       try:
                           with urllib.request.urlopen(req, timeout=30) as response:
-                              return response.status, response.read().decode()
+                              return response.status, response.read(4096).decode(errors="replace")
                       except urllib.error.HTTPError as exc:
-                          payload = exc.read().decode(errors="replace")
-                          raise RuntimeError(f"{method} {url} failed with HTTP {exc.code}: {payload[:1000]}") from exc
+                          exc.close()
+                          return exc.code, ""
 
                   def identity_token(audience):
                       status, token = request(META.format(audience), {"Metadata-Flavor": "Google"})
@@ -58,50 +59,40 @@ spec:
                           raise RuntimeError("identity token missing")
                       return token.strip()
 
-                  # Direct calls bypass the gateway, so they must inject the authenticated
-                  # context the gateway normally supplies (post-Phase-1 TenantContext requires
-                  # it; without it the service scopes to no tenant and returns 403). This is a
-                  # trusted internal smoke (IAM + service token), acting as SUPERADMIN.
-                  auth_ctx = {
-                      "X-Authenticated-User-Id": "0",
-                      "X-Authenticated-Email": "direct-service-smoke@custoking.local",
-                      "X-Authenticated-Role": "SUPERADMIN",
-                  }
-                  catalog_headers = {
-                      "Authorization": "Bearer " + identity_token(CATALOG_URL),
-                      "X-Catalog-Service-Token": CATALOG_TOKEN,
-                      **auth_ctx,
-                  }
-                  tenant_headers = {
-                      "Authorization": "Bearer " + identity_token(TENANT_URL),
-                      "X-Tenant-School-Token": TENANT_TOKEN,
-                      **auth_ctx,
-                  }
+                  # First prove IAM + peer token alone cannot impersonate a user on business routes.
+                  catalog_headers = {"Authorization": "Bearer " + identity_token(CATALOG_URL), "X-Catalog-Service-Token": CATALOG_TOKEN}
+                  tenant_headers = {"Authorization": "Bearer " + identity_token(TENANT_URL), "X-Tenant-School-Token": TENANT_TOKEN}
+                  denied_school = SCHOOL_ID if SCHOOL_ID else "1"
+                  for name, url, headers in [
+                      ("catalog user boundary", f"{CATALOG_URL}/api/v1/catalog/annual-plan?schoolId={denied_school}", catalog_headers),
+                      ("tenant user boundary", f"{TENANT_URL}/api/v1/schools/{denied_school}/modules", tenant_headers),
+                  ]:
+                      status, _ = request(url, headers)
+                      if status not in (401, 403):
+                          raise RuntimeError(f"{name} expected denial, received HTTP {status}")
+                      print(name, status)
 
-                  if not SCHOOL_ID:
-                      status, payload = request(f"{TENANT_URL}/api/v1/schools", tenant_headers)
-                      schools = json.loads(payload)
-                      if not schools:
-                          raise RuntimeError("no school available for direct service smoke")
-                      SCHOOL_ID = str(schools[0]["id"])
-
-                  status, payload = request(f"{CATALOG_URL}/api/v1/catalog/annual-plan?schoolId={SCHOOL_ID}", catalog_headers)
-                  print("catalog annual-plan", status, payload[:500])
-
-                  status, payload = request(
-                      f"{TENANT_URL}/api/v1/schools/{SCHOOL_ID}/modules/REPORTS",
-                      tenant_headers,
-                      "PUT",
-                      {"enabled": True, "plan": "DIRECT", "notes": "direct service smoke"},
-                  )
-                  print("tenant module upsert", status, payload[:500])
-
-                  status, payload = request(
-                      f"{TENANT_URL}/api/v1/schools/{SCHOOL_ID}/modules/REPORTS",
-                      tenant_headers,
-                      "DELETE",
-                  )
-                  print("tenant module delete", status, payload[:500])
+                  # Optional positive READ-ONLY domain smoke uses an explicitly configured dedicated actor.
+                  # It never discovers all schools, manufactures a SUPERADMIN, or writes/deletes entitlements.
+                  if USER_ID:
+                      if not USER_ID.isdecimal() or int(USER_ID) <= 0 or not SCHOOL_ID.isdecimal() or int(SCHOOL_ID) <= 0:
+                          raise RuntimeError("Dedicated smoke actor and school must be positive IDs")
+                      auth_ctx = {
+                          "X-Authenticated-User-Id": USER_ID,
+                          "X-Authenticated-Role": "SCHOOL_ADMIN",
+                          "X-Authenticated-School-Id": SCHOOL_ID,
+                          "X-Authenticated-Permissions": "order:read,school:read",
+                      }
+                      for name, url, headers in [
+                          ("catalog annual-plan read", f"{CATALOG_URL}/api/v1/catalog/annual-plan?schoolId={SCHOOL_ID}", catalog_headers),
+                          ("tenant modules read", f"{TENANT_URL}/api/v1/schools/{SCHOOL_ID}/modules", tenant_headers),
+                      ]:
+                          status, _ = request(url, {**headers, **auth_ctx})
+                          if status != 200:
+                              raise RuntimeError(f"{name} expected HTTP 200, received {status}")
+                          print(name, status)
+                  else:
+                      print("positive domain read smoke omitted: configure a dedicated actor and school")
               env:
                 - name: CATALOG_URL
                   value: "__CATALOG_URL__"
@@ -109,6 +100,8 @@ spec:
                   value: "__TENANT_URL__"
                 - name: SMOKE_SCHOOL_ID
                   value: "__SMOKE_SCHOOL_ID__"
+                - name: SMOKE_USER_ID
+                  value: "__SMOKE_USER_ID__"
                 - name: CATALOG_TOKEN
                   valueFrom:
                     secretKeyRef:

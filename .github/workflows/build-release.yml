@@ -1343,7 +1343,7 @@ jobs:
           {
             echo "## Manual deployment reconciliation required"
             echo ""
-            echo "This change modifies Cloud Deploy targets, pipelines, or their renderer."
+            echo "This change modifies deployment targets, pipelines, their renderer, or migration IAM."
             echo "No image was built and no release was created."
-            echo "Run the protected Ops / Reconcile deployment configuration workflow first, then release services in separate service-specific commits."
+            echo "Reconcile any changed migration IAM first, run Ops / Reconcile deployment configuration, then release a service-specific commit."
           } >> "$GITHUB_STEP_SUMMARY"

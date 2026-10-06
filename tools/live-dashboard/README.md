@@ -26,6 +26,14 @@ Required production variables are `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`,
 `DASHBOARD_ALLOWED_EMAILS`, `SESSION_SECRET`, and the pinned `DASHBOARD_PUBLIC_URL`. Authentication fails
 closed if the OAuth client is absent. `DASHBOARD_AUTH=off` is only for a trusted local workstation.
 
+Deployed profiles now refuse auth-off, a missing/short session secret, an absent/non-HTTPS public
+origin, or an absent `DASHBOARD_STATE_DATABASE`/`DASHBOARD_PROJECT`. The named Firestore database
+stores hashed OAuth replay and logout revocation capabilities shared by every replica/revision;
+state-store errors deny authenticated requests. The Terraform dashboard resources define the dedicated
+database, TTL and conditional read/create IAM. Local auth-off binds only loopback. See
+[dashboard remediation](../../docs/security-remediation/dashboard.md) for rollout, verification and
+secret-rotation recovery; these resources have not been provisioned merely by changing application code.
+
 Run the dependency-free authentication regression suite with:
 
 ```bash

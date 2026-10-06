@@ -7,22 +7,10 @@ import org.springframework.stereotype.Component;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.Set;
 
 @Component
 public class ImageUrlFetcher {
-
-    static {
-        // SSRF rebinding mitigation (pragmatic): keep the positive DNS cache long enough that the
-        // address validated in validateHost() is the one HttpClient connects to (they resolve ms apart).
-        // Residual: a precisely-timed sub-TTL rebind is not fully closed (java.net.http has no
-        // per-request resolver hook; a full fix would need a global InetAddressResolverProvider).
-        java.security.Security.setProperty("networkaddress.cache.ttl", "30");
-    }
 
     private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final int MAX_REDIRECTS = 3;
@@ -44,48 +32,89 @@ public class ImageUrlFetcher {
 
     public record FetchedImage(byte[] data, String contentType) {}
 
+    private static final java.util.concurrent.Semaphore FETCH_SLOTS = new java.util.concurrent.Semaphore(8);
+    private static final java.util.Map<String, long[]> QUOTAS = new java.util.HashMap<>();
+    private static final java.util.concurrent.ExecutorService DNS_LOOKUPS = new java.util.concurrent.ThreadPoolExecutor(
+            8, 8, 0, java.util.concurrent.TimeUnit.SECONDS, new java.util.concurrent.SynchronousQueue<>(), runnable -> {
+                Thread thread = new Thread(runnable, "image-fetch-dns"); thread.setDaemon(true); return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+    private static final java.util.concurrent.ScheduledExecutorService DEADLINES = java.util.concurrent.Executors.newScheduledThreadPool(2, runnable -> {
+        Thread thread = new Thread(runnable, "image-fetch-deadline"); thread.setDaemon(true); return thread;
+    });
+
     public FetchedImage fetch(String rawUrl) {
-        URI uri = parseHttp(rawUrl);
-        HttpClient client = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
-        int hops = 0;
-        while (true) {
-            validateHost(uri.getHost());
-            HttpResponse<InputStream> resp;
-            try {
-                resp = client.send(
-                        HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(5)).GET().build(),
-                        HttpResponse.BodyHandlers.ofInputStream());
-            } catch (java.net.http.HttpTimeoutException e) {
-                throw new ImageFetchException("timeout", "timed out fetching " + uri.getHost());
-            } catch (Exception e) {
-                throw new ImageFetchException("unreachable", "could not fetch: " + e.getMessage());
-            }
-            int code = resp.statusCode();
-            if (code >= 300 && code < 400) {
-                if (++hops > MAX_REDIRECTS) throw new ImageFetchException("unreachable", "too many redirects");
-                String loc = resp.headers().firstValue("location")
-                        .orElseThrow(() -> new ImageFetchException("unreachable", "redirect without location"));
-                uri = uri.resolve(loc);
-                if (!"http".equals(uri.getScheme()) && !"https".equals(uri.getScheme())) {
-                    throw new ImageFetchException("blocked_host", "redirect to non-http scheme");
-                }
-                continue;
-            }
-            if (code != 200) throw new ImageFetchException("unreachable", "HTTP " + code);
-            String contentType = resp.headers().firstValue("content-type").orElse("")
-                    .split(";")[0].trim().toLowerCase();
-            if (!IMAGE_TYPES.contains(contentType)) {
-                throw new ImageFetchException("not_an_image", "content-type " + contentType);
-            }
-            byte[] data = readBounded(resp.body());
-            return new FetchedImage(data, contentType);
-        }
+        consumeAuthenticatedQuota();
+        if (!FETCH_SLOTS.tryAcquire()) throw new ImageFetchException("busy", "Photo fetching is busy; retry later");
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
+        try { return fetchWithinDeadline(rawUrl, deadline); }
+        finally { FETCH_SLOTS.release(); }
     }
 
-    private URI parseHttp(String rawUrl) {
+    private static synchronized void consumeAuthenticatedQuota() {
+        var context = com.custoking.ims.schoolcoreservice.security.TenantContext.get();
+        if (context.userId() == null) return; // Controllers enforce authentication; test fetchers have no actor.
+        long window = System.currentTimeMillis() / 60_000;
+        QUOTAS.entrySet().removeIf(entry -> entry.getValue()[0] != window);
+        String actor = "user:" + context.userId();
+        String school = "school:" + context.schoolId();
+        if (QUOTAS.size() >= 4096 && (!QUOTAS.containsKey(actor) || !QUOTAS.containsKey(school)))
+            throw new ImageFetchException("busy", "Photo fetch quota is busy; retry later");
+        long[] userBudget = QUOTAS.computeIfAbsent(actor, key -> new long[]{window, 0});
+        long[] schoolBudget = QUOTAS.computeIfAbsent(school, key -> new long[]{window, 0});
+        if (userBudget[1] >= 20 || schoolBudget[1] >= 60) throw new ImageFetchException("busy", "Photo fetch quota exceeded; retry later");
+        userBudget[1]++; schoolBudget[1]++;
+    }
+
+    private FetchedImage fetchWithinDeadline(String rawUrl, long deadline) {
+        URI uri = parseHttp(rawUrl, deadline);
+        // Socket DNS resolution itself is validated, including every redirect. There is no
+        // unvalidated second resolution between this resolver and the connection.
+        var manager = org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder.create()
+                .setDnsResolver(new org.apache.hc.client5.http.DnsResolver() {
+                    public InetAddress[] resolve(String host) throws java.net.UnknownHostException { return validatedAddresses(host, deadline); }
+                    public String resolveCanonicalHostname(String host) { return host; }
+                }).build();
+        try (var client = org.apache.hc.client5.http.impl.classic.HttpClients.custom()
+                .setConnectionManager(manager).disableRedirectHandling().disableAutomaticRetries().build()) {
+            int hops = 0;
+            while (true) {
+                validatedAddresses(uri.getHost(), deadline);
+                long remaining = deadline - System.nanoTime();
+                if (remaining <= 0) throw new ImageFetchException("timeout", "Photo fetching timed out");
+                var request = new org.apache.hc.client5.http.classic.methods.HttpGet(uri);
+                var timeout = org.apache.hc.core5.util.Timeout.ofNanoseconds(remaining);
+                request.setConfig(org.apache.hc.client5.http.config.RequestConfig.custom()
+                        .setConnectTimeout(timeout).setConnectionRequestTimeout(timeout).setResponseTimeout(timeout).build());
+                var cancellation = DEADLINES.schedule(request::cancel, remaining, java.util.concurrent.TimeUnit.NANOSECONDS);
+                try (var response = client.execute(request)) {
+                    int code = response.getCode();
+                    if (code >= 300 && code < 400) {
+                        if (++hops > MAX_REDIRECTS) throw new ImageFetchException("unreachable", "Too many redirects");
+                        var location = response.getFirstHeader("location");
+                        if (location == null) throw new ImageFetchException("unreachable", "Redirect without location");
+                        uri = parseHttp(uri.resolve(location.getValue()).toString(), deadline);
+                        continue;
+                    }
+                    if (code != 200) throw new ImageFetchException("unreachable", "Photo source did not return an image");
+                    var header = response.getFirstHeader("content-type");
+                    String contentType = header == null ? "" : header.getValue().split(";")[0].trim().toLowerCase(java.util.Locale.ROOT);
+                    if (!IMAGE_TYPES.contains(contentType)) throw new ImageFetchException("not_an_image", "Photo source is not an image");
+                    if (response.getEntity() == null) throw new ImageFetchException("not_an_image", "Photo source is empty");
+                    if (response.getEntity().getContentLength() > maxBytes) throw new ImageFetchException("too_large", "Photo exceeds the size limit");
+                    return new FetchedImage(readBounded(response.getEntity().getContent()), contentType);
+                } catch (ImageFetchException ex) {
+                    if (request.isCancelled()) throw new ImageFetchException("timeout", "Photo fetching timed out");
+                    throw ex;
+                } catch (Exception ex) {
+                    if (System.nanoTime() >= deadline || request.isCancelled()) throw new ImageFetchException("timeout", "Photo fetching timed out");
+                    throw new ImageFetchException("unreachable", "Could not fetch the photo");
+                } finally { cancellation.cancel(false); }
+            }
+        } catch (ImageFetchException ex) { throw ex; }
+        catch (Exception ex) { throw new ImageFetchException("unreachable", "Could not fetch the photo"); }
+    }
+
+    private URI parseHttp(String rawUrl, long deadline) {
         URI uri;
         try { uri = URI.create(rawUrl.trim()); } catch (RuntimeException e) {
             throw new ImageFetchException("invalid_url", "malformed url");
@@ -94,13 +123,31 @@ public class ImageUrlFetcher {
         if (scheme == null || !(scheme.equals("http") || scheme.equals("https")) || uri.getHost() == null) {
             throw new ImageFetchException("invalid_url", "only http(s) urls are allowed");
         }
+        if (uri.getRawUserInfo() != null) throw new ImageFetchException("invalid_url", "URL credentials are not allowed");
+        if (!allowLoopbackForTest && (!"https".equals(scheme) || (uri.getPort() != -1 && uri.getPort() != 443))) {
+            validatedAddresses(uri.getHost(), deadline);
+            throw new ImageFetchException("invalid_url", "Photo URLs require HTTPS on port 443");
+        }
         return uri;
     }
 
-    private void validateHost(String host) {
+    private InetAddress[] validatedAddresses(String host, long deadline) {
         InetAddress[] addrs;
-        try { addrs = InetAddress.getAllByName(host); } catch (Exception e) {
+        java.util.concurrent.Future<InetAddress[]> lookup = null;
+        try {
+            long remaining = deadline - System.nanoTime();
+            if (remaining <= 0) throw new java.util.concurrent.TimeoutException();
+            lookup = DNS_LOOKUPS.submit(() -> InetAddress.getAllByName(host));
+            addrs = lookup.get(remaining, java.util.concurrent.TimeUnit.NANOSECONDS);
+        } catch (java.util.concurrent.TimeoutException e) {
+            throw new ImageFetchException("timeout", "Photo source resolution timed out");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new ImageFetchException("unreachable", "Photo fetch cancelled");
+        } catch (Exception e) {
             throw new ImageFetchException("unreachable", "cannot resolve host");
+        } finally {
+            if (lookup != null) lookup.cancel(true);
         }
         for (InetAddress addr : addrs) {
             if (isBlockedAddress(addr)) {
@@ -108,6 +155,7 @@ public class ImageUrlFetcher {
                 throw new ImageFetchException("blocked_host", "host resolves to a blocked address");
             }
         }
+        return addrs;
     }
 
     static boolean isBlockedAddress(InetAddress addr) {
@@ -170,7 +218,7 @@ public class ImageUrlFetcher {
         } catch (ImageFetchException e) {
             throw e;
         } catch (Exception e) {
-            throw new ImageFetchException("unreachable", "read error: " + e.getMessage());
+            throw new ImageFetchException("unreachable", "Could not read the photo");
         }
     }
 }

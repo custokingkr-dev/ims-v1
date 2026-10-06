@@ -51,6 +51,21 @@ class QuotationDocumentStorageTest {
         document.close();
         return output.toByteArray();
     }
+    @Test void rejectsNonScriptActiveActionsAndEmbeddedFiles() throws Exception {
+        var storage = new QuotationDocumentStorage("");
+        for (String forbidden : java.util.List.of("Launch", "GoToR", "SubmitForm", "ImportData", "RichMedia", "Filespec")) {
+            var output = new ByteArrayOutputStream();
+            var document = new Document();
+            var writer = PdfWriter.getInstance(document, output);
+            document.open(); document.add(new Paragraph("Quotation"));
+            var action = new com.lowagie.text.pdf.PdfDictionary();
+            action.put(com.lowagie.text.pdf.PdfName.S, new com.lowagie.text.pdf.PdfName(forbidden));
+            writer.getExtraCatalog().put(new com.lowagie.text.pdf.PdfName("NestedTest"), action);
+            document.close();
+            assertThatThrownBy(() -> storage.validate(output.toByteArray(), "active.pdf", "application/pdf"))
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("actions");
+        }
+    }
     @Test void failsClosedForMissingOrPublicBucketAndNeverAcceptsCallerPaths() {
         var cloud = mock(Storage.class);
         var storage = new QuotationDocumentStorage("private-quotations", cloud);

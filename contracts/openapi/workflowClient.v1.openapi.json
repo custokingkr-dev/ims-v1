@@ -1,0 +1,267 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking workflow decisions",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "operations-service",
+  "x-ims-gateway-service": "workflow",
+  "x-ims-controller": "WorkflowReadController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "WorkflowClient",
+  "x-ims-client-file": "workflowClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/workflows/instances/{id}": {
+      "get": {
+        "operationId": "getWorkflowInstance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowInstance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing/invalid expectedVersion"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Tenant, domain permission, step role or separation-of-duty denied"
+          },
+          "409": {
+            "description": "Stale expectedVersion; reload and review current instance before retry"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/instances/{id}/approve": {
+      "post": {
+        "operationId": "approveWorkflowInstance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowInstance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing/invalid expectedVersion"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Tenant, domain permission, step role or separation-of-duty denied"
+          },
+          "409": {
+            "description": "Stale expectedVersion; reload and review current instance before retry"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/instances/{id}/reject": {
+      "post": {
+        "operationId": "rejectWorkflowInstance",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowDecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowInstance"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing/invalid expectedVersion"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Tenant, domain permission, step role or separation-of-duty denied"
+          },
+          "409": {
+            "description": "Stale expectedVersion; reload and review current instance before retry"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "WorkflowDecisionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Copy the version from the reviewed instance, including zero. Never substitute step number or silently refresh/retry a decision."
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000
+          }
+        }
+      },
+      "WorkflowInstance": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "definitionId",
+          "entityType",
+          "entityId",
+          "schoolId",
+          "currentStep",
+          "status",
+          "initiatedBy",
+          "initiatedAt",
+          "completedAt",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "definitionId": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "currentStep": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "IN_PROGRESS",
+              "APPROVED",
+              "REJECTED",
+              "CANCELLED",
+              "COMPLETED"
+            ]
+          },
+          "initiatedBy": {
+            "type": "integer"
+          },
+          "initiatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    }
+  }
+}

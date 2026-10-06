@@ -57,7 +57,7 @@ class BillingPublicCompatibilityControllerTest {
                 null, null, 1L, "Main Branch", true);
         when(invoices.createCustomer(request)).thenReturn(customer);
 
-        Object response = controller.createCustomer("billing-token", request);
+        Object response = controller.createCustomer("billing-token", new com.custoking.ims.billingservice.api.dto.CreateBillingCustomerRequest("C-1","Delhi Public School",null,null,null,null,null,null,null));
 
         assertThat(response).isSameAs(customer);
         verify(invoices).createCustomer(request);
@@ -73,11 +73,11 @@ class BillingPublicCompatibilityControllerTest {
 
     @Test
     void createSchoolInvoiceDelegatesPayload() {
-        Map<String, Object> request = Map.of("customerId", 1L);
+        Map<String, Object> request = Map.of("customerId", 1L,"items",List.of(Map.of("description","Item","quantity",1L,"unitPrice",100L)));
         Map<String, Object> invoice = Map.of("id", 10L, "invoiceNo", "INV-10");
         when(invoices.createSchoolInvoice(request)).thenReturn(invoice);
 
-        Object response = controller.createSchoolInvoice("billing-token", request);
+        Object response = controller.createSchoolInvoice("billing-token", new com.custoking.ims.billingservice.api.dto.CreateSchoolInvoiceRequest(1L,null,null,null,null,null,null,List.of(new com.custoking.ims.billingservice.api.dto.CreateSchoolInvoiceRequest.Item("Item",1L,100L,null))));
 
         assertThat(response).isSameAs(invoice);
         verify(invoices).createSchoolInvoice(request);
@@ -113,7 +113,7 @@ class BillingPublicCompatibilityControllerTest {
 
     @Test
     void createBillingPaymentDelegatesPayload() {
-        Map<String, Object> request = Map.of("invoiceId", 10L, "amount", 500);
+        var request = new com.custoking.ims.billingservice.api.dto.CreateBillingPaymentRequest(10L, 500L, null, "UPI", null, null, "payment-key-1");
         PaymentRow payment = payment();
         when(invoices.createBillingPayment(request)).thenReturn(payment);
 
