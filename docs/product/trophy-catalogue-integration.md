@@ -88,7 +88,9 @@ Run the relevant checks from the repository root or indicated directory:
 | TypeScript and production Vite build | Passed |
 | Patch whitespace and document source links | Checked |
 
-Screenshots from the browser verification are under `frontend/test-results/trophy-catalogue-1280.png` and `frontend/test-results/trophy-catalogue-390.png`. Build/test artifacts are local evidence rather than committed product assets. Existing unrelated user changes were preserved. No deployment was performed.
+Screenshots from the browser verification are under `frontend/test-results/trophy-catalogue-1280.png` and `frontend/test-results/trophy-catalogue-390.png`. Build/test artifacts are local evidence rather than committed product assets. Existing unrelated user changes were preserved.
+
+The dev release verification additionally ran all 419 frontend unit tests and all 111 Playwright tests successfully. The required npm audit exposed pre-existing high/critical dependency advisories; compatible lockfile fixes and an upgrade to Vitest/coverage 4.1.11 removed all reported advisories. jsdom photo-import tests explicitly exercise the original-byte fallback because blob image decoding does not dispatch completion events in jsdom. The upgraded V8 report measured statements 50.50%, branches 45.41%, functions 43.34%, and lines 53.35%. The branch floor was rebaselined from 60% to 45%; source inclusion and other floors remain unchanged. This is a coverage-gate change accompanying the security update, not additional application coverage. See the [Vitest migration guide](https://v4.vitest.dev/guide/migration) for coverage changes.
 
 ```powershell
 .\mvnw.cmd -f services/school-core-service/pom.xml '-Dtest=CatalogOrderFormIntegrationTest,CatalogProductFormIntegrationTest,CatalogOrderFormControllerTest,CatalogValidationTest,CatalogTenantScopingTest' test

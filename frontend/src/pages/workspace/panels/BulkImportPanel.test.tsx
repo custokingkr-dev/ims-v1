@@ -1,13 +1,22 @@
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as XLSX from 'xlsx';
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { BulkImportPanel, extractXlsxPhotos, attachPhotos, buildSkippedRowsCsv, normalizeImportCellValue } from './BulkImportPanel';
 import api from '../../../services/api';
 
 vi.mock('../../../services/api');
 
-afterEach(cleanup);
+beforeEach(() => {
+  // jsdom cannot decode blob URLs. Exercise the original-byte fallback rather
+  // than waiting for Image events that this environment never dispatches.
+  vi.spyOn(URL, 'createObjectURL').mockImplementation(() => { throw new Error('Image decoding unavailable'); });
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe('BulkImportPanel Excel format', () => {
   it('shows the required column headers, an optional PhotoUrl, and the sample-template action', () => {
