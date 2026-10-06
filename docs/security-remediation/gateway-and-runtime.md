@@ -18,7 +18,7 @@ Generated source comparison normalizes CRLF while retaining meaningful content d
 - 428 frontend unit tests and production build passed;111 established browser tests and5 security browser tests passed at their recorded checkpoints.
 - Actual built nonroot nginx container verified headers/CSP/image preview/document download. See browser.md and browser-evidence.json.
 - Frontend and gateway npm audits report zero vulnerabilities; Java/container image scans remain release-gate evidence until fresh images are built.
-- 24 offline architecture audits passed. Generated inventory/client checks passed at447 endpoints/49 canonical browser operations before the final workflow contract addition.
+- 24 offline architecture audits passed. Generated inventory/client checks passed at447 endpoints/52 canonical browser operations after workflow contract convergence.
 - Actual dev metadata confirms five dedicated NOSUPERUSER/NOBYPASSRLS/NOCREATEROLE/NOCREATEDB/NOINHERIT roles, no memberships, required TLS and access confined to owned schemas. See dev-runtime-role-proof.json. Preparation is not service cutover.
 
 ## Dev environment actions

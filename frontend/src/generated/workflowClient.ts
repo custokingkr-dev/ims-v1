@@ -6,7 +6,7 @@ import type { AxiosInstance } from 'axios';
 
 export type WorkflowDecisionRequest = { "expectedVersion": number; "notes"?: string | null; };
 
-export type WorkflowInstance = { "id": number; "definitionId": string; "entityType": string; "entityId": string; "schoolId": number; "currentStep": number; "status": "PENDING" | "IN_PROGRESS" | "APPROVED" | "REJECTED" | "CANCELLED" | "COMPLETED"; "initiatedBy": number; "initiatedAt": string; "completedAt": string | null; "version": number; };
+export type WorkflowInstance = { "id": number; "definitionId": string; "entityType": string; "entityId": string; "schoolId": number | null; "currentStep": number; "status": "PENDING" | "IN_PROGRESS" | "APPROVED" | "REJECTED" | "CANCELLED" | "COMPLETED"; "initiatedBy": number | null; "initiatedAt": string; "completedAt": string | null; "version": number; };
 
 export interface WorkflowClient {
   getWorkflowInstance(parameters: { id: number; }): Promise<WorkflowInstance>;

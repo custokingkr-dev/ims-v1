@@ -4,6 +4,11 @@ import json
 import subprocess
 import tempfile
 import unittest
+import shutil
+
+POWERSHELL = shutil.which("pwsh") or shutil.which("powershell.exe") or shutil.which("powershell")
+if not POWERSHELL:
+    raise RuntimeError("PowerShell is required for deployment security regression tests")
 
 ROOT=Path(__file__).resolve().parents[2]
 SOURCE=ROOT/'scripts/configure-runtime-service-accounts.ps1'
@@ -16,7 +21,7 @@ class RuntimeSecretMatrixTest(unittest.TestCase):
                 f"$ast=[System.Management.Automation.Language.Parser]::ParseFile('{SOURCE}',[ref]$null,[ref]$null)\n"
                 "$node=$ast.Find({param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst] -and $n.Left.Extent.Text -eq '$secretMatrix'},$true)\n"
                 "Invoke-Expression $node.Extent.Text\n$secretMatrix|ConvertTo-Json -Depth 5\n")
-            result=subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(fixture)],capture_output=True,text=True)
+            result=subprocess.run([POWERSHELL,'-NoProfile','-ExecutionPolicy','Bypass','-File',str(fixture)],capture_output=True,text=True)
             self.assertEqual(0,result.returncode,result.stderr)
             matrix=json.loads(result.stdout)
             for service,prefix in [('identity-service','identity'),('school-core-service','school-core'),('operations-service','operations'),('platform-service','platform'),('billing-service','billing')]:
@@ -27,7 +32,7 @@ class RuntimeSecretMatrixTest(unittest.TestCase):
             self.assertIn('jwt-secret-dev',matrix['identity-service'])
 
     def test_production_requires_explicit_verified_role_preparation(self):
-        result=subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(SOURCE),'-ProjectId','custoking-prod','-Environment','prod','-Apply','-AllowProduction'],capture_output=True,text=True)
+        result=subprocess.run([POWERSHELL,'-NoProfile','-ExecutionPolicy','Bypass','-File',str(SOURCE),'-ProjectId','custoking-prod','-Environment','prod','-Apply','-AllowProduction'],capture_output=True,text=True)
         self.assertNotEqual(0,result.returncode)
         self.assertIn('separately prepared and verified',result.stderr)
 

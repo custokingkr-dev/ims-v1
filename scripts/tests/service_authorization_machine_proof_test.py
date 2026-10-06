@@ -5,6 +5,10 @@ import subprocess
 import tempfile
 import unittest
 
+POWERSHELL = shutil.which("pwsh") or shutil.which("powershell.exe") or shutil.which("powershell")
+if not POWERSHELL:
+    raise RuntimeError("PowerShell is required for deployment security regression tests")
+
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 class MachineProofAuditTest(unittest.TestCase):
     def setUp(self):
@@ -21,7 +25,7 @@ class MachineProofAuditTest(unittest.TestCase):
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
     def audit(self):
-        return subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts/audit-service-authorization-boundaries.ps1"),
+        return subprocess.run([POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts/audit-service-authorization-boundaries.ps1"),
             "-GatewayTemplate", str(ROOT / "services/api-gateway/server.js"), "-ComposeFile", str(ROOT / "docker-compose.yml"),
             "-CloudRunDirectory", str(ROOT / "deploy/cloudrun"), "-AsyncSchedulerScript", str(ROOT / "scripts/configure-async-relay-scheduler.ps1")],
             cwd=self.root, capture_output=True, text=True, timeout=30)

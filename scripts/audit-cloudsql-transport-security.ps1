@@ -80,9 +80,17 @@ foreach ($serviceName in $serviceNames) {
       renderedAndParameterizedUrlCount = $manifestJdbcUrls.Count
       encryptionRequiredCount = $secureUrls.Count
     })
-  if ($jdbcValueLines.Count -ne 2 -or $manifestJdbcUrls.Count -ne 4 -or $secureUrls.Count -ne 4) {
-    $null = $violations.Add("$relativePath must require TLS in both rendered and parameterized forms of exactly the runtime and Flyway JDBC URLs.")
+  $manifest=Get-Content -Raw -LiteralPath $path
+  $ownerless=$manifest -match '(?m)^\s*- name: APP_MIGRATIONS_ENABLED\r?\n\s*value: "false"\s*$' -and $manifest -notmatch '(?m)^\s*- name: FLYWAY_(URL|USERNAME|PASSWORD)\s*$'
+  if ($jdbcValueLines.Count -ne 1 -or $manifestJdbcUrls.Count -ne 2 -or $secureUrls.Count -ne 2 -or -not $ownerless) {
+    $null = $violations.Add("$relativePath must require TLS for exactly the runtime JDBC URL, disable migrations and contain no owner Flyway credentials.")
   }
+}
+
+# Owner migration jobs validate an explicit TLS-only URL before creating a job.
+$migrationSource=Get-Content -Raw -LiteralPath (Resolve-RepoPath 'scripts/invoke-service-migration-job.ps1')
+foreach($required in @('sslmode=require','Migration requires an explicit PostgreSQL URL','FLYWAY_URL','ims-db-migration-','org.springframework.boot.loader.launch.PropertiesLauncher')){
+ if(-not $migrationSource.Contains($required)){$null=$violations.Add("Isolated migration transport proof missing: $required")}
 }
 
 foreach ($relativePath in $jobConstructorFiles) {
@@ -194,15 +202,18 @@ if ($Environment -ne "source") {
     }
     $runtimeMode = Get-JdbcSslMode ([string]$environmentVariables["SPRING_DATASOURCE_URL"])
     $flywayMode = Get-JdbcSslMode ([string]$environmentVariables["FLYWAY_URL"])
+    $ownerless = $environmentVariables["APP_MIGRATIONS_ENABLED"] -eq 'false' -and @($service.spec.template.spec.containers[0].env | Where-Object {$_.name -match '^FLYWAY_(URL|USERNAME|PASSWORD)$'}).Count -eq 0
+    $transportSecure = $runtimeMode -in $secureModes -and ($ownerless -or $flywayMode -in $secureModes)
     $null = $liveResults.Add([ordered]@{
         type = "cloud-run-service"
         resource = $resourceName
         runtimeSslMode = $runtimeMode
         flywaySslMode = $flywayMode
-        encryptionRequired = $runtimeMode -in $secureModes -and $flywayMode -in $secureModes
+        encryptionRequired = $transportSecure
+        ownerCredentialsIsolated = $ownerless
       })
-    if ($runtimeMode -notin $secureModes -or $flywayMode -notin $secureModes) {
-      $null = $violations.Add("$resourceName does not require TLS for both runtime and Flyway JDBC connections.")
+    if (-not $transportSecure) {
+      $null = $violations.Add("$resourceName does not require TLS for every configured runtime/migration JDBC connection.")
     }
   }
 

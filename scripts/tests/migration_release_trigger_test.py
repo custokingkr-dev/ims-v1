@@ -3,12 +3,17 @@ import json
 from pathlib import Path
 import subprocess
 import unittest
+import shutil
+
+POWERSHELL = shutil.which("pwsh") or shutil.which("powershell.exe") or shutil.which("powershell")
+if not POWERSHELL:
+    raise RuntimeError("PowerShell is required for deployment security regression tests")
 
 ROOT=Path(__file__).resolve().parents[2]
 
 class MigrationReleaseTriggerTest(unittest.TestCase):
     def resolve(self,file,environment='dev'):
-        result=subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','Bypass','-File',str(ROOT/'scripts/resolve-affected-ci-targets.ps1'),'-Environment',environment,'-ChangedFilesOverride',file],capture_output=True,text=True)
+        result=subprocess.run([POWERSHELL,'-NoProfile','-ExecutionPolicy','Bypass','-File',str(ROOT/'scripts/resolve-affected-ci-targets.ps1'),'-Environment',environment,'-ChangedFilesOverride',file],capture_output=True,text=True)
         self.assertEqual(0,result.returncode,result.stderr)
         return json.loads(result.stdout)
 
