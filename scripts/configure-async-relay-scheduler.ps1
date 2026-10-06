@@ -121,13 +121,14 @@ foreach ($target in $resolved) {
     "scheduler", "jobs", "describe", $target.job, "--project=$ProjectId", "--location=$SchedulerLocation"
   )
   $verb = if ($jobExists) { "update" } else { "create" }
+  $headerArgument = if ($jobExists) { "--update-headers=Content-Type=application/json" } else { "--headers=Content-Type=application/json" }
   Invoke-Gcloud scheduler jobs $verb http $target.job `
     "--project=$ProjectId" "--location=$SchedulerLocation" `
     "--schedule=$Schedule" --time-zone=Etc/UTC `
     "--uri=$($target.uri)" --http-method=POST `
     "--oidc-service-account-email=$serviceAccount" `
     "--oidc-token-audience=$($target.audience)" `
-    --headers=Content-Type=application/json --message-body="{}" `
+    $headerArgument --message-body="{}" `
     --attempt-deadline=300s --max-retry-attempts=3 `
     --min-backoff=10s --max-backoff=300s --max-doublings=3
 }

@@ -1,0 +1,719 @@
+{
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "capturedAt": "2026-10-06T21:02:47.414451+00:00",
+  "scope": "READ_ONLY_METADATA_IAM_ONLY",
+  "serviceAgent": "service-1087017280590@gcp-sa-pubsub.iam.gserviceaccount.com",
+  "platformUrl": "https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app",
+  "expectedReportingPublishers": [
+    "serviceAccount:ims-school-core-dev@custoking-dev.iam.gserviceaccount.com",
+    "serviceAccount:ims-operations-dev@custoking-dev.iam.gserviceaccount.com",
+    "serviceAccount:ims-billing-dev@custoking-dev.iam.gserviceaccount.com"
+  ],
+  "topics": [
+    {
+      "name": "projects/custoking-dev/topics/ims-reporting-events-v1-dev",
+      "messageRetentionDuration": null,
+      "iam": [
+        {
+          "role": "roles/pubsub.publisher",
+          "members": [
+            "serviceAccount:ims-billing-dev@custoking-dev.iam.gserviceaccount.com",
+            "serviceAccount:ims-operations-dev@custoking-dev.iam.gserviceaccount.com",
+            "serviceAccount:ims-school-core-dev@custoking-dev.iam.gserviceaccount.com"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "projects/custoking-dev/topics/ims-notifications-dead-letter-v1-dev",
+      "messageRetentionDuration": null,
+      "iam": [
+        {
+          "role": "roles/pubsub.publisher",
+          "members": [
+            "serviceAccount:service-1087017280590@gcp-sa-pubsub.iam.gserviceaccount.com"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "projects/custoking-dev/topics/ims-reporting-dead-letter-v1-dev",
+      "messageRetentionDuration": null,
+      "iam": [
+        {
+          "role": "roles/pubsub.publisher",
+          "members": [
+            "serviceAccount:service-1087017280590@gcp-sa-pubsub.iam.gserviceaccount.com"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "projects/custoking-dev/topics/ims-notifications-events-v1-dev",
+      "messageRetentionDuration": null,
+      "iam": []
+    }
+  ],
+  "subscriptions": [
+    {
+      "name": "projects/custoking-dev/subscriptions/ims-reporting-service-push-dev",
+      "topic": "projects/custoking-dev/topics/ims-reporting-events-v1-dev",
+      "ackDeadlineSeconds": 10,
+      "messageRetentionDuration": "604800s",
+      "expirationPolicy": {},
+      "retainAckedMessages": false,
+      "retryPolicy": {
+        "maximumBackoff": "600s",
+        "minimumBackoff": "10s"
+      },
+      "deadLetterPolicy": {
+        "deadLetterTopic": "projects/custoking-dev/topics/ims-reporting-dead-letter-v1-dev",
+        "maxDeliveryAttempts": 10
+      },
+      "push": {
+        "url": "https://custoking-platform-service-dev-1087017280590.asia-south2.run.app/api/v1/pubsub/reporting-events",
+        "queryPresent": false,
+        "userinfoPresent": false,
+        "oidcServiceAccount": "ims-reporting-push-dev@custoking-dev.iam.gserviceaccount.com",
+        "oidcAudience": {
+          "url": "https://custoking-platform-service-dev-1087017280590.asia-south2.run.app",
+          "queryPresent": false,
+          "userinfoPresent": false
+        },
+        "noWrapper": null
+      },
+      "iam": [
+        {
+          "role": "roles/pubsub.subscriber",
+          "members": [
+            "serviceAccount:service-1087017280590@gcp-sa-pubsub.iam.gserviceaccount.com"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "projects/custoking-dev/subscriptions/reporting-dead-letter-inspection-dev",
+      "topic": "projects/custoking-dev/topics/ims-reporting-dead-letter-v1-dev",
+      "ackDeadlineSeconds": 10,
+      "messageRetentionDuration": "604800s",
+      "expirationPolicy": {},
+      "retainAckedMessages": false,
+      "retryPolicy": null,
+      "deadLetterPolicy": null,
+      "push": {
+        "url": "",
+        "queryPresent": false,
+        "userinfoPresent": false,
+        "oidcServiceAccount": null,
+        "oidcAudience": {
+          "url": "",
+          "queryPresent": false,
+          "userinfoPresent": false
+        },
+        "noWrapper": null
+      },
+      "iam": []
+    },
+    {
+      "name": "projects/custoking-dev/subscriptions/ims-notification-service-push-dev",
+      "topic": "projects/custoking-dev/topics/ims-notifications-events-v1-dev",
+      "ackDeadlineSeconds": 30,
+      "messageRetentionDuration": "604800s",
+      "expirationPolicy": {},
+      "retainAckedMessages": false,
+      "retryPolicy": {
+        "maximumBackoff": "600s",
+        "minimumBackoff": "10s"
+      },
+      "deadLetterPolicy": {
+        "deadLetterTopic": "projects/custoking-dev/topics/ims-notifications-dead-letter-v1-dev",
+        "maxDeliveryAttempts": 10
+      },
+      "push": {
+        "url": "https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app/api/v1/pubsub/notifications",
+        "queryPresent": false,
+        "userinfoPresent": false,
+        "oidcServiceAccount": "ims-notification-push-dev@custoking-dev.iam.gserviceaccount.com",
+        "oidcAudience": {
+          "url": "https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app",
+          "queryPresent": false,
+          "userinfoPresent": false
+        },
+        "noWrapper": null
+      },
+      "iam": [
+        {
+          "role": "roles/pubsub.subscriber",
+          "members": [
+            "serviceAccount:service-1087017280590@gcp-sa-pubsub.iam.gserviceaccount.com"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "projects/custoking-dev/subscriptions/notifications-dead-letter-inspection-dev",
+      "topic": "projects/custoking-dev/topics/ims-notifications-dead-letter-v1-dev",
+      "ackDeadlineSeconds": 10,
+      "messageRetentionDuration": "604800s",
+      "expirationPolicy": {},
+      "retainAckedMessages": false,
+      "retryPolicy": null,
+      "deadLetterPolicy": null,
+      "push": {
+        "url": "",
+        "queryPresent": false,
+        "userinfoPresent": false,
+        "oidcServiceAccount": null,
+        "oidcAudience": {
+          "url": "",
+          "queryPresent": false,
+          "userinfoPresent": false
+        },
+        "noWrapper": null
+      },
+      "iam": []
+    }
+  ],
+  "projectIamBindings": [
+    {
+      "role": "projects/custoking-dev/roles/custokingCloudDeployConfigReconciler",
+      "members": [
+        "serviceAccount:github-config-dev@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "projects/custoking-dev/roles/imsMigrationJobCleanup",
+      "members": [
+        "serviceAccount:github-release-dev@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "projects/custoking-dev/roles/imsMigrationJobEvidenceReader",
+      "members": [
+        "serviceAccount:github-release-dev@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/artifactregistry.serviceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@gcp-sa-artifactregistry.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/bigquery.dataEditor",
+      "members": [
+        "serviceAccount:cost-analysis-collector@custoking-prod.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/bigquery.dataViewer",
+      "members": [
+        "serviceAccount:cost-metric-exporter@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/bigquery.jobUser",
+      "members": [
+        "serviceAccount:cost-analysis-collector@custoking-prod.iam.gserviceaccount.com",
+        "serviceAccount:cost-metric-exporter@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:github-cost-controller@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/bigquerydatatransfer.serviceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@gcp-sa-bigquerydatatransfer.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/cloudbuild.builds.builder",
+      "members": [
+        "serviceAccount:1087017280590@cloudbuild.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/cloudbuild.serviceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/clouddeploy.jobRunner",
+      "members": [
+        "serviceAccount:clouddeploy-dev-deployer@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/clouddeploy.operator",
+      "members": [
+        "serviceAccount:github-rollback-dev@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/clouddeploy.releaser",
+      "members": [
+        "serviceAccount:github-release-dev@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/clouddeploy.serviceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@gcp-sa-clouddeploy.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/cloudscheduler.serviceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/cloudsql.client",
+      "members": [
+        "serviceAccount:ims-api-gateway-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-billing-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-frontend-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-identity-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-operations-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-platform-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-scale-fixture-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-school-core-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:migration-operator@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/cloudsql.editor",
+      "members": [
+        "serviceAccount:github-cost-controller@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:github-release-dev@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/cloudtrace.agent",
+      "members": [
+        "serviceAccount:1087017280590-compute@developer.gserviceaccount.com",
+        "serviceAccount:ims-api-gateway-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-billing-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-frontend-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-identity-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-operations-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-platform-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-school-core-dev@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/compute.instanceGroupManagerServiceAgent",
+      "members": [
+        "serviceAccount:1087017280590@cloudservices.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/compute.serviceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@compute-system.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/containerregistry.ServiceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@containerregistry.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/monitoring.metricWriter",
+      "members": [
+        "serviceAccount:cost-metric-exporter@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/monitoring.viewer",
+      "members": [
+        "serviceAccount:cost-analysis-collector@custoking-prod.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/owner",
+      "members": [
+        "user:REDACTED_ADMINISTRATIVE_PRINCIPAL_1"
+      ]
+    },
+    {
+      "role": "roles/pubsub.serviceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@gcp-sa-pubsub.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/run.developer",
+      "members": [
+        "serviceAccount:clouddeploy-dev-deployer@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:github-release-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:github-rollback-dev@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/run.serviceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@serverless-robot-prod.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/secretmanager.admin",
+      "members": [
+        "serviceAccount:service-1087017280590@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+      ],
+      "condition": {
+        "title": "cloudbuild-connection-setup",
+        "expression": "request.time < timestamp(\"2026-09-22T14:06:34.739Z\")"
+      }
+    },
+    {
+      "role": "roles/servicenetworking.serviceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@service-networking.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/serviceusage.serviceUsageConsumer",
+      "members": [
+        "serviceAccount:1087017280590-compute@developer.gserviceaccount.com",
+        "serviceAccount:direct-service-smoke@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:github-config-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:github-cost-controller@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:github-release-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:github-rollback-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-api-gateway-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-billing-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-frontend-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-identity-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-operations-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-platform-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-school-core-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:migration-operator@custoking-dev.iam.gserviceaccount.com"
+      ]
+    },
+    {
+      "role": "roles/telemetry.tracesWriter",
+      "members": [
+        "serviceAccount:1087017280590-compute@developer.gserviceaccount.com"
+      ]
+    }
+  ],
+  "projectPubsubBindings": [
+    {
+      "role": "roles/pubsub.serviceAgent",
+      "members": [
+        "serviceAccount:service-1087017280590@gcp-sa-pubsub.iam.gserviceaccount.com"
+      ]
+    }
+  ],
+  "platformInvokerBindings": [
+    {
+      "role": "roles/run.invoker",
+      "members": [
+        "serviceAccount:direct-service-smoke@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-api-gateway-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-async-scheduler-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-notification-push-dev@custoking-dev.iam.gserviceaccount.com",
+        "serviceAccount:ims-reporting-push-dev@custoking-dev.iam.gserviceaccount.com"
+      ]
+    }
+  ],
+  "pushServiceAccountIam": {
+    "ims-reporting-push-dev@custoking-dev.iam.gserviceaccount.com": [],
+    "ims-notification-push-dev@custoking-dev.iam.gserviceaccount.com": [
+      {
+        "role": "roles/iam.serviceAccountOpenIdTokenCreator",
+        "members": [
+          "serviceAccount:service-1087017280590@gcp-sa-pubsub.iam.gserviceaccount.com"
+        ]
+      }
+    ]
+  },
+  "findings": [],
+  "boundedMetadataCommands": [
+    {
+      "command": [
+        "projects",
+        "describe",
+        "custoking-dev",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "projects",
+        "get-iam-policy",
+        "custoking-dev",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "run",
+        "services",
+        "describe",
+        "custoking-platform-service-dev",
+        "--region=asia-south2",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "run",
+        "services",
+        "get-iam-policy",
+        "custoking-platform-service-dev",
+        "--region=asia-south2",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "pubsub",
+        "topics",
+        "list",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "pubsub",
+        "subscriptions",
+        "list",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "pubsub",
+        "topics",
+        "get-iam-policy",
+        "projects/custoking-dev/topics/ims-reporting-events-v1-dev",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "pubsub",
+        "topics",
+        "get-iam-policy",
+        "projects/custoking-dev/topics/ims-notifications-dead-letter-v1-dev",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "pubsub",
+        "topics",
+        "get-iam-policy",
+        "projects/custoking-dev/topics/ims-reporting-dead-letter-v1-dev",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "pubsub",
+        "topics",
+        "get-iam-policy",
+        "projects/custoking-dev/topics/ims-notifications-events-v1-dev",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "pubsub",
+        "subscriptions",
+        "get-iam-policy",
+        "projects/custoking-dev/subscriptions/ims-reporting-service-push-dev",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "pubsub",
+        "subscriptions",
+        "get-iam-policy",
+        "projects/custoking-dev/subscriptions/reporting-dead-letter-inspection-dev",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "pubsub",
+        "subscriptions",
+        "get-iam-policy",
+        "projects/custoking-dev/subscriptions/ims-notification-service-push-dev",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "pubsub",
+        "subscriptions",
+        "get-iam-policy",
+        "projects/custoking-dev/subscriptions/notifications-dead-letter-inspection-dev",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "iam",
+        "service-accounts",
+        "get-iam-policy",
+        "ims-reporting-push-dev@custoking-dev.iam.gserviceaccount.com",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "iam",
+        "service-accounts",
+        "get-iam-policy",
+        "ims-notification-push-dev@custoking-dev.iam.gserviceaccount.com",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    },
+    {
+      "command": [
+        "deploy",
+        "targets",
+        "describe",
+        "platform-service-dev",
+        "--region=asia-south2",
+        "--format=json(Target.deployParameters.service_oidc_audiences)",
+        "--project=custoking-dev"
+      ],
+      "timeoutSeconds": 60
+    }
+  ],
+  "messageApiCalls": 0,
+  "secretValueCalls": 0,
+  "cloudMutations": false,
+  "deliveryVerified": false,
+  "replayVerified": false,
+  "restartVerified": false,
+  "drainVerified": false,
+  "limitations": [
+    "IAM deny policies/org inherited grants/custom role permission expansion not evaluated.",
+    "Metadata does not prove message delivery, replay, restart or drain.",
+    "No application rows, environments, tokens or message contents collected."
+  ],
+  "platformTargetAllowedOidcAudiences": "https://custoking-platform-service-dev-1087017280590.asia-south2.run.app,https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app",
+  "beforeRepair": {
+    "capturedAt": "2026-10-06T20:30:07.873826+00:00",
+    "topicCount": 4,
+    "subscriptionCount": 1,
+    "findings": [
+      {
+        "id": "PUSH_STATUS_URL_ALIAS_DIFFERENCE",
+        "subscription": "ims-reporting-service-push-dev",
+        "acceptedByRenderedAudienceAllowlist": true,
+        "note": "Numeric regional audience and hashed status.url may both be legitimate; not an authentication failure claim."
+      },
+      {
+        "id": "EXPLICIT_PUSH_SA_TOKEN_CREATOR_BINDING_ABSENT",
+        "account": "ims-reporting-push-dev@custoking-dev.iam.gserviceaccount.com",
+        "note": "Explicit SA policy binding absent; project roles/pubsub.serviceAgent binding observed. Official predefined role documentation includes getOpenIdToken; no effective permission failure claimed."
+      },
+      {
+        "id": "DEAD_LETTER_POLICY_MISMATCH",
+        "subscription": "ims-reporting-service-push-dev"
+      },
+      {
+        "id": "RETRY_RETENTION_EXPIRATION_REVIEW",
+        "subscription": "ims-reporting-service-push-dev"
+      },
+      {
+        "id": "EXPECTED_PUSH_SUBSCRIPTION_MISSING",
+        "subscription": "ims-notification-service-push-dev"
+      },
+      {
+        "id": "DEAD_LETTER_INSPECTION_SUBSCRIPTION_MISSING",
+        "pipeline": "reporting"
+      },
+      {
+        "id": "DEAD_LETTER_INSPECTION_SUBSCRIPTION_MISSING",
+        "pipeline": "notifications"
+      }
+    ]
+  },
+  "applyResults": [
+    {
+      "script": "configure-reporting-pubsub-resilience.ps1",
+      "project": "custoking-dev",
+      "apply": true,
+      "exitCode": 0,
+      "deadlineSeconds": 180,
+      "elapsedSeconds": 54.59,
+      "capturedAt": "2026-10-06T21:00:19.895848+00:00",
+      "messageAPIsUsed": false,
+      "rawOutputPersisted": false
+    },
+    {
+      "script": "configure-notification-pubsub-push-oidc.ps1",
+      "project": "custoking-dev",
+      "apply": true,
+      "exitCode": 0,
+      "deadlineSeconds": 180,
+      "elapsedSeconds": 95.92,
+      "capturedAt": "2026-10-06T21:01:55.830475+00:00",
+      "messageAPIsUsed": false,
+      "rawOutputPersisted": false
+    }
+  ],
+  "initialPartialFailure": [
+    {
+      "script": "configure-reporting-pubsub-resilience.ps1",
+      "project": "custoking-dev",
+      "apply": true,
+      "exitCode": 1,
+      "deadlineSeconds": 180,
+      "elapsedSeconds": 72.36,
+      "capturedAt": "2026-10-06T20:58:39.888865+00:00",
+      "messageAPIsUsed": false,
+      "rawOutputPersisted": false
+    }
+  ],
+  "initialPartialFailureCause": "Reporting helper asserted acknowledgement deadline10 but did not set it; existing60 caused verification failure after other config updated. Added explicit --ack-deadline=10; subsequent Apply successful.",
+  "observations": [
+    {
+      "id": "STATUS_URL_ALIAS_OBSERVATION",
+      "subscription": "ims-reporting-service-push-dev",
+      "acceptedByRenderedAllowlist": true,
+      "note": "Both URL aliases allowed; not an authentication failure or required repair."
+    }
+  ],
+  "checks": {
+    "reportingPublishersExactThree": true,
+    "pushSubscriptionsPresent": true,
+    "inspectionSubscriptionsPresent": true,
+    "notificationSaOidcOnlyExplicitGrant": true
+  },
+  "pubsubServiceAgentRoleProof": {
+    "source": "https://docs.cloud.google.com/iam/docs/roles-permissions/pubsub",
+    "includesGetOpenIdToken": true,
+    "method": "official predefined role documentation plus captured project binding; CLI role describe with mandatory --project failed and is not counted as successful role metadata proof"
+  },
+  "privacyRedactions": {
+    "humanOrGroupIamPrincipals": 1,
+    "method": "Preserve IAM member category and binding role/count; omit personal email. Runtime and managed service-account identifiers remain metadata evidence."
+  }
+}

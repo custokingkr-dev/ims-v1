@@ -1,0 +1,28 @@
+{
+  "release": {
+    "runId": 37524985447,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37524985447",
+    "commit": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8"
+  },
+  "sourceEvidenceSha256": "sha256:687f7195a24058b85c8975dba09f6191f12111d05bdeb2ad6ea1f3d7255bf62b",
+  "proofScope": "Digest-bound image configured User only; not observed Cloud Run process UID",
+  "images": {
+    "api-gateway": {
+      "runtimeDigest": "sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8",
+      "configDigest": "sha256:72a424e4f90be4ad4be6d267ff1f8eff306882d935e48b2c21192d3cfa7a870e",
+      "configuredUser": "node",
+      "manifestHashVerified": true,
+      "configHashVerified": true,
+      "nonrootConfiguredUser": true
+    },
+    "frontend": {
+      "runtimeDigest": "sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+      "configDigest": "sha256:7c8453c496e57443ec7b504a28bf66a971619144b0e2088952e1725694be38a0",
+      "configuredUser": "nginx",
+      "manifestHashVerified": true,
+      "configHashVerified": true,
+      "nonrootConfiguredUser": true
+    }
+  },
+  "observedCloudRunProcessUid": false
+}

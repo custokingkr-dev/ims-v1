@@ -82,10 +82,16 @@ jobs:
           ./scripts/audit-security-governance-controls.ps1
       - name: Verify financial and workflow contract bindings
         run: node --test scripts/tests/workflow_billing_contract.test.js
+      - name: Verify bounded signed transport probe controls
+        run: node --test scripts/tests/signed_transport_probe.test.cjs
       - name: Test immutable GitHub governance check verification
         run: python3 -m unittest scripts.tests.test_verify_github_governance_checks
       - name: Test offline GCP governance audits
         run: python3 -m unittest scripts.tests.test_export_gcp_asset_drift scripts.tests.test_audit_gcp_observability scripts.tests.test_validate_gcp_governance_audit_enablement
+      - name: Verify digest-bound image User and database catalog evidence rejection
+        run: |
+          python3 -m unittest scripts.tests.dev_image_config_user_proof_test scripts.tests.dev_db_security_collator_test
+          python3 scripts/security/collate-dev-db-security.py --self-test
       - name: Test deployment security admission and isolated native release fixtures
         run: >-
           python3 -m unittest
@@ -126,6 +132,17 @@ jobs:
       - name: Run synthetic export and verified-deletion drill
         shell: pwsh
         run: ./scripts/invoke-privacy-export-erasure-drill.ps1
+
+  windows-security-helper-validation:
+    name: windows-security-helper-validation
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Verify PowerShell 5 helper serialization and native exit handling
+        run: python -m unittest scripts.tests.signed_probe_serialization_test scripts.tests.pubsub_native_progress_test
+      - name: Verify Scheduler create and update command arguments
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tests/configure-async-relay-scheduler-test.ps1
 
   maven-wrapper-validation:
     name: maven-wrapper-validation (${{ matrix.os }})
