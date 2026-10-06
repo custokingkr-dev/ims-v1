@@ -190,9 +190,6 @@ public class ProductCatalogRepository {
                 text(value, "emoji", 16, false);
                 text(value, "description", 200, false);
                 enumValue(value, "orderType", Set.of("Recurring", "One-time", "Service"));
-                if (Boolean.TRUE.equals(value.get("formEnabled")) && !"NOTEBOOKS".equals(value.get("code"))) {
-                    throw error("formEnabled", "Structured order forms currently support Notebooks only");
-                }
             }
             case "groups" -> {
                 get("categories", required(value, "categoryCode"));

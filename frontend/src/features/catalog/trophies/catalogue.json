@@ -1,0 +1,8120 @@
+[
+  {
+    "model": "WM001",
+    "type": "Trophy",
+    "startingPrice": 2352,
+    "sizes": {
+      "A": 2352,
+      "B": 2801,
+      "C": 3385,
+      "D": 3955,
+      "E": 4719
+    }
+  },
+  {
+    "model": "A-3",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-4",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-5",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-6",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-7",
+    "type": "Economic Trophy",
+    "startingPrice": 34,
+    "sizes": {
+      "A": 34,
+      "B": 45,
+      "C": 56
+    }
+  },
+  {
+    "model": "A-8",
+    "type": "Economic Trophy",
+    "startingPrice": 34,
+    "sizes": {
+      "A": 34,
+      "B": 45,
+      "C": 56
+    }
+  },
+  {
+    "model": "A-9",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-10",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "WM010",
+    "type": "Trophy",
+    "startingPrice": 2295,
+    "sizes": {
+      "A": 2295,
+      "B": 2994,
+      "C": 3570,
+      "D": 4161
+    }
+  },
+  {
+    "model": "A-11",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "WM011",
+    "type": "Trophy",
+    "startingPrice": 3161,
+    "sizes": {
+      "A": 3161,
+      "B": 3490,
+      "C": 3880,
+      "D": 4494
+    }
+  },
+  {
+    "model": "A-12",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "C": 46,
+      "D": 63
+    }
+  },
+  {
+    "model": "A-13",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "WM013",
+    "type": "Trophy",
+    "startingPrice": 2831,
+    "sizes": {
+      "A": 2831,
+      "B": 3400,
+      "C": 3985,
+      "D": 4554
+    }
+  },
+  {
+    "model": "A-16",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "WM016",
+    "type": "Trophy",
+    "startingPrice": 2307,
+    "sizes": {
+      "A": 2307,
+      "B": 2831,
+      "C": 3385,
+      "D": 4164
+    }
+  },
+  {
+    "model": "A-18",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "WM018",
+    "type": "Trophy",
+    "startingPrice": 2831,
+    "sizes": {
+      "A": 2831,
+      "B": 3400,
+      "C": 3985,
+      "D": 4554
+    }
+  },
+  {
+    "model": "A-19",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "WM019",
+    "type": "Trophy",
+    "startingPrice": 1974,
+    "sizes": {
+      "A": 1974,
+      "B": 2478,
+      "C": 2982,
+      "D": 3920
+    }
+  },
+  {
+    "model": "A-20",
+    "type": "Economic Trophy",
+    "startingPrice": 34,
+    "sizes": {
+      "A": 34,
+      "B": 45,
+      "C": 56
+    }
+  },
+  {
+    "model": "WM020",
+    "type": "Trophy",
+    "startingPrice": 1974,
+    "sizes": {
+      "A": 1974,
+      "B": 2478,
+      "C": 2982,
+      "D": 3920
+    }
+  },
+  {
+    "model": "A-21",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "WM021",
+    "type": "Trophy",
+    "startingPrice": 3934,
+    "sizes": {
+      "A": 3934,
+      "B": 5096,
+      "C": 6440
+    }
+  },
+  {
+    "model": "A-22",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-23",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-24",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-25",
+    "type": "Economic Trophy",
+    "startingPrice": 56,
+    "sizes": {
+      "A": 56,
+      "B": 73,
+      "C": 87
+    }
+  },
+  {
+    "model": "A-26",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-27",
+    "type": "Economic Trophy",
+    "startingPrice": 63,
+    "sizes": {
+      "C": 63
+    }
+  },
+  {
+    "model": "A-28",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-29",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-30",
+    "type": "Economic Trophy",
+    "startingPrice": 46,
+    "sizes": {
+      "A": 46,
+      "B": 63,
+      "C": 74
+    }
+  },
+  {
+    "model": "A-31",
+    "type": "Economic Trophy",
+    "startingPrice": 73,
+    "sizes": {
+      "A": 73,
+      "B": 98,
+      "C": 123
+    }
+  },
+  {
+    "model": "A-32",
+    "type": "Economic Trophy",
+    "startingPrice": 81,
+    "sizes": {
+      "A": 81,
+      "B": 109,
+      "C": 148
+    }
+  },
+  {
+    "model": "A-33",
+    "type": "Economic Trophy",
+    "startingPrice": 73,
+    "sizes": {
+      "A": 73,
+      "B": 106,
+      "C": 154
+    }
+  },
+  {
+    "model": "A-34",
+    "type": "Economic Trophy",
+    "startingPrice": 123,
+    "sizes": {
+      "A": 123,
+      "B": 171,
+      "C": 238
+    }
+  },
+  {
+    "model": "8001",
+    "type": "Trophy",
+    "startingPrice": 423,
+    "sizes": {
+      "A": 423,
+      "B": 440,
+      "C": 479
+    }
+  },
+  {
+    "model": "8002",
+    "type": "Trophy",
+    "startingPrice": 272,
+    "sizes": {
+      "A": 272,
+      "B": 288,
+      "C": 328
+    }
+  },
+  {
+    "model": "8003",
+    "type": "Trophy",
+    "startingPrice": 196,
+    "sizes": {
+      "A": 196,
+      "B": 216,
+      "C": 246
+    }
+  },
+  {
+    "model": "8004",
+    "type": "Trophy",
+    "startingPrice": 2912,
+    "sizes": {
+      "A": 2912,
+      "B": 3696,
+      "C": 4116
+    }
+  },
+  {
+    "model": "8005",
+    "type": "Trophy",
+    "startingPrice": 1266,
+    "sizes": {
+      "A": 1266,
+      "B": 1464,
+      "C": 1834,
+      "D": 2251
+    }
+  },
+  {
+    "model": "8006",
+    "type": "Trophy",
+    "startingPrice": 1266,
+    "sizes": {
+      "A": 1266,
+      "B": 1464,
+      "C": 1834,
+      "D": 2251
+    }
+  },
+  {
+    "model": "8007",
+    "type": "Trophy",
+    "startingPrice": 1100,
+    "sizes": {
+      "A": 1100,
+      "B": 1467,
+      "C": 1868,
+      "D": 2388
+    }
+  },
+  {
+    "model": "8008",
+    "type": "Trophy",
+    "startingPrice": 342,
+    "sizes": {
+      "A": 342,
+      "B": 400,
+      "C": 552
+    }
+  },
+  {
+    "model": "8009",
+    "type": "Trophy",
+    "startingPrice": 288,
+    "sizes": {
+      "A": 288,
+      "B": 347,
+      "C": 498
+    }
+  },
+  {
+    "model": "8010",
+    "type": "Trophy",
+    "startingPrice": 269,
+    "sizes": {
+      "A": 269,
+      "B": 328,
+      "C": 479
+    }
+  },
+  {
+    "model": "8011",
+    "type": "Trophy",
+    "startingPrice": 465,
+    "sizes": {
+      "A": 465,
+      "B": 524,
+      "C": 675
+    }
+  },
+  {
+    "model": "8012",
+    "type": "Trophy",
+    "startingPrice": 95,
+    "sizes": {
+      "A": 95,
+      "B": 120,
+      "C": 151
+    }
+  },
+  {
+    "model": "8013",
+    "type": "Trophy",
+    "startingPrice": 78,
+    "sizes": {
+      "A": 78,
+      "B": 92,
+      "C": 118
+    }
+  },
+  {
+    "model": "8014",
+    "type": "Trophy",
+    "startingPrice": 90,
+    "sizes": {
+      "A": 90,
+      "B": 106,
+      "C": 134
+    }
+  },
+  {
+    "model": "8015",
+    "type": "Trophy",
+    "startingPrice": 160,
+    "sizes": {
+      "A": 160
+    }
+  },
+  {
+    "model": "8016",
+    "type": "Trophy",
+    "startingPrice": 414,
+    "sizes": {
+      "A": 414
+    }
+  },
+  {
+    "model": "8017",
+    "type": "Trophy",
+    "startingPrice": 395,
+    "sizes": {
+      "A": 395
+    }
+  },
+  {
+    "model": "8018",
+    "type": "Trophy",
+    "startingPrice": 358,
+    "sizes": {
+      "A": 358,
+      "B": 414,
+      "C": 482
+    }
+  },
+  {
+    "model": "8019",
+    "type": "Trophy",
+    "startingPrice": 358,
+    "sizes": {
+      "A": 358,
+      "B": 414,
+      "C": 482
+    }
+  },
+  {
+    "model": "8020",
+    "type": "Trophy",
+    "startingPrice": 431,
+    "sizes": {
+      "A": 431,
+      "B": 487,
+      "C": 554
+    }
+  },
+  {
+    "model": "8021",
+    "type": "Trophy",
+    "startingPrice": 686,
+    "sizes": {
+      "A": 686,
+      "B": 742,
+      "C": 809
+    }
+  },
+  {
+    "model": "8022",
+    "type": "Trophy",
+    "startingPrice": 826,
+    "sizes": {
+      "A": 826,
+      "B": 882,
+      "C": 949
+    }
+  },
+  {
+    "model": "8023",
+    "type": "Trophy",
+    "startingPrice": 370,
+    "sizes": {
+      "A": 370,
+      "B": 414,
+      "C": 468
+    }
+  },
+  {
+    "model": "8024",
+    "type": "Trophy",
+    "startingPrice": 442,
+    "sizes": {
+      "A": 442,
+      "B": 487,
+      "C": 540
+    }
+  },
+  {
+    "model": "8025",
+    "type": "Trophy",
+    "startingPrice": 414,
+    "sizes": {
+      "A": 414,
+      "B": 459,
+      "C": 512
+    }
+  },
+  {
+    "model": "8026",
+    "type": "Trophy",
+    "startingPrice": 697,
+    "sizes": {
+      "A": 697,
+      "B": 742,
+      "C": 795
+    }
+  },
+  {
+    "model": "8027",
+    "type": "Trophy",
+    "startingPrice": 1005,
+    "sizes": {
+      "A": 1005,
+      "B": 1238,
+      "C": 1562
+    }
+  },
+  {
+    "model": "8028",
+    "type": "Trophy",
+    "startingPrice": 1025,
+    "sizes": {
+      "A": 1025,
+      "B": 1257,
+      "C": 1582
+    }
+  },
+  {
+    "model": "8029",
+    "type": "Trophy",
+    "startingPrice": 1308,
+    "sizes": {
+      "A": 1308,
+      "B": 1546,
+      "C": 1876
+    }
+  },
+  {
+    "model": "8030",
+    "type": "Trophy",
+    "startingPrice": 255,
+    "sizes": {
+      "A": 255,
+      "B": 286,
+      "C": 330
+    }
+  },
+  {
+    "model": "8031",
+    "type": "Trophy",
+    "startingPrice": 330,
+    "sizes": {
+      "A": 330,
+      "B": 386,
+      "C": 484
+    }
+  },
+  {
+    "model": "8032",
+    "type": "Trophy",
+    "startingPrice": 367,
+    "sizes": {
+      "A": 367,
+      "B": 417,
+      "C": 482
+    }
+  },
+  {
+    "model": "8033",
+    "type": "Trophy",
+    "startingPrice": 440,
+    "sizes": {
+      "A": 440,
+      "B": 490,
+      "C": 554
+    }
+  },
+  {
+    "model": "8034",
+    "type": "Trophy",
+    "startingPrice": 412,
+    "sizes": {
+      "A": 412,
+      "B": 462,
+      "C": 526
+    }
+  },
+  {
+    "model": "8035",
+    "type": "Trophy",
+    "startingPrice": 694,
+    "sizes": {
+      "A": 694,
+      "B": 745,
+      "C": 809
+    }
+  },
+  {
+    "model": "8036",
+    "type": "Trophy",
+    "startingPrice": 834,
+    "sizes": {
+      "A": 834,
+      "B": 885,
+      "C": 949
+    }
+  },
+  {
+    "model": "8037",
+    "type": "Trophy",
+    "startingPrice": 790,
+    "sizes": {
+      "A": 790,
+      "B": 1089,
+      "C": 1434
+    }
+  },
+  {
+    "model": "8038",
+    "type": "Trophy",
+    "startingPrice": 1030,
+    "sizes": {
+      "A": 1030,
+      "B": 1330,
+      "C": 1674
+    }
+  },
+  {
+    "model": "8039",
+    "type": "Trophy",
+    "startingPrice": 370,
+    "sizes": {
+      "A": 370,
+      "B": 417,
+      "C": 470
+    }
+  },
+  {
+    "model": "8040",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120,
+      "B": 213,
+      "C": 311
+    }
+  },
+  {
+    "model": "8041",
+    "type": "Trophy",
+    "startingPrice": 328,
+    "sizes": {
+      "A": 328,
+      "B": 381,
+      "C": 487
+    }
+  },
+  {
+    "model": "8042",
+    "type": "Trophy",
+    "startingPrice": 381,
+    "sizes": {
+      "A": 381,
+      "B": 434,
+      "C": 540
+    }
+  },
+  {
+    "model": "8043",
+    "type": "Trophy",
+    "startingPrice": 409,
+    "sizes": {
+      "A": 409,
+      "B": 473,
+      "C": 582
+    }
+  },
+  {
+    "model": "8044",
+    "type": "Trophy",
+    "startingPrice": 129,
+    "sizes": {
+      "A": 129
+    }
+  },
+  {
+    "model": "8045",
+    "type": "Trophy",
+    "startingPrice": 218,
+    "sizes": {
+      "A": 218
+    }
+  },
+  {
+    "model": "8046",
+    "type": "Trophy",
+    "startingPrice": 174,
+    "sizes": {
+      "A": 174
+    }
+  },
+  {
+    "model": "8047",
+    "type": "Trophy",
+    "startingPrice": 154,
+    "sizes": {
+      "A": 154,
+      "B": 174
+    }
+  },
+  {
+    "model": "8048",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120
+    }
+  },
+  {
+    "model": "8049",
+    "type": "Trophy",
+    "startingPrice": 188,
+    "sizes": {
+      "A": 188
+    }
+  },
+  {
+    "model": "8050",
+    "type": "Trophy",
+    "startingPrice": 543,
+    "sizes": {
+      "A": 543
+    }
+  },
+  {
+    "model": "8051",
+    "type": "Trophy",
+    "startingPrice": 174,
+    "sizes": {
+      "A": 174
+    }
+  },
+  {
+    "model": "8052",
+    "type": "Trophy",
+    "startingPrice": 196,
+    "sizes": {
+      "A": 196,
+      "B": 274,
+      "C": 406
+    }
+  },
+  {
+    "model": "8053",
+    "type": "Trophy",
+    "startingPrice": 176,
+    "sizes": {
+      "A": 176
+    }
+  },
+  {
+    "model": "8054",
+    "type": "Trophy",
+    "startingPrice": 476,
+    "sizes": {
+      "A": 476,
+      "B": 487,
+      "C": 510
+    }
+  },
+  {
+    "model": "8055",
+    "type": "Trophy",
+    "startingPrice": 224,
+    "sizes": {
+      "A": 224,
+      "B": 235,
+      "C": 283
+    }
+  },
+  {
+    "model": "8056",
+    "type": "Trophy",
+    "startingPrice": 280,
+    "sizes": {
+      "A": 280,
+      "B": 344,
+      "C": 462
+    }
+  },
+  {
+    "model": "8057",
+    "type": "Trophy",
+    "startingPrice": 283,
+    "sizes": {
+      "A": 283,
+      "B": 375,
+      "C": 518
+    }
+  },
+  {
+    "model": "8058",
+    "type": "Trophy",
+    "startingPrice": 423,
+    "sizes": {
+      "A": 423
+    }
+  },
+  {
+    "model": "8059",
+    "type": "Trophy",
+    "startingPrice": 442,
+    "sizes": {
+      "A": 442
+    }
+  },
+  {
+    "model": "8060",
+    "type": "Trophy",
+    "startingPrice": 286,
+    "sizes": {
+      "A": 286
+    }
+  },
+  {
+    "model": "8061",
+    "type": "Trophy",
+    "startingPrice": 269,
+    "sizes": {
+      "A": 269,
+      "B": 314
+    }
+  },
+  {
+    "model": "8062",
+    "type": "Trophy",
+    "startingPrice": 277,
+    "sizes": {
+      "A": 277,
+      "B": 328,
+      "C": 395
+    }
+  },
+  {
+    "model": "8063",
+    "type": "Trophy",
+    "startingPrice": 277,
+    "sizes": {
+      "A": 277,
+      "B": 328,
+      "C": 395
+    }
+  },
+  {
+    "model": "8064",
+    "type": "Trophy",
+    "startingPrice": 350,
+    "sizes": {
+      "A": 350,
+      "B": 400,
+      "C": 468
+    }
+  },
+  {
+    "model": "8065",
+    "type": "Trophy",
+    "startingPrice": 213,
+    "sizes": {
+      "A": 213,
+      "B": 266,
+      "C": 336
+    }
+  },
+  {
+    "model": "8066",
+    "type": "Trophy",
+    "startingPrice": 294,
+    "sizes": {
+      "A": 294,
+      "B": 347,
+      "C": 412
+    }
+  },
+  {
+    "model": "8067",
+    "type": "Trophy",
+    "startingPrice": 232,
+    "sizes": {
+      "A": 232,
+      "B": 260,
+      "C": 316,
+      "D": 414
+    }
+  },
+  {
+    "model": "8068",
+    "type": "Trophy",
+    "startingPrice": 258,
+    "sizes": {
+      "A": 258,
+      "B": 286,
+      "C": 330,
+      "D": 395
+    }
+  },
+  {
+    "model": "8069",
+    "type": "Trophy",
+    "startingPrice": 263,
+    "sizes": {
+      "A": 263,
+      "B": 316,
+      "C": 409,
+      "D": 591,
+      "E": 829,
+      "F": 1145
+    }
+  },
+  {
+    "model": "8070",
+    "type": "Trophy",
+    "startingPrice": 308,
+    "sizes": {
+      "A": 308,
+      "B": 333,
+      "C": 392
+    }
+  },
+  {
+    "model": "8071",
+    "type": "Trophy",
+    "startingPrice": 104,
+    "sizes": {
+      "A": 104,
+      "B": 118,
+      "C": 134,
+      "D": 171
+    }
+  },
+  {
+    "model": "8072",
+    "type": "Trophy",
+    "startingPrice": 81,
+    "sizes": {
+      "A": 81,
+      "B": 98,
+      "C": 115
+    }
+  },
+  {
+    "model": "8073",
+    "type": "Trophy",
+    "startingPrice": 165,
+    "sizes": {
+      "A": 165
+    }
+  },
+  {
+    "model": "8074",
+    "type": "Trophy",
+    "startingPrice": 283,
+    "sizes": {
+      "A": 283,
+      "B": 336,
+      "C": 417
+    }
+  },
+  {
+    "model": "8075",
+    "type": "Trophy",
+    "startingPrice": 210,
+    "sizes": {
+      "A": 210,
+      "B": 263,
+      "C": 344
+    }
+  },
+  {
+    "model": "8076",
+    "type": "Trophy",
+    "startingPrice": 210,
+    "sizes": {
+      "A": 210,
+      "B": 263,
+      "C": 344
+    }
+  },
+  {
+    "model": "8077",
+    "type": "Trophy",
+    "startingPrice": 148,
+    "sizes": {
+      "A": 148,
+      "B": 196,
+      "C": 255
+    }
+  },
+  {
+    "model": "8078",
+    "type": "Trophy",
+    "startingPrice": 300,
+    "sizes": {
+      "A": 300,
+      "B": 347,
+      "C": 431
+    }
+  },
+  {
+    "model": "8079",
+    "type": "Trophy",
+    "startingPrice": 227,
+    "sizes": {
+      "A": 227,
+      "B": 274,
+      "C": 358
+    }
+  },
+  {
+    "model": "8080",
+    "type": "Trophy",
+    "startingPrice": 227,
+    "sizes": {
+      "A": 227,
+      "B": 274,
+      "C": 358
+    }
+  },
+  {
+    "model": "8081",
+    "type": "Trophy",
+    "startingPrice": 165,
+    "sizes": {
+      "A": 165,
+      "B": 207,
+      "C": 269
+    }
+  },
+  {
+    "model": "8082",
+    "type": "Trophy",
+    "startingPrice": 283,
+    "sizes": {
+      "A": 283,
+      "B": 336,
+      "C": 417
+    }
+  },
+  {
+    "model": "8083",
+    "type": "Trophy",
+    "startingPrice": 210,
+    "sizes": {
+      "A": 210,
+      "B": 263,
+      "C": 344
+    }
+  },
+  {
+    "model": "8084",
+    "type": "Trophy",
+    "startingPrice": 210,
+    "sizes": {
+      "A": 210,
+      "B": 263,
+      "C": 344
+    }
+  },
+  {
+    "model": "8085",
+    "type": "Trophy",
+    "startingPrice": 148,
+    "sizes": {
+      "A": 148,
+      "B": 196,
+      "C": 255
+    }
+  },
+  {
+    "model": "8086",
+    "type": "Trophy",
+    "startingPrice": 300,
+    "sizes": {
+      "A": 300,
+      "B": 347,
+      "C": 431
+    }
+  },
+  {
+    "model": "8087",
+    "type": "Trophy",
+    "startingPrice": 227,
+    "sizes": {
+      "A": 227,
+      "B": 274,
+      "C": 358
+    }
+  },
+  {
+    "model": "8088",
+    "type": "Trophy",
+    "startingPrice": 227,
+    "sizes": {
+      "A": 227,
+      "B": 274,
+      "C": 358
+    }
+  },
+  {
+    "model": "8089",
+    "type": "Trophy",
+    "startingPrice": 165,
+    "sizes": {
+      "A": 165,
+      "B": 207,
+      "C": 269
+    }
+  },
+  {
+    "model": "8090",
+    "type": "Trophy",
+    "startingPrice": 574,
+    "sizes": {
+      "A": 574,
+      "B": 958,
+      "C": 1316
+    }
+  },
+  {
+    "model": "8091",
+    "type": "Trophy",
+    "startingPrice": 557,
+    "sizes": {
+      "A": 557,
+      "B": 941,
+      "C": 1316
+    }
+  },
+  {
+    "model": "8092",
+    "type": "Trophy",
+    "startingPrice": 596,
+    "sizes": {
+      "A": 596,
+      "B": 767,
+      "C": 1002
+    }
+  },
+  {
+    "model": "8093",
+    "type": "Trophy",
+    "startingPrice": 580,
+    "sizes": {
+      "A": 580,
+      "B": 750,
+      "C": 1002
+    }
+  },
+  {
+    "model": "8094",
+    "type": "Trophy",
+    "startingPrice": 767,
+    "sizes": {
+      "A": 767,
+      "B": 960,
+      "C": 1238
+    }
+  },
+  {
+    "model": "8095",
+    "type": "Trophy",
+    "startingPrice": 384,
+    "sizes": {
+      "A": 384,
+      "B": 395,
+      "C": 417
+    }
+  },
+  {
+    "model": "8096",
+    "type": "Trophy",
+    "startingPrice": 753,
+    "sizes": {
+      "A": 753,
+      "B": 1109,
+      "C": 1492
+    }
+  },
+  {
+    "model": "8097",
+    "type": "Trophy",
+    "startingPrice": 773,
+    "sizes": {
+      "A": 773,
+      "B": 1128,
+      "C": 1520
+    }
+  },
+  {
+    "model": "8098",
+    "type": "Trophy",
+    "startingPrice": 1022,
+    "sizes": {
+      "A": 1022,
+      "B": 1378,
+      "C": 1761
+    }
+  },
+  {
+    "model": "8099",
+    "type": "Trophy",
+    "startingPrice": 291,
+    "sizes": {
+      "A": 291,
+      "B": 347,
+      "C": 403
+    }
+  },
+  {
+    "model": "8100",
+    "type": "Trophy",
+    "startingPrice": 291,
+    "sizes": {
+      "A": 291,
+      "B": 347,
+      "C": 403
+    }
+  },
+  {
+    "model": "8101",
+    "type": "Trophy",
+    "startingPrice": 106,
+    "sizes": {
+      "A": 106,
+      "B": 132,
+      "C": 171
+    }
+  },
+  {
+    "model": "8102",
+    "type": "Trophy",
+    "startingPrice": 106,
+    "sizes": {
+      "A": 106,
+      "B": 140,
+      "C": 202
+    }
+  },
+  {
+    "model": "8103",
+    "type": "Trophy",
+    "startingPrice": 157,
+    "sizes": {
+      "A": 157,
+      "B": 204,
+      "C": 286
+    }
+  },
+  {
+    "model": "8104",
+    "type": "Trophy",
+    "startingPrice": 95,
+    "sizes": {
+      "A": 95,
+      "B": 120
+    }
+  },
+  {
+    "model": "8105",
+    "type": "Trophy",
+    "startingPrice": 258,
+    "sizes": {
+      "A": 258,
+      "B": 269,
+      "C": 291
+    }
+  },
+  {
+    "model": "8106",
+    "type": "Trophy",
+    "startingPrice": 300,
+    "sizes": {
+      "A": 300,
+      "B": 347,
+      "C": 470
+    }
+  },
+  {
+    "model": "8107",
+    "type": "Trophy",
+    "startingPrice": 280,
+    "sizes": {
+      "A": 280,
+      "B": 328,
+      "C": 451
+    }
+  },
+  {
+    "model": "8108",
+    "type": "Trophy",
+    "startingPrice": 638,
+    "sizes": {
+      "A": 638,
+      "B": 815,
+      "C": 1033
+    }
+  },
+  {
+    "model": "8109",
+    "type": "Trophy",
+    "startingPrice": 599,
+    "sizes": {
+      "A": 599,
+      "B": 776,
+      "C": 994
+    }
+  },
+  {
+    "model": "9001",
+    "type": "Trophy",
+    "startingPrice": 938,
+    "sizes": {
+      "AA": 938,
+      "A": 1221,
+      "B": 1537,
+      "C": 1882
+    }
+  },
+  {
+    "model": "9002",
+    "type": "Trophy",
+    "startingPrice": 451,
+    "sizes": {
+      "A": 451,
+      "B": 596,
+      "C": 879,
+      "D": 1196,
+      "E": 1540
+    }
+  },
+  {
+    "model": "9003",
+    "type": "Trophy",
+    "startingPrice": 431,
+    "sizes": {
+      "A": 431,
+      "B": 577,
+      "C": 860,
+      "D": 1176,
+      "E": 1520
+    }
+  },
+  {
+    "model": "9004",
+    "type": "Trophy",
+    "startingPrice": 364,
+    "sizes": {
+      "A": 364,
+      "B": 496,
+      "C": 753,
+      "D": 1028,
+      "E": 1327
+    }
+  },
+  {
+    "model": "9005",
+    "type": "Trophy",
+    "startingPrice": 1403,
+    "sizes": {
+      "A": 1403,
+      "B": 1753,
+      "C": 2055
+    }
+  },
+  {
+    "model": "9006",
+    "type": "Trophy",
+    "startingPrice": 1210,
+    "sizes": {
+      "A": 1210,
+      "B": 1560,
+      "C": 1862
+    }
+  },
+  {
+    "model": "9007",
+    "type": "Trophy",
+    "startingPrice": 902,
+    "sizes": {
+      "A": 902,
+      "B": 1252,
+      "C": 1554
+    }
+  },
+  {
+    "model": "9008",
+    "type": "Trophy",
+    "startingPrice": 882,
+    "sizes": {
+      "A": 882,
+      "B": 1232,
+      "C": 1534
+    }
+  },
+  {
+    "model": "9009",
+    "type": "Trophy",
+    "startingPrice": 776,
+    "sizes": {
+      "A": 776,
+      "B": 1084,
+      "C": 1341
+    }
+  },
+  {
+    "model": "9010",
+    "type": "Trophy",
+    "startingPrice": 493,
+    "sizes": {
+      "A": 493,
+      "B": 672,
+      "C": 1005
+    }
+  },
+  {
+    "model": "9011",
+    "type": "Trophy",
+    "startingPrice": 473,
+    "sizes": {
+      "A": 473,
+      "B": 652,
+      "C": 986
+    }
+  },
+  {
+    "model": "9012",
+    "type": "Trophy",
+    "startingPrice": 574,
+    "sizes": {
+      "A": 574,
+      "B": 960,
+      "C": 1361
+    }
+  },
+  {
+    "model": "9013",
+    "type": "Trophy",
+    "startingPrice": 554,
+    "sizes": {
+      "A": 554,
+      "B": 941,
+      "C": 1341
+    }
+  },
+  {
+    "model": "9014",
+    "type": "Trophy",
+    "startingPrice": 448,
+    "sizes": {
+      "A": 448,
+      "B": 792,
+      "C": 1148
+    }
+  },
+  {
+    "model": "9015",
+    "type": "Trophy",
+    "startingPrice": 372,
+    "sizes": {
+      "A": 372,
+      "B": 431,
+      "C": 487
+    }
+  },
+  {
+    "model": "9016",
+    "type": "Trophy",
+    "startingPrice": 322,
+    "sizes": {
+      "A": 322,
+      "B": 381,
+      "C": 437
+    }
+  },
+  {
+    "model": "9017",
+    "type": "Trophy",
+    "startingPrice": 322,
+    "sizes": {
+      "A": 322,
+      "B": 381,
+      "C": 437
+    }
+  },
+  {
+    "model": "9018",
+    "type": "Trophy",
+    "startingPrice": 375,
+    "sizes": {
+      "A": 375,
+      "B": 434,
+      "C": 490
+    }
+  },
+  {
+    "model": "9022",
+    "type": "Trophy",
+    "startingPrice": 412,
+    "sizes": {
+      "A": 412,
+      "B": 501,
+      "C": 591
+    }
+  },
+  {
+    "model": "9023",
+    "type": "Trophy",
+    "startingPrice": 661,
+    "sizes": {
+      "A": 661,
+      "B": 868,
+      "C": 1061
+    }
+  },
+  {
+    "model": "9024",
+    "type": "Trophy",
+    "startingPrice": 641,
+    "sizes": {
+      "A": 641,
+      "B": 848,
+      "C": 1042
+    }
+  },
+  {
+    "model": "9025",
+    "type": "Trophy",
+    "startingPrice": 560,
+    "sizes": {
+      "A": 560,
+      "B": 742,
+      "C": 893
+    }
+  },
+  {
+    "model": "9026",
+    "type": "Trophy",
+    "startingPrice": 638,
+    "sizes": {
+      "A": 638,
+      "B": 832,
+      "C": 1151
+    }
+  },
+  {
+    "model": "9027",
+    "type": "Trophy",
+    "startingPrice": 636,
+    "sizes": {
+      "A": 636,
+      "B": 829,
+      "C": 1148
+    }
+  },
+  {
+    "model": "9028",
+    "type": "Trophy",
+    "startingPrice": 546,
+    "sizes": {
+      "A": 546,
+      "B": 714,
+      "C": 991
+    }
+  },
+  {
+    "model": "9029",
+    "type": "Trophy",
+    "startingPrice": 874,
+    "sizes": {
+      "A": 874,
+      "B": 1266,
+      "C": 1554
+    }
+  },
+  {
+    "model": "9030",
+    "type": "Trophy",
+    "startingPrice": 854,
+    "sizes": {
+      "A": 854,
+      "B": 1246,
+      "C": 1534
+    }
+  },
+  {
+    "model": "9031",
+    "type": "Trophy",
+    "startingPrice": 748,
+    "sizes": {
+      "A": 748,
+      "B": 1098,
+      "C": 1341
+    }
+  },
+  {
+    "model": "9032",
+    "type": "Trophy",
+    "startingPrice": 406,
+    "sizes": {
+      "A": 406,
+      "B": 490,
+      "C": 1042
+    }
+  },
+  {
+    "model": "9033",
+    "type": "Trophy",
+    "startingPrice": 675,
+    "sizes": {
+      "A": 675,
+      "B": 840,
+      "C": 1117
+    }
+  },
+  {
+    "model": "9034",
+    "type": "Trophy",
+    "startingPrice": 535,
+    "sizes": {
+      "A": 535,
+      "B": 608,
+      "C": 692
+    }
+  },
+  {
+    "model": "9035",
+    "type": "Trophy",
+    "startingPrice": 420,
+    "sizes": {
+      "A": 420,
+      "B": 462,
+      "C": 580
+    }
+  },
+  {
+    "model": "9036",
+    "type": "Trophy",
+    "startingPrice": 308,
+    "sizes": {
+      "A": 308,
+      "B": 389,
+      "C": 482,
+      "D": 672
+    }
+  },
+  {
+    "model": "9037",
+    "type": "Trophy",
+    "startingPrice": 795,
+    "sizes": {
+      "A": 795,
+      "B": 882,
+      "C": 1134
+    }
+  },
+  {
+    "model": "9038",
+    "type": "Trophy",
+    "startingPrice": 470,
+    "sizes": {
+      "A": 470
+    }
+  },
+  {
+    "model": "9039",
+    "type": "Trophy",
+    "startingPrice": 311,
+    "sizes": {
+      "AA": 311,
+      "A": 311,
+      "B": 350,
+      "C": 403
+    }
+  },
+  {
+    "model": "9040",
+    "type": "Trophy",
+    "startingPrice": 403,
+    "sizes": {
+      "A": 403,
+      "B": 490,
+      "C": 574
+    }
+  },
+  {
+    "model": "9041",
+    "type": "Trophy",
+    "startingPrice": 395,
+    "sizes": {
+      "A": 395,
+      "B": 454,
+      "C": 510
+    }
+  },
+  {
+    "model": "9042",
+    "type": "Trophy",
+    "startingPrice": 258,
+    "sizes": {
+      "A": 258,
+      "B": 258,
+      "C": 300,
+      "D": 417
+    }
+  },
+  {
+    "model": "9043",
+    "type": "Trophy",
+    "startingPrice": 627,
+    "sizes": {
+      "A": 627,
+      "B": 714,
+      "C": 938
+    }
+  },
+  {
+    "model": "9044",
+    "type": "Trophy",
+    "startingPrice": 748,
+    "sizes": {
+      "A": 748,
+      "B": 851,
+      "C": 1098
+    }
+  },
+  {
+    "model": "9045",
+    "type": "Trophy",
+    "startingPrice": 258,
+    "sizes": {
+      "A": 258,
+      "B": 272,
+      "C": 300
+    }
+  },
+  {
+    "model": "9046",
+    "type": "Trophy",
+    "startingPrice": 1302,
+    "sizes": {
+      "A": 1302,
+      "B": 1428,
+      "C": 1837,
+      "D": 2251
+    }
+  },
+  {
+    "model": "9047",
+    "type": "Trophy",
+    "startingPrice": 1302,
+    "sizes": {
+      "A": 1302,
+      "B": 1428,
+      "C": 1837,
+      "D": 2251
+    }
+  },
+  {
+    "model": "9048",
+    "type": "Trophy",
+    "startingPrice": 493,
+    "sizes": {
+      "A": 493,
+      "B": 672,
+      "C": 958
+    }
+  },
+  {
+    "model": "9050",
+    "type": "Trophy",
+    "startingPrice": 580,
+    "sizes": {
+      "A": 580,
+      "B": 778,
+      "C": 1106
+    }
+  },
+  {
+    "model": "9052",
+    "type": "Trophy",
+    "startingPrice": 2111,
+    "sizes": {
+      "A": 2111,
+      "B": 2626,
+      "C": 3178
+    }
+  },
+  {
+    "model": "9053",
+    "type": "Trophy",
+    "startingPrice": 4427,
+    "sizes": {
+      "A": 4427,
+      "B": 5379,
+      "C": 6275
+    }
+  },
+  {
+    "model": "9054",
+    "type": "Trophy",
+    "startingPrice": 4777,
+    "sizes": {
+      "A": 4777,
+      "B": 5757,
+      "C": 6681
+    }
+  },
+  {
+    "model": "9055",
+    "type": "Trophy",
+    "startingPrice": 1252,
+    "sizes": {
+      "A": 1252,
+      "B": 1428,
+      "C": 1837,
+      "D": 2251
+    }
+  },
+  {
+    "model": "9056",
+    "type": "Trophy",
+    "startingPrice": 1428,
+    "sizes": {
+      "A": 1428,
+      "B": 1837,
+      "C": 2251
+    }
+  },
+  {
+    "model": "9057",
+    "type": "Trophy",
+    "startingPrice": 1252,
+    "sizes": {
+      "A": 1252,
+      "B": 1428,
+      "C": 1837,
+      "D": 2251
+    }
+  },
+  {
+    "model": "9058",
+    "type": "Trophy",
+    "startingPrice": 655,
+    "sizes": {
+      "A": 655,
+      "B": 932,
+      "C": 1274
+    }
+  },
+  {
+    "model": "9059",
+    "type": "Trophy",
+    "startingPrice": 655,
+    "sizes": {
+      "A": 655,
+      "B": 932,
+      "C": 1274
+    }
+  },
+  {
+    "model": "9060",
+    "type": "Trophy",
+    "startingPrice": 661,
+    "sizes": {
+      "A": 661,
+      "B": 790,
+      "C": 958
+    }
+  },
+  {
+    "model": "9062",
+    "type": "Trophy",
+    "startingPrice": 266,
+    "sizes": {
+      "A": 266,
+      "B": 364,
+      "C": 462
+    }
+  },
+  {
+    "model": "9063",
+    "type": "Trophy",
+    "startingPrice": 526,
+    "sizes": {
+      "A": 526
+    }
+  },
+  {
+    "model": "9064",
+    "type": "Trophy",
+    "startingPrice": 154,
+    "sizes": {
+      "AA": 154,
+      "A": 171,
+      "B": 207,
+      "C": 269
+    }
+  },
+  {
+    "model": "9065",
+    "type": "Trophy",
+    "startingPrice": 154,
+    "sizes": {
+      "A": 154,
+      "B": 171,
+      "C": 207,
+      "D": 269
+    }
+  },
+  {
+    "model": "9066",
+    "type": "Trophy",
+    "startingPrice": 95,
+    "sizes": {
+      "A": 95,
+      "B": 109,
+      "C": 140,
+      "D": 188
+    }
+  },
+  {
+    "model": "9067",
+    "type": "Trophy",
+    "startingPrice": 207,
+    "sizes": {
+      "A": 207,
+      "B": 246,
+      "C": 302,
+      "D": 381
+    }
+  },
+  {
+    "model": "9068",
+    "type": "Trophy",
+    "startingPrice": 146,
+    "sizes": {
+      "A": 146,
+      "B": 179,
+      "C": 221,
+      "D": 291
+    }
+  },
+  {
+    "model": "9069",
+    "type": "Trophy",
+    "startingPrice": 182,
+    "sizes": {
+      "A": 182,
+      "B": 238,
+      "C": 272
+    }
+  },
+  {
+    "model": "9070",
+    "type": "Trophy",
+    "startingPrice": 126,
+    "sizes": {
+      "A": 126,
+      "B": 179,
+      "C": 210
+    }
+  },
+  {
+    "model": "9071",
+    "type": "Trophy",
+    "startingPrice": 182,
+    "sizes": {
+      "A": 182,
+      "B": 213,
+      "C": 255
+    }
+  },
+  {
+    "model": "9072",
+    "type": "Trophy",
+    "startingPrice": 126,
+    "sizes": {
+      "A": 126,
+      "B": 154,
+      "C": 193
+    }
+  },
+  {
+    "model": "9073",
+    "type": "Trophy",
+    "startingPrice": 311,
+    "sizes": {
+      "A": 311,
+      "B": 356,
+      "C": 426
+    }
+  },
+  {
+    "model": "9074",
+    "type": "Trophy",
+    "startingPrice": 238,
+    "sizes": {
+      "A": 238,
+      "B": 283,
+      "C": 353
+    }
+  },
+  {
+    "model": "9075",
+    "type": "Trophy",
+    "startingPrice": 176,
+    "sizes": {
+      "A": 176,
+      "B": 216,
+      "C": 272
+    }
+  },
+  {
+    "model": "9076",
+    "type": "Trophy",
+    "startingPrice": 202,
+    "sizes": {
+      "A": 202,
+      "B": 221,
+      "C": 269,
+      "D": 361
+    }
+  },
+  {
+    "model": "9077",
+    "type": "Trophy",
+    "startingPrice": 143,
+    "sizes": {
+      "A": 143,
+      "B": 160,
+      "C": 202,
+      "D": 280
+    }
+  },
+  {
+    "model": "9080",
+    "type": "Trophy",
+    "startingPrice": 462,
+    "sizes": {
+      "A": 462
+    }
+  },
+  {
+    "model": "9081",
+    "type": "Trophy",
+    "startingPrice": 518,
+    "sizes": {
+      "A": 518
+    }
+  },
+  {
+    "model": "9082",
+    "type": "Trophy",
+    "startingPrice": 112,
+    "sizes": {
+      "A": 112,
+      "B": 134,
+      "C": 230
+    }
+  },
+  {
+    "model": "9083",
+    "type": "Trophy",
+    "startingPrice": 106,
+    "sizes": {
+      "A": 106,
+      "B": 132,
+      "C": 311
+    }
+  },
+  {
+    "model": "9084",
+    "type": "Trophy",
+    "startingPrice": 182,
+    "sizes": {
+      "A": 182
+    }
+  },
+  {
+    "model": "9085",
+    "type": "Trophy",
+    "startingPrice": 137,
+    "sizes": {
+      "A": 137,
+      "B": 190
+    }
+  },
+  {
+    "model": "9086",
+    "type": "Trophy",
+    "startingPrice": 182,
+    "sizes": {
+      "A": 182
+    }
+  },
+  {
+    "model": "9087",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120
+    }
+  },
+  {
+    "model": "9088",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120
+    }
+  },
+  {
+    "model": "9089",
+    "type": "Trophy",
+    "startingPrice": 185,
+    "sizes": {
+      "A": 185
+    }
+  },
+  {
+    "model": "9090",
+    "type": "Trophy",
+    "startingPrice": 182,
+    "sizes": {
+      "A": 182
+    }
+  },
+  {
+    "model": "9091",
+    "type": "Trophy",
+    "startingPrice": 179,
+    "sizes": {
+      "A": 179,
+      "B": 235,
+      "C": 316
+    }
+  },
+  {
+    "model": "9092",
+    "type": "Trophy",
+    "startingPrice": 126,
+    "sizes": {
+      "A": 126
+    }
+  },
+  {
+    "model": "9095",
+    "type": "Trophy",
+    "startingPrice": 182,
+    "sizes": {
+      "A": 182
+    }
+  },
+  {
+    "model": "9096",
+    "type": "Trophy",
+    "startingPrice": 210,
+    "sizes": {
+      "A": 210
+    }
+  },
+  {
+    "model": "9097",
+    "type": "Trophy",
+    "startingPrice": 190,
+    "sizes": {
+      "A": 190,
+      "B": 252,
+      "C": 347
+    }
+  },
+  {
+    "model": "9098",
+    "type": "Trophy",
+    "startingPrice": 190,
+    "sizes": {
+      "A": 190,
+      "B": 252,
+      "C": 347
+    }
+  },
+  {
+    "model": "9099",
+    "type": "Trophy",
+    "startingPrice": 81,
+    "sizes": {
+      "A": 81,
+      "B": 90,
+      "C": 98
+    }
+  },
+  {
+    "model": "9100",
+    "type": "Trophy",
+    "startingPrice": 182,
+    "sizes": {
+      "A": 182
+    }
+  },
+  {
+    "model": "9101",
+    "type": "Trophy",
+    "startingPrice": 185,
+    "sizes": {
+      "A": 185
+    }
+  },
+  {
+    "model": "9102",
+    "type": "Trophy",
+    "startingPrice": 193,
+    "sizes": {
+      "A": 193
+    }
+  },
+  {
+    "model": "9103",
+    "type": "Trophy",
+    "startingPrice": 202,
+    "sizes": {
+      "A": 202
+    }
+  },
+  {
+    "model": "9104",
+    "type": "Trophy",
+    "startingPrice": 90,
+    "sizes": {
+      "A": 90,
+      "B": 104,
+      "C": 115
+    }
+  },
+  {
+    "model": "9109",
+    "type": "Trophy",
+    "startingPrice": 134,
+    "sizes": {
+      "A": 134,
+      "B": 162,
+      "C": 185,
+      "D": 258
+    }
+  },
+  {
+    "model": "9111",
+    "type": "Trophy",
+    "startingPrice": 129,
+    "sizes": {
+      "A": 129,
+      "B": 188
+    }
+  },
+  {
+    "model": "9112",
+    "type": "Trophy",
+    "startingPrice": 518,
+    "sizes": {
+      "A": 518
+    }
+  },
+  {
+    "model": "9113",
+    "type": "Trophy",
+    "startingPrice": 339,
+    "sizes": {
+      "A": 339,
+      "B": 381,
+      "C": 434
+    }
+  },
+  {
+    "model": "9114",
+    "type": "Trophy",
+    "startingPrice": 319,
+    "sizes": {
+      "A": 319
+    }
+  },
+  {
+    "model": "9115",
+    "type": "Trophy",
+    "startingPrice": 190,
+    "sizes": {
+      "A": 190,
+      "B": 246,
+      "C": 456
+    }
+  },
+  {
+    "model": "9116",
+    "type": "Trophy",
+    "startingPrice": 199,
+    "sizes": {
+      "A": 199,
+      "B": 266,
+      "C": 512
+    }
+  },
+  {
+    "model": "9117",
+    "type": "Trophy",
+    "startingPrice": 190,
+    "sizes": {
+      "A": 190,
+      "B": 277,
+      "C": 524
+    }
+  },
+  {
+    "model": "9118",
+    "type": "Trophy",
+    "startingPrice": 160,
+    "sizes": {
+      "A": 160,
+      "B": 218,
+      "C": 347
+    }
+  },
+  {
+    "model": "9119",
+    "type": "Trophy",
+    "startingPrice": 151,
+    "sizes": {
+      "A": 151,
+      "B": 230,
+      "C": 358
+    }
+  },
+  {
+    "model": "9120",
+    "type": "Trophy",
+    "startingPrice": 148,
+    "sizes": {
+      "A": 148,
+      "B": 227,
+      "C": 353
+    }
+  },
+  {
+    "model": "9121",
+    "type": "Trophy",
+    "startingPrice": 115,
+    "sizes": {
+      "A": 115
+    }
+  },
+  {
+    "model": "9122",
+    "type": "Trophy",
+    "startingPrice": 106,
+    "sizes": {
+      "A": 106
+    }
+  },
+  {
+    "model": "9123",
+    "type": "Trophy",
+    "startingPrice": 106,
+    "sizes": {
+      "A": 106
+    }
+  },
+  {
+    "model": "9124",
+    "type": "Trophy",
+    "startingPrice": 246,
+    "sizes": {
+      "A": 246,
+      "B": 300,
+      "C": 426
+    }
+  },
+  {
+    "model": "9125",
+    "type": "Trophy",
+    "startingPrice": 252,
+    "sizes": {
+      "A": 252
+    }
+  },
+  {
+    "model": "9126",
+    "type": "Trophy",
+    "startingPrice": 311,
+    "sizes": {
+      "A": 311
+    }
+  },
+  {
+    "model": "9127",
+    "type": "Trophy",
+    "startingPrice": 207,
+    "sizes": {
+      "A": 207
+    }
+  },
+  {
+    "model": "9128",
+    "type": "Trophy",
+    "startingPrice": 266,
+    "sizes": {
+      "A": 266
+    }
+  },
+  {
+    "model": "9131",
+    "type": "Trophy",
+    "startingPrice": 160,
+    "sizes": {
+      "A": 160
+    }
+  },
+  {
+    "model": "9132",
+    "type": "Trophy",
+    "startingPrice": 291,
+    "sizes": {
+      "A": 291
+    }
+  },
+  {
+    "model": "9133",
+    "type": "Trophy",
+    "startingPrice": 171,
+    "sizes": {
+      "A": 171,
+      "B": 235,
+      "C": 300
+    }
+  },
+  {
+    "model": "9134",
+    "type": "Trophy",
+    "startingPrice": 165,
+    "sizes": {
+      "A": 165,
+      "B": 210,
+      "C": 258
+    }
+  },
+  {
+    "model": "9136",
+    "type": "Trophy",
+    "startingPrice": 512,
+    "sizes": {
+      "A": 512,
+      "B": 630,
+      "C": 787
+    }
+  },
+  {
+    "model": "9137",
+    "type": "Trophy",
+    "startingPrice": 286,
+    "sizes": {
+      "A": 286,
+      "B": 336,
+      "C": 423
+    }
+  },
+  {
+    "model": "9143",
+    "type": "Trophy",
+    "startingPrice": 459,
+    "sizes": {
+      "A": 459,
+      "B": 577,
+      "C": 781
+    }
+  },
+  {
+    "model": "9144",
+    "type": "Trophy",
+    "startingPrice": 157,
+    "sizes": {
+      "A": 157,
+      "B": 224
+    }
+  },
+  {
+    "model": "9145",
+    "type": "Trophy",
+    "startingPrice": 244,
+    "sizes": {
+      "A": 244,
+      "B": 280,
+      "C": 314
+    }
+  },
+  {
+    "model": "9146",
+    "type": "Trophy",
+    "startingPrice": 286,
+    "sizes": {
+      "A": 286,
+      "B": 336,
+      "C": 386
+    }
+  },
+  {
+    "model": "9167",
+    "type": "Trophy",
+    "startingPrice": 174,
+    "sizes": {
+      "A": 174,
+      "B": 232,
+      "C": 291
+    }
+  },
+  {
+    "model": "9168",
+    "type": "Trophy",
+    "startingPrice": 232,
+    "sizes": {
+      "A": 232,
+      "B": 305,
+      "C": 364
+    }
+  },
+  {
+    "model": "9170",
+    "type": "Trophy",
+    "startingPrice": 602,
+    "sizes": {
+      "A": 602,
+      "B": 798,
+      "C": 935
+    }
+  },
+  {
+    "model": "9171",
+    "type": "Trophy",
+    "startingPrice": 420,
+    "sizes": {
+      "A": 420,
+      "B": 490,
+      "C": 664
+    }
+  },
+  {
+    "model": "9178",
+    "type": "Trophy",
+    "startingPrice": 232,
+    "sizes": {
+      "A": 232,
+      "B": 274,
+      "C": 364
+    }
+  },
+  {
+    "model": "9179",
+    "type": "Trophy",
+    "startingPrice": 232,
+    "sizes": {
+      "A": 232,
+      "B": 274,
+      "C": 364
+    }
+  },
+  {
+    "model": "9180",
+    "type": "Trophy",
+    "startingPrice": 213,
+    "sizes": {
+      "A": 213
+    }
+  },
+  {
+    "model": "9183",
+    "type": "Trophy",
+    "startingPrice": 333,
+    "sizes": {
+      "A": 333,
+      "B": 409,
+      "C": 482
+    }
+  },
+  {
+    "model": "9188",
+    "type": "Trophy",
+    "startingPrice": 736,
+    "sizes": {
+      "A": 736,
+      "B": 826,
+      "C": 1067
+    }
+  },
+  {
+    "model": "9189",
+    "type": "Trophy",
+    "startingPrice": 372,
+    "sizes": {
+      "A": 372,
+      "B": 462,
+      "C": 535
+    }
+  },
+  {
+    "model": "9190",
+    "type": "Trophy",
+    "startingPrice": 462,
+    "sizes": {
+      "A": 462,
+      "B": 546,
+      "C": 655
+    }
+  },
+  {
+    "model": "9191",
+    "type": "Trophy",
+    "startingPrice": 171,
+    "sizes": {
+      "A": 171,
+      "B": 210,
+      "C": 280,
+      "D": 434,
+      "E": 624,
+      "F": 888
+    }
+  },
+  {
+    "model": "9197",
+    "type": "Trophy",
+    "startingPrice": 406,
+    "sizes": {
+      "A": 406,
+      "B": 493,
+      "C": 591
+    }
+  },
+  {
+    "model": "9201",
+    "type": "Trophy",
+    "startingPrice": 244,
+    "sizes": {
+      "A": 244,
+      "B": 260,
+      "C": 297
+    }
+  },
+  {
+    "model": "9203",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120,
+      "B": 168,
+      "C": 252
+    }
+  },
+  {
+    "model": "9206",
+    "type": "Trophy",
+    "startingPrice": 451,
+    "sizes": {
+      "A": 451,
+      "B": 557,
+      "C": 868,
+      "D": 1249,
+      "E": 1674
+    }
+  },
+  {
+    "model": "9207",
+    "type": "Trophy",
+    "startingPrice": 790,
+    "sizes": {
+      "A": 790,
+      "B": 896,
+      "C": 1207,
+      "D": 1588,
+      "E": 2013
+    }
+  },
+  {
+    "model": "9208",
+    "type": "Trophy",
+    "startingPrice": 470,
+    "sizes": {
+      "A": 470,
+      "B": 577,
+      "C": 888,
+      "D": 1268,
+      "E": 1694
+    }
+  },
+  {
+    "model": "9214",
+    "type": "Trophy",
+    "startingPrice": 115,
+    "sizes": {
+      "A": 115,
+      "B": 168,
+      "C": 221
+    }
+  },
+  {
+    "model": "9215",
+    "type": "Trophy",
+    "startingPrice": 361,
+    "sizes": {
+      "A": 361,
+      "B": 431,
+      "C": 487
+    }
+  },
+  {
+    "model": "9217",
+    "type": "Trophy",
+    "startingPrice": 557,
+    "sizes": {
+      "A": 557
+    }
+  },
+  {
+    "model": "9219",
+    "type": "Trophy",
+    "startingPrice": 336,
+    "sizes": {
+      "A": 336,
+      "B": 370,
+      "C": 428
+    }
+  },
+  {
+    "model": "9222",
+    "type": "Trophy",
+    "startingPrice": 2108,
+    "sizes": {
+      "A": 2108,
+      "B": 2492,
+      "C": 3156,
+      "D": 4567,
+      "E": 5323
+    }
+  },
+  {
+    "model": "9223",
+    "type": "Trophy",
+    "startingPrice": 1288,
+    "sizes": {
+      "A": 1288,
+      "B": 1627,
+      "C": 2195
+    }
+  },
+  {
+    "model": "9224",
+    "type": "Trophy",
+    "startingPrice": 1338,
+    "sizes": {
+      "A": 1338,
+      "B": 1554,
+      "C": 1823,
+      "D": 2069
+    }
+  },
+  {
+    "model": "9225",
+    "type": "Trophy",
+    "startingPrice": 1296,
+    "sizes": {
+      "A": 1296,
+      "B": 1554,
+      "C": 1837,
+      "D": 2251
+    }
+  },
+  {
+    "model": "9226",
+    "type": "Trophy",
+    "startingPrice": 417,
+    "sizes": {
+      "A": 417,
+      "B": 476,
+      "C": 552
+    }
+  },
+  {
+    "model": "9232",
+    "type": "Trophy",
+    "startingPrice": 496,
+    "sizes": {
+      "A": 496
+    }
+  },
+  {
+    "model": "9233",
+    "type": "Trophy",
+    "startingPrice": 188,
+    "sizes": {
+      "A": 188
+    }
+  },
+  {
+    "model": "9234",
+    "type": "Trophy",
+    "startingPrice": 274,
+    "sizes": {
+      "A": 274
+    }
+  },
+  {
+    "model": "9235",
+    "type": "Trophy",
+    "startingPrice": 235,
+    "sizes": {
+      "A": 235
+    }
+  },
+  {
+    "model": "9238",
+    "type": "Trophy",
+    "startingPrice": 134,
+    "sizes": {
+      "A": 134,
+      "B": 162,
+      "C": 190
+    }
+  },
+  {
+    "model": "9240",
+    "type": "Trophy",
+    "startingPrice": 246,
+    "sizes": {
+      "A": 246,
+      "B": 336,
+      "C": 582
+    }
+  },
+  {
+    "model": "9241",
+    "type": "Trophy",
+    "startingPrice": 140,
+    "sizes": {
+      "A": 140,
+      "B": 207
+    }
+  },
+  {
+    "model": "9254",
+    "type": "Trophy",
+    "startingPrice": 339,
+    "sizes": {
+      "A": 339,
+      "B": 389,
+      "C": 468
+    }
+  },
+  {
+    "model": "9255",
+    "type": "Trophy",
+    "startingPrice": 227,
+    "sizes": {
+      "A": 227,
+      "B": 277,
+      "C": 356
+    }
+  },
+  {
+    "model": "9256",
+    "type": "Trophy",
+    "startingPrice": 274,
+    "sizes": {
+      "A": 274,
+      "B": 291,
+      "C": 364
+    }
+  },
+  {
+    "model": "9257",
+    "type": "Trophy",
+    "startingPrice": 202,
+    "sizes": {
+      "A": 202,
+      "B": 218,
+      "C": 291
+    }
+  },
+  {
+    "model": "9258",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120,
+      "B": 157,
+      "C": 224
+    }
+  },
+  {
+    "model": "9260",
+    "type": "Trophy",
+    "startingPrice": 182,
+    "sizes": {
+      "A": 182
+    }
+  },
+  {
+    "model": "9262",
+    "type": "Trophy",
+    "startingPrice": 84,
+    "sizes": {
+      "A": 84,
+      "B": 92,
+      "C": 109,
+      "D": 146,
+      "E": 157
+    }
+  },
+  {
+    "model": "9263",
+    "type": "Trophy",
+    "startingPrice": 81,
+    "sizes": {
+      "A": 81,
+      "B": 92,
+      "C": 104,
+      "D": 140,
+      "E": 154
+    }
+  },
+  {
+    "model": "9264",
+    "type": "Trophy",
+    "startingPrice": 87,
+    "sizes": {
+      "A": 87,
+      "B": 104,
+      "C": 140
+    }
+  },
+  {
+    "model": "9265",
+    "type": "Trophy",
+    "startingPrice": 101,
+    "sizes": {
+      "A": 101,
+      "B": 112,
+      "C": 143,
+      "D": 160
+    }
+  },
+  {
+    "model": "9266",
+    "type": "Trophy",
+    "startingPrice": 90,
+    "sizes": {
+      "A": 90,
+      "B": 104,
+      "C": 134
+    }
+  },
+  {
+    "model": "9267",
+    "type": "Trophy",
+    "startingPrice": 87,
+    "sizes": {
+      "A": 87,
+      "B": 104,
+      "C": 137
+    }
+  },
+  {
+    "model": "9268",
+    "type": "Trophy",
+    "startingPrice": 81,
+    "sizes": {
+      "A": 81,
+      "B": 95,
+      "C": 126
+    }
+  },
+  {
+    "model": "9271",
+    "type": "Trophy",
+    "startingPrice": 81,
+    "sizes": {
+      "A": 81,
+      "B": 95,
+      "C": 112
+    }
+  },
+  {
+    "model": "9272",
+    "type": "Trophy",
+    "startingPrice": 81,
+    "sizes": {
+      "A": 81,
+      "B": 95,
+      "C": 112
+    }
+  },
+  {
+    "model": "9274",
+    "type": "Trophy",
+    "startingPrice": 389,
+    "sizes": {
+      "A": 389
+    }
+  },
+  {
+    "model": "9275",
+    "type": "Trophy",
+    "startingPrice": 414,
+    "sizes": {
+      "A": 414
+    }
+  },
+  {
+    "model": "9276",
+    "type": "Trophy",
+    "startingPrice": 403,
+    "sizes": {
+      "A": 403
+    }
+  },
+  {
+    "model": "9277",
+    "type": "Trophy",
+    "startingPrice": 263,
+    "sizes": {
+      "A": 263
+    }
+  },
+  {
+    "model": "9278",
+    "type": "Trophy",
+    "startingPrice": 272,
+    "sizes": {
+      "A": 272
+    }
+  },
+  {
+    "model": "9279",
+    "type": "Trophy",
+    "startingPrice": 277,
+    "sizes": {
+      "A": 277
+    }
+  },
+  {
+    "model": "9280",
+    "type": "Trophy",
+    "startingPrice": 353,
+    "sizes": {
+      "A": 353,
+      "B": 420,
+      "C": 574,
+      "D": 798
+    }
+  },
+  {
+    "model": "9281",
+    "type": "Trophy",
+    "startingPrice": 406,
+    "sizes": {
+      "A": 406,
+      "B": 473,
+      "C": 627,
+      "D": 851
+    }
+  },
+  {
+    "model": "9282",
+    "type": "Trophy",
+    "startingPrice": 333,
+    "sizes": {
+      "A": 333,
+      "B": 400,
+      "C": 554,
+      "D": 778
+    }
+  },
+  {
+    "model": "9283",
+    "type": "Trophy",
+    "startingPrice": 252,
+    "sizes": {
+      "A": 252,
+      "B": 322,
+      "C": 448,
+      "D": 630
+    }
+  },
+  {
+    "model": "9284",
+    "type": "Trophy",
+    "startingPrice": 417,
+    "sizes": {
+      "A": 417,
+      "B": 515,
+      "C": 686,
+      "D": 1050
+    }
+  },
+  {
+    "model": "9285",
+    "type": "Trophy",
+    "startingPrice": 470,
+    "sizes": {
+      "A": 470,
+      "B": 568,
+      "C": 739,
+      "D": 1103
+    }
+  },
+  {
+    "model": "9286",
+    "type": "Trophy",
+    "startingPrice": 398,
+    "sizes": {
+      "A": 398,
+      "B": 496,
+      "C": 666,
+      "D": 1030
+    }
+  },
+  {
+    "model": "9287",
+    "type": "Trophy",
+    "startingPrice": 316,
+    "sizes": {
+      "A": 316,
+      "B": 406,
+      "C": 560,
+      "D": 882
+    }
+  },
+  {
+    "model": "9289",
+    "type": "Trophy",
+    "startingPrice": 437,
+    "sizes": {
+      "A": 437,
+      "B": 571,
+      "C": 851
+    }
+  },
+  {
+    "model": "9290",
+    "type": "Trophy",
+    "startingPrice": 490,
+    "sizes": {
+      "A": 490,
+      "B": 624,
+      "C": 932
+    }
+  },
+  {
+    "model": "9291",
+    "type": "Trophy",
+    "startingPrice": 417,
+    "sizes": {
+      "A": 417,
+      "B": 552,
+      "C": 832
+    }
+  },
+  {
+    "model": "9292",
+    "type": "Trophy",
+    "startingPrice": 328,
+    "sizes": {
+      "A": 328,
+      "B": 445,
+      "C": 683
+    }
+  },
+  {
+    "model": "9293",
+    "type": "Trophy",
+    "startingPrice": 235,
+    "sizes": {
+      "A": 235,
+      "B": 305,
+      "C": 370
+    }
+  },
+  {
+    "model": "9294",
+    "type": "Trophy",
+    "startingPrice": 308,
+    "sizes": {
+      "A": 308,
+      "B": 378,
+      "C": 442
+    }
+  },
+  {
+    "model": "9295",
+    "type": "Trophy",
+    "startingPrice": 235,
+    "sizes": {
+      "A": 235,
+      "B": 305,
+      "C": 370
+    }
+  },
+  {
+    "model": "9296",
+    "type": "Trophy",
+    "startingPrice": 168,
+    "sizes": {
+      "A": 168,
+      "B": 224,
+      "C": 280
+    }
+  },
+  {
+    "model": "9298",
+    "type": "Trophy",
+    "startingPrice": 711,
+    "sizes": {
+      "A": 711
+    }
+  },
+  {
+    "model": "9299",
+    "type": "Trophy",
+    "startingPrice": 571,
+    "sizes": {
+      "A": 571
+    }
+  },
+  {
+    "model": "9300",
+    "type": "Trophy",
+    "startingPrice": 347,
+    "sizes": {
+      "A": 347
+    }
+  },
+  {
+    "model": "9304",
+    "type": "Trophy",
+    "startingPrice": 554,
+    "sizes": {
+      "A": 554,
+      "B": 641,
+      "C": 725
+    }
+  },
+  {
+    "model": "9305",
+    "type": "Trophy",
+    "startingPrice": 568,
+    "sizes": {
+      "A": 568,
+      "B": 627,
+      "C": 703
+    }
+  },
+  {
+    "model": "9316",
+    "type": "Trophy",
+    "startingPrice": 367,
+    "sizes": {
+      "A": 367,
+      "B": 381,
+      "C": 423,
+      "D": 526
+    }
+  },
+  {
+    "model": "9317",
+    "type": "Trophy",
+    "startingPrice": 462,
+    "sizes": {
+      "A": 462,
+      "B": 608,
+      "C": 890,
+      "D": 1207,
+      "E": 1551
+    }
+  },
+  {
+    "model": "9322",
+    "type": "Trophy",
+    "startingPrice": 361,
+    "sizes": {
+      "A": 361,
+      "B": 470,
+      "C": 708
+    }
+  },
+  {
+    "model": "9325",
+    "type": "Trophy",
+    "startingPrice": 2559,
+    "sizes": {
+      "A": 2559,
+      "B": 3074,
+      "C": 3766
+    }
+  },
+  {
+    "model": "9326",
+    "type": "Trophy",
+    "startingPrice": 2559,
+    "sizes": {
+      "A": 2559,
+      "B": 3186,
+      "C": 3836
+    }
+  },
+  {
+    "model": "9329",
+    "type": "Trophy",
+    "startingPrice": 1296,
+    "sizes": {
+      "A": 1296,
+      "B": 1613,
+      "C": 2125
+    }
+  },
+  {
+    "model": "9330",
+    "type": "Trophy",
+    "startingPrice": 1156,
+    "sizes": {
+      "A": 1156,
+      "B": 1473,
+      "C": 1957
+    }
+  },
+  {
+    "model": "9352",
+    "type": "Trophy",
+    "startingPrice": 1568,
+    "sizes": {
+      "A": 1568,
+      "B": 1831,
+      "C": 2134
+    }
+  },
+  {
+    "model": "9353",
+    "type": "Trophy",
+    "startingPrice": 1719,
+    "sizes": {
+      "A": 1719,
+      "B": 2013,
+      "C": 2330
+    }
+  },
+  {
+    "model": "9354",
+    "type": "Trophy",
+    "startingPrice": 1232,
+    "sizes": {
+      "A": 1232,
+      "B": 1411,
+      "C": 1630
+    }
+  },
+  {
+    "model": "9357",
+    "type": "Trophy",
+    "startingPrice": 434,
+    "sizes": {
+      "A": 434
+    }
+  },
+  {
+    "model": "9367",
+    "type": "Trophy",
+    "startingPrice": 188,
+    "sizes": {
+      "A": 188,
+      "B": 241,
+      "C": 353
+    }
+  },
+  {
+    "model": "9368",
+    "type": "Trophy",
+    "startingPrice": 188,
+    "sizes": {
+      "A": 188,
+      "B": 241,
+      "C": 353
+    }
+  },
+  {
+    "model": "9455",
+    "type": "Trophy",
+    "startingPrice": 199,
+    "sizes": {
+      "A": 199
+    }
+  },
+  {
+    "model": "9456",
+    "type": "Trophy",
+    "startingPrice": 308,
+    "sizes": {
+      "A": 308
+    }
+  },
+  {
+    "model": "9457",
+    "type": "Trophy",
+    "startingPrice": 283,
+    "sizes": {
+      "A": 283
+    }
+  },
+  {
+    "model": "9458",
+    "type": "Trophy",
+    "startingPrice": 294,
+    "sizes": {
+      "A": 294
+    }
+  },
+  {
+    "model": "9460",
+    "type": "Trophy",
+    "startingPrice": 126,
+    "sizes": {
+      "A": 126,
+      "B": 160,
+      "C": 194
+    }
+  },
+  {
+    "model": "9467",
+    "type": "Trophy",
+    "startingPrice": 193,
+    "sizes": {
+      "A": 193
+    }
+  },
+  {
+    "model": "9474",
+    "type": "Trophy",
+    "startingPrice": 140,
+    "sizes": {
+      "A": 140,
+      "B": 182
+    }
+  },
+  {
+    "model": "9481",
+    "type": "Trophy",
+    "startingPrice": 339,
+    "sizes": {
+      "A": 339,
+      "B": 350,
+      "C": 378
+    }
+  },
+  {
+    "model": "9482",
+    "type": "Trophy",
+    "startingPrice": 266,
+    "sizes": {
+      "A": 266,
+      "B": 277,
+      "C": 305
+    }
+  },
+  {
+    "model": "9483",
+    "type": "Trophy",
+    "startingPrice": 280,
+    "sizes": {
+      "A": 280,
+      "B": 384,
+      "C": 462
+    }
+  },
+  {
+    "model": "9518",
+    "type": "Trophy",
+    "startingPrice": 1425,
+    "sizes": {
+      "A": 1425,
+      "B": 1649,
+      "C": 2055
+    }
+  },
+  {
+    "model": "9519",
+    "type": "Trophy",
+    "startingPrice": 1285,
+    "sizes": {
+      "A": 1285,
+      "B": 1649,
+      "C": 2055
+    }
+  },
+  {
+    "model": "9520",
+    "type": "Trophy",
+    "startingPrice": 1008,
+    "sizes": {
+      "A": 1008,
+      "B": 1232,
+      "C": 1484
+    }
+  },
+  {
+    "model": "9521",
+    "type": "Trophy",
+    "startingPrice": 988,
+    "sizes": {
+      "A": 988,
+      "B": 1212,
+      "C": 1464
+    }
+  },
+  {
+    "model": "9524",
+    "type": "Trophy",
+    "startingPrice": 249,
+    "sizes": {
+      "A": 249,
+      "B": 283,
+      "C": 347
+    }
+  },
+  {
+    "model": "9526",
+    "type": "Trophy",
+    "startingPrice": 502,
+    "sizes": {
+      "A": 502,
+      "B": 604,
+      "C": 890
+    }
+  },
+  {
+    "model": "9527",
+    "type": "Trophy",
+    "startingPrice": 444,
+    "sizes": {
+      "A": 444,
+      "B": 545,
+      "C": 832
+    }
+  },
+  {
+    "model": "9528",
+    "type": "Trophy",
+    "startingPrice": 422,
+    "sizes": {
+      "A": 422,
+      "B": 524,
+      "C": 810
+    }
+  },
+  {
+    "model": "9529",
+    "type": "Trophy",
+    "startingPrice": 333,
+    "sizes": {
+      "A": 333,
+      "B": 425,
+      "C": 693
+    }
+  },
+  {
+    "model": "9530",
+    "type": "Trophy",
+    "startingPrice": 1297,
+    "sizes": {
+      "A": 1297,
+      "B": 1639,
+      "C": 2181
+    }
+  },
+  {
+    "model": "9531",
+    "type": "Trophy",
+    "startingPrice": 1096,
+    "sizes": {
+      "A": 1096,
+      "B": 1454,
+      "C": 1996
+    }
+  },
+  {
+    "model": "9532",
+    "type": "Trophy",
+    "startingPrice": 1026,
+    "sizes": {
+      "A": 1026,
+      "B": 1368,
+      "C": 1910
+    }
+  },
+  {
+    "model": "9534",
+    "type": "Trophy",
+    "startingPrice": 1380,
+    "sizes": {
+      "A": 1380,
+      "B": 1716,
+      "C": 2211
+    }
+  },
+  {
+    "model": "9535",
+    "type": "Trophy",
+    "startingPrice": 109,
+    "sizes": {
+      "A": 109,
+      "B": 129,
+      "C": 165
+    }
+  },
+  {
+    "model": "9536",
+    "type": "Trophy",
+    "startingPrice": 101,
+    "sizes": {
+      "A": 101,
+      "B": 132,
+      "C": 171
+    }
+  },
+  {
+    "model": "9537",
+    "type": "Trophy",
+    "startingPrice": 350,
+    "sizes": {
+      "A": 350,
+      "B": 510,
+      "C": 697
+    }
+  },
+  {
+    "model": "9538",
+    "type": "Trophy",
+    "startingPrice": 822,
+    "sizes": {
+      "A": 822,
+      "B": 964,
+      "C": 1364
+    }
+  },
+  {
+    "model": "9539",
+    "type": "Trophy",
+    "startingPrice": 129,
+    "sizes": {
+      "A": 129,
+      "B": 143,
+      "C": 157
+    }
+  },
+  {
+    "model": "9540",
+    "type": "Trophy",
+    "startingPrice": 594,
+    "sizes": {
+      "A": 594,
+      "B": 703,
+      "C": 818
+    }
+  },
+  {
+    "model": "9541",
+    "type": "Trophy",
+    "startingPrice": 552,
+    "sizes": {
+      "A": 552,
+      "B": 661,
+      "C": 776
+    }
+  },
+  {
+    "model": "9542",
+    "type": "Trophy",
+    "startingPrice": 210,
+    "sizes": {
+      "A": 210,
+      "B": 258,
+      "C": 336,
+      "D": 417,
+      "E": 678
+    }
+  },
+  {
+    "model": "9543",
+    "type": "Trophy",
+    "startingPrice": 202,
+    "sizes": {
+      "A": 202,
+      "B": 258,
+      "C": 336,
+      "D": 437,
+      "E": 697
+    }
+  },
+  {
+    "model": "9544",
+    "type": "Trophy",
+    "startingPrice": 501,
+    "sizes": {
+      "A": 501,
+      "B": 624,
+      "C": 986
+    }
+  },
+  {
+    "model": "9545",
+    "type": "Trophy",
+    "startingPrice": 686,
+    "sizes": {
+      "A": 686,
+      "B": 809,
+      "C": 1170
+    }
+  },
+  {
+    "model": "9546",
+    "type": "Trophy",
+    "startingPrice": 560,
+    "sizes": {
+      "A": 560,
+      "B": 781,
+      "C": 1061
+    }
+  },
+  {
+    "model": "9547",
+    "type": "Trophy",
+    "startingPrice": 507,
+    "sizes": {
+      "A": 507,
+      "B": 728,
+      "C": 980
+    }
+  },
+  {
+    "model": "9548",
+    "type": "Trophy",
+    "startingPrice": 487,
+    "sizes": {
+      "A": 487,
+      "B": 708,
+      "C": 960
+    }
+  },
+  {
+    "model": "9549",
+    "type": "Trophy",
+    "startingPrice": 98,
+    "sizes": {
+      "A": 98,
+      "B": 137,
+      "C": 176
+    }
+  },
+  {
+    "model": "9550",
+    "type": "Trophy",
+    "startingPrice": 95,
+    "sizes": {
+      "A": 95,
+      "B": 137,
+      "C": 174
+    }
+  },
+  {
+    "model": "9551",
+    "type": "Trophy",
+    "startingPrice": 2363,
+    "sizes": {
+      "A": 2363,
+      "B": 2918,
+      "C": 3623
+    }
+  },
+  {
+    "model": "9552",
+    "type": "Trophy",
+    "startingPrice": 2794,
+    "sizes": {
+      "A": 2794,
+      "B": 3416,
+      "C": 4124
+    }
+  },
+  {
+    "model": "9553",
+    "type": "Trophy",
+    "startingPrice": 2794,
+    "sizes": {
+      "A": 2794,
+      "B": 3416,
+      "C": 4124
+    }
+  },
+  {
+    "model": "9554",
+    "type": "Trophy",
+    "startingPrice": 3335,
+    "sizes": {
+      "A": 3335,
+      "B": 4248,
+      "C": 5174
+    }
+  },
+  {
+    "model": "9555",
+    "type": "Trophy",
+    "startingPrice": 507,
+    "sizes": {
+      "A": 507,
+      "B": 672,
+      "C": 868
+    }
+  },
+  {
+    "model": "9556",
+    "type": "Trophy",
+    "startingPrice": 703,
+    "sizes": {
+      "A": 703,
+      "B": 952,
+      "C": 1302
+    }
+  },
+  {
+    "model": "9557",
+    "type": "Trophy",
+    "startingPrice": 745,
+    "sizes": {
+      "A": 745,
+      "B": 910,
+      "C": 1134
+    }
+  },
+  {
+    "model": "9558",
+    "type": "Trophy",
+    "startingPrice": 462,
+    "sizes": {
+      "A": 462,
+      "B": 571,
+      "C": 753
+    }
+  },
+  {
+    "model": "9559",
+    "type": "Trophy",
+    "startingPrice": 619,
+    "sizes": {
+      "A": 619,
+      "B": 773,
+      "C": 1011
+    }
+  },
+  {
+    "model": "9560",
+    "type": "Trophy",
+    "startingPrice": 484,
+    "sizes": {
+      "A": 484,
+      "B": 720,
+      "C": 988
+    }
+  },
+  {
+    "model": "9561",
+    "type": "Trophy",
+    "startingPrice": 504,
+    "sizes": {
+      "A": 504,
+      "B": 739,
+      "C": 1008
+    }
+  },
+  {
+    "model": "9562",
+    "type": "Trophy",
+    "startingPrice": 1028,
+    "sizes": {
+      "A": 1028,
+      "B": 1383,
+      "C": 1786
+    }
+  },
+  {
+    "model": "9563",
+    "type": "Trophy",
+    "startingPrice": 1168,
+    "sizes": {
+      "A": 1168,
+      "B": 1523,
+      "C": 1940
+    }
+  },
+  {
+    "model": "9564",
+    "type": "Trophy",
+    "startingPrice": 739,
+    "sizes": {
+      "A": 739,
+      "B": 1022,
+      "C": 1299,
+      "D": 1408
+    }
+  },
+  {
+    "model": "9565",
+    "type": "Trophy",
+    "startingPrice": 854,
+    "sizes": {
+      "A": 854,
+      "B": 1050,
+      "C": 1246
+    }
+  },
+  {
+    "model": "9566",
+    "type": "Trophy",
+    "startingPrice": 1212,
+    "sizes": {
+      "A": 1212,
+      "B": 1526,
+      "C": 1912
+    }
+  },
+  {
+    "model": "9567",
+    "type": "Trophy",
+    "startingPrice": 826,
+    "sizes": {
+      "A": 826,
+      "B": 1095,
+      "C": 1456
+    }
+  },
+  {
+    "model": "9568",
+    "type": "Trophy",
+    "startingPrice": 5337,
+    "sizes": {
+      "A": 5337,
+      "B": 6367,
+      "C": 7070
+    }
+  },
+  {
+    "model": "9569",
+    "type": "Trophy",
+    "startingPrice": 272,
+    "sizes": {
+      "A": 272,
+      "B": 347,
+      "C": 459
+    }
+  },
+  {
+    "model": "9570",
+    "type": "Trophy",
+    "startingPrice": 272,
+    "sizes": {
+      "A": 272,
+      "B": 367,
+      "C": 479
+    }
+  },
+  {
+    "model": "9571",
+    "type": "Trophy",
+    "startingPrice": 344,
+    "sizes": {
+      "A": 344,
+      "B": 420,
+      "C": 532
+    }
+  },
+  {
+    "model": "9572",
+    "type": "Trophy",
+    "startingPrice": 272,
+    "sizes": {
+      "A": 272,
+      "B": 375,
+      "C": 487
+    }
+  },
+  {
+    "model": "9573",
+    "type": "Trophy",
+    "startingPrice": 272,
+    "sizes": {
+      "A": 272,
+      "B": 375,
+      "C": 507
+    }
+  },
+  {
+    "model": "9574",
+    "type": "Trophy",
+    "startingPrice": 344,
+    "sizes": {
+      "A": 344,
+      "B": 448,
+      "C": 560
+    }
+  },
+  {
+    "model": "9575",
+    "type": "Trophy",
+    "startingPrice": 647,
+    "sizes": {
+      "A": 647,
+      "B": 885,
+      "C": 1162
+    }
+  },
+  {
+    "model": "9576",
+    "type": "Trophy",
+    "startingPrice": 1064,
+    "sizes": {
+      "A": 1064,
+      "B": 1302,
+      "C": 1719
+    }
+  },
+  {
+    "model": "9577",
+    "type": "Trophy",
+    "startingPrice": 854,
+    "sizes": {
+      "A": 854,
+      "B": 1092,
+      "C": 1369
+    }
+  },
+  {
+    "model": "9578",
+    "type": "Trophy",
+    "startingPrice": 216,
+    "sizes": {
+      "A": 216,
+      "B": 260,
+      "C": 316
+    }
+  },
+  {
+    "model": "9579",
+    "type": "Trophy",
+    "startingPrice": 574,
+    "sizes": {
+      "A": 574,
+      "B": 630,
+      "C": 714
+    }
+  },
+  {
+    "model": "9580",
+    "type": "Trophy",
+    "startingPrice": 725,
+    "sizes": {
+      "A": 725,
+      "B": 781,
+      "C": 865
+    }
+  },
+  {
+    "model": "9581",
+    "type": "Trophy",
+    "startingPrice": 885,
+    "sizes": {
+      "A": 885,
+      "B": 1252,
+      "C": 1736
+    }
+  },
+  {
+    "model": "9582",
+    "type": "Trophy",
+    "startingPrice": 1109,
+    "sizes": {
+      "A": 1109,
+      "B": 1476,
+      "C": 1960
+    }
+  },
+  {
+    "model": "9583",
+    "type": "Trophy",
+    "startingPrice": 1764,
+    "sizes": {
+      "A": 1764,
+      "B": 2397,
+      "C": 3234
+    }
+  },
+  {
+    "model": "9584",
+    "type": "Trophy",
+    "startingPrice": 207,
+    "sizes": {
+      "A": 207,
+      "B": 288,
+      "C": 417
+    }
+  },
+  {
+    "model": "9585",
+    "type": "Trophy",
+    "startingPrice": 294,
+    "sizes": {
+      "A": 294,
+      "B": 370,
+      "C": 496
+    }
+  },
+  {
+    "model": "9586",
+    "type": "Trophy",
+    "startingPrice": 386,
+    "sizes": {
+      "A": 386,
+      "B": 518,
+      "C": 711
+    }
+  },
+  {
+    "model": "9587",
+    "type": "Trophy",
+    "startingPrice": 1274,
+    "sizes": {
+      "A": 1274,
+      "B": 1613,
+      "C": 2492
+    }
+  },
+  {
+    "model": "9588",
+    "type": "Trophy",
+    "startingPrice": 1490,
+    "sizes": {
+      "A": 1490,
+      "B": 1828,
+      "C": 2708
+    }
+  },
+  {
+    "model": "9589",
+    "type": "Trophy",
+    "startingPrice": 1403,
+    "sizes": {
+      "A": 1403,
+      "B": 1742,
+      "C": 2621
+    }
+  },
+  {
+    "model": "9590",
+    "type": "Trophy",
+    "startingPrice": 3450,
+    "sizes": {
+      "A": 3450,
+      "B": 3928
+    }
+  },
+  {
+    "model": "9591",
+    "type": "Trophy",
+    "startingPrice": 2195,
+    "sizes": {
+      "A": 2195,
+      "B": 2643,
+      "C": 3049
+    }
+  },
+  {
+    "model": "9592",
+    "type": "Trophy",
+    "startingPrice": 2741,
+    "sizes": {
+      "A": 2741,
+      "B": 3312,
+      "C": 3906
+    }
+  },
+  {
+    "model": "9595",
+    "type": "Trophy",
+    "startingPrice": 1100,
+    "sizes": {
+      "A": 1100,
+      "B": 1577,
+      "C": 2085
+    }
+  },
+  {
+    "model": "9596",
+    "type": "Trophy",
+    "startingPrice": 277,
+    "sizes": {
+      "A": 277,
+      "B": 319,
+      "C": 384
+    }
+  },
+  {
+    "model": "9597",
+    "type": "Trophy",
+    "startingPrice": 277,
+    "sizes": {
+      "A": 277,
+      "B": 339,
+      "C": 403
+    }
+  },
+  {
+    "model": "9598",
+    "type": "Trophy",
+    "startingPrice": 308,
+    "sizes": {
+      "A": 308,
+      "B": 350,
+      "C": 414
+    }
+  },
+  {
+    "model": "9599",
+    "type": "Trophy",
+    "startingPrice": 350,
+    "sizes": {
+      "A": 350,
+      "B": 392,
+      "C": 456
+    }
+  },
+  {
+    "model": "9601",
+    "type": "Trophy",
+    "startingPrice": 904,
+    "sizes": {
+      "A": 904,
+      "B": 1347,
+      "C": 1781
+    }
+  },
+  {
+    "model": "9602",
+    "type": "Trophy",
+    "startingPrice": 490,
+    "sizes": {
+      "A": 490,
+      "B": 666,
+      "C": 938
+    }
+  },
+  {
+    "model": "9603",
+    "type": "Trophy",
+    "startingPrice": 470,
+    "sizes": {
+      "A": 470,
+      "B": 647,
+      "C": 918
+    }
+  },
+  {
+    "model": "9604",
+    "type": "Trophy",
+    "startingPrice": 778,
+    "sizes": {
+      "A": 778,
+      "B": 1058
+    }
+  },
+  {
+    "model": "9605",
+    "type": "Trophy",
+    "startingPrice": 759,
+    "sizes": {
+      "A": 759,
+      "B": 1039
+    }
+  },
+  {
+    "model": "9609",
+    "type": "Trophy",
+    "startingPrice": 384,
+    "sizes": {
+      "A": 384,
+      "B": 454,
+      "C": 563
+    }
+  },
+  {
+    "model": "9610",
+    "type": "Trophy",
+    "startingPrice": 206,
+    "sizes": {
+      "A": 206
+    }
+  },
+  {
+    "model": "9613",
+    "type": "Trophy",
+    "startingPrice": 693,
+    "sizes": {
+      "A": 693
+    }
+  },
+  {
+    "model": "9614",
+    "type": "Trophy",
+    "startingPrice": 339,
+    "sizes": {
+      "A": 339,
+      "B": 379,
+      "C": 459
+    }
+  },
+  {
+    "model": "9615",
+    "type": "Trophy",
+    "startingPrice": 367,
+    "sizes": {
+      "A": 367,
+      "B": 407,
+      "C": 487
+    }
+  },
+  {
+    "model": "9617",
+    "type": "Trophy",
+    "startingPrice": 702,
+    "sizes": {
+      "A": 702,
+      "B": 810,
+      "C": 983
+    }
+  },
+  {
+    "model": "9618",
+    "type": "Trophy",
+    "startingPrice": 388,
+    "sizes": {
+      "A": 388,
+      "B": 527,
+      "C": 758
+    }
+  },
+  {
+    "model": "9620",
+    "type": "Trophy",
+    "startingPrice": 527,
+    "sizes": {
+      "A": 527,
+      "B": 653,
+      "C": 912
+    }
+  },
+  {
+    "model": "9621",
+    "type": "Trophy",
+    "startingPrice": 689,
+    "sizes": {
+      "A": 689,
+      "B": 907
+    }
+  },
+  {
+    "model": "9622",
+    "type": "Trophy",
+    "startingPrice": 549,
+    "sizes": {
+      "A": 549,
+      "B": 753
+    }
+  },
+  {
+    "model": "9623",
+    "type": "Trophy",
+    "startingPrice": 496,
+    "sizes": {
+      "A": 496,
+      "B": 647,
+      "C": 879
+    }
+  },
+  {
+    "model": "9624",
+    "type": "Trophy",
+    "startingPrice": 526,
+    "sizes": {
+      "A": 526,
+      "B": 560,
+      "C": 619
+    }
+  },
+  {
+    "model": "9625",
+    "type": "Trophy",
+    "startingPrice": 375,
+    "sizes": {
+      "A": 375,
+      "B": 409,
+      "C": 468
+    }
+  },
+  {
+    "model": "9626",
+    "type": "Trophy",
+    "startingPrice": 305,
+    "sizes": {
+      "A": 305,
+      "B": 339,
+      "C": 398
+    }
+  },
+  {
+    "model": "9627",
+    "type": "Trophy",
+    "startingPrice": 244,
+    "sizes": {
+      "A": 244,
+      "B": 277,
+      "C": 336
+    }
+  },
+  {
+    "model": "9628",
+    "type": "Trophy",
+    "startingPrice": 328,
+    "sizes": {
+      "A": 328,
+      "B": 409,
+      "C": 546
+    }
+  },
+  {
+    "model": "9629",
+    "type": "Trophy",
+    "startingPrice": 196,
+    "sizes": {
+      "A": 196
+    }
+  },
+  {
+    "model": "9630",
+    "type": "Trophy",
+    "startingPrice": 188,
+    "sizes": {
+      "A": 188
+    }
+  },
+  {
+    "model": "9631",
+    "type": "Trophy",
+    "startingPrice": 526,
+    "sizes": {
+      "A": 526,
+      "B": 622,
+      "C": 773
+    }
+  },
+  {
+    "model": "9632",
+    "type": "Trophy",
+    "startingPrice": 512,
+    "sizes": {
+      "A": 512,
+      "B": 610,
+      "C": 767
+    }
+  },
+  {
+    "model": "9633",
+    "type": "Trophy",
+    "startingPrice": 339,
+    "sizes": {
+      "A": 339,
+      "B": 448,
+      "C": 641
+    }
+  },
+  {
+    "model": "9634",
+    "type": "Trophy",
+    "startingPrice": 960,
+    "sizes": {
+      "A": 960,
+      "B": 1112,
+      "C": 1512
+    }
+  },
+  {
+    "model": "9635",
+    "type": "Trophy",
+    "startingPrice": 890,
+    "sizes": {
+      "A": 890,
+      "B": 963,
+      "C": 1238
+    }
+  },
+  {
+    "model": "9636",
+    "type": "Trophy",
+    "startingPrice": 860,
+    "sizes": {
+      "A": 860,
+      "B": 935,
+      "C": 1198
+    }
+  },
+  {
+    "model": "9637",
+    "type": "Trophy",
+    "startingPrice": 596,
+    "sizes": {
+      "A": 596,
+      "B": 815,
+      "C": 1028
+    }
+  },
+  {
+    "model": "9638",
+    "type": "Trophy",
+    "startingPrice": 596,
+    "sizes": {
+      "A": 596,
+      "B": 694,
+      "C": 991
+    }
+  },
+  {
+    "model": "9639",
+    "type": "Trophy",
+    "startingPrice": 680,
+    "sizes": {
+      "A": 680,
+      "B": 722,
+      "C": 902
+    }
+  },
+  {
+    "model": "9640",
+    "type": "Trophy",
+    "startingPrice": 168,
+    "sizes": {
+      "A": 168,
+      "B": 218,
+      "C": 291
+    }
+  },
+  {
+    "model": "9641",
+    "type": "Trophy",
+    "startingPrice": 98,
+    "sizes": {
+      "A": 98,
+      "B": 134,
+      "C": 168
+    }
+  },
+  {
+    "model": "9642",
+    "type": "Trophy",
+    "startingPrice": 101,
+    "sizes": {
+      "A": 101,
+      "B": 123,
+      "C": 160
+    }
+  },
+  {
+    "model": "9651",
+    "type": "Trophy",
+    "startingPrice": 594,
+    "sizes": {
+      "AAA": 594,
+      "AA": 636,
+      "A": 750,
+      "B": 986,
+      "C": 1277,
+      "D": 1694,
+      "E": 2139
+    }
+  },
+  {
+    "model": "9652",
+    "type": "Trophy",
+    "startingPrice": 703,
+    "sizes": {
+      "AAA": 703,
+      "AA": 745,
+      "A": 860,
+      "B": 1095,
+      "C": 1526,
+      "D": 1943,
+      "E": 2542
+    }
+  },
+  {
+    "model": "9653",
+    "type": "Trophy",
+    "startingPrice": 535,
+    "sizes": {
+      "AAA": 535,
+      "AA": 577,
+      "A": 692,
+      "B": 927,
+      "C": 1218,
+      "D": 1635,
+      "E": 2080
+    }
+  },
+  {
+    "model": "9654",
+    "type": "Trophy",
+    "startingPrice": 462,
+    "sizes": {
+      "AAA": 462,
+      "AA": 504,
+      "A": 619,
+      "B": 854,
+      "C": 1145,
+      "D": 1562,
+      "E": 2008
+    }
+  },
+  {
+    "model": "9655",
+    "type": "Trophy",
+    "startingPrice": 311,
+    "sizes": {
+      "AAA": 311,
+      "AA": 353,
+      "A": 468,
+      "B": 703,
+      "C": 994,
+      "D": 1411,
+      "E": 1856
+    }
+  },
+  {
+    "model": "9656",
+    "type": "Trophy",
+    "startingPrice": 907,
+    "sizes": {
+      "A": 907,
+      "B": 1299,
+      "C": 1686
+    }
+  },
+  {
+    "model": "9657",
+    "type": "Trophy",
+    "startingPrice": 1252,
+    "sizes": {
+      "A": 1252,
+      "B": 1644,
+      "C": 2030
+    }
+  },
+  {
+    "model": "9658",
+    "type": "Trophy",
+    "startingPrice": 1428,
+    "sizes": {
+      "A": 1428,
+      "B": 1820,
+      "C": 2346
+    }
+  },
+  {
+    "model": "9659",
+    "type": "Trophy",
+    "startingPrice": 1170,
+    "sizes": {
+      "A": 1170,
+      "B": 1562,
+      "C": 1966
+    }
+  },
+  {
+    "model": "9660",
+    "type": "Trophy",
+    "startingPrice": 501,
+    "sizes": {
+      "A": 501,
+      "B": 524
+    }
+  },
+  {
+    "model": "9661",
+    "type": "Trophy",
+    "startingPrice": 350,
+    "sizes": {
+      "A": 350,
+      "B": 372
+    }
+  },
+  {
+    "model": "9662",
+    "type": "Trophy",
+    "startingPrice": 336,
+    "sizes": {
+      "A": 336,
+      "B": 364
+    }
+  },
+  {
+    "model": "9663",
+    "type": "Trophy",
+    "startingPrice": 448,
+    "sizes": {
+      "A": 448
+    }
+  },
+  {
+    "model": "9664",
+    "type": "Trophy",
+    "startingPrice": 470,
+    "sizes": {
+      "A": 470
+    }
+  },
+  {
+    "model": "9665",
+    "type": "Trophy",
+    "startingPrice": 574,
+    "sizes": {
+      "A": 574
+    }
+  },
+  {
+    "model": "9666",
+    "type": "Trophy",
+    "startingPrice": 263,
+    "sizes": {
+      "A": 263
+    }
+  },
+  {
+    "model": "9667",
+    "type": "Trophy",
+    "startingPrice": 389,
+    "sizes": {
+      "A": 389
+    }
+  },
+  {
+    "model": "9668",
+    "type": "Trophy",
+    "startingPrice": 188,
+    "sizes": {
+      "A": 188
+    }
+  },
+  {
+    "model": "9669",
+    "type": "Trophy",
+    "startingPrice": 860,
+    "sizes": {
+      "A": 860,
+      "B": 1011,
+      "C": 1268
+    }
+  },
+  {
+    "model": "9670",
+    "type": "Trophy",
+    "startingPrice": 566,
+    "sizes": {
+      "A": 566,
+      "B": 717,
+      "C": 974
+    }
+  },
+  {
+    "model": "9671",
+    "type": "Trophy",
+    "startingPrice": 832,
+    "sizes": {
+      "A": 832,
+      "B": 983,
+      "C": 1380
+    }
+  },
+  {
+    "model": "9675",
+    "type": "Trophy",
+    "startingPrice": 510,
+    "sizes": {
+      "A": 510,
+      "B": 770,
+      "C": 1112,
+      "D": 1506,
+      "E": 1912
+    }
+  },
+  {
+    "model": "9676",
+    "type": "Trophy",
+    "startingPrice": 1324,
+    "sizes": {
+      "A": 1324,
+      "B": 1831,
+      "C": 2198
+    }
+  },
+  {
+    "model": "9677",
+    "type": "Trophy",
+    "startingPrice": 1142,
+    "sizes": {
+      "A": 1142,
+      "B": 1677,
+      "C": 2097
+    }
+  },
+  {
+    "model": "9683",
+    "type": "Trophy",
+    "startingPrice": 1403,
+    "sizes": {
+      "A": 1403,
+      "B": 1753,
+      "C": 2195
+    }
+  },
+  {
+    "model": "9684",
+    "type": "Trophy",
+    "startingPrice": 1137,
+    "sizes": {
+      "A": 1137,
+      "B": 1487,
+      "C": 1789
+    }
+  },
+  {
+    "model": "9686",
+    "type": "Trophy",
+    "startingPrice": 431,
+    "sizes": {
+      "A": 431,
+      "B": 535,
+      "C": 638
+    }
+  },
+  {
+    "model": "9687",
+    "type": "Trophy",
+    "startingPrice": 1607,
+    "sizes": {
+      "A": 1607,
+      "B": 2237,
+      "C": 2590
+    }
+  },
+  {
+    "model": "9688",
+    "type": "Trophy",
+    "startingPrice": 1425,
+    "sizes": {
+      "A": 1425,
+      "B": 1901,
+      "C": 2254
+    }
+  },
+  {
+    "model": "9689",
+    "type": "Trophy",
+    "startingPrice": 1509,
+    "sizes": {
+      "A": 1509,
+      "B": 2027,
+      "C": 2380
+    }
+  },
+  {
+    "model": "9690",
+    "type": "Trophy",
+    "startingPrice": 1028,
+    "sizes": {
+      "A": 1028,
+      "B": 1403,
+      "C": 1845,
+      "D": 2240
+    }
+  },
+  {
+    "model": "9691",
+    "type": "Trophy",
+    "startingPrice": 697,
+    "sizes": {
+      "A": 697,
+      "B": 1058,
+      "C": 1526,
+      "D": 1971,
+      "E": 2534
+    }
+  },
+  {
+    "model": "9692",
+    "type": "Trophy",
+    "startingPrice": 560,
+    "sizes": {
+      "A": 560,
+      "B": 694,
+      "C": 1056
+    }
+  },
+  {
+    "model": "9693",
+    "type": "Trophy",
+    "startingPrice": 720,
+    "sizes": {
+      "A": 720,
+      "B": 854,
+      "C": 1215
+    }
+  },
+  {
+    "model": "9694",
+    "type": "Trophy",
+    "startingPrice": 473,
+    "sizes": {
+      "A": 473,
+      "B": 585,
+      "C": 868
+    }
+  },
+  {
+    "model": "9695",
+    "type": "Trophy",
+    "startingPrice": 454,
+    "sizes": {
+      "A": 454,
+      "B": 566,
+      "C": 848
+    }
+  },
+  {
+    "model": "9696",
+    "type": "Trophy",
+    "startingPrice": 392,
+    "sizes": {
+      "A": 392,
+      "B": 496,
+      "C": 767
+    }
+  },
+  {
+    "model": "9698",
+    "type": "Trophy",
+    "startingPrice": 630,
+    "sizes": {
+      "A": 630,
+      "B": 966,
+      "C": 1383,
+      "D": 1851,
+      "E": 2453
+    }
+  },
+  {
+    "model": "9699",
+    "type": "Trophy",
+    "startingPrice": 630,
+    "sizes": {
+      "A": 630,
+      "B": 854,
+      "C": 1274,
+      "D": 1700,
+      "E": 2265
+    }
+  },
+  {
+    "model": "9700",
+    "type": "Trophy",
+    "startingPrice": 473,
+    "sizes": {
+      "A": 473,
+      "B": 834,
+      "C": 1302,
+      "D": 1747,
+      "E": 2310
+    }
+  },
+  {
+    "model": "9701",
+    "type": "Trophy",
+    "startingPrice": 3534,
+    "sizes": {
+      "A": 3534,
+      "B": 4558,
+      "C": 5508
+    }
+  },
+  {
+    "model": "9702",
+    "type": "Trophy",
+    "startingPrice": 3013,
+    "sizes": {
+      "A": 3013,
+      "B": 3856,
+      "C": 4735
+    }
+  },
+  {
+    "model": "9703",
+    "type": "Trophy",
+    "startingPrice": 1890,
+    "sizes": {
+      "A": 1890,
+      "B": 2461,
+      "C": 3072
+    }
+  },
+  {
+    "model": "9705",
+    "type": "Trophy",
+    "startingPrice": 190,
+    "sizes": {
+      "A": 190,
+      "B": 232,
+      "C": 297,
+      "D": 445
+    }
+  },
+  {
+    "model": "9706",
+    "type": "Trophy",
+    "startingPrice": 123,
+    "sizes": {
+      "A": 123,
+      "B": 151,
+      "C": 207,
+      "D": 339
+    }
+  },
+  {
+    "model": "9707",
+    "type": "Trophy",
+    "startingPrice": 115,
+    "sizes": {
+      "A": 115,
+      "B": 174,
+      "C": 221,
+      "D": 367
+    }
+  },
+  {
+    "model": "9708",
+    "type": "Trophy",
+    "startingPrice": 406,
+    "sizes": {
+      "A": 406,
+      "B": 512,
+      "C": 608
+    }
+  },
+  {
+    "model": "9709",
+    "type": "Trophy",
+    "startingPrice": 535,
+    "sizes": {
+      "A": 535,
+      "B": 683,
+      "C": 963
+    }
+  },
+  {
+    "model": "9710",
+    "type": "Trophy",
+    "startingPrice": 95,
+    "sizes": {
+      "A": 95,
+      "B": 115,
+      "C": 146
+    }
+  },
+  {
+    "model": "9711",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120,
+      "B": 146
+    }
+  },
+  {
+    "model": "9712",
+    "type": "Trophy",
+    "startingPrice": 123,
+    "sizes": {
+      "A": 123,
+      "B": 157
+    }
+  },
+  {
+    "model": "9713",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120,
+      "B": 157
+    }
+  },
+  {
+    "model": "9714",
+    "type": "Trophy",
+    "startingPrice": 95,
+    "sizes": {
+      "A": 95,
+      "B": 123,
+      "C": 157
+    }
+  },
+  {
+    "model": "9715",
+    "type": "Trophy",
+    "startingPrice": 188,
+    "sizes": {
+      "A": 188,
+      "B": 238
+    }
+  },
+  {
+    "model": "9716",
+    "type": "Trophy",
+    "startingPrice": 101,
+    "sizes": {
+      "A": 101,
+      "B": 137,
+      "C": 179
+    }
+  },
+  {
+    "model": "9717",
+    "type": "Trophy",
+    "startingPrice": 137,
+    "sizes": {
+      "A": 137,
+      "B": 179
+    }
+  },
+  {
+    "model": "9718",
+    "type": "Trophy",
+    "startingPrice": 146,
+    "sizes": {
+      "A": 146,
+      "B": 168,
+      "C": 207
+    }
+  },
+  {
+    "model": "9719",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120,
+      "B": 148,
+      "C": 196
+    }
+  },
+  {
+    "model": "9720",
+    "type": "Trophy",
+    "startingPrice": 227,
+    "sizes": {
+      "A": 227,
+      "B": 319,
+      "C": 409
+    }
+  },
+  {
+    "model": "9721",
+    "type": "Trophy",
+    "startingPrice": 174,
+    "sizes": {
+      "A": 174,
+      "B": 210,
+      "C": 291
+    }
+  },
+  {
+    "model": "9722",
+    "type": "Trophy",
+    "startingPrice": 132,
+    "sizes": {
+      "A": 132,
+      "B": 202,
+      "C": 266
+    }
+  },
+  {
+    "model": "9723",
+    "type": "Trophy",
+    "startingPrice": 949,
+    "sizes": {
+      "A": 949,
+      "B": 1173,
+      "C": 1504,
+      "D": 1834
+    }
+  },
+  {
+    "model": "9724",
+    "type": "Trophy",
+    "startingPrice": 608,
+    "sizes": {
+      "A": 608,
+      "B": 832,
+      "C": 1134,
+      "D": 1464
+    }
+  },
+  {
+    "model": "9725",
+    "type": "Trophy",
+    "startingPrice": 588,
+    "sizes": {
+      "A": 588,
+      "B": 812,
+      "C": 1114,
+      "D": 1445
+    }
+  },
+  {
+    "model": "9726",
+    "type": "Trophy",
+    "startingPrice": 1058,
+    "sizes": {
+      "A": 1058,
+      "B": 1487,
+      "C": 1882
+    }
+  },
+  {
+    "model": "9727",
+    "type": "Trophy",
+    "startingPrice": 1081,
+    "sizes": {
+      "A": 1081,
+      "B": 1571,
+      "C": 1940
+    }
+  },
+  {
+    "model": "9728",
+    "type": "Trophy",
+    "startingPrice": 1226,
+    "sizes": {
+      "A": 1226,
+      "B": 1641,
+      "C": 2010
+    }
+  },
+  {
+    "model": "9729",
+    "type": "Trophy",
+    "startingPrice": 316,
+    "sizes": {
+      "A": 316,
+      "B": 395,
+      "C": 504,
+      "D": 697,
+      "E": 1047,
+      "F": 1350
+    }
+  },
+  {
+    "model": "9730",
+    "type": "Trophy",
+    "startingPrice": 297,
+    "sizes": {
+      "A": 297,
+      "B": 375,
+      "C": 484,
+      "D": 678,
+      "E": 1028,
+      "F": 1330
+    }
+  },
+  {
+    "model": "9731",
+    "type": "Trophy",
+    "startingPrice": 274,
+    "sizes": {
+      "A": 274,
+      "B": 364
+    }
+  },
+  {
+    "model": "9732",
+    "type": "Trophy",
+    "startingPrice": 398,
+    "sizes": {
+      "A": 398,
+      "B": 476,
+      "C": 568
+    }
+  },
+  {
+    "model": "9733",
+    "type": "Trophy",
+    "startingPrice": 344,
+    "sizes": {
+      "A": 344,
+      "B": 423,
+      "C": 515
+    }
+  },
+  {
+    "model": "9734",
+    "type": "Trophy",
+    "startingPrice": 325,
+    "sizes": {
+      "A": 325,
+      "B": 403,
+      "C": 496
+    }
+  },
+  {
+    "model": "9735",
+    "type": "Trophy",
+    "startingPrice": 146,
+    "sizes": {
+      "A": 146,
+      "B": 176,
+      "C": 199,
+      "D": 288
+    }
+  },
+  {
+    "model": "9736",
+    "type": "Trophy",
+    "startingPrice": 146,
+    "sizes": {
+      "A": 146,
+      "B": 176,
+      "C": 199,
+      "D": 269
+    }
+  },
+  {
+    "model": "9737",
+    "type": "Trophy",
+    "startingPrice": 87,
+    "sizes": {
+      "A": 87,
+      "B": 115,
+      "C": 132,
+      "D": 188
+    }
+  },
+  {
+    "model": "9738",
+    "type": "Trophy",
+    "startingPrice": 146,
+    "sizes": {
+      "A": 146,
+      "B": 174,
+      "C": 196,
+      "D": 274
+    }
+  },
+  {
+    "model": "9739",
+    "type": "Trophy",
+    "startingPrice": 146,
+    "sizes": {
+      "A": 146,
+      "B": 174,
+      "C": 196,
+      "D": 255
+    }
+  },
+  {
+    "model": "9740",
+    "type": "Trophy",
+    "startingPrice": 87,
+    "sizes": {
+      "A": 87,
+      "B": 112,
+      "C": 129,
+      "D": 174
+    }
+  },
+  {
+    "model": "9741",
+    "type": "Trophy",
+    "startingPrice": 207,
+    "sizes": {
+      "A": 207,
+      "B": 218,
+      "C": 244
+    }
+  },
+  {
+    "model": "9742",
+    "type": "Trophy",
+    "startingPrice": 221,
+    "sizes": {
+      "A": 221,
+      "B": 232,
+      "C": 258
+    }
+  },
+  {
+    "model": "9743",
+    "type": "Trophy",
+    "startingPrice": 207,
+    "sizes": {
+      "A": 207,
+      "B": 218,
+      "C": 244
+    }
+  },
+  {
+    "model": "9744",
+    "type": "Trophy",
+    "startingPrice": 272,
+    "sizes": {
+      "A": 272,
+      "B": 283,
+      "C": 308
+    }
+  },
+  {
+    "model": "9745",
+    "type": "Trophy",
+    "startingPrice": 227,
+    "sizes": {
+      "A": 227,
+      "B": 238,
+      "C": 263
+    }
+  },
+  {
+    "model": "9746",
+    "type": "Trophy",
+    "startingPrice": 176,
+    "sizes": {
+      "A": 176,
+      "B": 188,
+      "C": 224
+    }
+  },
+  {
+    "model": "9747",
+    "type": "Trophy",
+    "startingPrice": 182,
+    "sizes": {
+      "A": 182,
+      "B": 193,
+      "C": 218
+    }
+  },
+  {
+    "model": "9748",
+    "type": "Trophy",
+    "startingPrice": 218,
+    "sizes": {
+      "A": 218,
+      "B": 230,
+      "C": 255
+    }
+  },
+  {
+    "model": "9749",
+    "type": "Trophy",
+    "startingPrice": 218,
+    "sizes": {
+      "A": 218,
+      "B": 230,
+      "C": 255
+    }
+  },
+  {
+    "model": "9750",
+    "type": "Trophy",
+    "startingPrice": 972,
+    "sizes": {
+      "A": 972,
+      "B": 1330,
+      "C": 1778,
+      "D": 2299
+    }
+  },
+  {
+    "model": "9751",
+    "type": "Trophy",
+    "startingPrice": 1117,
+    "sizes": {
+      "A": 1117,
+      "B": 1476,
+      "C": 1848,
+      "D": 2369
+    }
+  },
+  {
+    "model": "9752",
+    "type": "Trophy",
+    "startingPrice": 907,
+    "sizes": {
+      "A": 907,
+      "B": 1201,
+      "C": 1506,
+      "D": 1747
+    }
+  },
+  {
+    "model": "9753",
+    "type": "Trophy",
+    "startingPrice": 588,
+    "sizes": {
+      "A": 588,
+      "B": 882,
+      "C": 1187,
+      "D": 1428
+    }
+  },
+  {
+    "model": "9754",
+    "type": "Trophy",
+    "startingPrice": 568,
+    "sizes": {
+      "A": 568,
+      "B": 862,
+      "C": 1168,
+      "D": 1408
+    }
+  },
+  {
+    "model": "9755",
+    "type": "Trophy",
+    "startingPrice": 462,
+    "sizes": {
+      "A": 462,
+      "B": 714,
+      "C": 974,
+      "D": 1184
+    }
+  },
+  {
+    "model": "9756",
+    "type": "Trophy",
+    "startingPrice": 742,
+    "sizes": {
+      "A": 742,
+      "B": 851,
+      "C": 1061
+    }
+  },
+  {
+    "model": "9757",
+    "type": "Trophy",
+    "startingPrice": 493,
+    "sizes": {
+      "A": 493,
+      "B": 571,
+      "C": 697
+    }
+  },
+  {
+    "model": "9758",
+    "type": "Trophy",
+    "startingPrice": 451,
+    "sizes": {
+      "A": 451,
+      "B": 529,
+      "C": 655
+    }
+  },
+  {
+    "model": "9759",
+    "type": "Trophy",
+    "startingPrice": 420,
+    "sizes": {
+      "A": 420,
+      "B": 498,
+      "C": 624
+    }
+  },
+  {
+    "model": "9760",
+    "type": "Trophy",
+    "startingPrice": 420,
+    "sizes": {
+      "A": 420,
+      "B": 498,
+      "C": 624
+    }
+  },
+  {
+    "model": "9764",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120
+    }
+  },
+  {
+    "model": "9765",
+    "type": "Trophy",
+    "startingPrice": 112,
+    "sizes": {
+      "A": 112,
+      "B": 120
+    }
+  },
+  {
+    "model": "9766",
+    "type": "Trophy",
+    "startingPrice": 123,
+    "sizes": {
+      "A": 123,
+      "B": 137,
+      "C": 162
+    }
+  },
+  {
+    "model": "9767",
+    "type": "Trophy",
+    "startingPrice": 123,
+    "sizes": {
+      "A": 123,
+      "B": 137,
+      "C": 162
+    }
+  },
+  {
+    "model": "9769",
+    "type": "Trophy",
+    "startingPrice": 378,
+    "sizes": {
+      "A": 378,
+      "B": 462,
+      "C": 554
+    }
+  },
+  {
+    "model": "9770",
+    "type": "Trophy",
+    "startingPrice": 305,
+    "sizes": {
+      "A": 305,
+      "B": 389,
+      "C": 482
+    }
+  },
+  {
+    "model": "9771",
+    "type": "Trophy",
+    "startingPrice": 336,
+    "sizes": {
+      "A": 336,
+      "B": 420,
+      "C": 512
+    }
+  },
+  {
+    "model": "9772",
+    "type": "Trophy",
+    "startingPrice": 168,
+    "sizes": {
+      "A": 168,
+      "B": 190,
+      "C": 241,
+      "D": 300
+    }
+  },
+  {
+    "model": "9773",
+    "type": "Trophy",
+    "startingPrice": 168,
+    "sizes": {
+      "A": 168,
+      "B": 190,
+      "C": 241,
+      "D": 288
+    }
+  },
+  {
+    "model": "9774",
+    "type": "Trophy",
+    "startingPrice": 109,
+    "sizes": {
+      "A": 109,
+      "B": 129,
+      "C": 174,
+      "D": 207
+    }
+  },
+  {
+    "model": "9775",
+    "type": "Trophy",
+    "startingPrice": 90,
+    "sizes": {
+      "A": 90,
+      "B": 104,
+      "C": 132
+    }
+  },
+  {
+    "model": "9776",
+    "type": "Trophy",
+    "startingPrice": 134,
+    "sizes": {
+      "A": 134,
+      "B": 168
+    }
+  },
+  {
+    "model": "9777",
+    "type": "Trophy",
+    "startingPrice": 143,
+    "sizes": {
+      "A": 143,
+      "B": 179
+    }
+  },
+  {
+    "model": "9778",
+    "type": "Trophy",
+    "startingPrice": 95,
+    "sizes": {
+      "A": 95,
+      "B": 104,
+      "C": 112,
+      "D": 140
+    }
+  },
+  {
+    "model": "9779",
+    "type": "Trophy",
+    "startingPrice": 95,
+    "sizes": {
+      "A": 95,
+      "B": 104,
+      "C": 112,
+      "D": 140
+    }
+  },
+  {
+    "model": "9780",
+    "type": "Trophy",
+    "startingPrice": 92,
+    "sizes": {
+      "A": 92,
+      "B": 109,
+      "C": 115,
+      "D": 143
+    }
+  },
+  {
+    "model": "9781",
+    "type": "Trophy",
+    "startingPrice": 84,
+    "sizes": {
+      "A": 84,
+      "B": 101,
+      "C": 104,
+      "D": 132
+    }
+  },
+  {
+    "model": "9782",
+    "type": "Trophy",
+    "startingPrice": 745,
+    "sizes": {
+      "A": 745,
+      "B": 1103,
+      "C": 1498
+    }
+  },
+  {
+    "model": "9783",
+    "type": "Trophy",
+    "startingPrice": 1250,
+    "sizes": {
+      "A": 1250,
+      "B": 1562,
+      "C": 1888
+    }
+  },
+  {
+    "model": "9784",
+    "type": "Trophy",
+    "startingPrice": 456,
+    "sizes": {
+      "A": 456,
+      "B": 479,
+      "C": 515
+    }
+  },
+  {
+    "model": "9785",
+    "type": "Trophy",
+    "startingPrice": 507,
+    "sizes": {
+      "A": 507,
+      "B": 568
+    }
+  },
+  {
+    "model": "9786",
+    "type": "Trophy",
+    "startingPrice": 403,
+    "sizes": {
+      "A": 403,
+      "B": 442
+    }
+  },
+  {
+    "model": "9787",
+    "type": "Trophy",
+    "startingPrice": 378,
+    "sizes": {
+      "A": 378
+    }
+  },
+  {
+    "model": "9788",
+    "type": "Trophy",
+    "startingPrice": 473,
+    "sizes": {
+      "A": 473,
+      "B": 479
+    }
+  },
+  {
+    "model": "9789",
+    "type": "Trophy",
+    "startingPrice": 507,
+    "sizes": {
+      "A": 507
+    }
+  },
+  {
+    "model": "9790",
+    "type": "Trophy",
+    "startingPrice": 479,
+    "sizes": {
+      "A": 479
+    }
+  },
+  {
+    "model": "9791",
+    "type": "Trophy",
+    "startingPrice": 434,
+    "sizes": {
+      "A": 434,
+      "B": 625,
+      "C": 865
+    }
+  },
+  {
+    "model": "9792",
+    "type": "Trophy",
+    "startingPrice": 81,
+    "sizes": {
+      "A": 81,
+      "B": 92,
+      "C": 101,
+      "D": 129
+    }
+  },
+  {
+    "model": "9793",
+    "type": "Trophy",
+    "startingPrice": 109,
+    "sizes": {
+      "A": 109
+    }
+  },
+  {
+    "model": "9794",
+    "type": "Trophy",
+    "startingPrice": 87,
+    "sizes": {
+      "A": 87,
+      "B": 101,
+      "C": 134
+    }
+  },
+  {
+    "model": "9795",
+    "type": "Trophy",
+    "startingPrice": 87,
+    "sizes": {
+      "A": 87,
+      "B": 101,
+      "C": 134
+    }
+  },
+  {
+    "model": "9796",
+    "type": "Trophy",
+    "startingPrice": 87,
+    "sizes": {
+      "A": 87,
+      "B": 115,
+      "C": 148
+    }
+  },
+  {
+    "model": "9797",
+    "type": "Trophy",
+    "startingPrice": 157,
+    "sizes": {
+      "A": 157,
+      "B": 182
+    }
+  },
+  {
+    "model": "9798",
+    "type": "Trophy",
+    "startingPrice": 174,
+    "sizes": {
+      "A": 174
+    }
+  },
+  {
+    "model": "9799",
+    "type": "Trophy",
+    "startingPrice": 162,
+    "sizes": {
+      "A": 162,
+      "B": 185,
+      "C": 221
+    }
+  },
+  {
+    "model": "9800",
+    "type": "Trophy",
+    "startingPrice": 0,
+    "sizes": {
+      "A": 0,
+      "B": 0,
+      "C": 0
+    }
+  },
+  {
+    "model": "9801",
+    "type": "Trophy",
+    "startingPrice": 1884,
+    "sizes": {
+      "A": 1884,
+      "B": 2187,
+      "C": 2789,
+      "D": 3385,
+      "E": 4337
+    }
+  },
+  {
+    "model": "9802",
+    "type": "Trophy",
+    "startingPrice": 1086,
+    "sizes": {
+      "A": 1086,
+      "B": 1389,
+      "C": 2097,
+      "D": 2752,
+      "E": 3704
+    }
+  },
+  {
+    "model": "9803",
+    "type": "Trophy",
+    "startingPrice": 918,
+    "sizes": {
+      "A": 918,
+      "B": 1221,
+      "C": 1767,
+      "D": 2293,
+      "E": 3245
+    }
+  },
+  {
+    "model": "9804",
+    "type": "Trophy",
+    "startingPrice": 1002,
+    "sizes": {
+      "A": 1002,
+      "B": 1305,
+      "C": 1851,
+      "D": 2377,
+      "E": 3329
+    }
+  },
+  {
+    "model": "9805",
+    "type": "Trophy",
+    "startingPrice": 694,
+    "sizes": {
+      "A": 694,
+      "B": 997,
+      "C": 1543,
+      "D": 2069,
+      "E": 3021
+    }
+  },
+  {
+    "model": "9806",
+    "type": "Trophy",
+    "startingPrice": 731,
+    "sizes": {
+      "A": 731,
+      "B": 932,
+      "C": 1352,
+      "D": 1828,
+      "E": 2624
+    }
+  },
+  {
+    "model": "9807",
+    "type": "Trophy",
+    "startingPrice": 815,
+    "sizes": {
+      "A": 815,
+      "B": 1016,
+      "C": 1436,
+      "D": 1912,
+      "E": 2708
+    }
+  },
+  {
+    "model": "9808",
+    "type": "Trophy",
+    "startingPrice": 507,
+    "sizes": {
+      "A": 507,
+      "B": 708,
+      "C": 1128,
+      "D": 1604,
+      "E": 2400
+    }
+  },
+  {
+    "model": "9809",
+    "type": "Trophy",
+    "startingPrice": 322,
+    "sizes": {
+      "A": 322,
+      "B": 476,
+      "C": 818,
+      "D": 1196,
+      "E": 1882
+    }
+  },
+  {
+    "model": "9810",
+    "type": "Trophy",
+    "startingPrice": 2139,
+    "sizes": {
+      "A": 2139,
+      "B": 2464,
+      "C": 3184,
+      "D": 3839,
+      "E": 4841
+    }
+  },
+  {
+    "model": "9811",
+    "type": "Trophy",
+    "startingPrice": 935,
+    "sizes": {
+      "A": 935,
+      "B": 1260,
+      "C": 1873,
+      "D": 2470,
+      "E": 3472
+    }
+  },
+  {
+    "model": "9812",
+    "type": "Trophy",
+    "startingPrice": 963,
+    "sizes": {
+      "A": 963,
+      "B": 1288,
+      "C": 1845,
+      "D": 2372,
+      "E": 3374
+    }
+  },
+  {
+    "model": "9813",
+    "type": "Trophy",
+    "startingPrice": 1047,
+    "sizes": {
+      "A": 1047,
+      "B": 1372,
+      "C": 1929,
+      "D": 2456,
+      "E": 3458
+    }
+  },
+  {
+    "model": "9814",
+    "type": "Trophy",
+    "startingPrice": 739,
+    "sizes": {
+      "A": 739,
+      "B": 1064,
+      "C": 1621,
+      "D": 2148,
+      "E": 3150
+    }
+  },
+  {
+    "model": "9815",
+    "type": "Trophy",
+    "startingPrice": 776,
+    "sizes": {
+      "A": 776,
+      "B": 1000,
+      "C": 1431,
+      "D": 1907,
+      "E": 2752
+    }
+  },
+  {
+    "model": "9816",
+    "type": "Trophy",
+    "startingPrice": 860,
+    "sizes": {
+      "A": 860,
+      "B": 1084,
+      "C": 1515,
+      "D": 1991,
+      "E": 2836
+    }
+  },
+  {
+    "model": "9817",
+    "type": "Trophy",
+    "startingPrice": 552,
+    "sizes": {
+      "A": 552,
+      "B": 776,
+      "C": 1207,
+      "D": 1683,
+      "E": 2528
+    }
+  },
+  {
+    "model": "9818",
+    "type": "Trophy",
+    "startingPrice": 367,
+    "sizes": {
+      "A": 367,
+      "B": 543,
+      "C": 896,
+      "D": 1274,
+      "E": 2010
+    }
+  },
+  {
+    "model": "9819",
+    "type": "Trophy",
+    "startingPrice": 4438,
+    "sizes": {
+      "A": 4438,
+      "B": 5334,
+      "C": 6104
+    }
+  },
+  {
+    "model": "9820",
+    "type": "Trophy",
+    "startingPrice": 5155,
+    "sizes": {
+      "A": 5155,
+      "B": 6149,
+      "C": 6849
+    }
+  },
+  {
+    "model": "9821",
+    "type": "Trophy",
+    "startingPrice": 4511,
+    "sizes": {
+      "A": 4511,
+      "B": 5603,
+      "C": 6499
+    }
+  },
+  {
+    "model": "9822",
+    "type": "Trophy",
+    "startingPrice": 5183,
+    "sizes": {
+      "A": 5183,
+      "B": 6429,
+      "C": 7325
+    }
+  },
+  {
+    "model": "9823",
+    "type": "Trophy",
+    "startingPrice": 1585,
+    "sizes": {
+      "A": 1585,
+      "B": 2080,
+      "C": 2870
+    }
+  },
+  {
+    "model": "9824",
+    "type": "Trophy",
+    "startingPrice": 1826,
+    "sizes": {
+      "A": 1826,
+      "B": 2321,
+      "C": 3111
+    }
+  },
+  {
+    "model": "9825",
+    "type": "Trophy",
+    "startingPrice": 2274,
+    "sizes": {
+      "A": 2274,
+      "B": 2923,
+      "C": 3713
+    }
+  },
+  {
+    "model": "9826",
+    "type": "Trophy",
+    "startingPrice": 560,
+    "sizes": {
+      "A": 560,
+      "B": 736,
+      "C": 904
+    }
+  },
+  {
+    "model": "9827",
+    "type": "Trophy",
+    "startingPrice": 507,
+    "sizes": {
+      "A": 507,
+      "B": 683,
+      "C": 851
+    }
+  },
+  {
+    "model": "9828",
+    "type": "Trophy",
+    "startingPrice": 137,
+    "sizes": {
+      "A": 137,
+      "B": 176,
+      "C": 238
+    }
+  },
+  {
+    "model": "9829",
+    "type": "Trophy",
+    "startingPrice": 95,
+    "sizes": {
+      "A": 95,
+      "B": 120,
+      "C": 151
+    }
+  },
+  {
+    "model": "9830",
+    "type": "Trophy",
+    "startingPrice": 95,
+    "sizes": {
+      "A": 95,
+      "B": 115,
+      "C": 157
+    }
+  },
+  {
+    "model": "9831",
+    "type": "Trophy",
+    "startingPrice": 101,
+    "sizes": {
+      "A": 101,
+      "B": 123,
+      "C": 162
+    }
+  },
+  {
+    "model": "9832",
+    "type": "Trophy",
+    "startingPrice": 748,
+    "sizes": {
+      "A": 748,
+      "B": 1117,
+      "C": 1851
+    }
+  },
+  {
+    "model": "9833",
+    "type": "Trophy",
+    "startingPrice": 249,
+    "sizes": {
+      "A": 249,
+      "B": 274,
+      "C": 325
+    }
+  },
+  {
+    "model": "9834",
+    "type": "Trophy",
+    "startingPrice": 176,
+    "sizes": {
+      "A": 176,
+      "B": 202,
+      "C": 252
+    }
+  },
+  {
+    "model": "9835",
+    "type": "Trophy",
+    "startingPrice": 176,
+    "sizes": {
+      "A": 176,
+      "B": 202,
+      "C": 252
+    }
+  },
+  {
+    "model": "9836",
+    "type": "Trophy",
+    "startingPrice": 115,
+    "sizes": {
+      "A": 115,
+      "B": 134,
+      "C": 171
+    }
+  },
+  {
+    "model": "9837",
+    "type": "Trophy",
+    "startingPrice": 249,
+    "sizes": {
+      "A": 249,
+      "B": 274,
+      "C": 325
+    }
+  },
+  {
+    "model": "9838",
+    "type": "Trophy",
+    "startingPrice": 176,
+    "sizes": {
+      "A": 176,
+      "B": 202,
+      "C": 252
+    }
+  },
+  {
+    "model": "9839",
+    "type": "Trophy",
+    "startingPrice": 176,
+    "sizes": {
+      "A": 176,
+      "B": 202,
+      "C": 252
+    }
+  },
+  {
+    "model": "9840",
+    "type": "Trophy",
+    "startingPrice": 115,
+    "sizes": {
+      "A": 115,
+      "B": 134,
+      "C": 171
+    }
+  },
+  {
+    "model": "9841",
+    "type": "Trophy",
+    "startingPrice": 3304,
+    "sizes": {
+      "A": 3304,
+      "B": 3906,
+      "C": 4824
+    }
+  },
+  {
+    "model": "9842",
+    "type": "Trophy",
+    "startingPrice": 3077,
+    "sizes": {
+      "A": 3077,
+      "B": 3662,
+      "C": 4502
+    }
+  },
+  {
+    "model": "9843",
+    "type": "Trophy",
+    "startingPrice": 3360,
+    "sizes": {
+      "A": 3360,
+      "B": 4088,
+      "C": 5054
+    }
+  },
+  {
+    "model": "9844",
+    "type": "Trophy",
+    "startingPrice": 3562,
+    "sizes": {
+      "A": 3562,
+      "B": 4631,
+      "C": 6121
+    }
+  },
+  {
+    "model": "9845",
+    "type": "Trophy",
+    "startingPrice": 3562,
+    "sizes": {
+      "A": 3562,
+      "B": 4631,
+      "C": 6121
+    }
+  },
+  {
+    "model": "9846",
+    "type": "Trophy",
+    "startingPrice": 2968,
+    "sizes": {
+      "A": 2968,
+      "B": 3895,
+      "C": 5230
+    }
+  },
+  {
+    "model": "9847",
+    "type": "Trophy",
+    "startingPrice": 2968,
+    "sizes": {
+      "A": 2968,
+      "B": 3895,
+      "C": 5230
+    }
+  },
+  {
+    "model": "9848",
+    "type": "Trophy",
+    "startingPrice": 571,
+    "sizes": {
+      "A": 571,
+      "B": 862,
+      "C": 1257,
+      "D": 1686,
+      "E": 2400
+    }
+  },
+  {
+    "model": "9849",
+    "type": "Trophy",
+    "startingPrice": 759,
+    "sizes": {
+      "A": 759,
+      "B": 1151,
+      "C": 1672,
+      "D": 2150,
+      "E": 3021
+    }
+  },
+  {
+    "model": "9850",
+    "type": "Trophy",
+    "startingPrice": 742,
+    "sizes": {
+      "A": 742,
+      "B": 1008,
+      "C": 1352,
+      "D": 1803,
+      "E": 2556
+    }
+  },
+  {
+    "model": "9851",
+    "type": "Trophy",
+    "startingPrice": 930,
+    "sizes": {
+      "A": 930,
+      "B": 1296,
+      "C": 1767,
+      "D": 2268,
+      "E": 3178
+    }
+  },
+  {
+    "model": "9852",
+    "type": "Trophy",
+    "startingPrice": 176,
+    "sizes": {
+      "A": 176,
+      "B": 244,
+      "C": 330
+    }
+  },
+  {
+    "model": "9853",
+    "type": "Trophy",
+    "startingPrice": 1929,
+    "sizes": {
+      "A": 1929,
+      "B": 2615,
+      "C": 3570
+    }
+  },
+  {
+    "model": "9854",
+    "type": "Trophy",
+    "startingPrice": 3147,
+    "sizes": {
+      "A": 3147,
+      "B": 4049,
+      "C": 5292
+    }
+  },
+  {
+    "model": "9855",
+    "type": "Trophy",
+    "startingPrice": 2839,
+    "sizes": {
+      "A": 2839,
+      "B": 3741,
+      "C": 4984
+    }
+  },
+  {
+    "model": "9856",
+    "type": "Trophy",
+    "startingPrice": 3245,
+    "sizes": {
+      "A": 3245,
+      "B": 4301,
+      "C": 5544
+    }
+  },
+  {
+    "model": "9857",
+    "type": "Trophy",
+    "startingPrice": 2626,
+    "sizes": {
+      "A": 2626,
+      "B": 3346,
+      "C": 4519
+    }
+  },
+  {
+    "model": "9858",
+    "type": "Trophy",
+    "startingPrice": 2318,
+    "sizes": {
+      "A": 2318,
+      "B": 3038,
+      "C": 4211
+    }
+  },
+  {
+    "model": "9859",
+    "type": "Trophy",
+    "startingPrice": 2724,
+    "sizes": {
+      "A": 2724,
+      "B": 3598,
+      "C": 4771
+    }
+  },
+  {
+    "model": "9860",
+    "type": "Trophy",
+    "startingPrice": 2764,
+    "sizes": {
+      "A": 2764,
+      "B": 4040,
+      "C": 5090
+    }
+  },
+  {
+    "model": "9861",
+    "type": "Trophy",
+    "startingPrice": 2537,
+    "sizes": {
+      "A": 2537,
+      "B": 3867,
+      "C": 4917
+    }
+  },
+  {
+    "model": "9862",
+    "type": "Trophy",
+    "startingPrice": 2946,
+    "sizes": {
+      "A": 2946,
+      "B": 4376,
+      "C": 5426
+    }
+  },
+  {
+    "model": "9863",
+    "type": "Trophy",
+    "startingPrice": 4273,
+    "sizes": {
+      "A": 4273,
+      "B": 4889,
+      "C": 5961
+    }
+  },
+  {
+    "model": "9864",
+    "type": "Trophy",
+    "startingPrice": 1008,
+    "sizes": {
+      "A": 1008,
+      "B": 1296,
+      "C": 1621
+    }
+  },
+  {
+    "model": "9865",
+    "type": "Trophy",
+    "startingPrice": 773,
+    "sizes": {
+      "A": 773,
+      "B": 1061,
+      "C": 1386
+    }
+  },
+  {
+    "model": "9866",
+    "type": "Trophy",
+    "startingPrice": 753,
+    "sizes": {
+      "A": 753,
+      "B": 1042,
+      "C": 1366
+    }
+  },
+  {
+    "model": "9867",
+    "type": "Trophy",
+    "startingPrice": 1061,
+    "sizes": {
+      "A": 1061,
+      "B": 1358,
+      "C": 1711
+    }
+  },
+  {
+    "model": "9868",
+    "type": "Trophy",
+    "startingPrice": 1145,
+    "sizes": {
+      "A": 1145,
+      "B": 1442,
+      "C": 1795
+    }
+  },
+  {
+    "model": "9869",
+    "type": "Trophy",
+    "startingPrice": 826,
+    "sizes": {
+      "A": 826,
+      "B": 1123,
+      "C": 1476
+    }
+  },
+  {
+    "model": "9870",
+    "type": "Trophy",
+    "startingPrice": 806,
+    "sizes": {
+      "A": 806,
+      "B": 1103,
+      "C": 1456
+    }
+  },
+  {
+    "model": "9871",
+    "type": "Trophy",
+    "startingPrice": 703,
+    "sizes": {
+      "A": 703,
+      "B": 924,
+      "C": 1162
+    }
+  },
+  {
+    "model": "9872",
+    "type": "Trophy",
+    "startingPrice": 417,
+    "sizes": {
+      "A": 417,
+      "B": 599,
+      "C": 874
+    }
+  },
+  {
+    "model": "9873",
+    "type": "Trophy",
+    "startingPrice": 4183,
+    "sizes": {
+      "A": 4183,
+      "B": 5312,
+      "C": 7283
+    }
+  },
+  {
+    "model": "9874",
+    "type": "Trophy",
+    "startingPrice": 4623,
+    "sizes": {
+      "A": 4623,
+      "B": 5852,
+      "C": 7823
+    }
+  },
+  {
+    "model": "9875",
+    "type": "Trophy",
+    "startingPrice": 4379,
+    "sizes": {
+      "A": 4379,
+      "B": 5552,
+      "C": 7414
+    }
+  },
+  {
+    "model": "9876",
+    "type": "Trophy",
+    "startingPrice": 4819,
+    "sizes": {
+      "A": 4819,
+      "B": 6093,
+      "C": 7955
+    }
+  },
+  {
+    "model": "9877",
+    "type": "Trophy",
+    "startingPrice": 3500,
+    "sizes": {
+      "A": 3500,
+      "B": 4763,
+      "C": 6420
+    }
+  },
+  {
+    "model": "9878",
+    "type": "Trophy",
+    "startingPrice": 3940,
+    "sizes": {
+      "A": 3940,
+      "B": 5303,
+      "C": 6961
+    }
+  },
+  {
+    "model": "9879",
+    "type": "Trophy",
+    "startingPrice": 4113,
+    "sizes": {
+      "A": 4113,
+      "B": 5454,
+      "C": 6840
+    }
+  },
+  {
+    "model": "9880",
+    "type": "Trophy",
+    "startingPrice": 4553,
+    "sizes": {
+      "A": 4553,
+      "B": 5995,
+      "C": 7381
+    }
+  },
+  {
+    "model": "9881",
+    "type": "Trophy",
+    "startingPrice": 4228,
+    "sizes": {
+      "A": 4228,
+      "B": 5471,
+      "C": 6966
+    }
+  },
+  {
+    "model": "9882",
+    "type": "Trophy",
+    "startingPrice": 4144,
+    "sizes": {
+      "A": 4144,
+      "B": 5387,
+      "C": 6882
+    }
+  },
+  {
+    "model": "9883",
+    "type": "Trophy",
+    "startingPrice": 4424,
+    "sizes": {
+      "A": 4424,
+      "B": 5712,
+      "C": 7098
+    }
+  },
+  {
+    "model": "9884",
+    "type": "Trophy",
+    "startingPrice": 4340,
+    "sizes": {
+      "A": 4340,
+      "B": 5628,
+      "C": 7014
+    }
+  },
+  {
+    "model": "9885",
+    "type": "Trophy",
+    "startingPrice": 81,
+    "sizes": {
+      "A": 81,
+      "B": 92,
+      "C": 101,
+      "D": 126
+    }
+  },
+  {
+    "model": "9886",
+    "type": "Trophy",
+    "startingPrice": 87,
+    "sizes": {
+      "A": 87,
+      "B": 98,
+      "C": 126
+    }
+  },
+  {
+    "model": "9887",
+    "type": "Trophy",
+    "startingPrice": 818,
+    "sizes": {
+      "A": 818,
+      "B": 1025,
+      "C": 1246
+    }
+  },
+  {
+    "model": "9888",
+    "type": "Trophy",
+    "startingPrice": 1005,
+    "sizes": {
+      "A": 1005,
+      "B": 1313,
+      "C": 1660
+    }
+  },
+  {
+    "model": "9889",
+    "type": "Trophy",
+    "startingPrice": 2142,
+    "sizes": {
+      "A": 2142,
+      "B": 2422,
+      "C": 2716
+    }
+  },
+  {
+    "model": "9890",
+    "type": "Trophy",
+    "startingPrice": 6241,
+    "sizes": {
+      "A": 6241,
+      "B": 7493,
+      "C": 8291
+    }
+  },
+  {
+    "model": "9891",
+    "type": "Trophy",
+    "startingPrice": 3612,
+    "sizes": {
+      "A": 3612,
+      "B": 4270,
+      "C": 4998
+    }
+  },
+  {
+    "model": "9892",
+    "type": "Trophy",
+    "startingPrice": 5642,
+    "sizes": {
+      "A": 5642,
+      "B": 7420,
+      "C": 8890
+    }
+  },
+  {
+    "model": "9893",
+    "type": "Trophy",
+    "startingPrice": 10220,
+    "sizes": {
+      "A": 10220,
+      "B": 12460,
+      "C": 17710,
+      "D": 20300
+    }
+  },
+  {
+    "model": "9894",
+    "type": "Trophy",
+    "startingPrice": 9310,
+    "sizes": {
+      "A": 9310,
+      "B": 11480,
+      "C": 14420
+    }
+  },
+  {
+    "model": "9895",
+    "type": "Trophy",
+    "startingPrice": 8834,
+    "sizes": {
+      "A": 8834,
+      "B": 10836,
+      "C": 12558
+    }
+  },
+  {
+    "model": "9896",
+    "type": "Trophy",
+    "startingPrice": 2330,
+    "sizes": {
+      "A": 2330,
+      "B": 2965,
+      "C": 4617
+    }
+  },
+  {
+    "model": "9897",
+    "type": "Trophy",
+    "startingPrice": 1187,
+    "sizes": {
+      "A": 1187,
+      "B": 1711,
+      "C": 2646
+    }
+  },
+  {
+    "model": "9898",
+    "type": "Trophy",
+    "startingPrice": 437,
+    "sizes": {
+      "A": 437,
+      "B": 498,
+      "C": 571
+    }
+  },
+  {
+    "model": "9899",
+    "type": "Trophy",
+    "startingPrice": 269,
+    "sizes": {
+      "A": 269,
+      "B": 319,
+      "C": 364
+    }
+  },
+  {
+    "model": "9900",
+    "type": "Trophy",
+    "startingPrice": 196,
+    "sizes": {
+      "A": 196,
+      "B": 246,
+      "C": 291
+    }
+  },
+  {
+    "model": "9901",
+    "type": "Trophy",
+    "startingPrice": 196,
+    "sizes": {
+      "A": 196,
+      "B": 246,
+      "C": 291
+    }
+  },
+  {
+    "model": "9902",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120,
+      "B": 137,
+      "C": 179
+    }
+  },
+  {
+    "model": "9903",
+    "type": "Trophy",
+    "startingPrice": 146,
+    "sizes": {
+      "A": 146,
+      "B": 196,
+      "C": 277
+    }
+  },
+  {
+    "model": "9904",
+    "type": "Trophy",
+    "startingPrice": 106,
+    "sizes": {
+      "A": 106,
+      "B": 132,
+      "C": 171
+    }
+  },
+  {
+    "model": "9905",
+    "type": "Trophy",
+    "startingPrice": 132,
+    "sizes": {
+      "A": 132,
+      "B": 179
+    }
+  },
+  {
+    "model": "9906",
+    "type": "Trophy",
+    "startingPrice": 2159,
+    "sizes": {
+      "A": 2159,
+      "B": 2439,
+      "C": 2853
+    }
+  },
+  {
+    "model": "9907",
+    "type": "Trophy",
+    "startingPrice": 218,
+    "sizes": {
+      "A": 218,
+      "B": 260
+    }
+  },
+  {
+    "model": "9908",
+    "type": "Trophy",
+    "startingPrice": 129,
+    "sizes": {
+      "A": 129,
+      "B": 160
+    }
+  },
+  {
+    "model": "9909",
+    "type": "Trophy",
+    "startingPrice": 367,
+    "sizes": {
+      "A": 367,
+      "B": 403,
+      "C": 459
+    }
+  },
+  {
+    "model": "9910",
+    "type": "Trophy",
+    "startingPrice": 188,
+    "sizes": {
+      "A": 188,
+      "B": 199,
+      "C": 224
+    }
+  },
+  {
+    "model": "9911",
+    "type": "Trophy",
+    "startingPrice": 848,
+    "sizes": {
+      "A": 848,
+      "B": 1056,
+      "C": 1576
+    }
+  },
+  {
+    "model": "9912",
+    "type": "Trophy",
+    "startingPrice": 661,
+    "sizes": {
+      "A": 661,
+      "B": 812,
+      "C": 974
+    }
+  },
+  {
+    "model": "9913",
+    "type": "Trophy",
+    "startingPrice": 692,
+    "sizes": {
+      "A": 692,
+      "B": 843,
+      "C": 1005
+    }
+  },
+  {
+    "model": "9914",
+    "type": "Trophy",
+    "startingPrice": 734,
+    "sizes": {
+      "A": 734,
+      "B": 885,
+      "C": 1047
+    }
+  },
+  {
+    "model": "9915",
+    "type": "Trophy",
+    "startingPrice": 994,
+    "sizes": {
+      "A": 994,
+      "B": 1518,
+      "C": 2377
+    }
+  },
+  {
+    "model": "9916",
+    "type": "Trophy",
+    "startingPrice": 1014,
+    "sizes": {
+      "A": 1014,
+      "B": 1537,
+      "C": 2397
+    }
+  },
+  {
+    "model": "9917",
+    "type": "Trophy",
+    "startingPrice": 115,
+    "sizes": {
+      "A": 115,
+      "B": 157,
+      "C": 210
+    }
+  },
+  {
+    "model": "9918",
+    "type": "Trophy",
+    "startingPrice": 269,
+    "sizes": {
+      "A": 269,
+      "B": 325,
+      "C": 392
+    }
+  },
+  {
+    "model": "9919",
+    "type": "Trophy",
+    "startingPrice": 843,
+    "sizes": {
+      "A": 843,
+      "B": 896,
+      "C": 1134
+    }
+  },
+  {
+    "model": "9920",
+    "type": "Trophy",
+    "startingPrice": 549,
+    "sizes": {
+      "A": 549,
+      "B": 602,
+      "C": 826
+    }
+  },
+  {
+    "model": "9921",
+    "type": "Trophy",
+    "startingPrice": 286,
+    "sizes": {
+      "A": 286,
+      "B": 339,
+      "C": 423
+    }
+  },
+  {
+    "model": "9922",
+    "type": "Trophy",
+    "startingPrice": 983,
+    "sizes": {
+      "A": 983,
+      "B": 1075,
+      "C": 1324
+    }
+  },
+  {
+    "model": "9923",
+    "type": "Trophy",
+    "startingPrice": 692,
+    "sizes": {
+      "A": 692,
+      "B": 784,
+      "C": 1019
+    }
+  },
+  {
+    "model": "9924",
+    "type": "Trophy",
+    "startingPrice": 3494,
+    "sizes": {
+      "A": 3494,
+      "B": 3956,
+      "C": 4659
+    }
+  },
+  {
+    "model": "9925",
+    "type": "Trophy",
+    "startingPrice": 812,
+    "sizes": {
+      "A": 812,
+      "B": 1123,
+      "C": 1568
+    }
+  },
+  {
+    "model": "9926",
+    "type": "Trophy",
+    "startingPrice": 812,
+    "sizes": {
+      "A": 812,
+      "B": 1123,
+      "C": 1568
+    }
+  },
+  {
+    "model": "9927",
+    "type": "Trophy",
+    "startingPrice": 174,
+    "sizes": {
+      "A": 174
+    }
+  },
+  {
+    "model": "9928",
+    "type": "Trophy",
+    "startingPrice": 174,
+    "sizes": {
+      "A": 174
+    }
+  },
+  {
+    "model": "9929",
+    "type": "Trophy",
+    "startingPrice": 101,
+    "sizes": {
+      "A": 101,
+      "B": 134
+    }
+  },
+  {
+    "model": "9930",
+    "type": "Trophy",
+    "startingPrice": 193,
+    "sizes": {
+      "A": 193
+    }
+  },
+  {
+    "model": "9931",
+    "type": "Trophy",
+    "startingPrice": 193,
+    "sizes": {
+      "A": 193
+    }
+  },
+  {
+    "model": "9932",
+    "type": "Trophy",
+    "startingPrice": 193,
+    "sizes": {
+      "A": 193
+    }
+  },
+  {
+    "model": "9933",
+    "type": "Trophy",
+    "startingPrice": 171,
+    "sizes": {
+      "A": 171
+    }
+  },
+  {
+    "model": "9934",
+    "type": "Trophy",
+    "startingPrice": 157,
+    "sizes": {
+      "A": 157
+    }
+  },
+  {
+    "model": "9935",
+    "type": "Trophy",
+    "startingPrice": 227,
+    "sizes": {
+      "A": 227
+    }
+  },
+  {
+    "model": "9936",
+    "type": "Trophy",
+    "startingPrice": 711,
+    "sizes": {
+      "A": 711,
+      "B": 759,
+      "C": 806
+    }
+  },
+  {
+    "model": "9937",
+    "type": "Trophy",
+    "startingPrice": 364,
+    "sizes": {
+      "A": 364,
+      "B": 375,
+      "C": 400
+    }
+  },
+  {
+    "model": "9938",
+    "type": "Trophy",
+    "startingPrice": 2786,
+    "sizes": {
+      "A": 2786,
+      "B": 3318,
+      "C": 3794
+    }
+  },
+  {
+    "model": "9939",
+    "type": "Trophy",
+    "startingPrice": 3805,
+    "sizes": {
+      "A": 3805,
+      "B": 4351,
+      "C": 4953
+    }
+  },
+  {
+    "model": "9940",
+    "type": "Trophy",
+    "startingPrice": 949,
+    "sizes": {
+      "A": 949
+    }
+  },
+  {
+    "model": "9941",
+    "type": "Trophy",
+    "startingPrice": 120,
+    "sizes": {
+      "A": 120,
+      "B": 165,
+      "C": 218
+    }
+  },
+  {
+    "model": "9942",
+    "type": "Trophy",
+    "startingPrice": 1319,
+    "sizes": {
+      "A": 1319,
+      "B": 1747,
+      "C": 2139
+    }
+  },
+  {
+    "model": "9943",
+    "type": "Trophy",
+    "startingPrice": 1095,
+    "sizes": {
+      "A": 1095,
+      "B": 1523,
+      "C": 1915
+    }
+  },
+  {
+    "model": "9944",
+    "type": "Trophy",
+    "startingPrice": 728,
+    "sizes": {
+      "A": 728,
+      "B": 1025,
+      "C": 1336
+    }
+  },
+  {
+    "model": "9945",
+    "type": "Trophy",
+    "startingPrice": 708,
+    "sizes": {
+      "A": 708,
+      "B": 1005,
+      "C": 1316
+    }
+  },
+  {
+    "model": "9946",
+    "type": "Trophy",
+    "startingPrice": 1148,
+    "sizes": {
+      "A": 1148,
+      "B": 1646,
+      "C": 2055
+    }
+  },
+  {
+    "model": "9947",
+    "type": "Trophy",
+    "startingPrice": 924,
+    "sizes": {
+      "A": 924,
+      "B": 1422,
+      "C": 1831
+    }
+  },
+  {
+    "model": "9948",
+    "type": "Trophy",
+    "startingPrice": 610,
+    "sizes": {
+      "A": 610,
+      "B": 983,
+      "C": 1341
+    }
+  },
+  {
+    "model": "9949",
+    "type": "Trophy",
+    "startingPrice": 591,
+    "sizes": {
+      "A": 591,
+      "B": 963,
+      "C": 1322
+    }
+  },
+  {
+    "model": "9950",
+    "type": "Trophy",
+    "startingPrice": 1095,
+    "sizes": {
+      "A": 1095,
+      "B": 1585,
+      "C": 1966
+    }
+  },
+  {
+    "model": "9951",
+    "type": "Trophy",
+    "startingPrice": 871,
+    "sizes": {
+      "A": 871,
+      "B": 1361,
+      "C": 1742
+    }
+  },
+  {
+    "model": "9952",
+    "type": "Trophy",
+    "startingPrice": 566,
+    "sizes": {
+      "A": 566,
+      "B": 930,
+      "C": 1260
+    }
+  },
+  {
+    "model": "9953",
+    "type": "Trophy",
+    "startingPrice": 538,
+    "sizes": {
+      "A": 538,
+      "B": 902,
+      "C": 1232
+    }
+  },
+  {
+    "model": "9954",
+    "type": "Trophy",
+    "startingPrice": 78,
+    "sizes": {
+      "A": 78,
+      "B": 92,
+      "C": 118
+    }
+  },
+  {
+    "model": "9955",
+    "type": "Trophy",
+    "startingPrice": 2730,
+    "sizes": {
+      "A": 2730,
+      "B": 3290,
+      "C": 3850
+    }
+  },
+  {
+    "model": "9956",
+    "type": "Trophy",
+    "startingPrice": 2730,
+    "sizes": {
+      "A": 2730,
+      "B": 3290,
+      "C": 3850,
+      "D": 4690
+    }
+  },
+  {
+    "model": "9957",
+    "type": "Trophy",
+    "startingPrice": 2730,
+    "sizes": {
+      "A": 2730,
+      "B": 3290,
+      "C": 3850,
+      "D": 4690
+    }
+  },
+  {
+    "model": "9958",
+    "type": "Trophy",
+    "startingPrice": 2730,
+    "sizes": {
+      "A": 2730,
+      "B": 3290,
+      "C": 3850,
+      "D": 4690
+    }
+  },
+  {
+    "model": "9959",
+    "type": "Trophy",
+    "startingPrice": 2730,
+    "sizes": {
+      "A": 2730,
+      "B": 3290,
+      "C": 3850,
+      "D": 4690
+    }
+  },
+  {
+    "model": "9960",
+    "type": "Trophy",
+    "startingPrice": 2730,
+    "sizes": {
+      "A": 2730,
+      "B": 3290,
+      "C": 3850,
+      "D": 4690
+    }
+  },
+  {
+    "model": "9961",
+    "type": "Trophy",
+    "startingPrice": 2730,
+    "sizes": {
+      "A": 2730,
+      "B": 3290,
+      "C": 3850,
+      "D": 4690
+    }
+  },
+  {
+    "model": "9962",
+    "type": "Trophy",
+    "startingPrice": 748,
+    "sizes": {
+      "A": 748,
+      "B": 801,
+      "C": 907
+    }
+  },
+  {
+    "model": "9963",
+    "type": "Trophy",
+    "startingPrice": 496,
+    "sizes": {
+      "A": 496,
+      "B": 549,
+      "C": 655
+    }
+  },
+  {
+    "model": "9964",
+    "type": "Trophy",
+    "startingPrice": 470,
+    "sizes": {
+      "A": 470,
+      "B": 524,
+      "C": 630
+    }
+  },
+  {
+    "model": "9965",
+    "type": "Trophy",
+    "startingPrice": 1070,
+    "sizes": {
+      "A": 1070,
+      "B": 1501,
+      "C": 1859
+    }
+  },
+  {
+    "model": "9966",
+    "type": "Trophy",
+    "startingPrice": 832,
+    "sizes": {
+      "A": 832,
+      "B": 1263,
+      "C": 1621
+    }
+  },
+  {
+    "model": "9967",
+    "type": "Trophy",
+    "startingPrice": 269,
+    "sizes": {
+      "A": 269,
+      "B": 288,
+      "C": 358
+    }
+  },
+  {
+    "model": "9968",
+    "type": "Trophy",
+    "startingPrice": 196,
+    "sizes": {
+      "A": 196,
+      "B": 216,
+      "C": 286
+    }
+  },
+  {
+    "model": "9969",
+    "type": "Trophy",
+    "startingPrice": 196,
+    "sizes": {
+      "A": 196,
+      "B": 216,
+      "C": 286
+    }
+  },
+  {
+    "model": "9970",
+    "type": "Trophy",
+    "startingPrice": 468,
+    "sizes": {
+      "A": 468,
+      "B": 543,
+      "C": 627,
+      "D": 753
+    }
+  },
+  {
+    "model": "9971",
+    "type": "Trophy",
+    "startingPrice": 246,
+    "sizes": {
+      "A": 246,
+      "B": 302,
+      "C": 381,
+      "D": 476
+    }
+  },
+  {
+    "model": "9972",
+    "type": "Trophy",
+    "startingPrice": 227,
+    "sizes": {
+      "A": 227,
+      "B": 283,
+      "C": 361,
+      "D": 456
+    }
+  },
+  {
+    "model": "9973",
+    "type": "Trophy",
+    "startingPrice": 280,
+    "sizes": {
+      "A": 280,
+      "B": 350,
+      "C": 414
+    }
+  },
+  {
+    "model": "9974",
+    "type": "Trophy",
+    "startingPrice": 280,
+    "sizes": {
+      "A": 280,
+      "B": 350,
+      "C": 414
+    }
+  },
+  {
+    "model": "9975",
+    "type": "Trophy",
+    "startingPrice": 367,
+    "sizes": {
+      "A": 367,
+      "B": 395,
+      "C": 454
+    }
+  },
+  {
+    "model": "9976",
+    "type": "Trophy",
+    "startingPrice": 294,
+    "sizes": {
+      "A": 294,
+      "B": 322,
+      "C": 381
+    }
+  },
+  {
+    "model": "9977",
+    "type": "Trophy",
+    "startingPrice": 381,
+    "sizes": {
+      "A": 381,
+      "B": 420,
+      "C": 482
+    }
+  },
+  {
+    "model": "9978",
+    "type": "Trophy",
+    "startingPrice": 308,
+    "sizes": {
+      "A": 308,
+      "B": 347,
+      "C": 409
+    }
+  },
+  {
+    "model": "9979",
+    "type": "Trophy",
+    "startingPrice": 308,
+    "sizes": {
+      "A": 308,
+      "B": 347,
+      "C": 409
+    }
+  },
+  {
+    "model": "9980",
+    "type": "Trophy",
+    "startingPrice": 4180,
+    "sizes": {
+      "A": 4180,
+      "B": 5272,
+      "C": 6728
+    }
+  },
+  {
+    "model": "9981",
+    "type": "Trophy",
+    "startingPrice": 8750,
+    "sizes": {
+      "A": 8750,
+      "B": 10570,
+      "C": 14266
+    }
+  },
+  {
+    "model": "9982",
+    "type": "Trophy",
+    "startingPrice": 3066,
+    "sizes": {
+      "A": 3066,
+      "B": 3626,
+      "C": 4186,
+      "D": 5026
+    }
+  },
+  {
+    "model": "9983",
+    "type": "Trophy",
+    "startingPrice": 6720,
+    "sizes": {
+      "A": 6720,
+      "B": 8890,
+      "C": 10696
+    }
+  },
+  {
+    "model": "9984",
+    "type": "Trophy",
+    "startingPrice": 98,
+    "sizes": {
+      "A": 98,
+      "B": 104,
+      "C": 132
+    }
+  },
+  {
+    "model": "9985",
+    "type": "Trophy",
+    "startingPrice": 7350,
+    "sizes": {
+      "A": 7350,
+      "B": 8610,
+      "C": 9982
+    }
+  },
+  {
+    "model": "9986",
+    "type": "Trophy",
+    "startingPrice": 3710,
+    "sizes": {
+      "A": 3710,
+      "B": 6706,
+      "C": 8260
+    }
+  },
+  {
+    "model": "9987",
+    "type": "Trophy",
+    "startingPrice": 2366,
+    "sizes": {
+      "A": 2366,
+      "B": 3262,
+      "C": 3990,
+      "D": 5026
+    }
+  },
+  {
+    "model": "9988",
+    "type": "Trophy",
+    "startingPrice": 2965,
+    "sizes": {
+      "A": 2965,
+      "B": 3780,
+      "C": 4998
+    }
+  },
+  {
+    "model": "9989",
+    "type": "Trophy",
+    "startingPrice": 7238,
+    "sizes": {
+      "A": 7238,
+      "B": 10542,
+      "C": 14434
+    }
+  },
+  {
+    "model": "9990",
+    "type": "Trophy",
+    "startingPrice": 3816,
+    "sizes": {
+      "A": 3816,
+      "B": 4777,
+      "C": 6110
+    }
+  },
+  {
+    "model": "9991",
+    "type": "Trophy",
+    "startingPrice": 2906,
+    "sizes": {
+      "A": 2906,
+      "B": 3716,
+      "C": 4743
+    }
+  },
+  {
+    "model": "9992",
+    "type": "Trophy",
+    "startingPrice": 658,
+    "sizes": {
+      "A": 658,
+      "B": 930,
+      "C": 1232
+    }
+  },
+  {
+    "model": "9993",
+    "type": "Trophy",
+    "startingPrice": 658,
+    "sizes": {
+      "A": 658,
+      "B": 930,
+      "C": 1232
+    }
+  },
+  {
+    "model": "9994",
+    "type": "Trophy",
+    "startingPrice": 577,
+    "sizes": {
+      "A": 577,
+      "B": 776,
+      "C": 1064
+    }
+  },
+  {
+    "model": "9995",
+    "type": "Trophy",
+    "startingPrice": 255,
+    "sizes": {
+      "A": 255,
+      "B": 297,
+      "C": 347
+    }
+  },
+  {
+    "model": "9996",
+    "type": "Trophy",
+    "startingPrice": 255,
+    "sizes": {
+      "A": 255,
+      "B": 319,
+      "C": 344
+    }
+  },
+  {
+    "model": "9997",
+    "type": "Trophy",
+    "startingPrice": 350,
+    "sizes": {
+      "A": 350,
+      "B": 375,
+      "C": 428
+    }
+  },
+  {
+    "model": "9998",
+    "type": "Trophy",
+    "startingPrice": 333,
+    "sizes": {
+      "A": 333,
+      "B": 361,
+      "C": 403
+    }
+  },
+  {
+    "model": "9999",
+    "type": "Trophy",
+    "startingPrice": 1033,
+    "sizes": {
+      "A": 1033,
+      "B": 1397,
+      "C": 1806
+    }
+  }
+]

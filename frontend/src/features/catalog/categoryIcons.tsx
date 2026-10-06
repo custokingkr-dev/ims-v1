@@ -1,6 +1,6 @@
 import {
   Award, Bookmark, ClipboardList, Flag, HeartPulse, IdCard, Image, MessageSquare, Notebook,
-  Package, PartyPopper, PencilRuler, ReceiptText, Ribbon, Shirt, SprayCan, Utensils,
+  Package, PartyPopper, PencilRuler, ReceiptText, Ribbon, Shirt, SprayCan, Trophy, Utensils,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -14,6 +14,7 @@ import {
  */
 const ICONS: Record<string, LucideIcon> = {
   NOTEBOOKS: Notebook,
+  TROPHIES: Trophy,
   BILLBOOKS: ReceiptText,
   CERTIFICATES: Award,
   REPORT_CARDS: ClipboardList,

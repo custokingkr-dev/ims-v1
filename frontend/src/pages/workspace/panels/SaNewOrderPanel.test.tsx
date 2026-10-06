@@ -2,14 +2,16 @@ import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-li
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SaNewOrderPanel } from './SaNewOrderPanel';
 import api from '../../../services/api';
-import { notebookDefinition as definition } from '../../../features/catalog/catalogTestFixtures';
+import { notebookDefinition as definition, trophyDefinition } from '../../../features/catalog/catalogTestFixtures';
 
 vi.mock('../../../services/api');
+vi.mock('../../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
 
 // Every category whose form is enabled must be orderable. The tile list used to be a hardcoded
 // array, so the four categories added on 2026-09-23 (flex, flier, bill book, belt) were seeded in
 // the database and reachable over the API but had no tile to click.
 const categories = [
+  trophyDefinition.category,
   { code: 'NOTEBOOKS', label: 'Notebooks', emoji: '📓', description: 'Ruled, plain, graph', orderType: 'Recurring', formEnabled: true, sortOrder: 1, active: true },
   { code: 'BILLBOOKS', label: 'Bill books', emoji: '🧾', description: 'A3/A4/A5 carbonless', orderType: 'One-time', formEnabled: true, sortOrder: 2, active: true },
   { code: 'BELTS', label: 'Belts', emoji: '🎗', description: 'Cloth and satin belts', orderType: 'Recurring', formEnabled: true, sortOrder: 3, active: true },
@@ -32,6 +34,15 @@ function mockApi(forms: Record<string, unknown> = {}) {
 describe('SaNewOrderPanel category tiles', () => {
   beforeEach(() => vi.mocked(api.get).mockReset());
   afterEach(() => cleanup());
+
+  it('offers Trophies and opens its picker after choosing the order school', async () => {
+    mockApi({ TROPHIES: trophyDefinition });
+    render(<SaNewOrderPanel onOrderCreated={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: /Trophies by model and size/ }));
+    expect(await screen.findByText('Select a school to begin this order.')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('School'), { target: { value: '7' } });
+    expect(await screen.findByRole('region', { name: 'Trophy catalogue' })).toBeInTheDocument();
+  });
 
   it('offers a tile for every form-enabled category the API returns', async () => {
     mockApi();

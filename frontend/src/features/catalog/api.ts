@@ -33,7 +33,7 @@ export function parseProductFormDefinition(value: unknown): FormDefinition {
       && (rule.message == null || typeof rule.message === 'string'))
     && Array.isArray(value.dependencies) && value.dependencies.every((dependency: unknown) => isRecord(dependency)
       && typeof dependency.parentOptionId === 'number' && typeof dependency.childOptionId === 'number' && typeof dependency.allowed === 'boolean');
-  if (!valid) throw new Error('Notebook options could not be read. Please retry.');
+  if (!valid) throw new Error('Product options could not be read. Please retry.');
   return value as unknown as FormDefinition;
 }
 function isSelections(value: unknown): boolean {

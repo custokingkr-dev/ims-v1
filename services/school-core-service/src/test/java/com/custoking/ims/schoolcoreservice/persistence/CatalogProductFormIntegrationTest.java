@@ -51,6 +51,17 @@ class CatalogProductFormIntegrationTest {
     @AfterAll static void stop() { if (pg != null) pg.stop(); }
 
     // The 2026-09-23 prototype lists "King" with no dimensions and "Jumbo King - 19x26 cm".
+    @Test
+    void trophiesHaveAllReviewedVariantsAndCanBeManagedLikeOtherCategories() {
+        var definition = repository.form("TROPHIES", false);
+        assertTrue(Boolean.TRUE.equals(map(definition.get("category")).get("formEnabled")));
+        assertEquals(false, map(definition.get("category")).get("paged"));
+        var variants = maps(group(definition, "VARIANT").get("options"));
+        assertEquals(2420, variants.size());
+        assertTrue(variants.stream().anyMatch(option -> "T_9001_AA".equals(option.get("code"))));
+        transaction.execute(status -> repository.update("categories", "TROPHIES", Map.of("formEnabled", true)));
+    }
+
     // V11 read that as King being 19x26 and confirmed it, which both invented a spec for King and
     // duplicated Jumbo King's. An option with no agreed size must stay visible but unorderable.
     @Test
@@ -123,7 +134,7 @@ class CatalogProductFormIntegrationTest {
         // Which categories collect a note is asserted by the later decision's own test; here it is
         // enough that it is a deliberate subset rather than every category, which is what it was.
         for (var category : repository.categories(false)) {
-            boolean expected = java.util.Set.of("FLIERS", "BILLBOOKS").contains(String.valueOf(category.get("code")));
+            boolean expected = java.util.Set.of("FLIERS", "BILLBOOKS", "TROPHIES").contains(String.valueOf(category.get("code")));
             assertEquals(expected, Boolean.TRUE.equals(category.get("notesEnabled")),
                     "notesEnabled for " + category.get("code"));
         }
@@ -234,14 +245,14 @@ class CatalogProductFormIntegrationTest {
         var withNotes = repository.categories(false).stream()
                 .filter(c -> Boolean.TRUE.equals(c.get("notesEnabled")))
                 .map(c -> String.valueOf(c.get("code"))).sorted().toList();
-        assertEquals(List.of("BILLBOOKS", "FLIERS"), withNotes);
+        assertEquals(List.of("BILLBOOKS", "FLIERS", "TROPHIES"), withNotes);
     }
 
     @Test
     void seedContainsAllConfirmedOptionsAndFourRules() {
         var definition = repository.form("NOTEBOOKS", false);
-        // Fourteen: ties, certificates and report cards were all seeded on 2026-09-25.
-        assertEquals(14, repository.categories(false).size());
+        // Trophies extend the fourteen existing categories without changing notebook options.
+        assertEquals(15, repository.categories(false).size());
         assertTrue(Boolean.TRUE.equals(definition.get("enabled")));
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());
