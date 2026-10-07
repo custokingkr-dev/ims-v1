@@ -1,0 +1,13 @@
+{
+  "project": "custoking-dev",
+  "sourceInstance": "custoking-db-dev",
+  "capturedAtUtc": "2026-10-07T18:28:16.608160+00:00",
+  "readOnly": true,
+  "databaseConnectionPerformed": false,
+  "cloneVerified": false,
+  "sourceLineageVerified": false,
+  "certificateOrAddressLogged": false,
+  "productionChanged": false,
+  "status": "DEV_SOURCE_METADATA_API_SHAPE_PASS",
+  "uniqueInternalCaAndPrivateAddressAccepted": true
+}

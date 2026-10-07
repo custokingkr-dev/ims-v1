@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "sourceHeadSha": "62777c1889609a7ca3518098f134759f40c19e1a",
+  "releaseRunId": 37666279301,
+  "capturedAtUtc": "2026-10-07T19:15:20.808419+00:00",
+  "success": true,
+  "negativeAuthorization": {
+    "requests": 15,
+    "cases": [
+      {
+        "service": "identity-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_internal_machine",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "case": "anonymous_protected_gateway",
+        "status": 401,
+        "passed": true
+      },
+      {
+        "service": "custoking-platform-service-dev",
+        "path": "/api/v1/internal/notifications/reports/reconcile",
+        "case": "anonymous_forged_internal_report",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "custoking-api-gateway-dev",
+        "path": "/api/v1/internal/notifications/reports/reconcile",
+        "case": "anonymous_forged_internal_report",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "custoking-api-gateway-dev",
+        "path": "/notification-api/v1/internal/notifications/reports/reconcile",
+        "case": "anonymous_forged_internal_report",
+        "status": 404,
+        "passed": true
+      }
+    ],
+    "scope": "Anonymous/forged headers only; private service403 primarily proves Cloud Run ingress denial. New normalized report admission remains disabled. No signed caller or real provider report is implied."
+  },
+  "frontend": {
+    "startedAt": "2026-10-07T19:15:12.576Z",
+    "scope": "Anonymous live HTTP/browser smoke",
+    "origins": [
+      {
+        "origin": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "responses": [
+          {
+            "resource": "/login",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/frontend-health",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/index-UB6jIoJq.js",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/missing-security-proof.js",
+            "status": 404,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "synthetic-nonexistent-photo",
+            "status": 401,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none', default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff, nosniff",
+              "x-frame-options": "DENY, DENY",
+              "referrer-policy": "strict-origin-when-cross-origin, no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload, max-age=31536000"
+            }
+          }
+        ],
+        "browser": {
+          "inlineExecuted": false,
+          "rasterBlobLoaded": true,
+          "violations": [
+            "script-src-elem",
+            "object-src"
+          ]
+        }
+      }
+    ],
+    "nonRoot": {
+      "verified": false,
+      "reason": "Public HTTP cannot establish runtime UID; use deployed image config plus existing container proof."
+    },
+    "success": true,
+    "finishedAt": "2026-10-07T19:15:20.718Z",
+    "initialHarnessCheckpoint": {
+      "success": false,
+      "failure": "Exact-single-value expectation rejected duplicate nosniff and DENY headers on proxied unauthorized API response.",
+      "baseline": "acceptance-student-photo-ownership-public-smoke.json records the same duplicate restrictive headers.",
+      "correction": "Validate every comma-separated restrictive value and each CSP policy; retain the original failed checkpoint privately. No application header change was made."
+    }
+  },
+  "initialHarnessCheckpoints": [
+    {
+      "wrongAlias": "/services/platform/api/v1/internal/notifications/reports/reconcile",
+      "status": 405,
+      "passed": false,
+      "scope": "Unconfigured alias rejected; this was a harness path error, not an acceptance test of the configured internal route."
+    },
+    {
+      "wrongAlias": "/platform-api/v1/internal/notifications/reports/reconcile",
+      "status": 405,
+      "passed": false,
+      "scope": "Unconfigured alias rejected; this was a harness path error, not an acceptance test of the configured internal route."
+    }
+  ],
+  "harnessCorrection": {
+    "configuredAlias": "/notification-api/v1/internal/notifications/reports/reconcile",
+    "source": "services/api-gateway/server.js diagnostic notification route rewrites this alias to /api/v1/internal/notifications/reports/reconcile; internal upstream paths are denied before proxying."
+  },
+  "productionChanged": false
+}
