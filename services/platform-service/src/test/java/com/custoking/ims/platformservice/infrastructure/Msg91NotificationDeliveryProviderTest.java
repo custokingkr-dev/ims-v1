@@ -40,6 +40,18 @@ class Msg91NotificationDeliveryProviderTest {
     }
 
     @Test
+    void smsBuilderRejectsVariablesThatReplaceRoutingOrCorrelation() {
+        Fixture fixture = fixture();
+        fixture.properties.setSmsFlowId("flow-123");
+        for (String field : new String[]{"mobiles", "Mobiles", "CRQID", "crqid"}) {
+            assertThatThrownBy(() -> body(fixture.provider, request("event-1", "SMS",
+                    "{\"destination\":\"919999999999\",\"variables\":{\"" + field + "\":\"918888888888\"}}")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("SMS variables cannot supply routing or correlation fields");
+        }
+    }
+
+    @Test
     void correlationFitsProviderContractAndPreservesRetryIdentity() {
         String eventId = "broadcast:1a287987-5756-4cb9-b8d1-0e2441522212:9911152:SMS";
         String correlation = Msg91NotificationDeliveryProvider.correlationId(eventId);

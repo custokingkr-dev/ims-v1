@@ -20,16 +20,20 @@
 # ---------------------------------------------------------------------------------------------------
 
 locals {
-  dashboard_enabled = var.enable_shared_dashboard ? 1 : 0
+  dashboard_enabled          = var.enable_shared_dashboard ? 1 : 0
+  dashboard_security_enabled = (var.enable_shared_dashboard || var.enable_dashboard_security_state) ? 1 : 0
 }
 
 resource "google_service_account" "dashboard" {
-  count = local.dashboard_enabled
+  count = local.dashboard_security_enabled
 
   project      = var.project
   account_id   = "ims-dashboard"
   display_name = "Shared operations dashboard"
   description  = "Reads Cloud Monitoring to render the shared owner and ops dashboards."
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "google_project_iam_member" "dashboard_monitoring" {

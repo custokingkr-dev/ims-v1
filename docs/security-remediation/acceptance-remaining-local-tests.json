@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-07T13:36:25.978715+00:00",
+  "schoolCoreFullSuite": {
+    "tests": 899,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 898
+  },
+  "classes": 134,
+  "terraformObservabilityRuns": {
+    "passed": 3,
+    "failed": 0
+  },
+  "dashboardAndErasureHelperTests": {
+    "passed": 13,
+    "failed": 0
+  },
+  "scope": "Local Windows full school suite, Terraform mocks and controlled/real local PostgreSQL helpers; not live provider/hardware/network acceptance"
+}

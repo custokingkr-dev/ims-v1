@@ -178,6 +178,17 @@ final class NotificationPolicyGuard {
         if (providerBody != null && !providerBody.isNull()) {
             deny("POLICY_PROVIDER_BODY_NOT_ALLOWED");
         }
+        // SMS template variables are flattened into a recipient object by MSG91. They cannot
+        // supply routing or correlation fields after the owner-bound destination was validated.
+        JsonNode variables = payload.get("variables");
+        if ("SMS".equals(channel) && variables != null && variables.isObject()) {
+            for (var variable : variables.properties()) {
+                if ("mobiles".equalsIgnoreCase(variable.getKey())
+                        || "CRQID".equalsIgnoreCase(variable.getKey())) {
+                    deny("POLICY_PROVIDER_VARIABLE_NOT_ALLOWED");
+                }
+            }
+        }
         String[] aliases = switch (channel) {
             case "SMS" -> new String[]{"mobile", "phone", "to", "recipientMobile"};
             case "WHATSAPP" -> new String[]{"whatsapp", "mobile", "phone", "to", "recipientMobile"};
