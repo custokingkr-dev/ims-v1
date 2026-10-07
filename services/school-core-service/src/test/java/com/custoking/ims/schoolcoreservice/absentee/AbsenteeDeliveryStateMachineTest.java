@@ -41,6 +41,25 @@ class AbsenteeDeliveryStateMachineTest {
     }
 
     @Test
+    void providerAcceptanceStopsResendsWithoutClaimingDelivery() {
+        var result=machine.apply(0,DeliveryOutcome.accepted("msg91","synthetic-request-id"),NOW);
+        assertThat(result.status()).isEqualTo(AbsenteeNotificationStatus.ACCEPTED);
+        assertThat(result.terminal()).isTrue();
+        assertThat(result.nextAttemptAt()).isNull();
+        assertThat(result.deliveredAt()).isNull();
+    }
+
+    @Test
+    void uncertainProviderAcceptanceStopsAutomaticRetriesWithoutDeliveryClaim() {
+        var result=machine.apply(0,DeliveryOutcome.unknown("PROVIDER_OUTCOME_REQUIRES_RECONCILIATION"),NOW);
+        assertThat(result.status()).isEqualTo(AbsenteeNotificationStatus.UNKNOWN);
+        assertThat(result.terminal()).isTrue();
+        assertThat(result.nextAttemptAt()).isNull();
+        assertThat(result.deliveredAt()).isNull();
+        assertThat(result.deadLetteredAt()).isNull();
+    }
+
+    @Test
     void suppressedOutcomeIsTerminalWithoutRetry() {
         var transition = machine.apply(1, DeliveryOutcome.suppressed("GUARDIAN_INACTIVE"), NOW);
 

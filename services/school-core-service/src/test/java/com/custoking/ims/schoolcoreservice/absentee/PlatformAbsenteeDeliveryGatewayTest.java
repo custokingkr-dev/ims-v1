@@ -47,6 +47,27 @@ class PlatformAbsenteeDeliveryGatewayTest {
     }
 
     @Test
+    void acceptanceAndDefinitiveRejectionAreTerminalButAcceptanceIsNotDelivery() {
+        server.expect(requestTo(ENDPOINT)).andRespond(withSuccess("{\"status\":\"ACCEPTED\",\"dryRun\":false,\"providerMessageId\":\"synthetic-request-id\"}",MediaType.APPLICATION_JSON));
+        server.expect(requestTo(ENDPOINT)).andRespond(withSuccess("{\"status\":\"REJECTED\",\"dryRun\":false}",MediaType.APPLICATION_JSON));
+        var accepted=gateway.deliver(request());
+        assertThat(accepted.kind()).isEqualTo(DeliveryOutcome.Kind.ACCEPTED);
+        assertThat(accepted.providerMessageId()).isEqualTo("synthetic-request-id");
+        assertThat(gateway.deliver(request()).kind()).isEqualTo(DeliveryOutcome.Kind.PERMANENT_FAILURE);
+        server.verify();
+    }
+
+    @Test
+    void uncertainOrSubmittingPeerOutcomeRequiresReconciliationWithoutResend() {
+        for (String status : java.util.List.of("UNKNOWN", "SUBMITTING")) {
+            server.expect(requestTo(ENDPOINT)).andRespond(withSuccess("{\"status\":\""+status+"\",\"dryRun\":false}",MediaType.APPLICATION_JSON));
+        }
+        // Use the same event identity; neither state is translated into a retryable failure.
+        for (int i=0;i<2;i++) assertThat(gateway.deliver(request()).kind()).isEqualTo(DeliveryOutcome.Kind.UNKNOWN);
+        server.verify();
+    }
+
+    @Test
     void sendsTheNotificationRequestedContractWithServiceTokenAndOidcBearer() {
         server.expect(requestTo(ENDPOINT))
                 .andExpect(method(HttpMethod.POST))

@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
+import com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournal;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -25,14 +26,33 @@ final class GuardianCommunicationPolicy {
     static final Duration EVIDENCE_TTL = Duration.ofMinutes(2);
 
     private final JdbcClient jdbc;
+    private final StudentErasureJournal erasureJournal;
 
     GuardianCommunicationPolicy(JdbcClient jdbc) {
-        this.jdbc = jdbc;
+        this(jdbc, null);
+    }
+
+    GuardianCommunicationPolicy(JdbcClient jdbc, StudentErasureJournal erasureJournal) {
+        this.jdbc = jdbc; this.erasureJournal = erasureJournal;
     }
 
     Decision evaluate(Long schoolId, long studentId, String channel) {
         if (schoolId == null) {
             return Decision.denied("SCHOOL_SCOPE_MISSING");
+        }
+        if (erasureJournal != null && erasureJournal.enabled()) {
+            try {
+                erasureJournal.requireSourceDatabase(jdbc.sql("SELECT current_database()").query(String.class).single());
+                var incarnation = jdbc.sql("""
+                        SELECT erasure_incarnation FROM student.students
+                        WHERE id=:student AND school_id=:school AND deleted_at IS NULL
+                        """).param("student", studentId).param("school", schoolId)
+                        .query(java.util.UUID.class).optional().orElse(null);
+                if (incarnation == null) return Decision.denied("STUDENT_NOT_FOUND");
+                erasureJournal.requireDeliveryAllowed(studentId, schoolId, incarnation);
+            } catch (RuntimeException unavailable) {
+                return Decision.denied("ERASURE_FENCE_UNCONFIRMED");
+            }
         }
         Snapshot snapshot = jdbc.sql("""
                         SELECT g.id AS guardian_id, g.status AS guardian_status,

@@ -98,6 +98,15 @@ student:
     max-bytes: ${STUDENT_PHOTO_MAX_BYTES:5242880}
     # Runtime SA to sign V4 URLs via IAM; blank -> resolved from the metadata server on Cloud Run.
     signer-sa: ${STUDENT_PHOTO_SIGNER_SA:}
+  erasure-journal:
+    # Explicit development opt-in. Missing/changed external epoch fails before source erasure.
+    enabled: ${STUDENT_ERASURE_JOURNAL_ENABLED:false}
+    project-id: ${STUDENT_ERASURE_JOURNAL_PROJECT_ID:}
+    bucket: ${STUDENT_ERASURE_JOURNAL_BUCKET:}
+    source-lineage-id: ${STUDENT_ERASURE_JOURNAL_SOURCE_LINEAGE_ID:}
+    restore-epoch: ${STUDENT_ERASURE_JOURNAL_RESTORE_EPOCH:}
+    epoch-generation: ${STUDENT_ERASURE_JOURNAL_EPOCH_GENERATION:0}
+    epoch-sha256: ${STUDENT_ERASURE_JOURNAL_EPOCH_SHA256:}
 
 attendance:
   read-token: ${ATTENDANCE_READ_TOKEN:}

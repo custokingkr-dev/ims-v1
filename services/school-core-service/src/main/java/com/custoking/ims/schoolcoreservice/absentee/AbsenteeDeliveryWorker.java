@@ -155,6 +155,8 @@ public class AbsenteeDeliveryWorker {
             case DELIVERED -> log.info("{} {}", EVENT_SENT, kv("absentee", fields(EVENT_SENT, row, transition, outcome, null)));
             case DRY_RUN -> log.info("{} {}", EVENT_DRY_RUN, kv("absentee", fields(EVENT_DRY_RUN, row, transition, outcome, null)));
             case SUPPRESSED -> log.info("{} {}", EVENT_SUPPRESSED, kv("absentee", fields(EVENT_SUPPRESSED, row, transition, outcome, outcome.error())));
+            case UNKNOWN -> log.warn("{} {}", EVENT_FAILED, kv("absentee", fields(EVENT_FAILED, row, transition, outcome, "PROVIDER_OUTCOME_REQUIRES_RECONCILIATION")));
+            case ACCEPTED -> log.info("absentee.delivery.accepted {}", kv("absentee", fields("absentee.delivery.accepted", row, transition, outcome, null)));
             case TRANSIENT_FAILURE, PERMANENT_FAILURE -> {
                 String event = transition.terminal() ? EVENT_DEAD_LETTER : EVENT_FAILED;
                 log.warn("{} {}", event, kv("absentee", fields(event, row, transition, outcome, outcome.error())));

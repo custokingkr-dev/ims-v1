@@ -5,6 +5,16 @@ import org.springframework.mock.web.*;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 class MachineCallerFilterTest {
+ @Test void absenteePolicyRequiresExactSignedPlatformCaller() throws Exception {
+  var env=new MockEnvironment().withProperty("BROADCAST_POLICY_CALLER_SERVICE_ACCOUNTS","platform@project.iam.gserviceaccount.com");
+  var filter=new MachineCallerFilter(env, token->Optional.of(token.equals("platform") ? "platform@project.iam.gserviceaccount.com" : "gateway@project.iam.gserviceaccount.com"));
+  for (String token:java.util.List.of("gateway","platform")) {
+   var request=new MockHttpServletRequest("POST","/api/v1/internal/notifications/broadcast-recipients/absentees");
+   request.addHeader("X-Broadcast-Policy-Token","shared");request.addHeader("Authorization","Bearer "+token);
+   var response=new MockHttpServletResponse();var chain=new MockFilterChain();filter.doFilter(request,response,chain);
+   if(token.equals("platform"))assertNotNull(chain.getRequest());else{assertEquals(403,response.getStatus());assertNull(chain.getRequest());}
+  }
+ }
  @Test void sharedTokenAndForgedPrincipalCannotAuthorizeMachineRoute() throws Exception {
   var env=new MockEnvironment().withProperty("OUTBOX_RELAY_CALLER_SERVICE_ACCOUNTS","scheduler@project.iam.gserviceaccount.com");
   var filter=new MachineCallerFilter(env, token->Optional.of("gateway@project.iam.gserviceaccount.com"));

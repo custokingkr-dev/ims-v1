@@ -17,7 +17,11 @@ public record DeliveryOutcome(Kind kind, String error, String provider, String p
         /** Something that may succeed later (peer unavailable, 5xx, timeout). */
         TRANSIENT_FAILURE,
         /** Something that will not succeed by retrying (peer dead-lettered the event). */
-        PERMANENT_FAILURE
+        PERMANENT_FAILURE,
+        /** The peer may have submitted; operator reconciliation is required before any resend. */
+        UNKNOWN,
+        /** Authenticated provider acceptance; delivery itself has not been established. */
+        ACCEPTED
     }
 
     public static DeliveryOutcome delivered(String provider, String providerMessageId) {
@@ -38,5 +42,13 @@ public record DeliveryOutcome(Kind kind, String error, String provider, String p
 
     public static DeliveryOutcome permanentFailure(String error) {
         return new DeliveryOutcome(Kind.PERMANENT_FAILURE, error, null, null);
+    }
+
+    public static DeliveryOutcome unknown(String error) {
+        return new DeliveryOutcome(Kind.UNKNOWN, error, null, null);
+    }
+
+    public static DeliveryOutcome accepted(String provider, String providerMessageId) {
+        return new DeliveryOutcome(Kind.ACCEPTED, null, provider, providerMessageId);
     }
 }

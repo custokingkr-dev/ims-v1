@@ -140,4 +140,17 @@ class NotificationInboxProcessorTest {
         event.setPayload("{\"channel\":\"SMS\",\"mobile\":\"919999999999\"}");
         return event;
     }
+    @Test void liveMsg91AlwaysUsesDurableWorkerBeforeLegacyRepositoryOrProvider() {
+        var worker=mock(GenericNotificationSubmissionWorker.class);
+        processor.configureSubmissionWorker(worker,false);
+        processor.process(event());
+        verify(worker).process("event-1");
+        org.mockito.Mockito.verifyNoInteractions(inbox,delivery,attempts);
+    }
+    @Test void uncertainSubmissionRemainsTerminalAfterSwitchingToDryRun() {
+        var event=event();event.setStatus("UNKNOWN");
+        when(inbox.findByIdForUpdate("event-1")).thenReturn(Optional.of(event));
+        processor.process(event());org.mockito.Mockito.verifyNoInteractions(delivery,attempts);
+        assertThat(event.getStatus()).isEqualTo("UNKNOWN");
+    }
 }

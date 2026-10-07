@@ -83,6 +83,10 @@ public class NotificationDeliveryCommandService {
             case NotificationInboxEvent.STATUS_PROCESSED -> "DELIVERED";
             case NotificationInboxEvent.STATUS_SUPPRESSED -> "SUPPRESSED";
             case NotificationInboxEvent.STATUS_DEAD_LETTER -> "DEAD_LETTER";
+            case "SUBMITTING" -> "SUBMITTING";
+            case "UNKNOWN" -> "UNKNOWN";
+            case "ACCEPTED" -> "ACCEPTED";
+            case "REJECTED" -> "REJECTED";
             default -> "FAILED";
         };
         return new DeliveryAnswer(event.getEventId(), status, dryRun(), provider, event.getAttemptCount(),
@@ -92,7 +96,9 @@ public class NotificationDeliveryCommandService {
     private static boolean terminal(NotificationInboxEvent event) {
         return NotificationInboxEvent.STATUS_PROCESSED.equals(event.getStatus())
                 || NotificationInboxEvent.STATUS_DEAD_LETTER.equals(event.getStatus())
-                || NotificationInboxEvent.STATUS_SUPPRESSED.equals(event.getStatus());
+                || NotificationInboxEvent.STATUS_SUPPRESSED.equals(event.getStatus())
+                || "SUBMITTING".equals(event.getStatus()) || "UNKNOWN".equals(event.getStatus())
+                || "ACCEPTED".equals(event.getStatus()) || "REJECTED".equals(event.getStatus());
     }
 
     public record DeliverNowCommand(

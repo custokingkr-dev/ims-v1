@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "curatedAtUtc": "2026-10-07T14:48:50.793091+00:00",
+  "schoolFull": {
+    "service": "school-core-service",
+    "startedAtUtc": "2026-10-07T14:41:45.606505+00:00",
+    "finishedAtUtc": "2026-10-07T14:46:02.209206+00:00",
+    "exitCode": 0,
+    "classes": 140,
+    "counts": {
+      "tests": 938,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "passed": 937
+    },
+    "failedClasses": [],
+    "scope": "Full local school suite; Windows symlink privilege fixture may skip. Remote Linux CI executes it."
+  },
+  "platformFull": {
+    "tests": 417,
+    "passed": 417,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "log": "tmp/generic-typed-submission-platform-full.log",
+    "scope": "Full suite before final guard wiring; subsequent focused40 overlap and must not be added."
+  },
+  "platformFinalFocused": {
+    "tests": 40,
+    "passed": 40,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0
+  },
+  "deploymentRendererUnits": 8,
+  "journalInfrastructureUnits": 3,
+  "journalTerraformMockRuns": 2,
+  "deploymentParameterFixtures": "PASS",
+  "scope": "Local code/config checks. Journal runtime permissions and actual dev deployment are separate evidence. Later insertion ACL hardening has its own final focused proof.",
+  "offlineArchitectureChecks": [
+    {
+      "check": "audit-deployment-boundaries",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-microservice-runtime-boundaries",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-service-authorization-boundaries",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-runtime-schema-dependency-baseline",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-service-contract-coverage",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-service-package-shape",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-service-schema-defaults",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-service-datasource-pool",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-repository-data-boundaries",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-microservice-test-catalog",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-microservice-build-catalog",
+      "exitCode": 0
+    },
+    {
+      "check": "audit-security-governance-controls",
+      "exitCode": 0
+    }
+  ],
+  "recoveredFailures": [
+    "New absentee controller initially failed static scope-marker audit; corrected using exact purpose-scoped token helper, then all12 architecture checks passed.",
+    "Windows LF translation in source control was corrected before application enablement, retained in actual control proof."
+  ],
+  "finalSchoolFocused": {
+    "tests": 46,
+    "passed": 46,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "scope": "Final erasure and photo ACL/full-chain/controller tests; overlaps full938 and must not be added."
+  }
+}

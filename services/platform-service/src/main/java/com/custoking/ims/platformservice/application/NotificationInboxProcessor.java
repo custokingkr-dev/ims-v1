@@ -27,6 +27,14 @@ public class NotificationInboxProcessor {
     private final int maxAttempts;
     private final Duration initialBackoff;
     private final Duration maxBackoff;
+    private GenericNotificationSubmissionWorker submissionWorker;
+    private boolean msg91DryRun = true;
+
+    @Autowired
+    void configureSubmissionWorker(GenericNotificationSubmissionWorker worker,
+            @Value("${notification.msg91.dry-run:true}") boolean dryRun) {
+        this.submissionWorker=worker; this.msg91DryRun=dryRun;
+    }
 
     public NotificationInboxProcessor(NotificationInboxRepository inboxRepository,
                                       NotificationDeliveryAttemptRepository attemptRepository,
@@ -62,6 +70,11 @@ public class NotificationInboxProcessor {
 
     @Transactional(noRollbackFor = NotificationDeliveryFailedException.class)
     public void process(NotificationInboxEvent event) {
+        if ("msg91".equals(provider) && !msg91DryRun) {
+            if(submissionWorker==null) throw new IllegalStateException("Durable submission worker is required");
+            submissionWorker.process(event.getEventId());
+            return;
+        }
         NotificationInboxEvent locked = inboxRepository.findByIdForUpdate(event.getEventId()).orElse(null);
         if (locked == null || terminal(locked)) {
             return;
@@ -81,7 +94,9 @@ public class NotificationInboxProcessor {
     private boolean terminal(NotificationInboxEvent event) {
         return NotificationInboxEvent.STATUS_PROCESSED.equals(event.getStatus())
                 || NotificationInboxEvent.STATUS_DEAD_LETTER.equals(event.getStatus())
-                || NotificationInboxEvent.STATUS_SUPPRESSED.equals(event.getStatus());
+                || NotificationInboxEvent.STATUS_SUPPRESSED.equals(event.getStatus())
+                || "SUBMITTING".equals(event.getStatus()) || "UNKNOWN".equals(event.getStatus())
+                || "ACCEPTED".equals(event.getStatus()) || "REJECTED".equals(event.getStatus());
     }
 
     private void processOne(NotificationInboxEvent event) {

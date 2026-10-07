@@ -11,6 +11,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class Msg91NotificationDeliveryProviderTest {
+    @org.junit.jupiter.api.Test void typedSubmitCannotBypassLiveDisableEvenWithCredentials() {
+        var properties=new Msg91Properties();properties.setDryRun(false);properties.setAuthKey("synthetic_auth_key");
+        var provider=new Msg91NotificationDeliveryProvider(properties,null,new tools.jackson.databind.ObjectMapper());
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->provider.submit(new com.custoking.ims.platformservice.application.NotificationDeliveryRequest(
+            "one","fee-reminder.v1","SMS","GUARDIAN","one","{}"))).hasMessageContaining("MSG91 live delivery is disabled");
+    }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

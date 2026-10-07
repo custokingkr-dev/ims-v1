@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
+import com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournal;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -49,6 +50,7 @@ public class StudentReadRepository {
     private final StudentReviewInvalidationService reviewInvalidation;
     private final LegacyGuardianSynchronizer guardianSynchronizer;
     private StudentImportProgressStore importProgress;
+    private StudentErasureJournal erasureJournal;
 
     public StudentReadRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox) {
         this(jdbc, photoStorage, outbox, new StudentReviewInvalidationService(jdbc, outbox));
@@ -67,6 +69,11 @@ public class StudentReadRepository {
     @Autowired(required = false)
     void setImportProgress(StudentImportProgressStore importProgress) {
         this.importProgress = importProgress;
+    }
+
+    @Autowired
+    public void setErasureJournal(StudentErasureJournal erasureJournal) {
+        this.erasureJournal = erasureJournal;
     }
 
     public List<StudentRow> list(Long schoolId, String classId, String sectionId, int limit) {
@@ -1114,8 +1121,50 @@ public class StudentReadRepository {
         }
     }
 
-    @Transactional
+    @Transactional(timeout = 45)
     public Map<String, Object> deleteStudent(Long id, String confirmationAdmissionNumber) {
+        return eraseStudent(id, confirmationAdmissionNumber, null);
+    }
+
+    /**
+     * Controlled restore/reconciliation entry point. The external RECONCILING epoch and pinned
+     * intent are checked before exact incarnation binding; this method is not exposed by REST.
+     */
+    @Transactional(timeout = 45)
+    public Map<String, Object> reconcileErasure(StudentErasureJournal.IntentReference reference) {
+        if (erasureJournal == null || !erasureJournal.enabled()
+                || !TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "Erasure reconciliation is not configured");
+        }
+        erasureJournal.requireSourceDatabase(jdbc.sql("SELECT current_database()").query(String.class).single());
+        var receipt = erasureJournal.verifyForReplay(reference);
+        var restored = jdbc.sql("""
+                SELECT school_id, erasure_incarnation, admission_no FROM student.students
+                WHERE id=:id FOR UPDATE
+                """).param("id", receipt.studentId())
+                .query((rs, n) -> row("schoolId", rs.getLong("school_id"),
+                        "incarnation", rs.getObject("erasure_incarnation", UUID.class),
+                        "admission", rs.getString("admission_no"))).optional().orElse(null);
+        if (restored == null) {
+            // An absent unproven target may be a reused numericID hidden by tenant RLS. Never
+            // manufacture a global platform tombstone from bare identifier equality.
+            if (!matchingErasureReceipt(receipt)) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT, "Absent source requires independent incarnation coverage");
+            }
+            return row("id", receipt.studentId(), "deleted", true, "permanent", true, "alreadyAbsent", true);
+        }
+        if (!Long.valueOf(receipt.schoolId()).equals(restored.get("schoolId"))
+                || !receipt.incarnation().equals(restored.get("incarnation"))) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Restored student does not match the erasure incarnation");
+        }
+        return eraseStudent(receipt.studentId(), str(restored.get("admission"), "DELETE"), receipt);
+    }
+
+    private Map<String, Object> eraseStudent(Long id, String confirmationAdmissionNumber,
+                                           StudentErasureJournal.Receipt verifiedReplay) {
         Map<String, Object> current = jdbc.sql("""
                 SELECT id, school_id, admission_no, photo_url
                 FROM student.students
@@ -1138,6 +1187,20 @@ public class StudentReadRepository {
         if (!expectedAdmissionNumber.equals(confirmationAdmissionNumber)) {
             throw new IllegalArgumentException("Admission number confirmation does not match");
         }
+        StudentErasureJournal.Receipt erasureReceipt = verifiedReplay;
+        if (erasureReceipt == null && erasureJournal != null && erasureJournal.enabled()) {
+            if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                        "Erasure journal requires a source transaction");
+            }
+            erasureJournal.requireSourceDatabase(jdbc.sql("SELECT current_database()").query(String.class).single());
+            UUID incarnation = jdbc.sql("SELECT erasure_incarnation FROM student.students WHERE id = :id")
+                    .param("id", id).query(UUID.class).single();
+            erasureReceipt = erasureJournal.claim(id, longValue(current.get("schoolId"), null), incarnation);
+        }
+        if (erasureReceipt != null) recordErasureReceipt(erasureReceipt);
+        UUID erasureOperationId = erasureReceipt == null ? UUID.randomUUID() : erasureReceipt.operationId();
         Set<String> photoKeys = new LinkedHashSet<>();
         String currentPhoto = str(current.get("photoUrl"), "").trim();
         if (!currentPhoto.isBlank()) photoKeys.add(currentPhoto);
@@ -1202,9 +1265,11 @@ public class StudentReadRepository {
                     .update();
         }
         Long schoolId = longValue(current.get("schoolId"), null);
+        Map<String, Object> deletionEvidence = row("id", id, "schoolId", schoolId);
+        if (erasureReceipt != null) deletionEvidence.putAll(erasureReceipt.eventEvidence());
         outbox.append("student.deleted.v1", "StudentDeleted:" + id, "Student", String.valueOf(id),
-                schoolId, row("id", id, "schoolId", schoolId));
-        deletePhotosAfterCommit(photoKeys);
+                schoolId, deletionEvidence);
+        enqueuePhotoCleanup(erasureOperationId, schoolId, id, photoKeys);
         return row("id", id, "deleted", true, "permanent", true);
     }
 
@@ -1213,6 +1278,39 @@ public class StudentReadRepository {
         jdbc.sql("DELETE FROM " + qualifiedTable + " WHERE student_id = :id")
                 .param("id", studentId)
                 .update();
+    }
+
+    private void recordErasureReceipt(StudentErasureJournal.Receipt receipt) {
+        jdbc.sql("""
+                INSERT INTO student.erasure_journal_receipts
+                    (intent_id, operation_id, student_id, school_id, student_incarnation,
+                     source_lineage_id, restore_epoch, journal_object, journal_generation, journal_sha256)
+                VALUES (:intent, :operation, :student, :school, :incarnation,
+                        :lineage, :epoch, :object, :generation, :hash)
+                ON CONFLICT (intent_id) DO NOTHING
+                """)
+                .param("intent", receipt.intentId()).param("operation", receipt.operationId())
+                .param("student", receipt.studentId()).param("school", receipt.schoolId())
+                .param("incarnation", receipt.incarnation()).param("lineage", receipt.sourceLineageId())
+                .param("epoch", receipt.restoreEpoch()).param("object", receipt.object())
+                .param("generation", receipt.generation()).param("hash", receipt.sha256()).update();
+        if (!matchingErasureReceipt(receipt)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Erasure receipt binding does not match");
+        }
+    }
+
+    private boolean matchingErasureReceipt(StudentErasureJournal.Receipt receipt) {
+        return jdbc.sql("""
+                SELECT EXISTS (SELECT 1 FROM student.erasure_journal_receipts
+                  WHERE intent_id=:intent AND operation_id=:operation AND student_id=:student AND school_id=:school
+                    AND student_incarnation=:incarnation AND source_lineage_id=:lineage AND restore_epoch=:epoch
+                    AND journal_object=:object AND journal_generation=:generation AND journal_sha256=:hash)
+                """).param("intent", receipt.intentId()).param("operation", receipt.operationId())
+                .param("student", receipt.studentId()).param("school", receipt.schoolId())
+                .param("incarnation", receipt.incarnation()).param("lineage", receipt.sourceLineageId())
+                .param("epoch", receipt.restoreEpoch()).param("object", receipt.object())
+                .param("generation", receipt.generation()).param("hash", receipt.sha256()).query(Boolean.class).single();
     }
 
     private void refreshAttendanceDailyCounts(String attendanceDailyId) {
@@ -1239,19 +1337,12 @@ public class StudentReadRepository {
                 .update();
     }
 
-    private void deletePhotosAfterCommit(Set<String> photoKeys) {
+    private void enqueuePhotoCleanup(UUID operation, Long schoolId, Long studentId, Set<String> photoKeys) {
         if (photoKeys.isEmpty()) return;
-        Runnable cleanup = () -> photoKeys.forEach(photoStorage::deleteStoredPhoto);
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    cleanup.run();
-                }
-            });
-        } else {
-            cleanup.run();
-        }
+        String folder = schoolStorageId(schoolId);
+        var queue = new com.custoking.ims.schoolcoreservice.outbox.PhotoCleanupQueue(jdbc);
+        for (String stored : photoKeys) photoStorage.cleanupTarget(stored, folder, studentId)
+                .ifPresent(target -> queue.enqueue(operation, schoolId, studentId, target));
     }
 
     public Map<String, Object> studentHistory(Long id) {

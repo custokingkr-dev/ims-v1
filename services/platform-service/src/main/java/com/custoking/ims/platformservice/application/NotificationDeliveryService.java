@@ -36,6 +36,22 @@ public class NotificationDeliveryService {
         }
     }
 
+    public NotificationDeliveryRequest prepare(NotificationInboxEvent event) {
+        JsonNode payload=objectMapper.readTree(event.getPayload());
+        policyGuard.requireAllowed(event,payload);
+        return request(event,objectMapper);
+    }
+
+    static NotificationDeliveryRequest request(NotificationInboxEvent event,ObjectMapper mapper) {
+        JsonNode payload=mapper.readTree(event.getPayload());
+        return new NotificationDeliveryRequest(event.getEventId(),text(payload,"template"),text(payload,"channel"),
+            text(payload,"recipientType"),text(payload,"recipientId"),event.getPayload());
+    }
+
+    public NotificationSubmissionResult submit(NotificationInboxEvent event) {
+        return deliveryProvider.submit(prepare(event));
+    }
+
     private static String text(JsonNode node, String field) {
         JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asString();
