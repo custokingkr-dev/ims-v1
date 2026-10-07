@@ -17,7 +17,13 @@ public class GuardianCommunicationDispatchPolicy implements AbsenteeDispatchPoli
     private final GuardianCommunicationPolicy policy;
 
     public GuardianCommunicationDispatchPolicy(JdbcClient jdbc) {
-        this.policy = new GuardianCommunicationPolicy(jdbc);
+        this(jdbc, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public GuardianCommunicationDispatchPolicy(JdbcClient jdbc,
+            com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournal erasureJournal) {
+        this.policy = new GuardianCommunicationPolicy(jdbc, erasureJournal);
     }
 
     @Override

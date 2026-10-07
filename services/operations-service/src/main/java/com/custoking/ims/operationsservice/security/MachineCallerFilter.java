@@ -41,7 +41,7 @@ public class MachineCallerFilter extends OncePerRequestFilter {
         if(path.equals("/api/v1/internal/async/drain")) return "ASYNC_DRAIN_CALLER_SERVICE_ACCOUNTS";
         if(path.equals("/api/v1/internal/notifications/deliveries")) return "NOTIFICATION_DELIVERY_CALLER_SERVICE_ACCOUNTS";
         if(path.equals("/api/v1/internal/outbox/relay")) return "OUTBOX_RELAY_CALLER_SERVICE_ACCOUNTS";
-        if(path.equals("/api/v1/internal/notifications/broadcast-recipients") || path.equals("/api/v1/internal/notifications/broadcast-recipients/fee-reminders")) return "BROADCAST_POLICY_CALLER_SERVICE_ACCOUNTS";
+        if(path.equals("/api/v1/internal/notifications/broadcast-recipients") || path.equals("/api/v1/internal/notifications/broadcast-recipients/fee-reminders") || path.equals("/api/v1/internal/notifications/broadcast-recipients/absentees")) return "BROADCAST_POLICY_CALLER_SERVICE_ACCOUNTS";
         if(path.equals("/api/v1/internal/password-reset/drain")) return "PASSWORD_RESET_DRAIN_CALLER_SERVICE_ACCOUNTS";
         if(path.matches("/api/v1/internal/identity-directory/(schools|zones)/[0-9]+")) return "IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS";
         return null;

@@ -411,6 +411,66 @@ public class StudentPhotoStorage {
      * Permanently removes a student-owned object after its database records commit. External
      * legacy URLs and non-student object prefixes are deliberately ignored.
      */
+    public record CleanupTarget(String bucket, String key) {}
+
+    public Optional<CleanupTarget> cleanupTarget(String stored, String schoolStorageId, long studentId) {
+        if (!StringUtils.hasText(stored) || stored.startsWith("http://") || stored.startsWith("https://")) return Optional.empty();
+        String prefix = "schools/" + requireStorageFolder(schoolStorageId) + "/students/" + studentId + "/";
+        if (!stored.startsWith(prefix) || !stored.matches("[A-Za-z0-9._/-]+")
+                || java.util.Arrays.stream(stored.split("/")).anyMatch(part -> part.isBlank() || part.equals(".") || part.equals("..")))
+            throw new IllegalArgumentException("Stored photo does not belong to the erased student");
+        if (!isEnabled()) throw new IllegalStateException("Photo cleanup bucket is not configured");
+        return Optional.of(new CleanupTarget(bucket, stored));
+    }
+
+    private volatile Storage cleanupStorage;
+    private Storage cleanupStorage() {
+        Storage result = cleanupStorage;
+        if (result == null) synchronized (this) {
+            result = cleanupStorage;
+            if (result == null) {
+                var options = StorageOptions.getDefaultInstance();
+                result = options.toBuilder()
+                        .setTransportOptions(com.google.cloud.http.HttpTransportOptions.newBuilder()
+                                .setConnectTimeout(2000).setReadTimeout(5000).build())
+                        .setRetrySettings(options.getRetrySettings().toBuilder().setMaxAttempts(1)
+                                .setInitialRpcTimeoutDuration(Duration.ofSeconds(5))
+                                .setMaxRpcTimeoutDuration(Duration.ofSeconds(5))
+                                .setTotalTimeoutDuration(Duration.ofSeconds(5)).build())
+                        .build().getService();
+                cleanupStorage = result;
+            }
+        }
+        return result;
+    }
+
+    private void validateCleanupTarget(CleanupTarget target) {
+        if (!isEnabled() || target == null || !bucket.equals(target.bucket())
+                || !target.key().matches("schools/[A-Za-z0-9._-]+/students/[0-9]+/[A-Za-z0-9._/-]+")
+                || java.util.Arrays.stream(target.key().split("/")).anyMatch(part -> part.equals(".") || part.equals("..")))
+            throw new IllegalArgumentException("Photo cleanup target is not configured/owned");
+    }
+
+    /** Read only this exact object's metadata; callers persist the generation before any deletion. */
+    public Long photoCleanupGeneration(CleanupTarget target) {
+        validateCleanupTarget(target);
+        var blob = cleanupStorage().get(com.google.cloud.storage.BlobId.of(target.bucket(), target.key()),
+                Storage.BlobGetOption.fields(Storage.BlobField.GENERATION));
+        return blob == null ? null : blob.getGeneration();
+    }
+
+    /** Missing original generation is success; replacement generations are never deleted. */
+    public void deletePhotoGeneration(CleanupTarget target, long generation) {
+        validateCleanupTarget(target);
+        if (generation <= 0) throw new IllegalArgumentException("Photo generation is invalid");
+        try {
+            cleanupStorage().delete(com.google.cloud.storage.BlobId.of(target.bucket(), target.key(), generation),
+                    Storage.BlobSourceOption.generationMatch(generation));
+        } catch (com.google.cloud.storage.StorageException error) {
+            if (error.getCode() != 404 && error.getCode() != 412) throw error;
+        }
+    }
+
     public void deleteStoredPhoto(String stored) {
         if (!StringUtils.hasText(stored)
                 || stored.startsWith("http://")

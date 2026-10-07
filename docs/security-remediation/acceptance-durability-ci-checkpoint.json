@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-07T15:13:54.9176015Z",
+  "head": "a4827816319da75bce5109b7ba3628962a7438e1",
+  "pullRequest": "https://github.com/custokingkr-dev/ims-v1/pull/323",
+  "ci": {
+    "id": 37641986926,
+    "attempt": 1,
+    "conclusion": "failure",
+    "jobs": [
+      {
+        "id": 112863264750,
+        "name": "privacy-technical-controls",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:04:48Z",
+        "completed_at": "2026-10-07T15:06:07Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863264750"
+      },
+      {
+        "id": 112863264937,
+        "name": "detect / detect",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:04:47Z",
+        "completed_at": "2026-10-07T15:05:05Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863264937"
+      },
+      {
+        "id": 112863265001,
+        "name": "duplicate-class-drift",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:04:47Z",
+        "completed_at": "2026-10-07T15:04:58Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863265001"
+      },
+      {
+        "id": 112863265004,
+        "name": "promotion-source-policy",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:04:47Z",
+        "completed_at": "2026-10-07T15:04:51Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863265004"
+      },
+      {
+        "id": 112863265061,
+        "name": "secret-scan",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:04:47Z",
+        "completed_at": "2026-10-07T15:04:57Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863265061"
+      },
+      {
+        "id": 112863265189,
+        "name": "static-architecture-audits",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:04:47Z",
+        "completed_at": "2026-10-07T15:08:00Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863265189"
+      },
+      {
+        "id": 112863265215,
+        "name": "dev-edge-terraform-validation",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:04:48Z",
+        "completed_at": "2026-10-07T15:05:08Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863265215"
+      },
+      {
+        "id": 112863265488,
+        "name": "windows-security-helper-validation",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:04:48Z",
+        "completed_at": "2026-10-07T15:05:12Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863265488"
+      },
+      {
+        "id": 112863438530,
+        "name": "docker-build (billing-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:05:10Z",
+        "completed_at": "2026-10-07T15:07:50Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863438530"
+      },
+      {
+        "id": 112863438559,
+        "name": "docker-build (platform-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:05:10Z",
+        "completed_at": "2026-10-07T15:07:06Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863438559"
+      },
+      {
+        "id": 112863438603,
+        "name": "docker-build (operations-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:05:10Z",
+        "completed_at": "2026-10-07T15:08:35Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863438603"
+      },
+      {
+        "id": 112863438703,
+        "name": "service-test (operations-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:05:10Z",
+        "completed_at": "2026-10-07T15:07:19Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863438703"
+      },
+      {
+        "id": 112863438731,
+        "name": "service-test (identity-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:05:10Z",
+        "completed_at": "2026-10-07T15:07:40Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863438731"
+      },
+      {
+        "id": 112863438737,
+        "name": "service-test (billing-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:05:10Z",
+        "completed_at": "2026-10-07T15:06:42Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863438737"
+      },
+      {
+        "id": 112863438763,
+        "name": "service-test (platform-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:05:10Z",
+        "completed_at": "2026-10-07T15:07:12Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863438763"
+      },
+      {
+        "id": 112863438808,
+        "name": "docker-build (identity-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:05:10Z",
+        "completed_at": "2026-10-07T15:07:29Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863438808"
+      },
+      {
+        "id": 112863438842,
+        "name": "service-test (school-core-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:05:10Z",
+        "completed_at": "2026-10-07T15:10:21Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863438842"
+      },
+      {
+        "id": 112863438893,
+        "name": "docker-build (school-core-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T15:05:10Z",
+        "completed_at": "2026-10-07T15:06:40Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863438893"
+      },
+      {
+        "id": 112863439632,
+        "name": "maven-wrapper-validation (${{ matrix.os }})",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-07T15:05:08Z",
+        "completed_at": "2026-10-07T15:05:07Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926/job/112863439632"
+      }
+    ],
+    "limitation": "All listed executed jobs succeeded, but run aggregate is failure and summary job absent; not accepted as passing mandatory CI.",
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986926",
+    "status": "completed"
+  },
+  "codeql": {
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986478",
+    "retry": {
+      "result": "HTTP500; no new attempt started",
+      "requested": 1
+    },
+    "id": 37641986478,
+    "failureStage": "Both languages exported SARIF, then failed during upload",
+    "conclusion": "failure",
+    "attempt": 1,
+    "jobs": [
+      {
+        "id": 112863656861,
+        "name": "analyze (java-kotlin)",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-10-07T15:05:37Z",
+        "completed_at": "2026-10-07T15:10:12Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986478/job/112863656861"
+      },
+      {
+        "id": 112863657122,
+        "name": "analyze (javascript-typescript)",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-10-07T15:05:38Z",
+        "completed_at": "2026-10-07T15:07:23Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641986478/job/112863657122"
+      }
+    ],
+    "scopedAlerts": {
+      "openCount": 0,
+      "validFreshCoverage": false,
+      "limitation": "Uploads failed; empty scoped readback cannot certify fresh head analysis.",
+      "ref": "refs/pull/323/merge"
+    },
+    "status": "completed"
+  },
+  "tests": {
+    "scope": "Five changed Java services; frontend/gateway unchanged. Wrapper validation job skipped by workflow scope.",
+    "executed": 1829,
+    "reported": 1830,
+    "errors": 0,
+    "failures": 0,
+    "skipped": 1,
+    "services": [
+      {
+        "skipped": 0,
+        "name": "school-core-service",
+        "tests": 940
+      },
+      {
+        "skip": "AuthoritativeAuthLocalBenchmarkTest opt-in local benchmark",
+        "skipped": 1,
+        "name": "identity-service",
+        "tests": 183
+      },
+      {
+        "skipped": 0,
+        "name": "platform-service",
+        "tests": 417
+      },
+      {
+        "skipped": 0,
+        "name": "operations-service",
+        "tests": 195
+      },
+      {
+        "skipped": 0,
+        "name": "billing-service",
+        "tests": 95
+      }
+    ]
+  },
+  "recoveredCheckpoint": {
+    "conclusion": "cancelled",
+    "failedJob": "duplicate-class-drift",
+    "ci": 37641599299,
+    "head": "f44aac860c301b45a751d57e653e621150a4ffe8",
+    "recovery": "Identical guarded route applied to other four copies; fresh drift job passed",
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37641599299"
+  }
+}

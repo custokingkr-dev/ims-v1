@@ -112,6 +112,21 @@ spec:
             # (grant the runtime SA secretAccessor first), grant the runtime SA roles/run.invoker on
             # custoking-platform-service-${env}, and supply ATTENDANCE_ABSENTEE_WHATSAPP_TEMPLATE_NAME.
             # platform-service's own MSG91 live block is a separate governance gate.
+            # Precommit journal is enabled only by the reviewed dev target; production defaults off.
+            - name: STUDENT_ERASURE_JOURNAL_ENABLED
+              value: "false" # from-param: ${student_erasure_journal_enabled}
+            - name: STUDENT_ERASURE_JOURNAL_PROJECT_ID
+              value: "" # from-param: ${student_erasure_journal_project_id}
+            - name: STUDENT_ERASURE_JOURNAL_BUCKET
+              value: "" # from-param: ${student_erasure_journal_bucket}
+            - name: STUDENT_ERASURE_JOURNAL_SOURCE_LINEAGE_ID
+              value: "" # from-param: ${student_erasure_journal_source_lineage_id}
+            - name: STUDENT_ERASURE_JOURNAL_RESTORE_EPOCH
+              value: "" # from-param: ${student_erasure_journal_restore_epoch}
+            - name: STUDENT_ERASURE_JOURNAL_EPOCH_GENERATION
+              value: "0" # from-param: ${student_erasure_journal_epoch_generation}
+            - name: STUDENT_ERASURE_JOURNAL_EPOCH_SHA256
+              value: "" # from-param: ${student_erasure_journal_epoch_sha256}
             - name: ATTENDANCE_ABSENTEE_DELIVERY_MODE
               value: dry-run
             - name: PLATFORM_BASE_URL

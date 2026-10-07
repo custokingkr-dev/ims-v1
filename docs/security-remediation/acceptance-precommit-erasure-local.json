@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_FINAL_FOCUSED_PASS",
+  "capturedAtUtc": "2026-10-07T15:00:10.128400+00:00",
+  "runCompletedAtUtc": "2026-10-07T14:55:11Z",
+  "suiteTotals": {
+    "tests": 36,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "suites": [
+    {
+      "name": "com.custoking.ims.schoolcoreservice.erasure.GcsErasureJournalStoreTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournalIntegrationTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournalTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.custoking.ims.schoolcoreservice.persistence.AbsenteeRecipientPolicyIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.custoking.ims.schoolcoreservice.persistence.BroadcastRecipientPolicyIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.custoking.ims.schoolcoreservice.persistence.GuardianCommunicationDispatchPolicyTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.custoking.ims.schoolcoreservice.persistence.StudentOutboxEmissionIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "localDatabase": "PostgreSQL 16 via Testcontainers; source database custoking_dev",
+  "fullOwnerMigrationVersions": {
+    "tenant_school": 30,
+    "student": 39,
+    "fee": 11,
+    "attendance": 11
+  },
+  "sourceIntegrationScope": {
+    "fullOwnerChainCases": 9,
+    "independentlyConnectedWrongDatabaseGuardCases": 1,
+    "guardDatabase": "postgres",
+    "guardFixture": "Preliminary read columns only; no external read/write or source erase permitted"
+  },
+  "verifiedBehaviors": [
+    "Confirmation precedes all external intent access",
+    "Unconfirmed journal returns503 before source erase",
+    "Lost create response requires exact immutable receipt readback",
+    "External intent survives SQL rollback and deterministic retry commits1 source receipt/deletion event/photo intent",
+    "Changed epoch rolls back every SQL write while preserving externally accepted intent",
+    "Current-epoch external-only intent denies actual broadcast and dispatch policy despite restored valid guardian consent; zero provider calls",
+    "Pinned canonical RECONCILING intent reuses complete source/child erase plus durable photo queue and deletion outbox",
+    "Repeated absent replay requires its matching committed receipt",
+    "Unproven absence and reused student ID return409 without a blind platform tombstone",
+    "Wrong actual SQL database prevents claim,replay and owner delivery before external reads/writes",
+    "Actual dedicated-role createStudent succeeds with fresh DB incarnation and ignores submitted incarnation JSON",
+    "Raw retired UUID INSERT in another tenant is denied by privilege SQLSTATE42501 before row creation",
+    "Two repeated actual dedicated ACL callbacks preserve INSERT-column exclusion and append-only receipt grants",
+    "Terminal receipts have zero PUBLIC table privileges"
+  ],
+  "initialRecoveredFailures": [
+    {
+      "stage": "sourceCompile",
+      "category": "GCS Blob.getContent option type mismatch",
+      "resolution": "Use Blob.BlobSourceOption.generationMatch()"
+    },
+    {
+      "stage": "ownerOnlyFixtureMigration",
+      "category": "Legacy app_rt role absent",
+      "resolution": "Guard compatibility ACL grant when role exists"
+    },
+    {
+      "stage": "newReplayTestCompile",
+      "category": "AssertJ generic transaction-result overload ambiguity",
+      "resolution": "Assign replay result to explicit Map before assertion"
+    },
+    {
+      "stage": "dedicatedRoleAclAssertion",
+      "category": "SQLSTATE42501 correctly denied explicit incarnation INSERT; assertion inspected Spring wrapper text",
+      "resolution": "Assert PostgreSQL root cause SQLSTATE42501 and permission-denied message; subsequent36-test run passed"
+    }
+  ],
+  "harnessCorrection": "Initial32-test command selected nonexistent BroadcastRecipientPolicyRepositoryTest. Final36 source run selects correct BroadcastRecipientPolicyIntegrationTest and all3 cases pass; source rollback fence case also exercises broadcast owner resolution.",
+  "cloudOperations": 0,
+  "providerCalls": 0,
+  "productionChanges": 0,
+  "liveSourceDeploymentProven": false,
+  "globalJournalComplete": false,
+  "historicalCoverageProven": false,
+  "physicalPurgeProven": false,
+  "restorationReady": false,
+  "deliveryResume": false,
+  "remainingOperatorRequirements": [
+    "Governed physical instance/JDBC clone binding",
+    "Freeze/drain before pointer transition",
+    "Complete external intent enumeration including older epochs and rollback-only claims",
+    "Source plus platform inbox/tombstone plus object/provider replay receipts",
+    "Legacy evidence for snapshots predating incarnation migration",
+    "Protection against rewound identifier sequences",
+    "Owner-controlled new epoch/cutover decision"
+  ],
+  "integrityScope": "Runtime student INSERT is column-scoped excluding erasure_incarnation, normal source creation receives the database UUID default, and immutable UPDATE remains trigger-guarded. Real dedicated-role full-chain testing proves raw retired-UUID INSERT denial across tenants even when the foreign receipt is RLS-hidden. Repeated actual callbacks preserve column grants and append-only/no-PUBLIC receipts. Owner-controlled restore privileges remain separately governed.",
+  "sourceSha256": {
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/erasure/ErasureJournalConfiguration.java": "4df7f436268aa59dc051e8546e1755267afe6eeaddf634b509ec73c58df37e62",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/erasure/ErasureJournalStore.java": "3359d593e8698e4f5f4268748050c4373629a82c4d36ab07041b22496abfe34b",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/erasure/GcsErasureJournalStore.java": "7b6e34315c82f436a53c86f96fd38a0e8edc941d8afb44e697d55beb756347a7",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/erasure/StudentErasureJournal.java": "6e949ddc7de28b7264b18c77ab350c41abad2aa489be71bed285acfa98120722",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/AbsenteeRecipientPolicyRepository.java": "f712cca191269d041bafa9194debf03c4847a61bfad7e1f3ef33809a4ea21b86",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/BroadcastRecipientPolicyRepository.java": "ea79937f37d9433918edb21f214ccdd4d24ddc208d766584b40d3f87bd4f3070",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/GuardianCommunicationDispatchPolicy.java": "05c8b41ddd173ce0d47e2a0a207912ccaf28350375b4748ef8babc49ecd2e10a",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/GuardianCommunicationPolicy.java": "91a55322228a9a1fd8592b6295d8a38c251ce49a4f6d5b9851c1a1ef363afde6",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/StudentReadRepository.java": "14ae81265ae71a678fa765817ab73925887363351848af11a76fc113a2168cfa",
+    "services/school-core-service/src/main/resources/db/migration/student/afterMigrate__dedicated_runtime_acl.sql": "089de33dfdbf2d38a25230418c3ed6473b648032881ce8df5accf3eb3b0a5dbd",
+    "services/school-core-service/src/main/resources/db/migration/student/V39__precommit_erasure_journal.sql": "8cba10aaac30569ed1dea16f19456c1ae6342a12a6afb7bd41a5f0262046c04c",
+    "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/erasure/GcsErasureJournalStoreTest.java": "a01cac2adad3df482a090ed7885e1afe47fa841a9332292d2caec7ac2d98a24a",
+    "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/erasure/StudentErasureJournalIntegrationTest.java": "241d181a707f968de9d54f6c9817b91384d0ca2dc88a3db5ecb4dc8e80c2aa05",
+    "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/erasure/StudentErasureJournalTest.java": "6532b80cc45dbd67f41a5e9bc855ef42cb468005b5e1c0feacf4d2aa85e6916b"
+  },
+  "rawLogsOrCredentialsIncluded": false,
+  "priorPassingRun": {
+    "runCompletedAtUtc": "2026-10-07T14:40:37Z",
+    "suiteTotals": {
+      "tests": 32,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "latestPassingRunBeforeExplicitPublicRevoke": {
+    "runCompletedAtUtc": "2026-10-07T14:51:46Z",
+    "suiteTotals": {
+      "tests": 36,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "combinedFinalRun": {
+    "suiteTotals": {
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "additionalSuites": [
+      {
+        "name": "com.custoking.ims.schoolcoreservice.outbox.PhotoCleanupDurabilityIntegrationTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "com.custoking.ims.schoolcoreservice.api.AbsenteeRecipientPolicyControllerTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ],
+    "completedAtUtc": "2026-10-07T14:55:11Z",
+    "mavenBuildSuccess": true,
+    "processExitCode": 0,
+    "exactFinalV39PublicRevokeIncluded": true
+  },
+  "runtimeIncarnationIntegrity": {
+    "actualRole": "ims_school_core_rt",
+    "legacyPrivilegeBaseline": "app_rt",
+    "ownerDefaultDmlModeled": true,
+    "actualApplicationCreateStudentSucceeded": true,
+    "submittedJsonIncarnationIgnored": true,
+    "freshDatabaseGeneratedIncarnationProven": true,
+    "rawCrossTenantRetiredUuidInsertSqlState": "42501",
+    "foreignTerminalReceiptRlsHidden": true,
+    "studentTableInsertPrivilege": false,
+    "incarnationColumnInsertPrivilege": false,
+    "ordinaryStudentFieldInsertPrivilege": true,
+    "terminalReceiptUpdateOrDeletePrivilege": false,
+    "terminalReceiptPublicGrantCount": 0,
+    "actualStudentPrivilegeCallbackRepeatCount": 2,
+    "globalSecurityDefinerRegistryAdded": false
+  },
+  "sourceSha256Scope": "UTF-8 source bytes with CRLF normalized to LF, matching repository text eol=lf policy"
+}

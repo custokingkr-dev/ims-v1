@@ -2,6 +2,7 @@ package com.custoking.ims.platformservice.infrastructure;
 
 import com.custoking.ims.platformservice.application.NotificationDeliveryProvider;
 import com.custoking.ims.platformservice.application.NotificationDeliveryRequest;
+import com.custoking.ims.platformservice.application.NotificationSubmissionResult;
 import com.custoking.ims.platformservice.application.SenderProfile;
 import com.custoking.ims.platformservice.persistence.SenderProfileRepository;
 import tools.jackson.databind.JsonNode;
@@ -34,6 +35,7 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
     private final Msg91Properties properties;
     private final SenderProfileRepository senderProfiles;
     private final ObjectMapper objectMapper;
+    private final Msg91GenericSubmissionTransport submissionTransport;
 
     public Msg91NotificationDeliveryProvider(Msg91Properties properties,
                                              SenderProfileRepository senderProfiles,
@@ -41,6 +43,7 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
         this.properties = properties;
         this.senderProfiles = senderProfiles;
         this.objectMapper = objectMapper;
+        this.submissionTransport = new Msg91GenericSubmissionTransport(objectMapper);
     }
 
     @Bean
@@ -65,6 +68,25 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
             throw new IllegalStateException("MSG91 delivery failed for event " + request.eventId(), ex);
         }
     }
+
+    @Override
+    public NotificationSubmissionResult submit(NotificationDeliveryRequest request) {
+        // Both startup and this direct entry point remain closed pending controlled live admission.
+        if(!properties.isDryRun()) return submitLive(request);
+        deliver(request);
+        return Msg91SubmissionCodec.unknown(request,"PROVIDER_DRY_RUN");
+    }
+
+    private NotificationSubmissionResult submitLive(NotificationDeliveryRequest request) {
+        requireGenericLiveAdmission();
+        return submissionTransport.submit(request,objectMapper.writeValueAsString(bodyFor(request)),properties.getAuthKey());
+    }
+
+    private void requireGenericLiveAdmission() {
+        // This is deliberately unconditional: preparing codecs does not authorize any live send.
+        throw liveDeliveryBlocked();
+    }
+
 
     Object bodyFor(NotificationDeliveryRequest request) {
         JsonNode payload = objectMapper.readTree(request.payload());

@@ -420,7 +420,10 @@ class StudentOutboxEmissionIntegrationTest {
         assertThat(deletionEvent.get("payload").toString())
                 .contains("\"id\"")
                 .doesNotContain("ADM-FEE-1", "Fee Linked");
-        org.mockito.Mockito.verify(photoStorage)
-                .deleteStoredPhoto("schools/demo/students/" + id + "/photos/photo.jpg");
+        org.mockito.Mockito.verify(photoStorage, org.mockito.Mockito.never())
+                .deleteStoredPhoto(org.mockito.ArgumentMatchers.anyString());
+        org.mockito.Mockito.verify(photoStorage).cleanupTarget(
+                org.mockito.ArgumentMatchers.eq("schools/demo/students/" + id + "/photos/photo.jpg"),
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq(id.longValue()));
     }
 }

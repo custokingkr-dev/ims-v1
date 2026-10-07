@@ -22,6 +22,8 @@ public final class AbsenteeNotificationStatus {
     public static final String SUPPRESSED = "SUPPRESSED";
     public static final String FAILED = "FAILED";
     public static final String DEAD_LETTER = "DEAD_LETTER";
+    public static final String UNKNOWN = "UNKNOWN";
+    public static final String ACCEPTED = "ACCEPTED";
 
     private AbsenteeNotificationStatus() {
     }

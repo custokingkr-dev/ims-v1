@@ -47,29 +47,36 @@ public class SchoolCoreBroadcastRecipientPolicy implements BroadcastRecipientPol
         UUID correlation=UUID.nameUUIDFromBytes(("fee-reminder:"+schoolId+":"+eventId).getBytes(StandardCharsets.UTF_8));
         return resolveCurrent(schoolId,correlation,List.of("SMS"),studentIds,true);
     }
+    /** Attendance owner verifies the original queued request and the current absence. */
+    public List<Recipient> resolveAbsentee(long schoolId, long studentId, String channel, String eventId,
+            String notificationId, String attendanceDate, String messageSha256) {
+        if (schoolId <= 0 || studentId <= 0 || notificationId == null
+                || !notificationId.matches("[A-Za-z0-9:_-]{1,255}")
+                || !("school-core:absentee:" + notificationId).equals(eventId)
+                || !List.of("SMS", "WHATSAPP", "EMAIL").contains(channel)
+                || attendanceDate == null || !attendanceDate.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}")
+                || messageSha256 == null || !messageSha256.matches("[a-f0-9]{64}"))
+            throw new IllegalStateException("Invalid absentee policy binding");
+        var body = Map.<String,Object>of("schoolId",schoolId,"studentId",studentId,"channel",channel,
+                "eventId",eventId,"notificationId",notificationId,"attendanceDate",attendanceDate,
+                "messageSha256",messageSha256);
+        var recipients = requestOwner("/absentees", body);
+        if (recipients == null || recipients.size() != 1) throw new IllegalStateException("Incomplete absentee policy response");
+        var r = recipients.getFirst();
+        if (r == null || r.schoolId() != schoolId || r.studentId() != studentId || !channel.equals(r.channel())
+                || !eventId.equals(r.eventId()) || r.reason() == null
+                || (r.allowed() && (r.guardianId() == null || r.destination() == null
+                    || r.destinationSha256() == null || r.policyEvidence() == null)))
+            throw new IllegalStateException("Absentee policy response scope mismatch");
+        return recipients;
+    }
     private List<Recipient> resolveCurrent(long schoolId,UUID broadcastId,List<String> channels,List<Long> studentIds,boolean feeReminder) {
         if (!configured()) throw new IllegalStateException("School recipient policy service is not configured");
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("schoolId", schoolId); body.put("broadcastId", broadcastId); body.put("channels", channels);
         body.put("communicationCategory", feeReminder ? "FEE_REMINDER" : "SCHOOL_NOTICE"); body.put("audienceType", feeReminder ? "EXPLICIT_STUDENTS" : "ALL_PARENTS");
         if (studentIds != null) body.put("studentIds", studentIds);
-        if(!capacity.tryAcquire()) throw new IllegalStateException("Recipient policy capacity unavailable");
-        List<Recipient> recipients;
-        java.util.concurrent.CompletableFuture<HttpResponse<byte[]>> response=null;
-        try {
-            var request=HttpRequest.newBuilder(URI.create(baseUrl+"/api/v1/internal/notifications/broadcast-recipients"+(feeReminder ? "/fee-reminders" : "")))
-                .timeout(Duration.ofSeconds(5)).header("Content-Type","application/json").header("X-Broadcast-Policy-Token",token);
-            if(URI.create(baseUrl).getHost().endsWith(".run.app")) {
-                String oidc=identityToken(); request.header("Authorization","Bearer "+oidc).header("X-Serverless-Authorization","Bearer "+oidc);
-            }
-            response=client.sendAsync(request.POST(HttpRequest.BodyPublishers.ofByteArray(mapper.writeValueAsBytes(body))).build(), info->new LimitedBody());
-            var answer=response.get(5,java.util.concurrent.TimeUnit.SECONDS);
-            if(answer.statusCode()!=200) throw new IllegalStateException("Recipient policy unavailable");
-            recipients=mapper.readValue(answer.body(),new tools.jackson.core.type.TypeReference<List<Recipient>>(){});
-        } catch(InterruptedException interrupted) {
-            Thread.currentThread().interrupt(); throw new IllegalStateException("Recipient policy interrupted");
-        } catch(Exception unavailable) { throw new IllegalStateException("Recipient policy unavailable"); }
-        finally { if(response!=null && !response.isDone()) response.cancel(true); capacity.release(); }
+        List<Recipient> recipients = requestOwner(feeReminder ? "/fee-reminders" : "", body);
         if (recipients == null) throw new IllegalStateException("Recipient policy response is missing");
         Set<String> seen = new HashSet<>();
         for (Recipient recipient : recipients) {
@@ -84,6 +91,27 @@ public class SchoolCoreBroadcastRecipientPolicy implements BroadcastRecipientPol
         if (studentIds != null && seen.size() != studentIds.stream().distinct().count() * channels.stream().distinct().count()) {
             throw new IllegalStateException("Recipient policy response is incomplete");
         }
+        return recipients;
+    }
+    private List<Recipient> requestOwner(String suffix, Map<String,Object> body) {
+        if (!configured()) throw new IllegalStateException("School recipient policy service is not configured");
+        if(!capacity.tryAcquire()) throw new IllegalStateException("Recipient policy capacity unavailable");
+        List<Recipient> recipients;
+        java.util.concurrent.CompletableFuture<HttpResponse<byte[]>> response=null;
+        try {
+            var request=HttpRequest.newBuilder(URI.create(baseUrl+"/api/v1/internal/notifications/broadcast-recipients"+suffix))
+                .timeout(Duration.ofSeconds(5)).header("Content-Type","application/json").header("X-Broadcast-Policy-Token",token);
+            if(URI.create(baseUrl).getHost().endsWith(".run.app")) {
+                String oidc=identityToken(); request.header("Authorization","Bearer "+oidc).header("X-Serverless-Authorization","Bearer "+oidc);
+            }
+            response=client.sendAsync(request.POST(HttpRequest.BodyPublishers.ofByteArray(mapper.writeValueAsBytes(body))).build(), info->new LimitedBody());
+            var answer=response.get(5,java.util.concurrent.TimeUnit.SECONDS);
+            if(answer.statusCode()!=200) throw new IllegalStateException("Recipient policy unavailable");
+            recipients=mapper.readValue(answer.body(),new tools.jackson.core.type.TypeReference<List<Recipient>>(){});
+        } catch(InterruptedException interrupted) {
+            Thread.currentThread().interrupt(); throw new IllegalStateException("Recipient policy interrupted");
+        } catch(Exception unavailable) { throw new IllegalStateException("Recipient policy unavailable"); }
+        finally { if(response!=null && !response.isDone()) response.cancel(true); capacity.release(); }
         return recipients;
     }
 

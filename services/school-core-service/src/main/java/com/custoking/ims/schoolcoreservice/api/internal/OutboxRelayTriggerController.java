@@ -16,13 +16,21 @@ import java.util.Map;
 public class OutboxRelayTriggerController {
 
     private final OutboxRelay relay;
+    private final com.custoking.ims.schoolcoreservice.outbox.PhotoCleanupWorker photoCleanup;
 
     public OutboxRelayTriggerController(OutboxRelay relay) {
+        this(relay, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public OutboxRelayTriggerController(OutboxRelay relay, com.custoking.ims.schoolcoreservice.outbox.PhotoCleanupWorker photoCleanup) {
         this.relay = relay;
+        this.photoCleanup = photoCleanup;
     }
 
     @PostMapping("/relay")
     public Map<String, Integer> relay() {
-        return Map.of("published", relay.publishBatch());
+        int completed = photoCleanup == null ? 0 : photoCleanup.drain();
+        return Map.of("published", relay.publishBatch(), "photoCleanupCompleted", completed);
     }
 }
