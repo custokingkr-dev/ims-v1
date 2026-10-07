@@ -162,6 +162,12 @@ jobs:
           terraform -chdir=deploy/gcp/observability fmt -check -recursive
           terraform -chdir=deploy/gcp/observability validate -no-color
           terraform -chdir=deploy/gcp/observability test -no-color
+      - name: Validate independent dev erasure journal and least-privilege scope
+        run: |
+          terraform -chdir=deploy/gcp/erasure-journal init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=deploy/gcp/erasure-journal fmt -check -recursive
+          terraform -chdir=deploy/gcp/erasure-journal validate -no-color
+          terraform -chdir=deploy/gcp/erasure-journal test -no-color
 
   windows-security-helper-validation:
     name: windows-security-helper-validation
@@ -170,7 +176,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Verify PowerShell 5 helper serialization and native exit handling
-        run: python -m unittest scripts.tests.signed_probe_serialization_test scripts.tests.pubsub_native_progress_test
+        run: python -m unittest scripts.tests.signed_probe_serialization_test scripts.tests.pubsub_native_progress_test scripts.tests.dev_erasure_journal_infrastructure_test
       - name: Verify Scheduler create and update command arguments
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tests/configure-async-relay-scheduler-test.ps1
 

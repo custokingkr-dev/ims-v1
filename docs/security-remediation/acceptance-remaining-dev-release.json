@@ -1,0 +1,390 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "sourceHeadSha": "0ae9796133f6d1b38c7517eabef635c3179c3108",
+  "runId": 37631144002,
+  "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37631144002",
+  "status": "completed",
+  "conclusion": "success",
+  "createdAt": "2026-10-07T13:46:09Z",
+  "updatedAt": "2026-10-07T14:02:05Z",
+  "checkedAtUtc": "2026-10-07T14:05:38.266969+00:00",
+  "services": [
+    {
+      "service": "api-gateway",
+      "revision": "custoking-api-gateway-dev-muy1nc06",
+      "ready": true,
+      "trafficPercent": 100,
+      "changedFromBaseline": false,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8",
+      "sourceImage": null,
+      "runtimeDigestMatchesManifest": null
+    },
+    {
+      "service": "billing-service",
+      "revision": "custoking-billing-service-dev-muy21hho",
+      "ready": true,
+      "trafficPercent": 100,
+      "changedFromBaseline": false,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:954094266973ea921699840e143ae6a897f8d7f8e4224b16d2d864bfd6eb6963",
+      "sourceImage": null,
+      "runtimeDigestMatchesManifest": null
+    },
+    {
+      "service": "frontend",
+      "revision": "custoking-frontend-dev-muy1s1uk",
+      "ready": true,
+      "trafficPercent": 100,
+      "changedFromBaseline": false,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+      "sourceImage": null,
+      "runtimeDigestMatchesManifest": null
+    },
+    {
+      "service": "identity-service",
+      "revision": "custoking-identity-service-dev-muy1pw02",
+      "ready": true,
+      "trafficPercent": 100,
+      "changedFromBaseline": false,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:90910d585d57029bb8cf5daa22360cf97626a5d21ac7a8868df726a9aeac3d91",
+      "sourceImage": null,
+      "runtimeDigestMatchesManifest": null
+    },
+    {
+      "service": "operations-service",
+      "revision": "custoking-operations-service-dev-muy1ya08",
+      "ready": true,
+      "trafficPercent": 100,
+      "changedFromBaseline": false,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:9ef0e46faa2e480dd2d98ac750fd7121110f1701e5823533265b07a5f707c673",
+      "sourceImage": null,
+      "runtimeDigestMatchesManifest": null
+    },
+    {
+      "service": "platform-service",
+      "revision": "custoking-platform-service-dev-00030-jxj",
+      "ready": true,
+      "trafficPercent": 100,
+      "changedFromBaseline": true,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:f1c491ae461805feed46b87cc1e10415a1226daa795168fb2f3399f97c3f3899",
+      "sourceImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:5a5f49d0638018ef2398c079360a4c79d836e5ccb9f1a5e0c4ec8489d2a1406a",
+      "runtimeDigestMatchesManifest": true
+    },
+    {
+      "service": "school-core-service",
+      "revision": "custoking-school-core-service-dev-00070-thr",
+      "ready": true,
+      "trafficPercent": 100,
+      "changedFromBaseline": true,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:407969b0e850022816b204618e88f801953092e462a2e276612ee960ebddf3e8",
+      "sourceImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:24c4f04709861e24a4d11cb6701179e4b353fbd9fc59b171c8d2dbe3264f9ddc",
+      "runtimeDigestMatchesManifest": true
+    }
+  ],
+  "unrelatedServicesUnchanged": 5,
+  "affectedServices": 2,
+  "ownerMigrations": [
+    {
+      "schemas": [
+        {
+          "schema": "reporting",
+          "version": "35",
+          "migrationsExecuted": 0
+        },
+        {
+          "schema": "notification",
+          "version": "14",
+          "migrationsExecuted": 0
+        },
+        {
+          "schema": "audit",
+          "version": "3",
+          "migrationsExecuted": 0
+        }
+      ],
+      "environment": "dev",
+      "imageDigest": "sha256:f1c491ae461805feed46b87cc1e10415a1226daa795168fb2f3399f97c3f3899",
+      "elapsedSeconds": 32.553,
+      "service": "platform-service",
+      "success": true,
+      "commitSha": "0ae9796133f6d1b38c7517eabef635c3179c3108"
+    },
+    {
+      "schemas": [
+        {
+          "schema": "tenant_school",
+          "version": "29",
+          "migrationsExecuted": 0
+        },
+        {
+          "schema": "student",
+          "version": "38",
+          "migrationsExecuted": 0
+        },
+        {
+          "schema": "attendance",
+          "version": "11",
+          "migrationsExecuted": 0
+        },
+        {
+          "schema": "fee",
+          "version": "11",
+          "migrationsExecuted": 0
+        },
+        {
+          "schema": "catalog",
+          "version": "26",
+          "migrationsExecuted": 0
+        }
+      ],
+      "environment": "dev",
+      "imageDigest": "sha256:407969b0e850022816b204618e88f801953092e462a2e276612ee960ebddf3e8",
+      "elapsedSeconds": 34.292,
+      "service": "school-core-service",
+      "success": true,
+      "commitSha": "0ae9796133f6d1b38c7517eabef635c3179c3108"
+    }
+  ],
+  "ownerJobs": [
+    {
+      "job": "ims-migrate-platform-dev-20261007135933-1ff89532",
+      "independentAbsenceVerified": true
+    },
+    {
+      "job": "ims-migrate-school-core-dev-20261007135804-63d37cfa",
+      "independentAbsenceVerified": true
+    }
+  ],
+  "trivy": {
+    "commit": "0ae9796133f6d1b38c7517eabef635c3179c3108",
+    "environment": "dev",
+    "scanner": "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25",
+    "scannedAtUtc": "2026-10-07T13:57:52.3151156Z",
+    "verdictCacheTtlHours": 24.0,
+    "scannedCount": 2,
+    "cachedCount": 0,
+    "services": [
+      {
+        "service": "school-core-service",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:24c4f04709861e24a4d11cb6701179e4b353fbd9fc59b171c8d2dbe3264f9ddc",
+        "digestKey": "sha256-24c4f04709861e24a4d11cb6701179e4b353fbd9fc59b171c8d2dbe3264f9ddc",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/school-core-service-sha256-24c4f04709861e24a4d11cb6701179e4b353fbd9fc59b171c8d2dbe3264f9ddc.table.txt",
+        "sarifEvidence": "release-evidence/trivy/school-core-service-sha256-24c4f04709861e24a4d11cb6701179e4b353fbd9fc59b171c8d2dbe3264f9ddc.sarif",
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:5a5f49d0638018ef2398c079360a4c79d836e5ccb9f1a5e0c4ec8489d2a1406a",
+        "digestKey": "sha256-5a5f49d0638018ef2398c079360a4c79d836e5ccb9f1a5e0c4ec8489d2a1406a",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/platform-service-sha256-5a5f49d0638018ef2398c079360a4c79d836e5ccb9f1a5e0c4ec8489d2a1406a.table.txt",
+        "sarifEvidence": "release-evidence/trivy/platform-service-sha256-5a5f49d0638018ef2398c079360a4c79d836e5ccb9f1a5e0c4ec8489d2a1406a.sarif",
+        "passed": true
+      }
+    ]
+  },
+  "releaseSteps": [
+    {
+      "name": "Fast dev deployment",
+      "conclusion": "success"
+    },
+    {
+      "name": "Verify changed Cloud Run services",
+      "conclusion": "success"
+    },
+    {
+      "name": "Gateway health smoke after rollout",
+      "conclusion": "success"
+    },
+    {
+      "name": "Sign dev-tested image digests",
+      "conclusion": "success"
+    },
+    {
+      "name": "Approve dev-tested image digests for production",
+      "conclusion": "success"
+    }
+  ],
+  "productionChanged": false,
+  "scope": "Exact two-service dev release and independent seven-service metadata readback. Five services retain baseline revisions; no assertion of every application feature.",
+  "initialReadbackFailure": {
+    "step": "owner job absence",
+    "reason": "Harness did not recognize gcloud Cannot find job wording; exact NOT_FOUND-equivalent corrected and reverified."
+  },
+  "negativeAuthorizationSmoke": {
+    "project": "custoking-dev",
+    "checkedAtUtc": "2026-10-07T14:05:54.873746+00:00",
+    "requests": 12,
+    "passed": true,
+    "checks": [
+      {
+        "service": "identity-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_internal_machine",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "case": "anonymous_protected_gateway",
+        "status": 401,
+        "passed": true
+      }
+    ],
+    "scope": "Anonymous/forged denials only; private Cloud Run ingress denials do not prove private application readiness."
+  },
+  "frontendHeaderCspBrowserSmoke": {
+    "startedAt": "2026-10-07T14:05:48.918Z",
+    "scope": "Anonymous live HTTP/browser smoke",
+    "origins": [
+      {
+        "origin": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "responses": [
+          {
+            "resource": "/login",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/frontend-health",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/index-UB6jIoJq.js",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/missing-security-proof.js",
+            "status": 404,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "synthetic-nonexistent-photo",
+            "status": 401,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none', default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff, nosniff",
+              "x-frame-options": "DENY, DENY",
+              "referrer-policy": "strict-origin-when-cross-origin, no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload, max-age=31536000"
+            }
+          }
+        ],
+        "browser": {
+          "inlineExecuted": false,
+          "rasterBlobLoaded": true,
+          "violations": [
+            "script-src-elem",
+            "object-src"
+          ]
+        }
+      }
+    ],
+    "nonRoot": {
+      "verified": false,
+      "reason": "Public HTTP cannot establish runtime UID; use deployed image config plus existing container proof."
+    },
+    "success": true,
+    "finishedAt": "2026-10-07T14:06:02.812Z"
+  },
+  "scopeLimitations": [
+    "Two changed services; five independently unchanged baseline revisions.",
+    "Read-only public boundary smoke does not establish every role/feature combination or process UID.",
+    "Production unchanged."
+  ]
+}

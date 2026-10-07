@@ -61,6 +61,13 @@ deployParameters:
   photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
   runtime_service_account: ims-school-core-dev@__PROJECT_ID__.iam.gserviceaccount.com
+  student_erasure_journal_enabled: "true"
+  student_erasure_journal_project_id: "custoking-dev"
+  student_erasure_journal_bucket: "custoking-dev-erasure-journal"
+  student_erasure_journal_source_lineage_id: "58bc724a-592f-49f1-b22f-0e5f95aa6808"
+  student_erasure_journal_restore_epoch: "d9c4f31c-3420-48a7-8fbe-7fc26d2065bf"
+  student_erasure_journal_epoch_generation: "1791384645925940"
+  student_erasure_journal_epoch_sha256: "aae5c2aedd259b60e7cdff757508a4a0584bb6ab26def2e5eddd148ede7ab108"
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   user_context_caller_service_accounts: ims-api-gateway-dev@__PROJECT_ID__.iam.gserviceaccount.com,ims-identity-dev@__PROJECT_ID__.iam.gserviceaccount.com
