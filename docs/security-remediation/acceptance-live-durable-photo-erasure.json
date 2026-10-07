@@ -84,7 +84,7 @@
     "syntheticPattern": true,
     "bytes": 8987,
     "generation": "1791394574200597",
-    "keySha256": "93cdd4ce92abf3982a1902f62dd3cfc44ea612bf8da671deb427e7ceedd60cc8"
+    "objectNameDigestSha256": "93cdd4ce92abf3982a1902f62dd3cfc44ea612bf8da671deb427e7ceedd60cc8"
   },
   "browserBoundary": {
     "schemaVersion": 1,
