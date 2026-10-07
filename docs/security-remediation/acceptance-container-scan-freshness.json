@@ -1,0 +1,186 @@
+{
+  "capturedAtUtc": "2026-10-07T19:48:52.930727+00:00",
+  "ref": "refs/heads/dev",
+  "tool": "Trivy",
+  "readOnlyInventory": true,
+  "openAlertCount": 239,
+  "severityCounts": {
+    "medium": 209,
+    "low": 30
+  },
+  "alertCategoryCounts": {
+    ".github/workflows/security-scan.yml:scan/context:services/identity-service/image:custoking-identity-service/name:identity-service": 32,
+    "identity-service": 17,
+    "operations-service": 17,
+    ".github/workflows/security-scan.yml:scan/context:services/operations-service/image:custoking-operations-service/name:operations-service": 29,
+    "billing-service": 17,
+    ".github/workflows/security-scan.yml:scan/context:services/billing-service/image:custoking-billing-service/name:billing-service": 29,
+    "platform-service": 17,
+    ".github/workflows/security-scan.yml:scan/context:services/platform-service/image:custoking-platform-service/name:platform-service": 29,
+    "school-core-service": 17,
+    ".github/workflows/security-scan.yml:scan/context:services/school-core-service/image:custoking-school-core-service/name:school-core-service": 35
+  },
+  "alertInstanceCommitCounts": {
+    "d517504935460973621538cbc413b839d0813df6": 154,
+    "f6b8eb4d6687ba6ae437753f195430a65a6dfecb": 85
+  },
+  "analysisCount": 43,
+  "latestAnalysisByCategory": {
+    "api-gateway": {
+      "id": 1653217733,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T13:00:40Z",
+      "resultsCount": 0,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    "operations-service": {
+      "id": 1653216325,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T13:00:21Z",
+      "resultsCount": 17,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    "school-core-service": {
+      "id": 1653214874,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T13:00:00Z",
+      "resultsCount": 17,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    "identity-service": {
+      "id": 1653214770,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T12:59:59Z",
+      "resultsCount": 17,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    "platform-service": {
+      "id": 1653214572,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T12:59:56Z",
+      "resultsCount": 17,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    "dashboard": {
+      "id": 1653214503,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T12:59:54Z",
+      "resultsCount": 0,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    "billing-service": {
+      "id": 1653214148,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T12:59:49Z",
+      "resultsCount": 17,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    "frontend": {
+      "id": 1653213622,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T12:59:41Z",
+      "resultsCount": 0,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    ".github/workflows/security-scan.yml:scan/context:services/school-core-service/image:custoking-school-core-service/name:school-core-service": {
+      "id": 1599894177,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:31:25Z",
+      "resultsCount": 52,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    ".github/workflows/security-scan.yml:scan/context:services/platform-service/image:custoking-platform-service/name:platform-service": {
+      "id": 1599885412,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:28:48Z",
+      "resultsCount": 52,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    ".github/workflows/security-scan.yml:scan/context:services/billing-service/image:custoking-billing-service/name:billing-service": {
+      "id": 1599882467,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:27:59Z",
+      "resultsCount": 52,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    ".github/workflows/security-scan.yml:scan/context:services/identity-service/image:custoking-identity-service/name:identity-service": {
+      "id": 1599882277,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:27:56Z",
+      "resultsCount": 52,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    ".github/workflows/security-scan.yml:scan/context:services/operations-service/image:custoking-operations-service/name:operations-service": {
+      "id": 1599881734,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:27:46Z",
+      "resultsCount": 52,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    ".github/workflows/security-scan.yml:scan/context:frontend/image:custoking-frontend/name:frontend": {
+      "id": 1599878877,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:27:04Z",
+      "resultsCount": 0,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    ".github/workflows/security-scan.yml:scan/context:services/api-gateway/image:custoking-api-gateway/name:api-gateway": {
+      "id": 1599878409,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:26:57Z",
+      "resultsCount": 0,
+      "error": "",
+      "ref": "refs/heads/dev"
+    }
+  },
+  "currentDeployedImageApplicabilityEstablished": false,
+  "alertsDismissedOrAnalysesDeleted": false,
+  "authorizedScanDispatch": {
+    "requestedAtUtc": "2026-10-07T19:48:54.007984+00:00",
+    "observedDevHeadSha": "f953d66b5a5cdc3530d3624c67b69462450be69a",
+    "workflowSha256NormalizedLf": "f68812736633670d5a654e483f040f3477d61ae33cf3521f8bc69989bc5c150a",
+    "cleanupGuardMainOnlyVerified": true,
+    "localImagesOnly": true,
+    "serviceMatrixCount": 8,
+    "deployOrCloudMutation": false,
+    "runId": 37677327459,
+    "runUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37677327459",
+    "runHeadSha": "f953d66b5a5cdc3530d3624c67b69462450be69a",
+    "patchFreshnessVerified": false,
+    "baselineOnlyReason": "Workflow omits SECURITY_PATCH_EPOCH build argument while all eight Dockerfiles use it in package patch layer; cache may reuse previous patch layer."
+  },
+  "sourceFix": {
+    "file": ".github/workflows/security-scan.yml",
+    "problem": "All eight runtime Dockerfiles default SECURITY_PATCH_EPOCH to unset and use it in the OS patch RUN, but the cached daily scan did not supply the argument. A cached patch layer can skip package refresh.",
+    "change": "Set SECURITY_PATCH_EPOCH to the GitHub run ID and run attempt so each scan/retry invalidates the patch RUN and subsequent layers while retaining earlier build caches.",
+    "implemented": true,
+    "freshWorkflowAcceptancePending": true,
+    "applicationDeploymentExecuted": false
+  },
+  "fixPlan": [
+    "Validate every configured runtime Dockerfile consumes the argument and the workflow supplies a GitHub-generated value.",
+    "Run the eight-component dev workflow and verify patch RUN execution, HIGH/CRITICAL gates and successful stable-category SARIF uploads against its exact source.",
+    "Independently re-read current and historical Trivy categories; map current findings to actual component/package/version/fix status and deployed digests before claiming applicability or remediation.",
+    "Retain legacy-category evidence; do not silently dismiss or delete historical analyses. Any separately approved analysis cleanup must require complete successful current coverage and preserve review evidence.",
+    "Keep the existing owner actions and exact 198-revision deletion approval separate; source-image scans do not certify all live digests or physical removal of old images/revisions."
+  ],
+  "references": [
+    "https://docs.docker.com/build/cache/invalidation/",
+    "https://docs.docker.com/reference/dockerfile/#impact-on-build-caching"
+  ],
+  "applicationDeploymentOrProductionMutation": false
+}
