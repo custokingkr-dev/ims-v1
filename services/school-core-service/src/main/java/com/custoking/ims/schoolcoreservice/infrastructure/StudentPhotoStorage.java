@@ -44,7 +44,7 @@ import java.util.concurrent.TimeUnit;
  * self-impersonation (the runtime SA needs {@code roles/iam.serviceAccountTokenCreator} on itself).
  *
  * <p>Degrades gracefully when no bucket is configured (local/tests): {@link #toDisplayUrl} returns
- * the stored value unchanged and {@link #upload} fails with a clear 503.
+ * null without owner context and {@link #upload} fails with a clear 503.
  */
 @Component
 public class StudentPhotoStorage {
@@ -120,9 +120,9 @@ public class StudentPhotoStorage {
                     .build();
             storage().create(blob, jpegData);
         } catch (RuntimeException ex) {
-            log.error("Failed to store student photo (bucket={}, key={})", bucket, key, ex);
+            log.error("Student photo storage unavailable");
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "Could not store the photo", ex);
+                    "Could not store the photo");
         }
         return key;
     }
@@ -161,61 +161,102 @@ public class StudentPhotoStorage {
             storage().create(blob, data);
             return key;
         } catch (RuntimeException ex) {
-            log.error("Failed to store student import file (bucket={}, key={})", bucket, key, ex);
+            log.error("Student import storage unavailable");
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "Could not store the import file", ex);
+                    "Could not store the import file");
         }
     }
 
-    /**
-     * Convert a stored value to something an {@code <img src>} can load: null stays null, an
-     * existing {@code http(s)} URL (legacy/external) is returned as-is, and a GCS object key is
-     * turned into a fresh signed URL. Returns null if signing fails (so the UI shows a placeholder).
-     */
-    public String toDisplayUrl(String stored) {
-        if (!StringUtils.hasText(stored)) {
-            return null;
-        }
-        if (!isEnabled()) return stored;
-        if (stored.startsWith("http://") || stored.startsWith("https://")) {
-            try {
-                URI uri = URI.create(stored);
-                return "https".equals(uri.getScheme()) && "storage.googleapis.com".equals(uri.getHost())
-                        && uri.getRawUserInfo() == null && (uri.getPort() == -1 || uri.getPort() == 443)
-                        && uri.getPath().startsWith("/" + bucket + "/schools/") ? stored : null;
-            } catch (IllegalArgumentException ex) { return null; }
-        }
+    /** Unscoped callers must never mint capabilities or read shared-bucket objects. */
+    @Deprecated
+    public String toDisplayUrl(String stored) { return null; }
+
+    public String toDisplayUrl(String stored, String schoolUid, long studentId) {
+        String key = ownedPhotoKey(stored, schoolUid, studentId, true);
+        if (key == null || !isEnabled()) return null;
         try {
-            URL url = storage().signUrl(
-                    BlobInfo.newBuilder(bucket, stored).build(),
-                    ttlMinutes, TimeUnit.MINUTES,
-                    Storage.SignUrlOption.signWith(signer()),
-                    Storage.SignUrlOption.withV4Signature());
-            return url.toString();
-        } catch (Exception ex) {
-            log.warn("Failed to sign student photo URL for key {}: {}", stored, ex.toString());
-            return null;
+            return storage().signUrl(BlobInfo.newBuilder(bucket, key).build(), ttlMinutes, TimeUnit.MINUTES,
+                    Storage.SignUrlOption.signWith(signer()), Storage.SignUrlOption.withV4Signature()).toString();
+        } catch (RuntimeException failure) {
+            log.warn("Student photo signing unavailable"); return null;
         }
     }
 
-    public Optional<StoredPhoto> readStoredPhoto(String stored) {
-        if (!StringUtils.hasText(stored) || stored.startsWith("http://") || stored.startsWith("https://")) {
-            return Optional.empty();
-        }
-        if (!isEnabled()) {
-            return Optional.empty();
-        }
+    private static final int STORED_PHOTO_HARD_LIMIT = 16 * 1024 * 1024;
+    private static final java.util.concurrent.ExecutorService PHOTO_READS = new java.util.concurrent.ThreadPoolExecutor(
+            8, 8, 0, TimeUnit.SECONDS, new java.util.concurrent.SynchronousQueue<>(), runnable -> {
+                var thread = new Thread(runnable, "owned-photo-read"); thread.setDaemon(true); return thread;
+            }, new java.util.concurrent.ThreadPoolExecutor.AbortPolicy());
+
+    /** Compatibility signature fails closed: ownership must come from the owner repository. */
+    @Deprecated
+    public Optional<StoredPhoto> readStoredPhoto(String stored) { return Optional.empty(); }
+
+    public Optional<StoredPhoto> readStoredPhoto(String stored, String schoolUid, long studentId) {
+        String key = ownedPhotoKey(stored, schoolUid, studentId, false);
+        if (key == null || !isEnabled()) return Optional.empty();
+        java.util.concurrent.Future<Optional<StoredPhoto>> task = null;
         try {
-            var blob = storage().get(bucket, stored);
-            if (blob == null || !blob.exists()) {
-                return Optional.empty();
+            task = PHOTO_READS.submit(() -> readOwnedGeneration(key));
+            return task.get(8, TimeUnit.SECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt(); return Optional.empty();
+        } catch (Exception unconfirmed) {
+            log.warn("Student photo read unavailable"); return Optional.empty();
+        } finally { if (task != null && !task.isDone()) task.cancel(true); }
+    }
+
+    private Optional<StoredPhoto> readOwnedGeneration(String key) throws IOException {
+        var client = cleanupStorage(); // bounded SDK connect/read/total timeout, one attempt
+        var blob = client.get(com.google.cloud.storage.BlobId.of(bucket, key),
+                Storage.BlobGetOption.fields(Storage.BlobField.GENERATION, Storage.BlobField.SIZE, Storage.BlobField.CONTENT_TYPE));
+        if (blob == null) return Optional.empty();
+        Long generation = blob.getGeneration(), size = blob.getSize();
+        int limit = (int) Math.min(maxBytes, STORED_PHOTO_HARD_LIMIT);
+        if (generation == null || generation <= 0 || size == null || size <= 0 || size > limit) return Optional.empty();
+        String type = blob.getContentType();
+        type = StringUtils.hasText(type) ? type.toLowerCase(java.util.Locale.ROOT) : "image/jpeg";
+        if (!java.util.Set.of("image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/webp").contains(type)) return Optional.empty();
+        try (var reader = client.reader(com.google.cloud.storage.BlobId.of(bucket, key, generation),
+                Storage.BlobSourceOption.generationMatch(generation))) {
+            reader.setChunkSize(8192);
+            var buffer = java.nio.ByteBuffer.allocate(8192);
+            var out = new ByteArrayOutputStream((int) Math.min(size, 8192));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(7);
+            while (true) {
+                if (Thread.currentThread().isInterrupted() || System.nanoTime() >= deadline) return Optional.empty();
+                buffer.clear(); int read = reader.read(buffer);
+                if (read == 0) { java.util.concurrent.locks.LockSupport.parkNanos(1_000_000); continue; }
+                if (read < 0) break;
+                if (read > limit - out.size() || read > size - out.size()) return Optional.empty();
+                out.write(buffer.array(), 0, read);
             }
-            String contentType = StringUtils.hasText(blob.getContentType()) ? blob.getContentType() : "image/jpeg";
-            return Optional.of(new StoredPhoto(blob.getContent(), contentType));
-        } catch (RuntimeException ex) {
-            log.warn("Failed to read student photo for key {}: {}", stored, ex.toString());
-            return Optional.empty();
+            if (out.size() != size || System.nanoTime() >= deadline) return Optional.empty();
+            return Optional.of(new StoredPhoto(out.toByteArray(), type));
         }
+    }
+
+    /** Exact owner UID/student prefix; no encoded URL paths, traversal or other object classes. */
+    private String ownedPhotoKey(String stored, String schoolUid, long studentId, boolean allowOwnedLegacyUrl) {
+        if (!StringUtils.hasText(stored) || studentId <= 0 || schoolUid == null || stored.length() > 2048) return null;
+        try {
+            if (!java.util.UUID.fromString(schoolUid).toString().equals(schoolUid)) return null;
+            String key = stored;
+            if (stored.startsWith("http:") || stored.startsWith("https:")) {
+                if (!allowOwnedLegacyUrl) return null;
+                var uri = URI.create(stored);
+                if (!"https".equals(uri.getScheme()) || !"storage.googleapis.com".equals(uri.getHost())
+                        || uri.getRawUserInfo() != null || (uri.getPort() != -1 && uri.getPort() != 443)
+                        || !uri.getRawPath().equals(uri.getPath()) || uri.getFragment() != null
+                        || !uri.getPath().startsWith("/" + bucket + "/")) return null;
+                key = uri.getPath().substring(bucket.length() + 2);
+            }
+            String prefix = "schools/" + schoolUid + "/students/" + studentId + "/photos/";
+            if (!key.startsWith(prefix) || !key.matches("[A-Za-z0-9._/-]+")
+                    || java.util.Arrays.stream(key.split("/", -1)).anyMatch(part -> part.isBlank() || part.equals(".") || part.equals(".."))) return null;
+            if (!key.substring(prefix.length()).matches("(?i)[A-Za-z0-9._-]+\\.(jpg|jpeg|png|webp)")) return null;
+            return key;
+        } catch (IllegalArgumentException malformed) { return null; }
     }
 
     /**
@@ -485,7 +526,7 @@ public class StudentPhotoStorage {
         } catch (RuntimeException ex) {
             // The database deletion is authoritative. A failed object cleanup is observable and
             // safe to retry, but must not resurrect or partially restore the student record.
-            log.warn("Failed to delete student photo object {}: {}", stored, ex.toString());
+            log.warn("Student photo cleanup unavailable");
         }
     }
 

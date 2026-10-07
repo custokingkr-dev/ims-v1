@@ -379,6 +379,10 @@ public class StudentReadRepository {
 
     @Transactional
     public Map<String, Object> createStudent(Map<String, Object> request) {
+        String suppliedPhoto = str(request.get("photoUrl"), "").trim();
+        if (!suppliedPhoto.isEmpty() && !suppliedPhoto.matches("(?i)^https?://.*")) {
+            throw new IllegalArgumentException("Private photo keys may only be assigned by the photo upload workflow");
+        }
         String admissionNo = requireText(firstPresent(request, "admissionNumber", "admissionNo"), "Admission Number is mandatory");
         Long schoolId = longValue(request.get("schoolId"), null);
         if (schoolId == null) {
@@ -718,12 +722,14 @@ public class StudentReadRepository {
     }
 
     public Optional<StudentPhotoContent> studentPhotoContent(Long id) {
-        String stored = jdbc.sql("SELECT photo_url FROM student.students WHERE id = :id")
-                .param("id", id)
-                .query(String.class)
-                .optional()
-                .orElse(null);
-        return photoStorage.readStoredPhoto(stored)
+        var owner = jdbc.sql("""
+                SELECT st.photo_url, school.school_uid::text AS school_uid
+                FROM student.students st JOIN tenant_school.schools school ON school.id=st.school_id
+                WHERE st.id=:id AND st.deleted_at IS NULL
+                """).param("id", id)
+                .query((rs,n) -> new String[]{rs.getString("photo_url"),rs.getString("school_uid")}).optional();
+        if (owner.isEmpty()) return Optional.empty();
+        return photoStorage.readStoredPhoto(owner.get()[0], owner.get()[1], id)
                 .map(photo -> new StudentPhotoContent(photo.data(), photo.contentType()));
     }
 

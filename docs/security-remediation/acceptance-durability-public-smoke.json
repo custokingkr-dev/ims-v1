@@ -1,0 +1,197 @@
+﻿{
+    "schemaVersion":  1,
+    "project":  "custoking-dev",
+    "sourceHeadSha":  "25eb41d9bd0915c9fe9ec60e5078f6492f118380",
+    "releaseRunId":  37643895536,
+    "releaseUrl":  "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536",
+    "liveRevisionEvidence":  "docs/security-remediation/acceptance-durability-dev-release.json",
+    "capturedAtUtc":  "2026-10-07T16:04:41.4341334Z",
+    "success":  true,
+    "negativeAuthorization":  {
+                                  "scope":  "Anonymous requests and forged unauthenticated carrier headers; no signed Cloud Run transport or legitimate user actors. Private403 primarily demonstrates Cloud Run ingress denial.",
+                                  "exitCode":  0,
+                                  "requests":  12,
+                                  "cases":  [
+                                                {
+                                                    "service":  "identity-service",
+                                                    "case":  "anonymous_private",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "identity-service",
+                                                    "case":  "forged_user_without_id_token",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "school-core-service",
+                                                    "case":  "anonymous_private",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "school-core-service",
+                                                    "case":  "forged_user_without_id_token",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "operations-service",
+                                                    "case":  "anonymous_private",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "operations-service",
+                                                    "case":  "forged_user_without_id_token",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "platform-service",
+                                                    "case":  "anonymous_private",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "platform-service",
+                                                    "case":  "forged_user_without_id_token",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "billing-service",
+                                                    "case":  "anonymous_private",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "billing-service",
+                                                    "case":  "forged_user_without_id_token",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "identity-service",
+                                                    "case":  "forged_internal_machine",
+                                                    "status":  403,
+                                                    "passed":  true
+                                                },
+                                                {
+                                                    "service":  "api-gateway",
+                                                    "case":  "anonymous_protected_gateway",
+                                                    "status":  401,
+                                                    "passed":  true
+                                                }
+                                            ],
+                                  "passed":  12
+                              },
+    "frontend":  {
+                     "scope":  "One public frontend origin: login, health, built asset, missing asset404, nonexistent student0 photo denied401; six required headers each plus browser inline-script/object rejection and raster blob allowance. Browser APIs blocked.",
+                     "exitCode":  0,
+                     "evidence":  {
+                                      "startedAt":  "2026-10-07T16:04:26.299Z",
+                                      "scope":  "Anonymous live HTTP/browser smoke",
+                                      "origins":  [
+                                                      {
+                                                          "origin":  "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+                                                          "responses":  [
+                                                                            {
+                                                                                "resource":  "/login",
+                                                                                "status":  200,
+                                                                                "headers":  {
+                                                                                                "content-security-policy":  "default-src \u0027self\u0027; script-src \u0027self\u0027; style-src \u0027self\u0027 \u0027unsafe-inline\u0027 https://fonts.googleapis.com; font-src \u0027self\u0027 https://fonts.gstatic.com; img-src \u0027self\u0027 data: blob: https://storage.googleapis.com; connect-src \u0027self\u0027; object-src \u0027none\u0027; base-uri \u0027self\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027",
+                                                                                                "x-content-type-options":  "nosniff",
+                                                                                                "x-frame-options":  "DENY",
+                                                                                                "referrer-policy":  "no-referrer",
+                                                                                                "permissions-policy":  "geolocation=(), microphone=(), camera=(self)",
+                                                                                                "strict-transport-security":  "max-age=31536000"
+                                                                                            }
+                                                                            },
+                                                                            {
+                                                                                "resource":  "/frontend-health",
+                                                                                "status":  200,
+                                                                                "headers":  {
+                                                                                                "content-security-policy":  "default-src \u0027self\u0027; script-src \u0027self\u0027; style-src \u0027self\u0027 \u0027unsafe-inline\u0027 https://fonts.googleapis.com; font-src \u0027self\u0027 https://fonts.gstatic.com; img-src \u0027self\u0027 data: blob: https://storage.googleapis.com; connect-src \u0027self\u0027; object-src \u0027none\u0027; base-uri \u0027self\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027",
+                                                                                                "x-content-type-options":  "nosniff",
+                                                                                                "x-frame-options":  "DENY",
+                                                                                                "referrer-policy":  "no-referrer",
+                                                                                                "permissions-policy":  "geolocation=(), microphone=(), camera=(self)",
+                                                                                                "strict-transport-security":  "max-age=31536000"
+                                                                                            }
+                                                                            },
+                                                                            {
+                                                                                "resource":  "/assets/index-UB6jIoJq.js",
+                                                                                "status":  200,
+                                                                                "headers":  {
+                                                                                                "content-security-policy":  "default-src \u0027self\u0027; script-src \u0027self\u0027; style-src \u0027self\u0027 \u0027unsafe-inline\u0027 https://fonts.googleapis.com; font-src \u0027self\u0027 https://fonts.gstatic.com; img-src \u0027self\u0027 data: blob: https://storage.googleapis.com; connect-src \u0027self\u0027; object-src \u0027none\u0027; base-uri \u0027self\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027",
+                                                                                                "x-content-type-options":  "nosniff",
+                                                                                                "x-frame-options":  "DENY",
+                                                                                                "referrer-policy":  "no-referrer",
+                                                                                                "permissions-policy":  "geolocation=(), microphone=(), camera=(self)",
+                                                                                                "strict-transport-security":  "max-age=31536000"
+                                                                                            }
+                                                                            },
+                                                                            {
+                                                                                "resource":  "/assets/missing-security-proof.js",
+                                                                                "status":  404,
+                                                                                "headers":  {
+                                                                                                "content-security-policy":  "default-src \u0027self\u0027; script-src \u0027self\u0027; style-src \u0027self\u0027 \u0027unsafe-inline\u0027 https://fonts.googleapis.com; font-src \u0027self\u0027 https://fonts.gstatic.com; img-src \u0027self\u0027 data: blob: https://storage.googleapis.com; connect-src \u0027self\u0027; object-src \u0027none\u0027; base-uri \u0027self\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027",
+                                                                                                "x-content-type-options":  "nosniff",
+                                                                                                "x-frame-options":  "DENY",
+                                                                                                "referrer-policy":  "no-referrer",
+                                                                                                "permissions-policy":  "geolocation=(), microphone=(), camera=(self)",
+                                                                                                "strict-transport-security":  "max-age=31536000"
+                                                                                            }
+                                                                            },
+                                                                            {
+                                                                                "resource":  "synthetic-nonexistent-photo",
+                                                                                "status":  401,
+                                                                                "headers":  {
+                                                                                                "content-security-policy":  "default-src \u0027self\u0027; script-src \u0027self\u0027; style-src \u0027self\u0027 \u0027unsafe-inline\u0027; img-src \u0027self\u0027 data: blob:; font-src \u0027self\u0027 data:; connect-src \u0027self\u0027; object-src \u0027none\u0027; base-uri \u0027self\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027, default-src \u0027self\u0027; script-src \u0027self\u0027; style-src \u0027self\u0027 \u0027unsafe-inline\u0027 https://fonts.googleapis.com; font-src \u0027self\u0027 https://fonts.gstatic.com; img-src \u0027self\u0027 data: blob: https://storage.googleapis.com; connect-src \u0027self\u0027; object-src \u0027none\u0027; base-uri \u0027self\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027",
+                                                                                                "x-content-type-options":  "nosniff, nosniff",
+                                                                                                "x-frame-options":  "DENY, DENY",
+                                                                                                "referrer-policy":  "strict-origin-when-cross-origin, no-referrer",
+                                                                                                "permissions-policy":  "geolocation=(), microphone=(), camera=(self)",
+                                                                                                "strict-transport-security":  "max-age=63072000; includeSubDomains; preload, max-age=31536000"
+                                                                                            }
+                                                                            }
+                                                                        ],
+                                                          "browser":  {
+                                                                          "inlineExecuted":  false,
+                                                                          "rasterBlobLoaded":  true,
+                                                                          "violations":  [
+                                                                                             "script-src-elem",
+                                                                                             "object-src"
+                                                                                         ]
+                                                                      }
+                                                      }
+                                                  ],
+                                      "nonRoot":  {
+                                                      "verified":  false,
+                                                      "reason":  "Public HTTP cannot establish runtime UID; use deployed image config plus existing container proof."
+                                                  },
+                                      "success":  true,
+                                      "finishedAt":  "2026-10-07T16:04:41.394Z"
+                                  }
+                 },
+    "sourceHelpers":  {
+                          "negativeSha256":  "cc68c1dd7ebf0541b43a0a4d850b38e5e9a3dab33136df2877d831a8dd4a1174",
+                          "frontendSha256":  "ec1058e871562a3cd8d2a5656284e4afbf4969e61f4a7591a07a4a4c5ba9bbb5",
+                          "frontend":  "scripts/security/postcutover-frontend-smoke.mjs",
+                          "negative":  "tmp/dev-negative-authorization-smoke.py"
+                      },
+    "execution":  {
+                      "productionChanged":  false,
+                      "inventory":  "Fresh metadata.name/status.url only; gcloud.cmd project=custoking-dev region=asia-south2",
+                      "businessRows":  false,
+                      "cloudMutations":  false,
+                      "actorCredentials":  false,
+                      "signedTokens":  false
+                  },
+    "limitations":  [
+                        "Public HTTP does not verify runtime UID; independent image/runtime proof is separate.",
+                        "These negative and frontend checks do not prove authenticated tenant access, complete attack coverage, or actual object erasure."
+                    ]
+}

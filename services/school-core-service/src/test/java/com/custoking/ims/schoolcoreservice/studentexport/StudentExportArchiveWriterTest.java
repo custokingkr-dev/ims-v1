@@ -28,6 +28,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class StudentExportArchiveWriterTest {
+    private static final String SCHOOL_UID="11111111-1111-4111-8111-111111111111";
+
+    @Test
+    void exportDoesNotReadKnownForeignStudentObjectThroughOwnSchool() throws Exception {
+        var sdk=mock(com.google.cloud.storage.Storage.class);
+        var scoped=new StudentPhotoStorage("private-bucket",5,512,5242880,"");
+        org.springframework.test.util.ReflectionTestUtils.setField(scoped,"cleanupStorage",sdk);
+        var data=new ExportData(new School(7L,"Owned school","OWN",SCHOOL_UID),List.of(
+                student(1L,"OWN-1","Owned student","schools/22222222-2222-4222-8222-222222222222/students/9/photos/known.jpg")));
+        var output=new ByteArrayOutputStream();var result=new StudentExportArchiveWriter(scoped).write(data,output);
+        assertThat(result.exportedPhotoCount()).isZero();assertThat(result.missingPhotoCount()).isEqualTo(1);
+        org.mockito.Mockito.verifyNoInteractions(sdk);
+    }
 
     @Test
     void exportsPhotoBytesWithoutCroppingOrChangingAspectRatio() throws Exception {
@@ -44,10 +57,10 @@ class StudentExportArchiveWriterTest {
         ImageIO.write(landscape, "png", photo);
 
         StudentPhotoStorage storage = mock(StudentPhotoStorage.class);
-        when(storage.readStoredPhoto("landscape-photo"))
+        when(storage.readStoredPhoto("landscape-photo", SCHOOL_UID, 1L))
                 .thenReturn(Optional.of(new StoredPhoto(photo.toByteArray(), "image/png")));
         ExportData data = new ExportData(
-                new School(7L, "Green Valley School", "GVS"),
+                new School(7L, "Green Valley School", "GVS", SCHOOL_UID),
                 List.of(student(1L, "ADM-001", "Aarav Rao", "landscape-photo")));
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -65,14 +78,14 @@ class StudentExportArchiveWriterTest {
     @Test
     void writesPlainWorkbookAndAdmissionNumberPhotoMapping() throws Exception {
         StudentPhotoStorage storage = mock(StudentPhotoStorage.class);
-        when(storage.readStoredPhoto("photo-1"))
+        when(storage.readStoredPhoto("photo-1", SCHOOL_UID, 1L))
                 .thenReturn(Optional.of(new StoredPhoto("jpeg-one".getBytes(), "image/jpeg")));
-        when(storage.readStoredPhoto("photo-2"))
+        when(storage.readStoredPhoto("photo-2", SCHOOL_UID, 2L))
                 .thenReturn(Optional.of(new StoredPhoto("png-two".getBytes(), "image/png")));
-        when(storage.readStoredPhoto(null)).thenReturn(Optional.empty());
+        when(storage.readStoredPhoto(null, SCHOOL_UID, 3L)).thenReturn(Optional.empty());
 
         ExportData data = new ExportData(
-                new School(7L, "Green Valley School", "GVS"),
+                new School(7L, "Green Valley School", "GVS", SCHOOL_UID),
                 List.of(
                         student(1L, "ADM-001", "Aarav Rao", "photo-1"),
                         student(2L, "A/B:2", "Diya Shah", "photo-2"),
@@ -114,7 +127,7 @@ class StudentExportArchiveWriterTest {
     void reportsBoundedPhotoWorkbookAndFinalizationProgress() throws Exception {
         StudentPhotoStorage storage = mock(StudentPhotoStorage.class);
         ExportData data = new ExportData(
-                new School(7L, "Green Valley School", "GVS"),
+                new School(7L, "Green Valley School", "GVS", SCHOOL_UID),
                 List.of(
                         student(1L, "ADM-001", "Aarav Rao", null),
                         student(2L, "ADM-002", "Diya Shah", null)));

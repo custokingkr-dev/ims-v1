@@ -30,6 +30,23 @@ class StudentWorkspaceCompatibilityControllerTest {
     @AfterEach
     void cleanup() { TenantContext.clear(); }
 
+    @Test
+    void rawForeignPhotoKeyThroughCompatibilityRouteIsRejectedByRealRepositoryBeforeIo() throws Exception {
+        var jdbc=mock(org.springframework.jdbc.core.simple.JdbcClient.class);
+        var photos=mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class);
+        var outbox=mock(com.custoking.ims.schoolcoreservice.outbox.OutboxWriter.class);
+        var real=new StudentReadRepository(jdbc,photos,outbox);
+        var realMvc=MockMvcBuilders.standaloneSetup(new StudentWorkspaceCompatibilityController(real,"tok"))
+                .addFilters(new TenantContextFilter()).build();
+        realMvc.perform(post("/api/v1/workspace/students")
+                .header("X-Student-Service-Token","tok").header("X-Authenticated-Role","ADMIN")
+                .header("X-Authenticated-School-Id","10").header("X-Authenticated-Permissions","student:create")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"schoolId\":10,\"fullName\":\"Owned student\",\"admissionNumber\":\"OWN-1\",\"photoUrl\":\"schools/22222222-2222-4222-8222-222222222222/students/9/photos/known.jpg\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(jdbc,photos,outbox);
+    }
+
     // ---- createFromWorkspace POST /api/v1/workspace/students ----
 
     @Test

@@ -67,7 +67,7 @@ public class StudentExportRepository {
     public ExportData load(long schoolId) {
         selectSchoolScope(schoolId);
         School school = jdbc.sql("""
-                SELECT id, name, short_code
+                SELECT id, name, short_code, school_uid::text AS school_uid
                 FROM tenant_school.schools
                 WHERE id = :schoolId AND active = true
                 """)
@@ -75,7 +75,7 @@ public class StudentExportRepository {
                 .query((rs, rowNum) -> new School(
                         rs.getLong("id"),
                         rs.getString("name"),
-                        rs.getString("short_code")))
+                        rs.getString("short_code"), rs.getString("school_uid")))
                 .optional()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Active school not found"));
 
@@ -264,7 +264,9 @@ public class StudentExportRepository {
     public record SchoolOption(long id, String name, String shortCode,
                                long studentCount, long photoCount) {}
 
-    public record School(long id, String name, String shortCode) {}
+    public record School(long id, String name, String shortCode, String schoolUid) {
+        public School(long id, String name, String shortCode) { this(id, name, shortCode, null); }
+    }
 
     public record ExportData(School school, List<Student> students) {
         public ExportData {

@@ -1,0 +1,2079 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-07T16:00:01.6244429Z",
+  "run": {
+    "id": 37643895536,
+    "head": "25eb41d9bd0915c9fe9ec60e5078f6492f118380",
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536",
+    "attempt": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "createdAt": "2026-10-07T15:26:10Z",
+    "updatedAt": "2026-10-07T15:59:00Z"
+  },
+  "jobs": [
+    {
+      "id": 112869510259,
+      "name": "resolve-target",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:26:12Z",
+      "completed_at": "2026-10-07T15:26:20Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869510259",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:26:13Z",
+          "completed_at": "2026-10-07T15:26:13Z"
+        },
+        {
+          "name": "Run $ErrorActionPreference = \"Stop\"",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:26:13Z",
+          "completed_at": "2026-10-07T15:26:18Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:26:18Z",
+          "completed_at": "2026-10-07T15:26:18Z"
+        }
+      ]
+    },
+    {
+      "id": 112869588433,
+      "name": "release-secret-scan",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:26:23Z",
+      "completed_at": "2026-10-07T15:26:34Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869588433",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:26:24Z",
+          "completed_at": "2026-10-07T15:26:25Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:26:25Z",
+          "completed_at": "2026-10-07T15:26:29Z"
+        },
+        {
+          "name": "Run gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:26:29Z",
+          "completed_at": "2026-10-07T15:26:32Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:26:32Z",
+          "completed_at": "2026-10-07T15:26:32Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-07T15:26:32Z",
+          "completed_at": "2026-10-07T15:26:32Z"
+        }
+      ]
+    },
+    {
+      "id": 112869588638,
+      "name": "detect / detect",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:26:22Z",
+      "completed_at": "2026-10-07T15:26:28Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869588638",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:26:22Z",
+          "completed_at": "2026-10-07T15:26:22Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:26:22Z",
+          "completed_at": "2026-10-07T15:26:25Z"
+        },
+        {
+          "name": "Detect affected services",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:26:25Z",
+          "completed_at": "2026-10-07T15:26:26Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:26:26Z",
+          "completed_at": "2026-10-07T15:26:26Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-07T15:26:26Z",
+          "completed_at": "2026-10-07T15:26:26Z"
+        }
+      ]
+    },
+    {
+      "id": 112869653953,
+      "name": "release-static-gate",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:26:30Z",
+      "completed_at": "2026-10-07T15:26:53Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869653953",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:26:31Z",
+          "completed_at": "2026-10-07T15:26:32Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:26:32Z",
+          "completed_at": "2026-10-07T15:26:45Z"
+        },
+        {
+          "name": "Verify offline architecture invariants",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:26:45Z",
+          "completed_at": "2026-10-07T15:26:50Z"
+        },
+        {
+          "name": "Verify full release uses rendered serial deployment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-07T15:26:50Z",
+          "completed_at": "2026-10-07T15:26:50Z"
+        },
+        {
+          "name": "Verify guarded duplicate classes",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-07T15:26:50Z",
+          "completed_at": "2026-10-07T15:26:50Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-07T15:26:50Z",
+          "completed_at": "2026-10-07T15:26:50Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-07T15:26:50Z",
+          "completed_at": "2026-10-07T15:26:50Z"
+        }
+      ]
+    },
+    {
+      "id": 112869654122,
+      "name": "release-service-test (operations-service)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:26:31Z",
+      "completed_at": "2026-10-07T15:28:26Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869654122",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:26:32Z",
+          "completed_at": "2026-10-07T15:26:33Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:26:33Z",
+          "completed_at": "2026-10-07T15:26:37Z"
+        },
+        {
+          "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:26:37Z",
+          "completed_at": "2026-10-07T15:26:45Z"
+        },
+        {
+          "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-07T15:26:45Z",
+          "completed_at": "2026-10-07T15:26:45Z"
+        },
+        {
+          "name": "Install Node dependencies",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-07T15:26:45Z",
+          "completed_at": "2026-10-07T15:26:45Z"
+        },
+        {
+          "name": "Run Maven tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:26:45Z",
+          "completed_at": "2026-10-07T15:28:22Z"
+        },
+        {
+          "name": "Run gateway tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-07T15:28:22Z",
+          "completed_at": "2026-10-07T15:28:22Z"
+        },
+        {
+          "name": "Run frontend unit tests and production build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-07T15:28:22Z",
+          "completed_at": "2026-10-07T15:28:22Z"
+        },
+        {
+          "name": "Remove broken Google Chrome apt source",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-07T15:28:22Z",
+          "completed_at": "2026-10-07T15:28:22Z"
+        },
+        {
+          "name": "Install Playwright Chromium",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-07T15:28:22Z",
+          "completed_at": "2026-10-07T15:28:22Z"
+        },
+        {
+          "name": "Run authenticated frontend browser tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-07T15:28:22Z",
+          "completed_at": "2026-10-07T15:28:22Z"
+        },
+        {
+          "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:28:22Z",
+          "completed_at": "2026-10-07T15:28:23Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:28:23Z",
+          "completed_at": "2026-10-07T15:28:23Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T15:28:23Z",
+          "completed_at": "2026-10-07T15:28:23Z"
+        }
+      ]
+    },
+    {
+      "id": 112869654155,
+      "name": "release-service-test (identity-service)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:26:30Z",
+      "completed_at": "2026-10-07T15:29:17Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869654155",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:26:31Z",
+          "completed_at": "2026-10-07T15:26:33Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:26:33Z",
+          "completed_at": "2026-10-07T15:26:37Z"
+        },
+        {
+          "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:26:37Z",
+          "completed_at": "2026-10-07T15:26:40Z"
+        },
+        {
+          "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-07T15:26:40Z",
+          "completed_at": "2026-10-07T15:26:40Z"
+        },
+        {
+          "name": "Install Node dependencies",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-07T15:26:40Z",
+          "completed_at": "2026-10-07T15:26:40Z"
+        },
+        {
+          "name": "Run Maven tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:26:40Z",
+          "completed_at": "2026-10-07T15:29:13Z"
+        },
+        {
+          "name": "Run gateway tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-07T15:29:13Z",
+          "completed_at": "2026-10-07T15:29:13Z"
+        },
+        {
+          "name": "Run frontend unit tests and production build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-07T15:29:13Z",
+          "completed_at": "2026-10-07T15:29:13Z"
+        },
+        {
+          "name": "Remove broken Google Chrome apt source",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-07T15:29:13Z",
+          "completed_at": "2026-10-07T15:29:13Z"
+        },
+        {
+          "name": "Install Playwright Chromium",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-07T15:29:13Z",
+          "completed_at": "2026-10-07T15:29:13Z"
+        },
+        {
+          "name": "Run authenticated frontend browser tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-07T15:29:13Z",
+          "completed_at": "2026-10-07T15:29:13Z"
+        },
+        {
+          "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:29:13Z",
+          "completed_at": "2026-10-07T15:29:13Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:29:13Z",
+          "completed_at": "2026-10-07T15:29:13Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T15:29:13Z",
+          "completed_at": "2026-10-07T15:29:13Z"
+        }
+      ]
+    },
+    {
+      "id": 112869654217,
+      "name": "release-service-test (platform-service)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:26:30Z",
+      "completed_at": "2026-10-07T15:28:21Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869654217",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:26:31Z",
+          "completed_at": "2026-10-07T15:26:32Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:26:32Z",
+          "completed_at": "2026-10-07T15:26:34Z"
+        },
+        {
+          "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:26:34Z",
+          "completed_at": "2026-10-07T15:26:36Z"
+        },
+        {
+          "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-07T15:26:36Z",
+          "completed_at": "2026-10-07T15:26:36Z"
+        },
+        {
+          "name": "Install Node dependencies",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-07T15:26:36Z",
+          "completed_at": "2026-10-07T15:26:36Z"
+        },
+        {
+          "name": "Run Maven tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:26:36Z",
+          "completed_at": "2026-10-07T15:28:19Z"
+        },
+        {
+          "name": "Run gateway tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-07T15:28:19Z",
+          "completed_at": "2026-10-07T15:28:19Z"
+        },
+        {
+          "name": "Run frontend unit tests and production build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-07T15:28:19Z",
+          "completed_at": "2026-10-07T15:28:19Z"
+        },
+        {
+          "name": "Remove broken Google Chrome apt source",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-07T15:28:19Z",
+          "completed_at": "2026-10-07T15:28:19Z"
+        },
+        {
+          "name": "Install Playwright Chromium",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-07T15:28:19Z",
+          "completed_at": "2026-10-07T15:28:19Z"
+        },
+        {
+          "name": "Run authenticated frontend browser tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-07T15:28:19Z",
+          "completed_at": "2026-10-07T15:28:19Z"
+        },
+        {
+          "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:28:19Z",
+          "completed_at": "2026-10-07T15:28:19Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:28:19Z",
+          "completed_at": "2026-10-07T15:28:20Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T15:28:20Z",
+          "completed_at": "2026-10-07T15:28:20Z"
+        }
+      ]
+    },
+    {
+      "id": 112869654229,
+      "name": "release-service-test (school-core-service)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:26:49Z",
+      "completed_at": "2026-10-07T15:31:34Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869654229",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:26:50Z",
+          "completed_at": "2026-10-07T15:26:51Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:26:51Z",
+          "completed_at": "2026-10-07T15:26:58Z"
+        },
+        {
+          "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:26:58Z",
+          "completed_at": "2026-10-07T15:27:00Z"
+        },
+        {
+          "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-07T15:27:00Z",
+          "completed_at": "2026-10-07T15:27:00Z"
+        },
+        {
+          "name": "Install Node dependencies",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-07T15:27:00Z",
+          "completed_at": "2026-10-07T15:27:00Z"
+        },
+        {
+          "name": "Run Maven tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:27:00Z",
+          "completed_at": "2026-10-07T15:31:32Z"
+        },
+        {
+          "name": "Run gateway tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-07T15:31:32Z",
+          "completed_at": "2026-10-07T15:31:32Z"
+        },
+        {
+          "name": "Run frontend unit tests and production build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-07T15:31:32Z",
+          "completed_at": "2026-10-07T15:31:32Z"
+        },
+        {
+          "name": "Remove broken Google Chrome apt source",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-07T15:31:32Z",
+          "completed_at": "2026-10-07T15:31:32Z"
+        },
+        {
+          "name": "Install Playwright Chromium",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-07T15:31:32Z",
+          "completed_at": "2026-10-07T15:31:32Z"
+        },
+        {
+          "name": "Run authenticated frontend browser tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-07T15:31:32Z",
+          "completed_at": "2026-10-07T15:31:32Z"
+        },
+        {
+          "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:31:32Z",
+          "completed_at": "2026-10-07T15:31:32Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:31:32Z",
+          "completed_at": "2026-10-07T15:31:32Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T15:31:32Z",
+          "completed_at": "2026-10-07T15:31:32Z"
+        }
+      ]
+    },
+    {
+      "id": 112869654243,
+      "name": "release-service-test (billing-service)",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:26:30Z",
+      "completed_at": "2026-10-07T15:28:20Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869654243",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:26:31Z",
+          "completed_at": "2026-10-07T15:26:33Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:26:33Z",
+          "completed_at": "2026-10-07T15:26:36Z"
+        },
+        {
+          "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:26:36Z",
+          "completed_at": "2026-10-07T15:26:38Z"
+        },
+        {
+          "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-07T15:26:38Z",
+          "completed_at": "2026-10-07T15:26:38Z"
+        },
+        {
+          "name": "Install Node dependencies",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-07T15:26:38Z",
+          "completed_at": "2026-10-07T15:26:38Z"
+        },
+        {
+          "name": "Run Maven tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:26:38Z",
+          "completed_at": "2026-10-07T15:28:18Z"
+        },
+        {
+          "name": "Run gateway tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-07T15:28:18Z",
+          "completed_at": "2026-10-07T15:28:18Z"
+        },
+        {
+          "name": "Run frontend unit tests and production build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-07T15:28:18Z",
+          "completed_at": "2026-10-07T15:28:18Z"
+        },
+        {
+          "name": "Remove broken Google Chrome apt source",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-07T15:28:18Z",
+          "completed_at": "2026-10-07T15:28:18Z"
+        },
+        {
+          "name": "Install Playwright Chromium",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-07T15:28:18Z",
+          "completed_at": "2026-10-07T15:28:18Z"
+        },
+        {
+          "name": "Run authenticated frontend browser tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-07T15:28:18Z",
+          "completed_at": "2026-10-07T15:28:18Z"
+        },
+        {
+          "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:28:18Z",
+          "completed_at": "2026-10-07T15:28:18Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:28:18Z",
+          "completed_at": "2026-10-07T15:28:18Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T15:28:18Z",
+          "completed_at": "2026-10-07T15:28:18Z"
+        }
+      ]
+    },
+    {
+      "id": 112869656995,
+      "name": "no-deployment",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-07T15:26:29Z",
+      "completed_at": "2026-10-07T15:26:28Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869656995",
+      "steps": []
+    },
+    {
+      "id": 112869657081,
+      "name": "configuration-reconciliation-required",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-07T15:26:29Z",
+      "completed_at": "2026-10-07T15:26:28Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112869657081",
+      "steps": []
+    },
+    {
+      "id": 112871989113,
+      "name": "build-images (custoking-school-core-service, services/school-core-service/Dockerfile, ./., pom.xm...",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:33:32Z",
+      "completed_at": "2026-10-07T15:35:07Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112871989113",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:33:33Z",
+          "completed_at": "2026-10-07T15:33:34Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:33:34Z",
+          "completed_at": "2026-10-07T15:33:37Z"
+        },
+        {
+          "name": "Verify commit belongs to dev",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:33:37Z",
+          "completed_at": "2026-10-07T15:33:38Z"
+        },
+        {
+          "name": "Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-07T15:33:38Z",
+          "completed_at": "2026-10-07T15:33:38Z"
+        },
+        {
+          "name": "Run google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-07T15:33:38Z",
+          "completed_at": "2026-10-07T15:33:45Z"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:33:45Z",
+          "completed_at": "2026-10-07T15:33:50Z"
+        },
+        {
+          "name": "Configure Docker for Artifact Registry",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-07T15:33:50Z",
+          "completed_at": "2026-10-07T15:33:51Z"
+        },
+        {
+          "name": "Resolve content-addressed image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-07T15:33:51Z",
+          "completed_at": "2026-10-07T15:33:55Z"
+        },
+        {
+          "name": "Attach commit tag to reused image",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-07T15:33:55Z",
+          "completed_at": "2026-10-07T15:33:55Z"
+        },
+        {
+          "name": "Resolve the security patch epoch",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-07T15:33:55Z",
+          "completed_at": "2026-10-07T15:33:55Z"
+        },
+        {
+          "name": "Build and push image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-07T15:33:55Z",
+          "completed_at": "2026-10-07T15:35:01Z"
+        },
+        {
+          "name": "Write image summary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-07T15:35:01Z",
+          "completed_at": "2026-10-07T15:35:01Z"
+        },
+        {
+          "name": "Post Build and push image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:35:01Z",
+          "completed_at": "2026-10-07T15:35:02Z"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:35:02Z",
+          "completed_at": "2026-10-07T15:35:04Z"
+        },
+        {
+          "name": "Post Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T15:35:04Z",
+          "completed_at": "2026-10-07T15:35:04Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-10-07T15:35:04Z",
+          "completed_at": "2026-10-07T15:35:05Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-10-07T15:35:05Z",
+          "completed_at": "2026-10-07T15:35:05Z"
+        }
+      ]
+    },
+    {
+      "id": 112871989134,
+      "name": "build-images (custoking-identity-service, services/identity-service/Dockerfile, ./., pom.xml|serv...",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:31:36Z",
+      "completed_at": "2026-10-07T15:34:36Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112871989134",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:31:36Z",
+          "completed_at": "2026-10-07T15:31:40Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:31:40Z",
+          "completed_at": "2026-10-07T15:31:43Z"
+        },
+        {
+          "name": "Verify commit belongs to dev",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:31:43Z",
+          "completed_at": "2026-10-07T15:31:48Z"
+        },
+        {
+          "name": "Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-07T15:31:48Z",
+          "completed_at": "2026-10-07T15:32:03Z"
+        },
+        {
+          "name": "Run google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-07T15:32:03Z",
+          "completed_at": "2026-10-07T15:32:10Z"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:32:10Z",
+          "completed_at": "2026-10-07T15:32:19Z"
+        },
+        {
+          "name": "Configure Docker for Artifact Registry",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-07T15:32:19Z",
+          "completed_at": "2026-10-07T15:32:19Z"
+        },
+        {
+          "name": "Resolve content-addressed image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-07T15:32:19Z",
+          "completed_at": "2026-10-07T15:32:25Z"
+        },
+        {
+          "name": "Attach commit tag to reused image",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-07T15:32:25Z",
+          "completed_at": "2026-10-07T15:32:25Z"
+        },
+        {
+          "name": "Resolve the security patch epoch",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-07T15:32:25Z",
+          "completed_at": "2026-10-07T15:32:25Z"
+        },
+        {
+          "name": "Build and push image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-07T15:32:25Z",
+          "completed_at": "2026-10-07T15:34:28Z"
+        },
+        {
+          "name": "Write image summary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-07T15:34:28Z",
+          "completed_at": "2026-10-07T15:34:28Z"
+        },
+        {
+          "name": "Post Build and push image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:34:28Z",
+          "completed_at": "2026-10-07T15:34:30Z"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:34:30Z",
+          "completed_at": "2026-10-07T15:34:33Z"
+        },
+        {
+          "name": "Post Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T15:34:33Z",
+          "completed_at": "2026-10-07T15:34:33Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-10-07T15:34:33Z",
+          "completed_at": "2026-10-07T15:34:33Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-10-07T15:34:33Z",
+          "completed_at": "2026-10-07T15:34:33Z"
+        }
+      ]
+    },
+    {
+      "id": 112871989250,
+      "name": "build-images (custoking-billing-service, services/billing-service/Dockerfile, ./., pom.xml|servic...",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:31:36Z",
+      "completed_at": "2026-10-07T15:33:48Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112871989250",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:31:37Z",
+          "completed_at": "2026-10-07T15:31:38Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:31:38Z",
+          "completed_at": "2026-10-07T15:31:41Z"
+        },
+        {
+          "name": "Verify commit belongs to dev",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:31:41Z",
+          "completed_at": "2026-10-07T15:31:47Z"
+        },
+        {
+          "name": "Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-07T15:31:47Z",
+          "completed_at": "2026-10-07T15:31:47Z"
+        },
+        {
+          "name": "Run google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-07T15:31:47Z",
+          "completed_at": "2026-10-07T15:31:54Z"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:31:54Z",
+          "completed_at": "2026-10-07T15:31:59Z"
+        },
+        {
+          "name": "Configure Docker for Artifact Registry",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-07T15:31:59Z",
+          "completed_at": "2026-10-07T15:32:00Z"
+        },
+        {
+          "name": "Resolve content-addressed image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-07T15:32:00Z",
+          "completed_at": "2026-10-07T15:32:07Z"
+        },
+        {
+          "name": "Attach commit tag to reused image",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-07T15:32:07Z",
+          "completed_at": "2026-10-07T15:32:07Z"
+        },
+        {
+          "name": "Resolve the security patch epoch",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-07T15:32:07Z",
+          "completed_at": "2026-10-07T15:32:07Z"
+        },
+        {
+          "name": "Build and push image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-07T15:32:07Z",
+          "completed_at": "2026-10-07T15:33:42Z"
+        },
+        {
+          "name": "Write image summary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-07T15:33:42Z",
+          "completed_at": "2026-10-07T15:33:42Z"
+        },
+        {
+          "name": "Post Build and push image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:33:42Z",
+          "completed_at": "2026-10-07T15:33:43Z"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:33:43Z",
+          "completed_at": "2026-10-07T15:33:46Z"
+        },
+        {
+          "name": "Post Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T15:33:46Z",
+          "completed_at": "2026-10-07T15:33:46Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-10-07T15:33:46Z",
+          "completed_at": "2026-10-07T15:33:46Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-10-07T15:33:46Z",
+          "completed_at": "2026-10-07T15:33:46Z"
+        }
+      ]
+    },
+    {
+      "id": 112871989354,
+      "name": "build-images (custoking-operations-service, services/operations-service/Dockerfile, ./., pom.xml|...",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:31:36Z",
+      "completed_at": "2026-10-07T15:35:00Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112871989354",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:31:37Z",
+          "completed_at": "2026-10-07T15:31:41Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:31:41Z",
+          "completed_at": "2026-10-07T15:31:45Z"
+        },
+        {
+          "name": "Verify commit belongs to dev",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:31:45Z",
+          "completed_at": "2026-10-07T15:31:46Z"
+        },
+        {
+          "name": "Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-07T15:31:46Z",
+          "completed_at": "2026-10-07T15:31:47Z"
+        },
+        {
+          "name": "Run google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-07T15:31:47Z",
+          "completed_at": "2026-10-07T15:31:54Z"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:31:54Z",
+          "completed_at": "2026-10-07T15:32:05Z"
+        },
+        {
+          "name": "Configure Docker for Artifact Registry",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-07T15:32:05Z",
+          "completed_at": "2026-10-07T15:32:06Z"
+        },
+        {
+          "name": "Resolve content-addressed image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-07T15:32:06Z",
+          "completed_at": "2026-10-07T15:32:11Z"
+        },
+        {
+          "name": "Attach commit tag to reused image",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-07T15:32:11Z",
+          "completed_at": "2026-10-07T15:32:11Z"
+        },
+        {
+          "name": "Resolve the security patch epoch",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-07T15:32:11Z",
+          "completed_at": "2026-10-07T15:32:11Z"
+        },
+        {
+          "name": "Build and push image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-07T15:32:11Z",
+          "completed_at": "2026-10-07T15:34:51Z"
+        },
+        {
+          "name": "Write image summary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-07T15:34:51Z",
+          "completed_at": "2026-10-07T15:34:51Z"
+        },
+        {
+          "name": "Post Build and push image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:34:51Z",
+          "completed_at": "2026-10-07T15:34:52Z"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:34:52Z",
+          "completed_at": "2026-10-07T15:34:55Z"
+        },
+        {
+          "name": "Post Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T15:34:55Z",
+          "completed_at": "2026-10-07T15:34:56Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-10-07T15:34:56Z",
+          "completed_at": "2026-10-07T15:34:56Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-10-07T15:34:56Z",
+          "completed_at": "2026-10-07T15:34:56Z"
+        }
+      ]
+    },
+    {
+      "id": 112871989375,
+      "name": "build-images (custoking-platform-service, services/platform-service/Dockerfile, ./., pom.xml|serv...",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:31:36Z",
+      "completed_at": "2026-10-07T15:33:30Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112871989375",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:31:39Z",
+          "completed_at": "2026-10-07T15:31:42Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:31:42Z",
+          "completed_at": "2026-10-07T15:31:48Z"
+        },
+        {
+          "name": "Verify commit belongs to dev",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:31:48Z",
+          "completed_at": "2026-10-07T15:31:53Z"
+        },
+        {
+          "name": "Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-07T15:31:53Z",
+          "completed_at": "2026-10-07T15:31:54Z"
+        },
+        {
+          "name": "Run google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-07T15:31:54Z",
+          "completed_at": "2026-10-07T15:32:00Z"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:32:00Z",
+          "completed_at": "2026-10-07T15:32:10Z"
+        },
+        {
+          "name": "Configure Docker for Artifact Registry",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-07T15:32:10Z",
+          "completed_at": "2026-10-07T15:32:10Z"
+        },
+        {
+          "name": "Resolve content-addressed image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-07T15:32:10Z",
+          "completed_at": "2026-10-07T15:32:15Z"
+        },
+        {
+          "name": "Attach commit tag to reused image",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-07T15:32:15Z",
+          "completed_at": "2026-10-07T15:32:15Z"
+        },
+        {
+          "name": "Resolve the security patch epoch",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-07T15:32:15Z",
+          "completed_at": "2026-10-07T15:32:15Z"
+        },
+        {
+          "name": "Build and push image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-07T15:32:15Z",
+          "completed_at": "2026-10-07T15:33:21Z"
+        },
+        {
+          "name": "Write image summary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-07T15:33:21Z",
+          "completed_at": "2026-10-07T15:33:21Z"
+        },
+        {
+          "name": "Post Build and push image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:33:21Z",
+          "completed_at": "2026-10-07T15:33:24Z"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:33:24Z",
+          "completed_at": "2026-10-07T15:33:26Z"
+        },
+        {
+          "name": "Post Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-07T15:33:26Z",
+          "completed_at": "2026-10-07T15:33:26Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-10-07T15:33:26Z",
+          "completed_at": "2026-10-07T15:33:26Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-10-07T15:33:26Z",
+          "completed_at": "2026-10-07T15:33:26Z"
+        }
+      ]
+    },
+    {
+      "id": 112873653288,
+      "name": "release",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-07T15:35:11Z",
+      "completed_at": "2026-10-07T15:58:59Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536/job/112873653288",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-07T15:35:11Z",
+          "completed_at": "2026-10-07T15:35:17Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-07T15:35:17Z",
+          "completed_at": "2026-10-07T15:35:20Z"
+        },
+        {
+          "name": "Verify commit belongs to environment branch",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-07T15:35:20Z",
+          "completed_at": "2026-10-07T15:35:25Z"
+        },
+        {
+          "name": "Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-07T15:35:25Z",
+          "completed_at": "2026-10-07T15:35:25Z"
+        },
+        {
+          "name": "Run google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-07T15:35:25Z",
+          "completed_at": "2026-10-07T15:35:31Z"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-07T15:35:31Z",
+          "completed_at": "2026-10-07T15:35:39Z"
+        },
+        {
+          "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-07T15:35:39Z",
+          "completed_at": "2026-10-07T15:35:40Z"
+        },
+        {
+          "name": "Initialize release evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-07T15:35:40Z",
+          "completed_at": "2026-10-07T15:35:41Z"
+        },
+        {
+          "name": "Ensure development database is running",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-07T15:35:41Z",
+          "completed_at": "2026-10-07T15:35:45Z"
+        },
+        {
+          "name": "Configure Docker for Artifact Registry inspection",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-07T15:35:45Z",
+          "completed_at": "2026-10-07T15:35:46Z"
+        },
+        {
+          "name": "Resolve immutable release images",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-07T15:35:46Z",
+          "completed_at": "2026-10-07T15:36:29Z"
+        },
+        {
+          "name": "Restore cached Trivy verdicts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-07T15:36:29Z",
+          "completed_at": "2026-10-07T15:36:44Z"
+        },
+        {
+          "name": "Trivy exact-digest HIGH/CRITICAL gate (identity-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-07T15:36:44Z",
+          "completed_at": "2026-10-07T15:37:10Z"
+        },
+        {
+          "name": "Trivy exact-digest SARIF evidence (identity-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-07T15:37:10Z",
+          "completed_at": "2026-10-07T15:37:37Z"
+        },
+        {
+          "name": "Trivy exact-digest HIGH/CRITICAL gate (school-core-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-07T15:37:37Z",
+          "completed_at": "2026-10-07T15:38:24Z"
+        },
+        {
+          "name": "Trivy exact-digest SARIF evidence (school-core-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-10-07T15:38:24Z",
+          "completed_at": "2026-10-07T15:39:00Z"
+        },
+        {
+          "name": "Trivy exact-digest HIGH/CRITICAL gate (operations-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-07T15:39:00Z",
+          "completed_at": "2026-10-07T15:39:31Z"
+        },
+        {
+          "name": "Trivy exact-digest SARIF evidence (operations-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-10-07T15:39:31Z",
+          "completed_at": "2026-10-07T15:40:00Z"
+        },
+        {
+          "name": "Trivy exact-digest HIGH/CRITICAL gate (platform-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19,
+          "started_at": "2026-10-07T15:40:00Z",
+          "completed_at": "2026-10-07T15:40:27Z"
+        },
+        {
+          "name": "Trivy exact-digest SARIF evidence (platform-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 20,
+          "started_at": "2026-10-07T15:40:27Z",
+          "completed_at": "2026-10-07T15:40:54Z"
+        },
+        {
+          "name": "Trivy exact-digest HIGH/CRITICAL gate (billing-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-07T15:40:54Z",
+          "completed_at": "2026-10-07T15:41:20Z"
+        },
+        {
+          "name": "Trivy exact-digest SARIF evidence (billing-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-07T15:41:20Z",
+          "completed_at": "2026-10-07T15:41:50Z"
+        },
+        {
+          "name": "Trivy exact-digest HIGH/CRITICAL gate (frontend)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 23,
+          "started_at": "2026-10-07T15:41:50Z",
+          "completed_at": "2026-10-07T15:41:50Z"
+        },
+        {
+          "name": "Trivy exact-digest SARIF evidence (frontend)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 24,
+          "started_at": "2026-10-07T15:41:50Z",
+          "completed_at": "2026-10-07T15:41:50Z"
+        },
+        {
+          "name": "Trivy exact-digest HIGH/CRITICAL gate (api-gateway)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 25,
+          "started_at": "2026-10-07T15:41:50Z",
+          "completed_at": "2026-10-07T15:41:50Z"
+        },
+        {
+          "name": "Trivy exact-digest SARIF evidence (api-gateway)",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 26,
+          "started_at": "2026-10-07T15:41:50Z",
+          "completed_at": "2026-10-07T15:41:50Z"
+        },
+        {
+          "name": "Store Trivy verdicts for reuse",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 27,
+          "started_at": "2026-10-07T15:41:50Z",
+          "completed_at": "2026-10-07T15:42:58Z"
+        },
+        {
+          "name": "Enforce exact-digest Trivy gates and evidence",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 28,
+          "started_at": "2026-10-07T15:42:58Z",
+          "completed_at": "2026-10-07T15:42:59Z"
+        },
+        {
+          "name": "Fast dev deployment",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 29,
+          "started_at": "2026-10-07T15:42:59Z",
+          "completed_at": "2026-10-07T15:42:59Z"
+        },
+        {
+          "name": "Create and serially promote Cloud Deploy releases",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 30,
+          "started_at": "2026-10-07T15:42:59Z",
+          "completed_at": "2026-10-07T15:55:40Z"
+        },
+        {
+          "name": "Confirm Cloud Deploy rollouts",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 31,
+          "started_at": "2026-10-07T15:55:40Z",
+          "completed_at": "2026-10-07T15:55:53Z"
+        },
+        {
+          "name": "Verify changed Cloud Run services",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 32,
+          "started_at": "2026-10-07T15:55:53Z",
+          "completed_at": "2026-10-07T15:57:05Z"
+        },
+        {
+          "name": "Gateway health smoke after rollout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 33,
+          "started_at": "2026-10-07T15:57:05Z",
+          "completed_at": "2026-10-07T15:57:15Z"
+        },
+        {
+          "name": "Sign dev-tested image digests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 34,
+          "started_at": "2026-10-07T15:57:15Z",
+          "completed_at": "2026-10-07T15:58:16Z"
+        },
+        {
+          "name": "Approve dev-tested image digests for production",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 35,
+          "started_at": "2026-10-07T15:58:16Z",
+          "completed_at": "2026-10-07T15:58:52Z"
+        },
+        {
+          "name": "Write release summary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 36,
+          "started_at": "2026-10-07T15:58:52Z",
+          "completed_at": "2026-10-07T15:58:53Z"
+        },
+        {
+          "name": "Restore development database state",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 37,
+          "started_at": "2026-10-07T15:58:53Z",
+          "completed_at": "2026-10-07T15:58:53Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 38,
+          "started_at": "2026-10-07T15:58:53Z",
+          "completed_at": "2026-10-07T15:58:54Z"
+        },
+        {
+          "name": "Post Trivy exact-digest SARIF evidence (billing-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 64,
+          "started_at": "2026-10-07T15:58:54Z",
+          "completed_at": "2026-10-07T15:58:54Z"
+        },
+        {
+          "name": "Post Trivy exact-digest HIGH/CRITICAL gate (billing-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 65,
+          "started_at": "2026-10-07T15:58:54Z",
+          "completed_at": "2026-10-07T15:58:54Z"
+        },
+        {
+          "name": "Post Trivy exact-digest SARIF evidence (platform-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 66,
+          "started_at": "2026-10-07T15:58:54Z",
+          "completed_at": "2026-10-07T15:58:54Z"
+        },
+        {
+          "name": "Post Trivy exact-digest HIGH/CRITICAL gate (platform-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 67,
+          "started_at": "2026-10-07T15:58:54Z",
+          "completed_at": "2026-10-07T15:58:54Z"
+        },
+        {
+          "name": "Post Trivy exact-digest SARIF evidence (operations-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 68,
+          "started_at": "2026-10-07T15:58:54Z",
+          "completed_at": "2026-10-07T15:58:55Z"
+        },
+        {
+          "name": "Post Trivy exact-digest HIGH/CRITICAL gate (operations-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 69,
+          "started_at": "2026-10-07T15:58:55Z",
+          "completed_at": "2026-10-07T15:58:55Z"
+        },
+        {
+          "name": "Post Trivy exact-digest SARIF evidence (school-core-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 70,
+          "started_at": "2026-10-07T15:58:55Z",
+          "completed_at": "2026-10-07T15:58:55Z"
+        },
+        {
+          "name": "Post Trivy exact-digest HIGH/CRITICAL gate (school-core-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 71,
+          "started_at": "2026-10-07T15:58:55Z",
+          "completed_at": "2026-10-07T15:58:55Z"
+        },
+        {
+          "name": "Post Trivy exact-digest SARIF evidence (identity-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 72,
+          "started_at": "2026-10-07T15:58:55Z",
+          "completed_at": "2026-10-07T15:58:55Z"
+        },
+        {
+          "name": "Post Trivy exact-digest HIGH/CRITICAL gate (identity-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 73,
+          "started_at": "2026-10-07T15:58:55Z",
+          "completed_at": "2026-10-07T15:58:55Z"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 74,
+          "started_at": "2026-10-07T15:58:55Z",
+          "completed_at": "2026-10-07T15:58:56Z"
+        },
+        {
+          "name": "Post Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 75,
+          "started_at": "2026-10-07T15:58:56Z",
+          "completed_at": "2026-10-07T15:58:56Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 76,
+          "started_at": "2026-10-07T15:58:56Z",
+          "completed_at": "2026-10-07T15:58:56Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 77,
+          "started_at": "2026-10-07T15:58:56Z",
+          "completed_at": "2026-10-07T15:58:56Z"
+        }
+      ]
+    }
+  ],
+  "artifact": {
+    "expired": false,
+    "directory": "tmp/durable-release-37643895536",
+    "name": "release-evidence-dev-25eb41d9bd0915c9fe9ec60e5078f6492f118380",
+    "id": 11495541139,
+    "digest": "sha256:99c8992d16090a02500e3056bf97ef3a4a101ad18e52bb21c4b7937de5ffbf9c"
+  },
+  "tests": {
+    "failures": 0,
+    "errors": 0,
+    "executed": 1829,
+    "services": [
+      {
+        "service": "school",
+        "reported": 940,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "log": "tmp/durable-release-school.log"
+      },
+      {
+        "service": "identity",
+        "reported": 183,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 1,
+        "log": "tmp/durable-release-identity.log"
+      },
+      {
+        "service": "platform",
+        "reported": 417,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "log": "tmp/durable-release-platform.log"
+      },
+      {
+        "service": "operations",
+        "reported": 195,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "log": "tmp/durable-release-operations.log"
+      },
+      {
+        "service": "billing",
+        "reported": 95,
+        "errors": 0,
+        "failures": 0,
+        "skipped": 0,
+        "log": "tmp/durable-release-billing.log"
+      }
+    ],
+    "frontendGatewayScope": "Unchanged; no new browser/gateway suite claimed",
+    "skipped": 1,
+    "skipScope": "Identity AuthoritativeAuthLocalBenchmarkTest opt-in local benchmark; school Linux940 has no skips",
+    "reported": 1830
+  },
+  "failedAttempts": [],
+  "limitations": [
+    "Release workflow evidence; independent live digest/config/object-erasure checks are owned by root."
+  ]
+}

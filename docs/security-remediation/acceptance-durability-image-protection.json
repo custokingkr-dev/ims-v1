@@ -1,0 +1,290 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "sourceHeadSha": "25eb41d9bd0915c9fe9ec60e5078f6492f118380",
+  "runId": 37643895536,
+  "operation": "Create exact additive reviewed source/runtime tags under existing KEEP rule",
+  "success": true,
+  "apply": true,
+  "servicesBefore": [
+    {
+      "service": "billing-service",
+      "revision": "custoking-billing-service-dev-muyac2uc",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:0123ac05060ea6c10af6a81aaa94cbede70857f4de1e08c9b41b8f0898df88cb",
+      "runtimeDigestMatchesManifest": true
+    },
+    {
+      "service": "identity-service",
+      "revision": "custoking-identity-service-dev-muya2gx1",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:de80a851e23d5986df716f96dfd60971daabf54ab24504085c5c74bb33eb620d",
+      "runtimeDigestMatchesManifest": true
+    },
+    {
+      "service": "operations-service",
+      "revision": "custoking-operations-service-dev-muya8x4v",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:6f806ccffa97e3327870464b40b1244e4d7b60ba675c44a9c9e592612bef469c",
+      "runtimeDigestMatchesManifest": true
+    },
+    {
+      "service": "platform-service",
+      "revision": "custoking-platform-service-dev-muyaf7rv",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:455166a055eff70275105365b79cba1d625adb6aeac05e77e398eb7a9a4a2a9a",
+      "runtimeDigestMatchesManifest": true
+    },
+    {
+      "service": "school-core-service",
+      "revision": "custoking-school-core-service-dev-muya5vk5",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:30aa393bbf88d350f31b82bc0a0e06a8da26720159e8340f097de0630c230bb6",
+      "runtimeDigestMatchesManifest": true
+    }
+  ],
+  "policyBefore": {
+    "cleanupPolicies": {
+      "delete-old-release-images": {
+        "action": "DELETE",
+        "condition": {
+          "olderThan": "604800s",
+          "tagState": "ANY"
+        },
+        "id": "delete-old-release-images"
+      },
+      "keep-recent-release-images": {
+        "action": "KEEP",
+        "id": "keep-recent-release-images",
+        "mostRecentVersions": {
+          "keepCount": 3
+        }
+      },
+      "keep-reviewed-security-rollback": {
+        "action": "KEEP",
+        "condition": {
+          "tagPrefixes": [
+            "security-rollback-reviewed-"
+          ],
+          "tagState": "TAGGED"
+        },
+        "id": "keep-reviewed-security-rollback"
+      }
+    },
+    "cleanupPolicyDryRunPresent": false,
+    "cleanupPolicyDryRun": null
+  },
+  "releaseProofSha256": "1782c0fa442f29361e75109bdeae7fb86d2401ef30986cff6a4ce0c76796eb4d",
+  "manifestSha256": "0a99fd67c9ac1889107d78bd0cfd5fac6a30b8567a78dacab1cebaa98e3a2bb8",
+  "tags": [
+    {
+      "service": "billing-service",
+      "kind": "source",
+      "package": "custoking-billing-service",
+      "digest": "sha256:762ae62c2a94ee4951f72cfc970bfcea0e37623012819ffba3aaed83f70fdd98",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:762ae62c2a94ee4951f72cfc970bfcea0e37623012819ffba3aaed83f70fdd98",
+      "tagId": "security-rollback-reviewed-25eb41d9bd09-source",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service:security-rollback-reviewed-25eb41d9bd09-source",
+      "verifiedDigest": "sha256:762ae62c2a94ee4951f72cfc970bfcea0e37623012819ffba3aaed83f70fdd98",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-billing-service/tags/security-rollback-reviewed-25eb41d9bd09-source",
+      "alreadyPresent": false
+    },
+    {
+      "service": "billing-service",
+      "kind": "runtime",
+      "package": "custoking-billing-service",
+      "digest": "sha256:0123ac05060ea6c10af6a81aaa94cbede70857f4de1e08c9b41b8f0898df88cb",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:0123ac05060ea6c10af6a81aaa94cbede70857f4de1e08c9b41b8f0898df88cb",
+      "tagId": "security-rollback-reviewed-25eb41d9bd09-runtime",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service:security-rollback-reviewed-25eb41d9bd09-runtime",
+      "verifiedDigest": "sha256:0123ac05060ea6c10af6a81aaa94cbede70857f4de1e08c9b41b8f0898df88cb",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-billing-service/tags/security-rollback-reviewed-25eb41d9bd09-runtime",
+      "alreadyPresent": false
+    },
+    {
+      "service": "identity-service",
+      "kind": "source",
+      "package": "custoking-identity-service",
+      "digest": "sha256:ec9a4381d3e814068f35de1e4069503f6a0072f3c5cc635047534e6e989abf94",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:ec9a4381d3e814068f35de1e4069503f6a0072f3c5cc635047534e6e989abf94",
+      "tagId": "security-rollback-reviewed-25eb41d9bd09-source",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service:security-rollback-reviewed-25eb41d9bd09-source",
+      "verifiedDigest": "sha256:ec9a4381d3e814068f35de1e4069503f6a0072f3c5cc635047534e6e989abf94",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-identity-service/tags/security-rollback-reviewed-25eb41d9bd09-source",
+      "alreadyPresent": false
+    },
+    {
+      "service": "identity-service",
+      "kind": "runtime",
+      "package": "custoking-identity-service",
+      "digest": "sha256:de80a851e23d5986df716f96dfd60971daabf54ab24504085c5c74bb33eb620d",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:de80a851e23d5986df716f96dfd60971daabf54ab24504085c5c74bb33eb620d",
+      "tagId": "security-rollback-reviewed-25eb41d9bd09-runtime",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service:security-rollback-reviewed-25eb41d9bd09-runtime",
+      "verifiedDigest": "sha256:de80a851e23d5986df716f96dfd60971daabf54ab24504085c5c74bb33eb620d",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-identity-service/tags/security-rollback-reviewed-25eb41d9bd09-runtime",
+      "alreadyPresent": false
+    },
+    {
+      "service": "operations-service",
+      "kind": "source",
+      "package": "custoking-operations-service",
+      "digest": "sha256:bb54cbd6cf461d331395a37e35ce2cb808d992430c256ec1a659da449750f9be",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:bb54cbd6cf461d331395a37e35ce2cb808d992430c256ec1a659da449750f9be",
+      "tagId": "security-rollback-reviewed-25eb41d9bd09-source",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service:security-rollback-reviewed-25eb41d9bd09-source",
+      "verifiedDigest": "sha256:bb54cbd6cf461d331395a37e35ce2cb808d992430c256ec1a659da449750f9be",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-operations-service/tags/security-rollback-reviewed-25eb41d9bd09-source",
+      "alreadyPresent": false
+    },
+    {
+      "service": "operations-service",
+      "kind": "runtime",
+      "package": "custoking-operations-service",
+      "digest": "sha256:6f806ccffa97e3327870464b40b1244e4d7b60ba675c44a9c9e592612bef469c",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:6f806ccffa97e3327870464b40b1244e4d7b60ba675c44a9c9e592612bef469c",
+      "tagId": "security-rollback-reviewed-25eb41d9bd09-runtime",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service:security-rollback-reviewed-25eb41d9bd09-runtime",
+      "verifiedDigest": "sha256:6f806ccffa97e3327870464b40b1244e4d7b60ba675c44a9c9e592612bef469c",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-operations-service/tags/security-rollback-reviewed-25eb41d9bd09-runtime",
+      "alreadyPresent": false
+    },
+    {
+      "service": "platform-service",
+      "kind": "source",
+      "package": "custoking-platform-service",
+      "digest": "sha256:92a3ee43b6e364258b131df10281d184fe9e9f0425a9a2dc00bfd40c6cf7f8dc",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:92a3ee43b6e364258b131df10281d184fe9e9f0425a9a2dc00bfd40c6cf7f8dc",
+      "tagId": "security-rollback-reviewed-25eb41d9bd09-source",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service:security-rollback-reviewed-25eb41d9bd09-source",
+      "verifiedDigest": "sha256:92a3ee43b6e364258b131df10281d184fe9e9f0425a9a2dc00bfd40c6cf7f8dc",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-platform-service/tags/security-rollback-reviewed-25eb41d9bd09-source",
+      "alreadyPresent": false
+    },
+    {
+      "service": "platform-service",
+      "kind": "runtime",
+      "package": "custoking-platform-service",
+      "digest": "sha256:455166a055eff70275105365b79cba1d625adb6aeac05e77e398eb7a9a4a2a9a",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:455166a055eff70275105365b79cba1d625adb6aeac05e77e398eb7a9a4a2a9a",
+      "tagId": "security-rollback-reviewed-25eb41d9bd09-runtime",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service:security-rollback-reviewed-25eb41d9bd09-runtime",
+      "verifiedDigest": "sha256:455166a055eff70275105365b79cba1d625adb6aeac05e77e398eb7a9a4a2a9a",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-platform-service/tags/security-rollback-reviewed-25eb41d9bd09-runtime",
+      "alreadyPresent": false
+    },
+    {
+      "service": "school-core-service",
+      "kind": "source",
+      "package": "custoking-school-core-service",
+      "digest": "sha256:dc84f26ddfa44ba2acd0aa1ffaa220c3d415eae5a9a814d01eeb22e94b788155",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:dc84f26ddfa44ba2acd0aa1ffaa220c3d415eae5a9a814d01eeb22e94b788155",
+      "tagId": "security-rollback-reviewed-25eb41d9bd09-source",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service:security-rollback-reviewed-25eb41d9bd09-source",
+      "verifiedDigest": "sha256:dc84f26ddfa44ba2acd0aa1ffaa220c3d415eae5a9a814d01eeb22e94b788155",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-school-core-service/tags/security-rollback-reviewed-25eb41d9bd09-source",
+      "alreadyPresent": false
+    },
+    {
+      "service": "school-core-service",
+      "kind": "runtime",
+      "package": "custoking-school-core-service",
+      "digest": "sha256:30aa393bbf88d350f31b82bc0a0e06a8da26720159e8340f097de0630c230bb6",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:30aa393bbf88d350f31b82bc0a0e06a8da26720159e8340f097de0630c230bb6",
+      "tagId": "security-rollback-reviewed-25eb41d9bd09-runtime",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service:security-rollback-reviewed-25eb41d9bd09-runtime",
+      "verifiedDigest": "sha256:30aa393bbf88d350f31b82bc0a0e06a8da26720159e8340f097de0630c230bb6",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-school-core-service/tags/security-rollback-reviewed-25eb41d9bd09-runtime",
+      "alreadyPresent": false
+    }
+  ],
+  "tagCount": 10,
+  "cleanupPoliciesChanged": false,
+  "imageContentChanged": false,
+  "cloudRunChanged": false,
+  "productionChanged": false,
+  "scope": "Configured KEEP retention only; not manual-deletion immutability or observed future cleanup execution",
+  "createApiReference": "https://docs.cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.packages.tags/create",
+  "status": "ADDITIVE_KEEP_TAGS_VERIFIED",
+  "policyAfter": {
+    "cleanupPolicies": {
+      "delete-old-release-images": {
+        "action": "DELETE",
+        "condition": {
+          "olderThan": "604800s",
+          "tagState": "ANY"
+        },
+        "id": "delete-old-release-images"
+      },
+      "keep-recent-release-images": {
+        "action": "KEEP",
+        "id": "keep-recent-release-images",
+        "mostRecentVersions": {
+          "keepCount": 3
+        }
+      },
+      "keep-reviewed-security-rollback": {
+        "action": "KEEP",
+        "condition": {
+          "tagPrefixes": [
+            "security-rollback-reviewed-"
+          ],
+          "tagState": "TAGGED"
+        },
+        "id": "keep-reviewed-security-rollback"
+      }
+    },
+    "cleanupPolicyDryRunPresent": false,
+    "cleanupPolicyDryRun": null
+  },
+  "cleanupPoliciesUnchanged": true,
+  "servicesAfter": [
+    {
+      "service": "billing-service",
+      "revision": "custoking-billing-service-dev-muyac2uc",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:0123ac05060ea6c10af6a81aaa94cbede70857f4de1e08c9b41b8f0898df88cb",
+      "runtimeDigestMatchesManifest": true
+    },
+    {
+      "service": "identity-service",
+      "revision": "custoking-identity-service-dev-muya2gx1",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:de80a851e23d5986df716f96dfd60971daabf54ab24504085c5c74bb33eb620d",
+      "runtimeDigestMatchesManifest": true
+    },
+    {
+      "service": "operations-service",
+      "revision": "custoking-operations-service-dev-muya8x4v",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:6f806ccffa97e3327870464b40b1244e4d7b60ba675c44a9c9e592612bef469c",
+      "runtimeDigestMatchesManifest": true
+    },
+    {
+      "service": "platform-service",
+      "revision": "custoking-platform-service-dev-muyaf7rv",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:455166a055eff70275105365b79cba1d625adb6aeac05e77e398eb7a9a4a2a9a",
+      "runtimeDigestMatchesManifest": true
+    },
+    {
+      "service": "school-core-service",
+      "revision": "custoking-school-core-service-dev-muya5vk5",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:30aa393bbf88d350f31b82bc0a0e06a8da26720159e8340f097de0630c230bb6",
+      "runtimeDigestMatchesManifest": true
+    }
+  ],
+  "uniqueImages": 10,
+  "checkedAtUtc": "2026-10-07T16:01:35.916480+00:00"
+}

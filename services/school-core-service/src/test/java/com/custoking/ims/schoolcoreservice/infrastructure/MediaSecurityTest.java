@@ -54,7 +54,7 @@ class MediaSecurityTest {
         assertThat(photos.toDisplayUrl("http://example.test/photo.jpg")).isNull();
         assertThat(photos.toDisplayUrl("https://tracking.example.test/photo.jpg")).isNull();
         assertThat(photos.toDisplayUrl("https://storage.googleapis.com/other-bucket/schools/a.jpg")).isNull();
-        assertThat(photos.toDisplayUrl("https://storage.googleapis.com/private-bucket/schools/a.jpg")).isNotNull();
+        assertThat(photos.toDisplayUrl("https://storage.googleapis.com/private-bucket/schools/a.jpg")).isNull();
     }
 
     @Test void streamingBodyAbortsBeforeOversizedAllocation() {

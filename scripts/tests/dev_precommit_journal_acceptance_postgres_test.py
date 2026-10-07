@@ -1,5 +1,5 @@
 """Docker PostgreSQL syntax/transaction rehearsal, not an application or GCS proof."""
-import json, subprocess, time, unittest, uuid
+import json, pathlib, subprocess, time, unittest, uuid
 from scripts.tests.dev_precommit_journal_acceptance_test import j,plan
 class JournalSqlPostgresTests(unittest.TestCase):
     @classmethod
@@ -21,11 +21,14 @@ class JournalSqlPostgresTests(unittest.TestCase):
               'CREATE TABLE tenant_school.photo_cleanup_outbox(student_id bigint);CREATE TABLE tenant_school.outbox_events(aggregate_id text);CREATE TABLE reporting.reporting_event_inbox(aggregate_id text);'+
               'CREATE TABLE student.students(id bigint PRIMARY KEY,admission_no text,full_name text,created_at timestamptz,updated_at timestamptz,school_id bigint,class_id text,section_id text,academic_year_id text,created_by text,erasure_incarnation uuid DEFAULT gen_random_uuid());'+
               'CREATE TABLE student.erasure_journal_receipts(student_id bigint,school_id bigint);'+
-              'CREATE TABLE reporting.dim_students(id bigint);CREATE TABLE reporting.student_projection_tombstones(student_id bigint);'+
+              'CREATE TABLE reporting.student_projection_tombstones(student_id bigint);'+
               'CREATE TABLE identity.app_users(id bigint PRIMARY KEY,full_name text,email text,password_hash text,role text,branch_id bigint,branch_name text,created_at timestamptz,deleted_at timestamptz,deleted_by text,credential_version integer DEFAULT 0);'+
               "CREATE TABLE identity.roles(id bigint,name text);INSERT INTO identity.roles VALUES(1,'SCHOOL_ADMIN');"+
               'CREATE TABLE identity.user_role_assignments(user_id bigint,role_id bigint,school_id bigint,active boolean,revoked_at timestamptz);'+
               'CREATE TABLE identity.auth_sessions(user_id bigint,status text);CREATE TABLE identity.rbac_audit_log(event_type text,target_user_id bigint,new_value text,correlation_id text);')
+            # Use the owner's actual projection migration, rather than duplicating its name.
+            projection = pathlib.Path(j.__file__).resolve().parents[2] / 'services/platform-service/src/main/resources/db/migration/reporting/V15__student_dimension.sql'
+            cls.sql('SET search_path TO reporting; ' + projection.read_text(encoding='utf-8'))
         except BaseException:
             subprocess.run(['docker','stop',cls.name],capture_output=True,timeout=30);raise
     @classmethod

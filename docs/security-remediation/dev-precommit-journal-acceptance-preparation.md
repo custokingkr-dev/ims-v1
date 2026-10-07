@@ -1,8 +1,12 @@
 # Fresh precommit-journal dev acceptance preparation
 
-Prepared 2026-10-07; **not executed against dev**. No cloud resources, IAM grants,
-provider calls, or fixtures were created by preparation. Repository search found no
-references to the reserved IDs; that is not a live collision result.
+Prepared and then **executed against dev on 2026-10-07** after exact successful PR 323
+release/readback. [Actual live acceptance](acceptance-precommit-journal-dev.md) and
+[bound JSON evidence](acceptance-precommit-journal-dev.json) record nine successful
+browser checks, canonical pinned external intent/SQL receipt, source/child absence,
+runtime ACL denials, disabled fixture login 401, private credential absence and owned
+job absence. This document retains the reusable execution procedure and preparation
+scope; it is not a second independent live exercise.
 
 The Python helper `scripts/security/prepare-dev-precommit-journal-acceptance.py`
 provides default offline preparation plus explicit `--apply-dev --mode seed|verify|cleanup`.
@@ -11,7 +15,7 @@ The separate browser runner is `scripts/security/run-dev-journal-delete.mjs`.
 Scope is school **990008101**, SCHOOL_ADMIN **990008201**, student **990008301**.
 Use one fresh 12-character lowercase hex nonce. Marker is
 `SEC-JOURNAL-DEV-20261007-<nonce>`; admission number appends `-STUDENT`.
-Class/year/section IDs are marker strings ending `-CLASS`, `-YEAR`, `-SECTION`
+The executed nonce was `1666c7012cb8`. Class/year/section IDs are marker strings ending `-CLASS`, `-YEAR`, `-SECTION`
 (their schema keys are strings, not the initially proposed numeric IDs).
 No old 990007 students, erased identities or tombstones are reused.
 
@@ -99,5 +103,8 @@ It does **not** prove generation-pinned physical photo deletion, provider erasur
 backup purge, broker delivery, hardware-backed authenticators or full restored-source
 reconciliation. It can prove one application's successful precommit journal + SQL
 receipt after the real deployment only when the described live checks actually run.
-Do not label this preparation as dev acceptance. Do not auto-resume delivery or delete
+The preparation tests alone are not dev acceptance; the separate linked live evidence
+establishes the executed scope. The initial read-only helper failure and actual schema
+correction are preserved in [the checkpoint](acceptance-durability-live-checkpoint.json).
+Do not auto-resume delivery or delete
 immutable intent/receipt/tombstone/audit records during cleanup.
