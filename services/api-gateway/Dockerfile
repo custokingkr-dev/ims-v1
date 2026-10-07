@@ -9,7 +9,7 @@ WORKDIR /app
 ARG SECURITY_PATCH_EPOCH=unset
 RUN echo "security patches for ${SECURITY_PATCH_EPOCH}" \
   && apk update \
-  && apk upgrade --no-cache libcrypto3 libssl3
+  && apk upgrade --no-cache
 COPY package*.json ./
 RUN npm ci --omit=dev \
   && npm cache clean --force \

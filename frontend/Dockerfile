@@ -22,7 +22,7 @@ ENV NGINX_RESOLVER="127.0.0.11 valid=10s ipv6=off"
 ARG SECURITY_PATCH_EPOCH=unset
 RUN echo "security patches for ${SECURITY_PATCH_EPOCH}" \
   && apk update \
-  && apk upgrade --no-cache libcrypto3 libssl3 libuuid libexpat pcre2
+  && apk upgrade --no-cache
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 RUN sed -i 's|^pid[[:space:]].*;|pid /tmp/nginx.pid;|' /etc/nginx/nginx.conf \
