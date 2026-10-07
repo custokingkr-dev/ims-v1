@@ -114,6 +114,11 @@ jobs:
           scripts.tests.final_live_fixture_acceptance_test
           scripts.tests.dashboard_state_adoption_test
           scripts.tests.dev_erasure_journal_test
+      - name: Verify guarded dev journal acceptance and PostgreSQL rehearsal under optimization
+        run: >-
+          python3 -O -m unittest
+          scripts.tests.dev_precommit_journal_acceptance_test
+          scripts.tests.dev_precommit_journal_acceptance_postgres_test
       - name: Test OpenAPI CI routing invariants
         run: python3 -m unittest scripts.tests.test_openapi_ci_gate
 
