@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "marker": "SEC-ACPT-20261007",
+  "targetUserId": 990007201,
+  "independentApprovers": [
+    990007203,
+    990007204
+  ],
+  "authenticator": "Chromium CTAP2 virtual software authenticator",
+  "physicalHardwareProof": false,
+  "checks": [
+    {
+      "check": "independent-admin-login",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "password-only-recovery-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    },
+    {
+      "check": "independent-admin-passkey-enrolled",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "enrollment-alone-does-not-grant-recovery",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    },
+    {
+      "check": "independent-admin-fresh-passkey-assertion",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "independent-admin-login",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "password-only-recovery-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    },
+    {
+      "check": "independent-admin-passkey-enrolled",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "enrollment-alone-does-not-grant-recovery",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    },
+    {
+      "check": "independent-admin-fresh-passkey-assertion",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "fresh-admin-recovery-request",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "same-admin-approval-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    },
+    {
+      "check": "independent-fresh-admin-approval",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "completed-recovery-replay-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    },
+    {
+      "check": "target-all-sessions-revoked",
+      "status": 401,
+      "expected": 401,
+      "passed": true
+    },
+    {
+      "check": "target-owner-password-relogin",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "recovered-owner-status",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "recovered-owner-new-passkey-enrollment",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "recovered-owner-fresh-passkey-assertion",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "checkedAtUtc": "2026-10-07T09:39:46.836Z",
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification"
+}

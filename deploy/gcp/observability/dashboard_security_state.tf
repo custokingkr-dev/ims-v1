@@ -1,4 +1,8 @@
 # Isolated security capability state only: no application student/financial collections.
+# Dev 2026-10-07: matching ims-dashboard-dev / ims-dashboard service account / custom
+# role / TTL resources were provisioned through bounded acceptance helpers. See
+# docs/security-remediation/acceptance-identity-dashboard.md. They have NOT been
+# adopted into Terraform state; release owner must inspect/import before applying.
 resource "google_project_service" "dashboard_firestore" {
   count              = local.dashboard_enabled
   project            = var.project

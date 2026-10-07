@@ -1,0 +1,42 @@
+{
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "marker": "SEC-ACPT-20261007",
+  "run": "20261007093838-ced1f9c7",
+  "syntheticOnly": true,
+  "noProviderDelivery": true,
+  "stages": [
+    {
+      "stage": "fresh-revision-persisted-baseline",
+      "atUtc": "2026-10-07T12:05:17.637440+00:00",
+      "inboxRows": 4,
+      "marker": "SEC-ACPT-20261007",
+      "processed": 4,
+      "projectionRows": 0,
+      "tombstones": 2
+    },
+    {
+      "stage": "post-replacement-duplicate-and-late-upsert-published",
+      "atUtc": "2026-10-07T12:05:19.076227+00:00",
+      "messages": 2
+    },
+    {
+      "stage": "post-replacement-persistence-confirmed",
+      "atUtc": "2026-10-07T12:06:44.980151+00:00",
+      "inboxRows": 5,
+      "marker": "SEC-ACPT-20261007",
+      "processed": 5,
+      "projectionRows": 0,
+      "tombstones": 2
+    }
+  ],
+  "deliveryVerified": false,
+  "duplicateVerified": false,
+  "deadLetterVerified": false,
+  "replayVerified": false,
+  "restartVerified": true,
+  "cleanupVerified": true,
+  "beforeRevision": "custoking-platform-service-dev-mux5ano8",
+  "afterRevision": "custoking-platform-service-dev-muy24qr0",
+  "scope": "Actual Cloud Run revision replacement; persisted inbox dedupe and tombstone suppression across the fresh process. Not an in-flight crash or full-backlog drain test."
+}

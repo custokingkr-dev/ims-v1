@@ -1,0 +1,87 @@
+{
+  "project": "custoking-dev",
+  "database": "ims-dashboard-dev",
+  "sourceSha256": "9da7d620984d194ebb5d525660728bf7bdd40a1b7dc12d3e45954fc49d3337f4",
+  "probeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8",
+  "independentCloudRunInstances": 2,
+  "checks": [
+    {
+      "complete": true,
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "phase": "A"
+    },
+    {
+      "check": "list-not-granted",
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "passed": true,
+      "phase": "A"
+    },
+    {
+      "check": "foreign-existing-database-denied",
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "passed": true,
+      "phase": "A"
+    },
+    {
+      "check": "foreign-database-http-status",
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "passed": true,
+      "phase": "A",
+      "status": 403
+    },
+    {
+      "check": "revocation-created",
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "passed": true,
+      "phase": "A"
+    },
+    {
+      "check": "cross-instance-atomic-replay-claim",
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "passed": true,
+      "phase": "A"
+    },
+    {
+      "complete": true,
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "phase": "B"
+    },
+    {
+      "check": "list-not-granted",
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "passed": true,
+      "phase": "B"
+    },
+    {
+      "check": "foreign-existing-database-denied",
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "passed": true,
+      "phase": "B"
+    },
+    {
+      "check": "foreign-database-http-status",
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "passed": true,
+      "phase": "B",
+      "status": 403
+    },
+    {
+      "check": "cross-instance-revocation-observed",
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "passed": true,
+      "phase": "B"
+    },
+    {
+      "check": "cross-instance-atomic-replay-claim",
+      "marker": "SEC-ACPT-20261007-DASHBOARD",
+      "passed": true,
+      "phase": "B"
+    }
+  ],
+  "passed": true,
+  "checkedAtUtc": "2026-10-07T09:39:10.184521+00:00",
+  "webOAuthTested": false,
+  "asyncTtlCleanupObserved": false,
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification"
+}

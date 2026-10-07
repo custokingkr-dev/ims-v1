@@ -1,0 +1,91 @@
+{
+  "startedAt": "2026-10-07T12:05:08.196Z",
+  "scope": "Anonymous live HTTP/browser smoke",
+  "origins": [
+    {
+      "origin": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+      "responses": [
+        {
+          "resource": "/login",
+          "status": 200,
+          "headers": {
+            "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "referrer-policy": "no-referrer",
+            "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+            "strict-transport-security": "max-age=31536000"
+          }
+        },
+        {
+          "resource": "/frontend-health",
+          "status": 200,
+          "headers": {
+            "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "referrer-policy": "no-referrer",
+            "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+            "strict-transport-security": "max-age=31536000"
+          }
+        },
+        {
+          "resource": "/assets/index-UB6jIoJq.js",
+          "status": 200,
+          "headers": {
+            "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "referrer-policy": "no-referrer",
+            "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+            "strict-transport-security": "max-age=31536000"
+          }
+        },
+        {
+          "resource": "/assets/missing-security-proof.js",
+          "status": 404,
+          "headers": {
+            "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "referrer-policy": "no-referrer",
+            "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+            "strict-transport-security": "max-age=31536000"
+          }
+        },
+        {
+          "resource": "synthetic-nonexistent-photo",
+          "status": 401,
+          "headers": {
+            "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none', default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff, nosniff",
+            "x-frame-options": "DENY, DENY",
+            "referrer-policy": "strict-origin-when-cross-origin, no-referrer",
+            "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+            "strict-transport-security": "max-age=63072000; includeSubDomains; preload, max-age=31536000"
+          }
+        }
+      ],
+      "browser": {
+        "inlineExecuted": false,
+        "rasterBlobLoaded": true,
+        "violations": [
+          "script-src-elem",
+          "object-src"
+        ]
+      }
+    }
+  ],
+  "nonRoot": {
+    "verified": false,
+    "reason": "Public HTTP cannot establish runtime UID; use deployed image config plus existing container proof."
+  },
+  "success": true,
+  "finishedAt": "2026-10-07T12:05:19.404Z",
+  "project": "custoking-dev",
+  "sourceReleaseCommit": "f901c5f0631d9fcff617374c8e569401c1af84d6",
+  "releaseRunId": 37614977208,
+  "revision": "custoking-frontend-dev-muy1s1uk",
+  "imageDigest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+  "linkageCapturedUtc": "2026-10-07T12:06:32.565586+00:00"
+}

@@ -1,0 +1,25 @@
+{
+  "project": "custoking-dev",
+  "repository": "projects/custoking-dev/locations/asia-south2/repositories/custoking",
+  "checkedAtUtc": "2026-10-07T12:25:17.453265+00:00",
+  "cleanupPolicyDryRun": null,
+  "cleanupPolicies": {
+    "delete-old-release-images": {
+      "action": "DELETE",
+      "condition": {
+        "olderThan": "604800s",
+        "tagState": "ANY"
+      },
+      "id": "delete-old-release-images"
+    },
+    "keep-recent-release-images": {
+      "action": "KEEP",
+      "id": "keep-recent-release-images",
+      "mostRecentVersions": {
+        "keepCount": 3
+      }
+    }
+  },
+  "immutableTags": false,
+  "scope": "Repository cleanup metadata only; not protection against authorized manual deletion or observed old-instance drain"
+}

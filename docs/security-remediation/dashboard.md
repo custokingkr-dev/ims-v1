@@ -1,6 +1,8 @@
 # Dashboard SEC-20/21 remediation
 
-Implementation exists in the security worktree; it is not provisioned or deployed. Dashboard release is separate from the seven-service application release. Do not infer that application dev deployment applies this dashboard configuration.
+The dashboard web service remains undeployed because dedicated OAuth registration is unavailable. On 2026-10-07, dev-only named Firestore state, TTL, the dashboard service account, conditional minimal role, and managed session secret were provisioned and tested against the real API. See [current acceptance and limits](acceptance-identity-dashboard.md). Dashboard release is separate from the seven-service application release. No Terraform state adoption or clean-drift claim is made.
+
+The following table and local verification paragraphs describe the original implementation checkpoint; current live evidence and remaining criteria are in the linked acceptance report.
 
 | Item | Status and code controls | Verification still required |
 | --- | --- | --- |
@@ -29,4 +31,4 @@ Keep the stable secret during ordinary rollout to preserve deliberate session be
 
 Public Cloud Run reachability continues to be protected by application auth; optional load-balancer/IAP choices remain existing infrastructure policy. The new application startup guard does not establish that live ingress or IAP is correct. Monitoring results may report failed panels when the allowed series budget is exceeded; reduce cardinality/approved panel filter rather than relaxing limits blindly. Shared-cache work can continue up to its30sec deadline after one client leaves because other coalesced readers may remain; this is bounded retained work.
 
-Design references: [Firestore named databases and database IAM conditions](https://docs.cloud.google.com/firestore/native/docs/manage-databases), [Firestore IAM](https://docs.cloud.google.com/firestore/docs/security/iam), and [Firestore REST documents API](https://cloud.google.com/firestore/docs/reference/rest/v1/projects.databases.documents/createDocument). Atomic-create/conflict assumptions are exercised by injectable fake transport tests and still need real API verification.
+Design references: [Firestore named databases and database IAM conditions](https://docs.cloud.google.com/firestore/native/docs/manage-databases), [Firestore IAM](https://docs.cloud.google.com/firestore/docs/security/iam), and [Firestore REST documents API](https://cloud.google.com/firestore/docs/reference/rest/v1/projects.databases.documents/createDocument). Atomic-create/conflict and cross-instance revocation now have [real dev API evidence](acceptance-dashboard-firestore.json); OAuth provider login and dashboard web deployment remain separate acceptance criteria.

@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "marker": "SEC-ACPT-20261007",
+  "checks": [
+    {
+      "check": "own-student-object",
+      "actorSchoolId": 990007101,
+      "studentId": 990007301,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "check": "foreign-student-object-denied",
+      "actorSchoolId": 990007101,
+      "studentId": 990007311,
+      "status": 404,
+      "passed": true
+    },
+    {
+      "check": "forged-foreign-branch-headers-denied",
+      "actorSchoolId": 990007101,
+      "studentId": 990007311,
+      "status": 404,
+      "passed": true
+    },
+    {
+      "check": "own-student-object",
+      "actorSchoolId": 990007102,
+      "studentId": 990007311,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "check": "foreign-student-object-denied",
+      "actorSchoolId": 990007102,
+      "studentId": 990007301,
+      "status": 404,
+      "passed": true
+    },
+    {
+      "check": "forged-foreign-branch-headers-denied",
+      "actorSchoolId": 990007102,
+      "studentId": 990007301,
+      "status": 404,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "checkedAtUtc": "2026-10-07T09:49:42.658224+00:00",
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification"
+}

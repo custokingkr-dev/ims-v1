@@ -1,5 +1,7 @@
 # Capacity, delivery and direct-boundary evidence
 
+This workstream report preserves its original implementation checkpoints. The [current implementation ledger](IMPLEMENTATION-STATUS.md) records subsequent merged source, dev releases, live acceptance and remaining owner actions. Earlier statements that deployment or live fixtures were pending are historical.
+
 Date: 2026-10-06. Owner: workflow/billing implementation agent for source review, overlap audit, local measurement and read-only direct smoke. Root agent owns manifest and live infrastructure actions. No cloud load, message delivery, IAM mutation or database production changes were performed by this agent.
 
 ## Connection ceilings (SEC-32)

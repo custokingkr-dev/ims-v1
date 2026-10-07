@@ -19,6 +19,9 @@ if($SyntheticFixtureProof){
   $evidence.syntheticFixture=@{sourceVerifiedCount=2;sourceProvenance=$fixture.marker;sourceVerifiedAtUtc=$fixture.checkedAtUtc;expectedSha256=$expectedFixtureSha;restoredVerified=$false}
 }
 $cloneAttempted=$false; $jobAttempted=$false; $cloneOperation=$null
+function SaveEvidence {
+  $evidence|ConvertTo-Json -Depth 12|Set-Content -LiteralPath $evidencePath -Encoding UTF8
+}
 function Cloud([string[]]$Arguments,[int]$Seconds=60) {
   $worker=Start-Job -ScriptBlock { param($argsList)
     $ErrorActionPreference='Continue'; $stderr=[IO.Path]::GetTempFileName()
@@ -61,17 +64,20 @@ try {
   $null=Cloud @('iam','service-accounts','describe',"ims-db-migration-dev@$project.iam.gserviceaccount.com","--project=$project",'--format=value(email)')
   if(-not (AssertAbsent @('sql','instances','describe',$clone,"--project=$project",'--format=value(name)'))){throw 'Unique clone name already exists'}
   $cloneAttempted=$true
+  SaveEvidence # Preserve exact ownership before an interruption can leave a cloud operation running.
   Write-Host "Starting isolated dev PITR: $source -> $clone at $point; no source restore or row export"
   $operation=Cloud @('sql','instances','clone',$source,$clone,"--point-in-time=$point","--project=$project",'--async','--quiet','--format=json')|ConvertFrom-Json
   $cloneOperation=[string]$operation.name
   if(-not $cloneOperation){throw 'Clone request did not return an operation identifier'}
   $evidence.cloneOperation=$cloneOperation
+  SaveEvidence
   AwaitSqlOperation $cloneOperation $MaxMinutes
   $restored=Cloud @('sql','instances','describe',$clone,"--project=$project",'--format=json')|ConvertFrom-Json
   if($restored.name -ne $clone -or $restored.state -ne 'RUNNABLE' -or $restored.settings.ipConfiguration.ipv4Enabled -or $restored.settings.ipConfiguration.sslMode -ne 'ENCRYPTED_ONLY'){throw 'Isolated clone readiness or privacy validation failed'}
   $private=@($restored.ipAddresses|Where-Object{$_.type -eq 'PRIVATE'})
   if($private.Count -ne 1 -or [string]$private[0].ipAddress -notmatch '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)'){throw 'Clone does not have exactly one RFC1918 private address'}
   $evidence.cloneReadyUtc=[datetime]::UtcNow.ToString('o'); $evidence.cloneReadinessElapsedSeconds=[math]::Round(([datetime]::UtcNow-$started).TotalSeconds,3)
+  SaveEvidence
   $schemas=@('identity','tenant_school','student','attendance','fee','catalog','workflow','firefighting','reporting','notification','audit','billing')
   $values=($schemas|ForEach-Object{"('$_')"}) -join ','
   $sql="BEGIN READ ONLY; WITH expected(schema_name) AS (VALUES $values) SELECT 'SCHEMA_CATALOG|' || e.schema_name || '|' || (n.oid IS NOT NULL)::text || '|' || count(c.oid)::text FROM expected e LEFT JOIN pg_namespace n ON n.nspname=e.schema_name LEFT JOIN pg_class c ON c.relnamespace=n.oid AND c.relkind IN ('r','p') GROUP BY e.schema_name,n.oid ORDER BY e.schema_name; COMMIT;"
@@ -81,7 +87,7 @@ try {
   $image='docker.io/library/postgres@sha256:95206741a5b214807675e14165369d05b93a9cf692223b616d07cca227e74b0b'
   $definition=@{apiVersion='run.googleapis.com/v1';kind='Job';metadata=@{name=$job;namespace=$project;labels=@{purpose='isolated-schema-only-recovery'}};spec=@{template=@{metadata=@{annotations=@{'run.googleapis.com/network-interfaces'='[{"network":"default","subnetwork":"default"}]';'run.googleapis.com/vpc-access-egress'='private-ranges-only'}};spec=@{taskCount=1;parallelism=1;template=@{spec=@{serviceAccountName="ims-db-migration-dev@$project.iam.gserviceaccount.com";maxRetries=0;timeoutSeconds=120;containers=@(@{image=$image;command=@('psql');args=@('-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-c',$sql);resources=@{limits=@{cpu='1';memory='512Mi'}};env=@(@{name='PGHOST';value=[string]$private[0].ipAddress},@{name='PGPORT';value='5432'},@{name='PGUSER';value='appuser'},@{name='PGDATABASE';value='custoking_dev'},@{name='PGSSLMODE';value='require'},@{name='PGCONNECT_TIMEOUT';value='10'},@{name='PGOPTIONS';value='-c default_transaction_read_only=on -c statement_timeout=10000 -c lock_timeout=3000'},@{name='PGPASSWORD';valueFrom=@{secretKeyRef=@{name='db-password-dev';key='latest'}}})})}}}}}}
   $definition|ConvertTo-Json -Depth 30|Set-Content -LiteralPath $jobFile -Encoding UTF8
-  $jobAttempted=$true; $null=Cloud @('run','jobs','replace',$jobFile,"--project=$project","--region=$region",'--quiet','--format=json')
+  $jobAttempted=$true; SaveEvidence; $null=Cloud @('run','jobs','replace',$jobFile,"--project=$project","--region=$region",'--quiet','--format=json')
   $execution=Cloud @('run','jobs','execute',$job,"--project=$project","--region=$region",'--async','--quiet','--format=json')|ConvertFrom-Json
   $executionName=[string]$execution.metadata.name
   $deadline=[datetime]::UtcNow.AddMinutes(5)
@@ -126,7 +132,7 @@ finally {
       $evidence.cleanup.cloneRemoved=AssertAbsent @('sql','instances','describe',$clone,"--project=$project",'--format=value(name)')
     } catch {$evidence.cleanup.cloneError=$_.Exception.Message}
   } else {$evidence.cleanup.cloneRemoved=$true}
-  $evidence.finishedUtc=[datetime]::UtcNow.ToString('o');$evidence|ConvertTo-Json -Depth 12|Set-Content -LiteralPath $evidencePath -Encoding UTF8
+  $evidence.finishedUtc=[datetime]::UtcNow.ToString('o');SaveEvidence
   if(Test-Path -LiteralPath $jobFile){Remove-Item -LiteralPath $jobFile}
   Write-Host "Dev recovery evidence: $evidencePath"
 }

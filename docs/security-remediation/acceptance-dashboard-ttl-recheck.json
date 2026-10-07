@@ -1,0 +1,17 @@
+{
+  "project": "custoking-dev",
+  "database": "ims-dashboard-dev",
+  "checkedAtUtc": "2026-10-07T11:43:38.545630+00:00",
+  "job": "ims-dev-dashboard-ttl-recheck-9843d767fc1e",
+  "scope": "Single read of the prior genuinely expired hashed TTL fixture, using get/create-only dashboard SA",
+  "physicalDeletionObserved": false,
+  "jobRemoved": true,
+  "observation": {
+    "marker": "SEC-ACPT-20261007-TTL-RECHECK",
+    "noCreateOrDeleteExecuted": true,
+    "originalExpiredFixture": true,
+    "physicalDeletionObserved": false,
+    "serviceAccountHasDeletePermission": false
+  },
+  "independentJobAbsenceVerified": true
+}

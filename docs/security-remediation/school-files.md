@@ -1,5 +1,7 @@
 # School file, photo, export and projection hardening
 
+This workstream report preserves its original implementation checkpoints. The [current implementation ledger](IMPLEMENTATION-STATUS.md) records subsequent merged source, dev releases, live acceptance and remaining owner actions. Earlier statements that deployment or live fixtures were pending are historical.
+
 Owner: school-core domain workstream. Changes are local pending integration and deployment verification; no production claim is made.
 
 | Item | Implementation and status | Evidence / remaining verification |

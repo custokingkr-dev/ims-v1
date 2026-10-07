@@ -1,0 +1,13 @@
+{
+  "repository": "custokingkr-dev/ims-v1",
+  "checkedAtUtc": "2026-10-07T12:12:00.450413+00:00",
+  "permissions": {
+    "admin": false,
+    "maintain": false,
+    "push": true,
+    "triage": true,
+    "pull": true
+  },
+  "canAdministerProtection": false,
+  "scope": "Current API account permissions; not a branch protection enforcement proof"
+}

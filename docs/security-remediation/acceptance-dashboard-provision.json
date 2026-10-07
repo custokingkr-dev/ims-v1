@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "database": "ims-dashboard-dev",
+  "serviceAccount": "ims-dashboard@custoking-dev.iam.gserviceaccount.com",
+  "permissions": [
+    "datastore.entities.get",
+    "datastore.entities.create"
+  ],
+  "condition": "resource.name == 'projects/custoking-dev/databases/ims-dashboard-dev'",
+  "steps": [
+    "firestore-api-enabled",
+    "dashboard-service-account-created",
+    "named-native-database-delete-protected",
+    "least-privilege-custom-role-created",
+    "named-database-only-conditional-binding",
+    "ttl-enable-requested"
+  ],
+  "checkedAtUtc": "2026-10-07T09:34:51.040043+00:00",
+  "dashboardWebDeployed": false,
+  "reason": "Dedicated OAuth configuration unavailable; auth controls remain enabled",
+  "asyncTtlDeletionObserved": false,
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification"
+}

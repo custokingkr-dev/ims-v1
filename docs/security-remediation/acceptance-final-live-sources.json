@@ -1,0 +1,26 @@
+[
+  {
+    "path": "scripts/security/final-live-fixture-acceptance.py",
+    "sha256": "c1c4603cf38446998188253e4e36e1339b8c82245cb229decb855fca12fe08f9"
+  },
+  {
+    "path": "scripts/security/run-final-live-erasure.mjs",
+    "sha256": "bdd93fe044cb7907b4f1f1d33727857e886b0d65cc0162d375cff0f902d44ea5"
+  },
+  {
+    "path": "scripts/security/curate-final-live-acceptance.py",
+    "sha256": "d4cbfee132ded6445f1f98b8f7585aac123ce9738c78f3b69a186dcc7d0a456b"
+  },
+  {
+    "path": "scripts/security/verify-dev-pubsub-restart.py",
+    "sha256": "c39be87114f34c537228fe5473acab4a9f0f62a1eeb75ab5a164e311bc24d264"
+  },
+  {
+    "path": "scripts/security/dev-synthetic-pubsub-drill.py",
+    "sha256": "7ac2a7f2c49b2699e6405bd107d6d0bf0544fb25e4dcd7021052f9e4286854d4"
+  },
+  {
+    "path": "scripts/tests/final_live_fixture_acceptance_test.py",
+    "sha256": "82c9a32d001ebde035ae97411cdb0cae3280e6ff96906eb9739b9c5ee95fb5f4"
+  }
+]

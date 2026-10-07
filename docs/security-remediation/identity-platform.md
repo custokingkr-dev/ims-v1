@@ -1,5 +1,7 @@
 # Identity, platform and shared runtime security remediation
 
+This workstream report preserves its original implementation checkpoints. The [current implementation ledger](IMPLEMENTATION-STATUS.md) records subsequent merged source, dev releases, live acceptance and remaining owner actions. Earlier statements that deployment or live fixtures were pending are historical.
+
 This workstream records historical implementation and controlled-test checkpoints from 2026-10-06 UTC, before PR 314 and the PR 316 follow-up merged. The final dev release is commit `9509d20c` (PR 317 orchestration follow-up). Current deployment and live acceptance status is authoritative in [the implementation ledger](IMPLEMENTATION-STATUS.md), [release report](dev-security-release.md) and [sanitized gate evidence](dev-release-gates.json). Production was not changed; historical test counts below are not final CI totals.
 
 | Plan item | Source implementation | Remaining operational evidence |

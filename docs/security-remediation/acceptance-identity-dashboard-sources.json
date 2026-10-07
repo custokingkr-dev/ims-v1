@@ -1,0 +1,87 @@
+[
+  {
+    "path": "scripts/security/provision-security-acceptance.py",
+    "sha256": "0a61153242faf44d5baba498fcee4c7ce1c21f0de8d459f6e6c616093ac835a0",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/extend-security-acceptance.py",
+    "sha256": "0815a3299a504b730c331f66c2eaa089861464ec3bc087fb58dd4db9dea1ce12",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/seed-security-students.py",
+    "sha256": "992ef9e4e6cd3794d8c00381c4634326f59781097a7175a3f6082b52502a3f43",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/provision-recovery-admin-fixtures.py",
+    "sha256": "6dad5eee850a3084a1ed7d80468c51e90482a4397707f6e618ecb1b36f69aa52",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/disable-recovery-admin-fixtures.py",
+    "sha256": "bd8975830371c3afa612c5c54f8707e35179de635d109762631358b7b4db263c",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/verify-acceptance-cleanup.py",
+    "sha256": "1f478bb26869e942090c7af2072e9c71427fcb08281f1006572241529f538abe",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/run-security-identity-acceptance.py",
+    "sha256": "4283d7fd0b8f5f8bd9796b0cfe086d2b7fb29b6f634bd6f0c69dd9becfea9b33",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/run-live-refresh-acceptance.py",
+    "sha256": "9115d09949a21474afa229b355722f4ebb00274a30e53fb2fd57b2f1c03567c3",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/run-live-object-authorization.py",
+    "sha256": "aa5acf64ba344d8d13e2d158661759ae8904f80539902fa8f6343f89f273514e",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/run-managed-identity-rotation.py",
+    "sha256": "a7c6e1b3dd017922ea807bbf95ee4be9b7d8d6f6c134c76f8618e9a58f63927f",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/provision-dashboard-state.py",
+    "sha256": "648ee1895c71da391521cbff0682508b96187862f7eb8d97e142111bf827fd88",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/run-dashboard-firestore-acceptance.py",
+    "sha256": "5e2dd2ec508737aea178ffcd62cb6ce32ec0d7687902cc4a6aa840b1cf54f010",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/run-dashboard-negative-control.py",
+    "sha256": "50c3f6f63f7f3490d2e953ad916a798899dab7f622361c7a9c231b84bac8e8b6",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/run-dashboard-auth-state-live.py",
+    "sha256": "325462955e75e75cd6bbf6495b50419d4edcf87894f57a47dfa51b5f670c0142",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/run-dashboard-ttl-observation.py",
+    "sha256": "65ee9fae89b310b3dcb93cf69c704453c217a5b219c2a35fe6e3acd93892318d",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/run-live-passkey-acceptance.mjs",
+    "sha256": "4ef05fb0b03d85b901dc07e96ddf80e30020afd3b4cdd10706e8083c00531202",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  },
+  {
+    "path": "scripts/security/run-live-recovery-acceptance.mjs",
+    "sha256": "5eb5e5b1cbbeb9a49773c5ca4d8c2e8a4f45dcda42a0cc69e6a3fc2e797f30f4",
+    "algorithm": "SHA256 UTF-8 text with CRLF normalized to LF"
+  }
+]

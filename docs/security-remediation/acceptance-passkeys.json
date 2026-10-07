@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "marker": "SEC-ACPT-20261007",
+  "authenticator": "Chromium CTAP2 virtual software authenticator",
+  "physicalHardwareProof": false,
+  "checkedAtUtc": "2026-10-07T09:32:59.560Z",
+  "checks": [
+    {
+      "check": "status",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "registration-options",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "real-browser-registration-server-verified",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "registration-replay-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "assertion-options",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "foreign-session-challenge-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "fresh-assertion-options",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "real-browser-assertion-server-verified",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "authoritative-step-up-expiry-issued",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "assertion-replay-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "authoritative-enrollment-status",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007101
+    },
+    {
+      "check": "status",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007102
+    },
+    {
+      "check": "registration-options",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007102
+    },
+    {
+      "check": "real-browser-registration-server-verified",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007102
+    },
+    {
+      "check": "registration-replay-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "schoolId": 990007102
+    },
+    {
+      "check": "assertion-options",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007102
+    },
+    {
+      "check": "foreign-session-challenge-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "schoolId": 990007102
+    },
+    {
+      "check": "fresh-assertion-options",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007102
+    },
+    {
+      "check": "real-browser-assertion-server-verified",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007102
+    },
+    {
+      "check": "authoritative-step-up-expiry-issued",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007102
+    },
+    {
+      "check": "assertion-replay-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "schoolId": 990007102
+    },
+    {
+      "check": "authoritative-enrollment-status",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "schoolId": 990007102
+    }
+  ],
+  "passed": true,
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification"
+}
