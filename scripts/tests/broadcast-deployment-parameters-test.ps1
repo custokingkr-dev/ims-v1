@@ -11,7 +11,7 @@ foreach ($deploymentEnv in @("DEV", "PROD")) {
     GCP_PROJECT_NUMBER = "123456789"
     GCP_REGION = "asia-south2"
     DB_HOST = "127.0.0.1:5432"
-    DB_NAME = "fixture"
+    DB_NAME = if ($deploymentEnv -ceq 'DEV') { 'custoking_dev' } else { 'fixture' }
     STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID = "fixture-folder"
     STUDENT_PHOTO_BUCKET = "fixture-private-bucket"
   }.GetEnumerator()) {
@@ -33,6 +33,14 @@ function Assert-Rejected([string]$Template, [string]$Environment, [string]$Messa
 }
 function Set-CorsOrigins([string]$Template, [string]$Origins) {
   return [regex]::Replace($Template, '(?m)^  gateway_cors_allowed_origins:[^\r\n]*', ('  gateway_cors_allowed_origins: "' + $Origins + '"'))
+}
+function Assert-AuthenticationProfileRejected([string]$Template, [string]$Message) {
+  $path = Join-Path $testRoot 'invalid-auth-profile.yaml'
+  Set-Content -LiteralPath $path -Value $Template
+  $rejected = $false
+  try { & $renderer -Environment dev -TemplatePath $path -OutputPath (Join-Path $testRoot 'invalid-auth-profile-rendered.yaml') }
+  catch { $rejected = $_.Exception.Message -ceq 'Service authentication requires a reviewed project/environment/region alias.' }
+  Assert-True $rejected $Message
 }
 function Assert-CorsRejected([string]$Template, [string]$Environment, [string]$Message) {
   $path = Join-Path $testRoot "invalid-cors.yaml"
@@ -77,15 +85,22 @@ try {
     Assert-CorsRejected (Set-CorsOrigins $template ($canonicalTemplate + ',' + $otherAlias)) $deploymentEnv "Other environment's alias must fail"
   }
   $canonicalDevTemplate = 'https://custoking-frontend-dev-__PROJECT_NUMBER__.__REGION__.run.app'
+  # Isolate legacy CORS fallback checks from the dedicated journal's dev-source binding.
+  # Enabled-journal cross-project rejection is covered by security_target_renderer_test.
+  $corsOnlyDev = [regex]::Replace($dev, '(?m)^  student_erasure_journal_enabled:[^\r\n]*', '  student_erasure_journal_enabled: "false"')
+  foreach ($parameter in @('project_id','bucket','source_lineage_id','restore_epoch','epoch_sha256')) {
+    $corsOnlyDev = [regex]::Replace($corsOnlyDev, "(?m)^  student_erasure_journal_$($parameter):[^\r\n]*", "  student_erasure_journal_$($parameter): `"`"")
+  }
+  $corsOnlyDev = [regex]::Replace($corsOnlyDev, '(?m)^  student_erasure_journal_epoch_generation:[^\r\n]*', '  student_erasure_journal_epoch_generation: "0"')
   try {
     [Environment]::SetEnvironmentVariable('DEV_GCP_PROJECT_ID', 'other-project')
-    Assert-CorsRejected $dev 'dev' "Foreign project cannot inherit reviewed dev alias"
-    Assert-CorsRenders (Set-CorsOrigins $dev $canonicalDevTemplate) 'dev' 'https://custoking-frontend-dev-123456789.asia-south2.run.app'
+    Assert-CorsRejected $corsOnlyDev 'dev' "Foreign project cannot inherit reviewed dev alias"
+    Assert-AuthenticationProfileRejected (Set-CorsOrigins $corsOnlyDev $canonicalDevTemplate) 'Canonical CORS alone cannot authorize an unreviewed service project'
   } finally { [Environment]::SetEnvironmentVariable('DEV_GCP_PROJECT_ID', 'custoking-dev') }
   try {
     [Environment]::SetEnvironmentVariable('DEV_GCP_REGION', 'asia-south1')
-    Assert-CorsRejected $dev 'dev' "Other region cannot inherit reviewed dev alias"
-    Assert-CorsRenders (Set-CorsOrigins $dev $canonicalDevTemplate) 'dev' 'https://custoking-frontend-dev-123456789.asia-south1.run.app'
+    Assert-CorsRejected $corsOnlyDev 'dev' "Other region cannot inherit reviewed dev alias"
+    Assert-AuthenticationProfileRejected (Set-CorsOrigins $corsOnlyDev $canonicalDevTemplate) 'Canonical CORS alone cannot authorize an unreviewed service region'
   } finally { [Environment]::SetEnvironmentVariable('DEV_GCP_REGION', 'asia-south2') }
   Assert-Rejected ($prod.Replace('broadcast_dispatch_mode: "OFF"', 'broadcast_dispatch_mode: "DRY_RUN"').Replace('broadcast_worker_ready: "false"', 'broadcast_worker_ready: "true"')) "prod" "Production dry-run activation must fail"
   Assert-Rejected ($dev.Replace('broadcast_dispatch_mode: "DRY_RUN"', 'broadcast_dispatch_mode: "LIVE"')) "dev" "Live mode must fail"

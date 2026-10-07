@@ -53,6 +53,47 @@ foreach ($key in $replacements.Keys) {
   $text = $text.Replace($key, $replacements[$key])
 }
 
+# The precommit erasure feature may only bind the explicitly provisioned dev source.
+# Production remains disabled until its own separately reviewed journal contract exists.
+$schoolCoreTargets = @($text -split '(?m)^---\s*$' | Where-Object {
+  $_ -match "(?m)^  name:\s*school-core-service-$Environment\s*$"
+})
+if ($schoolCoreTargets.Count -ne 1) { throw "Exactly one school-core-service-$Environment target is required." }
+function Read-SchoolCoreParameter([string]$Name) {
+  $parameterMatches = [regex]::Matches($schoolCoreTargets[0], "(?m)^  $([regex]::Escape($Name)):[ \t]*([^\r\n]*)")
+  if ($parameterMatches.Count -ne 1) { throw "School target must declare exactly one '$Name'." }
+  $value = $parameterMatches[0].Groups[1].Value.Trim()
+  if ($value -match '^"([^"]*)"$' -or $value -match "^'([^']*)'$") { return $Matches[1] }
+  return $value
+}
+$journalEnabled = Read-SchoolCoreParameter 'student_erasure_journal_enabled'
+if ($journalEnabled -cnotin @('true','false')) { throw 'Erasure journal enablement must be explicit.' }
+if ($journalEnabled -ceq 'true') {
+  if ($Environment -cne 'dev' -or $projectId -cne 'custoking-dev' -or $replacements['__DB_NAME__'] -cne 'custoking_dev' -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_project_id') -cne 'custoking-dev' -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_bucket') -cne 'custoking-dev-erasure-journal') {
+    throw 'The enabled erasure journal must bind the exact dedicated dev project, database and bucket.'
+  }
+  $controlPath = Join-Path $repoRoot 'deploy/gcp/erasure-journal/dev-source-control.json'
+  $control = Get-Content -LiteralPath $controlPath -Raw | ConvertFrom-Json
+  $hasher = [System.Security.Cryptography.SHA256]::Create()
+  try { $controlSha = ([BitConverter]::ToString($hasher.ComputeHash([IO.File]::ReadAllBytes($controlPath)))).Replace('-','').ToLowerInvariant() }
+  finally { $hasher.Dispose() }
+  if ($control.project -cne 'custoking-dev' -or $control.sourceInstance -cne 'custoking-db-dev' -or
+      $control.database -cne 'custoking_dev' -or $control.state -cne 'ACTIVE' -or $control.schemaVersion -ne 1 -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_source_lineage_id') -cne $control.sourceLineageId -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_restore_epoch') -cne $control.restoreEpoch -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_epoch_generation') -cnotmatch '^[1-9][0-9]{0,18}$' -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_epoch_sha256') -cne $controlSha) {
+    throw 'Erasure deployment must pin the reviewed source control tuple and canonical body hash.'
+  }
+} else {
+  foreach ($parameter in @('project_id','bucket','source_lineage_id','restore_epoch','epoch_sha256')) {
+    if ((Read-SchoolCoreParameter "student_erasure_journal_$parameter") -cne '') { throw 'Disabled journal must not carry another source lineage.' }
+  }
+  if ((Read-SchoolCoreParameter 'student_erasure_journal_epoch_generation') -cne '0') { throw 'Disabled journal generation must be zero.' }
+}
+
 # Browser CORS needs both Cloud Run aliases, while frontend_url stays one upstream URL.
 # These are exact reviewed aliases, not a hostname pattern or a runtime request-derived list.
 # A new project/hash needs an explicit source review; canonical-only is always available.

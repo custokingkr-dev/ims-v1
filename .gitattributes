@@ -2,3 +2,4 @@
 *.sh text eol=lf
 frontend/src/generated/*.ts text eol=lf
 services/api-gateway/api-route-inventory.json text eol=lf
+deploy/gcp/erasure-journal/dev-source-control.json text eol=lf

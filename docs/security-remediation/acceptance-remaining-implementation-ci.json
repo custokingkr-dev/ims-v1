@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "sourceHeadSha": "67e4221878e0a7be0bfbe15b7d643741671bbc3a",
+  "ci": {
+    "runId": 37630253181,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37630253181",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "dev-edge-terraform-validation",
+        "conclusion": "success"
+      },
+      {
+        "name": "privacy-technical-controls",
+        "conclusion": "success"
+      },
+      {
+        "name": "duplicate-class-drift",
+        "conclusion": "success"
+      },
+      {
+        "name": "windows-security-helper-validation",
+        "conclusion": "success"
+      },
+      {
+        "name": "promotion-source-policy",
+        "conclusion": "success"
+      },
+      {
+        "name": "detect / detect",
+        "conclusion": "success"
+      },
+      {
+        "name": "secret-scan",
+        "conclusion": "success"
+      },
+      {
+        "name": "static-architecture-audits",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (platform-service)",
+        "conclusion": "success"
+      },
+      {
+        "name": "docker-build (school-core-service)",
+        "conclusion": "success"
+      },
+      {
+        "name": "docker-build (platform-service)",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (school-core-service)",
+        "conclusion": "success"
+      },
+      {
+        "name": "maven-wrapper-validation (${{ matrix.os }})",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "summary",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "codeql": {
+    "runId": 37630252361,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37630252361",
+    "conclusion": "success",
+    "languages": [
+      "java-kotlin",
+      "javascript-typescript"
+    ],
+    "reviewedRef": "refs/pull/321/merge",
+    "openAlerts": 0
+  },
+  "serviceSuites": {
+    "service-test (platform-service)": {
+      "tests": 387,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 387
+    },
+    "service-test (school-core-service)": {
+      "tests": 899,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 899
+    }
+  }
+}

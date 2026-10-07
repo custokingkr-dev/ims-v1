@@ -1,0 +1,42 @@
+{
+  "project": "custoking-dev",
+  "sourceHeadSha": "0ae9796133f6d1b38c7517eabef635c3179c3108",
+  "operation": "Add four exact reviewed source/runtime tags under existing KEEP rule",
+  "cleanupPoliciesUnchanged": true,
+  "tags": [
+    {
+      "service": "platform-service",
+      "kind": "source",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:5a5f49d0638018ef2398c079360a4c79d836e5ccb9f1a5e0c4ec8489d2a1406a",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service:security-rollback-reviewed-0ae9796133f6-source",
+      "verifiedDigest": "sha256:5a5f49d0638018ef2398c079360a4c79d836e5ccb9f1a5e0c4ec8489d2a1406a"
+    },
+    {
+      "service": "platform-service",
+      "kind": "runtime",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:f1c491ae461805feed46b87cc1e10415a1226daa795168fb2f3399f97c3f3899",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service:security-rollback-reviewed-0ae9796133f6-runtime",
+      "verifiedDigest": "sha256:f1c491ae461805feed46b87cc1e10415a1226daa795168fb2f3399f97c3f3899"
+    },
+    {
+      "service": "school-core-service",
+      "kind": "source",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:24c4f04709861e24a4d11cb6701179e4b353fbd9fc59b171c8d2dbe3264f9ddc",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service:security-rollback-reviewed-0ae9796133f6-source",
+      "verifiedDigest": "sha256:24c4f04709861e24a4d11cb6701179e4b353fbd9fc59b171c8d2dbe3264f9ddc"
+    },
+    {
+      "service": "school-core-service",
+      "kind": "runtime",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:407969b0e850022816b204618e88f801953092e462a2e276612ee960ebddf3e8",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service:security-rollback-reviewed-0ae9796133f6-runtime",
+      "verifiedDigest": "sha256:407969b0e850022816b204618e88f801953092e462a2e276612ee960ebddf3e8"
+    }
+  ],
+  "success": true,
+  "cloudRunChanged": false,
+  "imageContentChanged": false,
+  "productionChanged": false,
+  "checkedAtUtc": "2026-10-07T14:08:29.227476+00:00",
+  "scope": "Configured retention under existing KEEP prefix, not protection against authorized manual deletion."
+}

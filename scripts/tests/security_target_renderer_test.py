@@ -26,7 +26,7 @@ class SecurityTargetRendererTest(unittest.TestCase):
             template=pathlib.Path(folder)/"targets.yaml";template.write_text(text)
             output=pathlib.Path(folder)/"rendered.yaml"
             env=os.environ.copy()
-            values={"GCP_PROJECT_ID":"custoking-"+environment,"GCP_PROJECT_NUMBER":"1234567890","GCP_REGION":"asia-south2","DB_HOST":"10.0.0.2","DB_NAME":"fixture","STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID":"reviewed-fixture-folder","STUDENT_PHOTO_BUCKET":"reviewed-fixture-bucket"}
+            values={"GCP_PROJECT_ID":"custoking-"+environment,"GCP_PROJECT_NUMBER":"1234567890","GCP_REGION":"asia-south2","DB_HOST":"10.0.0.2","DB_NAME":"custoking_dev" if environment=="dev" else "fixture","STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID":"reviewed-fixture-folder","STUDENT_PHOTO_BUCKET":"reviewed-fixture-bucket"}
             for key,value in values.items(): env[key]=value;env[environment.upper()+"_"+key]=value
             result=subprocess.run([POWERSHELL,"-NoProfile","-ExecutionPolicy","Bypass","-File",str(ROOT/"scripts/render-clouddeploy-targets.ps1"),"-Environment",environment,"-TemplatePath",str(template),"-OutputPath",str(output)],env=env,capture_output=True,text=True,timeout=30)
             rendered=output.read_text(encoding="utf-8-sig") if output.exists() else None
@@ -89,5 +89,18 @@ class SecurityTargetRendererTest(unittest.TestCase):
                 with self.subTest(key=key,mode=mode):
                     result,text=self.render(tamper=lambda t:self.change(t,"operations-service",key,"attacker",remove=mode=="remove",duplicate=mode=="duplicate"))
                     self.assertNotEqual(0,result.returncode);self.assertIsNone(text);self.assertIn(key,result.stderr)
+
+    def test_dev_journal_rejects_foreign_bucket_or_unreviewed_control(self):
+        for key,value in [("student_erasure_journal_bucket","custoking-prod-erasure-journal"),
+                          ("student_erasure_journal_epoch_sha256","a"*64),
+                          ("student_erasure_journal_restore_epoch","00000000-0000-0000-0000-000000000000"),
+                          ("student_erasure_journal_epoch_generation","0")]:
+            with self.subTest(key=key):
+                result,text=self.render(tamper=lambda t:self.change(t,"school-core-service",key,value))
+                self.assertNotEqual(0,result.returncode);self.assertIsNone(text);self.assertIn("erasure",result.stderr.lower())
+
+    def test_prod_cannot_enable_dev_journal(self):
+        result,text=self.render("prod",tamper=lambda t:self.change(t,"school-core-service","student_erasure_journal_enabled",'"true"'))
+        self.assertNotEqual(0,result.returncode);self.assertIsNone(text);self.assertIn("dedicated dev",result.stderr)
 
 if __name__=="__main__": unittest.main()

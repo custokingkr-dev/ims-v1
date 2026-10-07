@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "observedDuring": "2026-10-07 remaining-work turn",
+  "method": "Read-only existing signed-in browser repository Settings page",
+  "repository": "custokingkr-dev/ims-v1",
+  "observedMessage": "You don't have access to repository options",
+  "sidebar": "Secrets and variables available; repository option administration unavailable",
+  "settingsChanged": false,
+  "scope": "Current browser identity cannot administer branch/environment protections; no account switching or authentication attempt."
+}
