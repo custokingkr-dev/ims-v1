@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "sourceHeadSha": "01522d74d039b9f46162572ddafd1a5c90d6e7ee",
+  "runId": 37651698357,
+  "operation": "Create exact two school-only source/runtime tags under existing KEEP rule",
+  "success": true,
+  "apply": true,
+  "servicesBefore": [
+    {
+      "service": "school-core-service",
+      "revision": "custoking-school-core-service-dev-00072-mhh",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:4b0fae8287c757b6300d4255e87237189defd9f84118a4a18e55308964fc9018",
+      "runtimeDigestMatchesManifest": true
+    }
+  ],
+  "policyBefore": {
+    "cleanupPolicies": {
+      "delete-old-release-images": {
+        "action": "DELETE",
+        "condition": {
+          "olderThan": "604800s",
+          "tagState": "ANY"
+        },
+        "id": "delete-old-release-images"
+      },
+      "keep-recent-release-images": {
+        "action": "KEEP",
+        "id": "keep-recent-release-images",
+        "mostRecentVersions": {
+          "keepCount": 3
+        }
+      },
+      "keep-reviewed-security-rollback": {
+        "action": "KEEP",
+        "condition": {
+          "tagPrefixes": [
+            "security-rollback-reviewed-"
+          ],
+          "tagState": "TAGGED"
+        },
+        "id": "keep-reviewed-security-rollback"
+      }
+    },
+    "cleanupPolicyDryRunPresent": false,
+    "cleanupPolicyDryRun": null
+  },
+  "releaseProofSha256": "c0b11f4dabbebd90b2c93f8cf7a529290b1d249d1233f89c8516e67956828fde",
+  "manifestSha256": "1126f80372ab99a950e90892758b392a4c72edd3476a891cef0e504aeac567cf",
+  "tags": [
+    {
+      "service": "school-core-service",
+      "kind": "source",
+      "package": "custoking-school-core-service",
+      "digest": "sha256:90167a839e47f4619562da0ad162aed911373ff3ba0e1b71d3991d82f6786a9c",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:90167a839e47f4619562da0ad162aed911373ff3ba0e1b71d3991d82f6786a9c",
+      "tagId": "security-rollback-reviewed-01522d74d039-source",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service:security-rollback-reviewed-01522d74d039-source",
+      "verifiedDigest": "sha256:90167a839e47f4619562da0ad162aed911373ff3ba0e1b71d3991d82f6786a9c",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-school-core-service/tags/security-rollback-reviewed-01522d74d039-source",
+      "alreadyPresent": false
+    },
+    {
+      "service": "school-core-service",
+      "kind": "runtime",
+      "package": "custoking-school-core-service",
+      "digest": "sha256:4b0fae8287c757b6300d4255e87237189defd9f84118a4a18e55308964fc9018",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:4b0fae8287c757b6300d4255e87237189defd9f84118a4a18e55308964fc9018",
+      "tagId": "security-rollback-reviewed-01522d74d039-runtime",
+      "tag": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service:security-rollback-reviewed-01522d74d039-runtime",
+      "verifiedDigest": "sha256:4b0fae8287c757b6300d4255e87237189defd9f84118a4a18e55308964fc9018",
+      "resourceName": "projects/custoking-dev/locations/asia-south2/repositories/custoking/packages/custoking-school-core-service/tags/security-rollback-reviewed-01522d74d039-runtime",
+      "alreadyPresent": false
+    }
+  ],
+  "tagCount": 2,
+  "cleanupPoliciesChanged": false,
+  "imageContentChanged": false,
+  "cloudRunChanged": false,
+  "productionChanged": false,
+  "scope": "Two school-only tags under configured KEEP retention; old ten-tag proof untouched; not manual-deletion immutability or observed future cleanup execution",
+  "createApiReference": "https://docs.cloud.google.com/artifact-registry/docs/reference/rest/v1/projects.locations.repositories.packages.tags/create",
+  "status": "ADDITIVE_KEEP_TAGS_VERIFIED",
+  "policyAfter": {
+    "cleanupPolicies": {
+      "delete-old-release-images": {
+        "action": "DELETE",
+        "condition": {
+          "olderThan": "604800s",
+          "tagState": "ANY"
+        },
+        "id": "delete-old-release-images"
+      },
+      "keep-recent-release-images": {
+        "action": "KEEP",
+        "id": "keep-recent-release-images",
+        "mostRecentVersions": {
+          "keepCount": 3
+        }
+      },
+      "keep-reviewed-security-rollback": {
+        "action": "KEEP",
+        "condition": {
+          "tagPrefixes": [
+            "security-rollback-reviewed-"
+          ],
+          "tagState": "TAGGED"
+        },
+        "id": "keep-reviewed-security-rollback"
+      }
+    },
+    "cleanupPolicyDryRunPresent": false,
+    "cleanupPolicyDryRun": null
+  },
+  "cleanupPoliciesUnchanged": true,
+  "servicesAfter": [
+    {
+      "service": "school-core-service",
+      "revision": "custoking-school-core-service-dev-00072-mhh",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:4b0fae8287c757b6300d4255e87237189defd9f84118a4a18e55308964fc9018",
+      "runtimeDigestMatchesManifest": true
+    }
+  ],
+  "uniqueImages": 2,
+  "checkedAtUtc": "2026-10-07T16:37:26.206289+00:00"
+}

@@ -5,10 +5,12 @@ class JournalSqlPostgresTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.name='ims-journal-prepare-'+uuid.uuid4().hex[:12]
-        subprocess.run(['docker','run','--detach','--rm','--name',cls.name,'-e','POSTGRES_PASSWORD=controlled-local-only','postgres:16'],capture_output=True,check=True,timeout=60)
+        subprocess.run(['docker','run','--detach','--rm','--name',cls.name,'-e','POSTGRES_PASSWORD=controlled-local-only','-e','PGPASSWORD=controlled-local-only','postgres:16'],capture_output=True,check=True,timeout=60)
         try:
             for _ in range(60):
-                if subprocess.run(['docker','exec',cls.name,'pg_isready','-U','postgres'],capture_output=True,timeout=5).returncode==0:break
+                # The image's bootstrap server uses only a Unix socket and deliberately
+                # restarts. Prove SQL readiness on the final TCP server before mutation.
+                if subprocess.run(['docker','exec',cls.name,'psql','-h','127.0.0.1','-U','postgres','-d','postgres','-XAt','-v','ON_ERROR_STOP=1','-c','SELECT 1'],capture_output=True,timeout=5).returncode==0:break
                 time.sleep(.2)
             else:raise RuntimeError('POSTGRES_NOT_READY')
             cls.sql('CREATE DATABASE custoking_dev;')
@@ -36,7 +38,7 @@ class JournalSqlPostgresTests(unittest.TestCase):
     @classmethod
     def sql(cls,sql):
         database='postgres' if sql.startswith('CREATE DATABASE') else 'custoking_dev'
-        result=subprocess.run(['docker','exec','-i',cls.name,'psql','-U','postgres','-d',database,'-XAt','-v','ON_ERROR_STOP=1'],input=sql,capture_output=True,text=True,timeout=25)
+        result=subprocess.run(['docker','exec','-i',cls.name,'psql','-h','127.0.0.1','-U','postgres','-d',database,'-XAt','-v','ON_ERROR_STOP=1'],input=sql,capture_output=True,text=True,timeout=25)
         if result.returncode:raise RuntimeError('CONTROLLED_SQL_FAILED:'+result.stderr)
         rows=[json.loads(line) for line in result.stdout.splitlines() if line.startswith('{')]
         return rows[-1] if rows else None
