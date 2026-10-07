@@ -152,12 +152,30 @@
   },
   "frontendSuiteExecutedInThisRelease": false,
   "deploymentOrLiveReadbacksVerifiedByThisProof": false,
-  "evidenceLogSha256": {
-    "pr326-release-api-gateway.log": "a257f5ccc309cc2d0083aa283cc64c8c165c3c90c9c1e2cb21c9a2299bd0db67",
-    "pr326-release-billing-service.log": "2080611b6291fbcffe491fa2f2410be7f5dabd64d1cbfe67d52a8735a86780aa",
-    "pr326-release-identity-service.log": "e7d9a7aaef438e17ddfa66333b3799bb4c9473f6abc91ba0a928d6afc8731128",
-    "pr326-release-operations-service.log": "5256c65efeb79ea23fb2156f7835e72a4cbbf63fef23cdccf1108eb120035822",
-    "pr326-release-platform-service.log": "585aede4012d91cd37fc38d7c3c0773248f296a4d4d934d34ec4c89b2a365369",
-    "pr326-release-school-core-service.log": "18802991106bcf19b0dc8d0e0a76b2ff80b3b6ad7ae1ae02f40184ecd923b2ca"
-  }
+  "evidenceLogDigests": [
+    {
+      "logName": "pr326-release-api-gateway.log",
+      "digestSha256": "a257f5ccc309cc2d0083aa283cc64c8c165c3c90c9c1e2cb21c9a2299bd0db67"
+    },
+    {
+      "logName": "pr326-release-billing-service.log",
+      "digestSha256": "2080611b6291fbcffe491fa2f2410be7f5dabd64d1cbfe67d52a8735a86780aa"
+    },
+    {
+      "logName": "pr326-release-identity-service.log",
+      "digestSha256": "e7d9a7aaef438e17ddfa66333b3799bb4c9473f6abc91ba0a928d6afc8731128"
+    },
+    {
+      "logName": "pr326-release-operations-service.log",
+      "digestSha256": "5256c65efeb79ea23fb2156f7835e72a4cbbf63fef23cdccf1108eb120035822"
+    },
+    {
+      "logName": "pr326-release-platform-service.log",
+      "digestSha256": "585aede4012d91cd37fc38d7c3c0773248f296a4d4d934d34ec4c89b2a365369"
+    },
+    {
+      "logName": "pr326-release-school-core-service.log",
+      "digestSha256": "18802991106bcf19b0dc8d0e0a76b2ff80b3b6ad7ae1ae02f40184ecd923b2ca"
+    }
+  ]
 }

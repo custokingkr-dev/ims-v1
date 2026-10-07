@@ -275,14 +275,49 @@
     "followupRunId": 37665360944,
     "followupHeadSha": "957cb5b41924e54cfc7e2db71357b86e2de62f31"
   },
-  "evidenceLogSha256": {
-    "pr326-final-api-gateway.log": "e4b745e857178eab46a0b69f6a10ba96f76e3288c5fbeb21ca41f24ee4046a92",
-    "pr326-final-billing-service.log": "5cda78a90970d152246b833ba44d8746bcd9614fc78f63f0dca7c8ba6ae5fe5b",
-    "pr326-final-identity-service.log": "7dd6cc951dfb5a4001da72da4e47c09c9d35f9374ecc8a2656265809f8e66c4f",
-    "pr326-final-operations-service.log": "b336b0132f2529bea8d7d45bf9d8e4d081a45456c2d7e5c32ef0ffcc212eb64d",
-    "pr326-final-platform-service.log": "f535d98f1378081bf2d4beebb15aba1eba102e62c3ef744f3367627cab73dc6c",
-    "pr326-final-school-core-service.log": "ede42bd5a1addf844b08939afd6b4d591ebe5c249997d4286167b1b3e034230b",
-    "pr326-final-static-architecture-audits.log": "aad053ceb41488e75f8653d1b17f9694892fcd81f6ee26728c6e0fb134ba504d",
-    "pr326-final-windows-security-helper-validation.log": "a56605c134e6aa79cf259f8e21a744aef26c77141cea52c599b95ecfdb98948a"
+  "evidenceLogDigests": [
+    {
+      "logName": "pr326-final-api-gateway.log",
+      "digestSha256": "e4b745e857178eab46a0b69f6a10ba96f76e3288c5fbeb21ca41f24ee4046a92"
+    },
+    {
+      "logName": "pr326-final-billing-service.log",
+      "digestSha256": "5cda78a90970d152246b833ba44d8746bcd9614fc78f63f0dca7c8ba6ae5fe5b"
+    },
+    {
+      "logName": "pr326-final-identity-service.log",
+      "digestSha256": "7dd6cc951dfb5a4001da72da4e47c09c9d35f9374ecc8a2656265809f8e66c4f"
+    },
+    {
+      "logName": "pr326-final-operations-service.log",
+      "digestSha256": "b336b0132f2529bea8d7d45bf9d8e4d081a45456c2d7e5c32ef0ffcc212eb64d"
+    },
+    {
+      "logName": "pr326-final-platform-service.log",
+      "digestSha256": "f535d98f1378081bf2d4beebb15aba1eba102e62c3ef744f3367627cab73dc6c"
+    },
+    {
+      "logName": "pr326-final-school-core-service.log",
+      "digestSha256": "ede42bd5a1addf844b08939afd6b4d591ebe5c249997d4286167b1b3e034230b"
+    },
+    {
+      "logName": "pr326-final-static-architecture-audits.log",
+      "digestSha256": "aad053ceb41488e75f8653d1b17f9694892fcd81f6ee26728c6e0fb134ba504d"
+    },
+    {
+      "logName": "pr326-final-windows-security-helper-validation.log",
+      "digestSha256": "a56605c134e6aa79cf259f8e21a744aef26c77141cea52c599b95ecfdb98948a"
+    }
+  ],
+  "evidencePublicationInitialSecretScan": {
+    "pullRequest": 327,
+    "sourceHeadSha": "898274fedead3aa2b826da688d2af69ed943bd6c",
+    "ciRunId": 37673599157,
+    "jobId": 112971300310,
+    "conclusion": "failure",
+    "findings": 2,
+    "rule": "generic-api-key",
+    "verifiedScope": "Two SHA256 digests of already reviewed gateway job logs, using log filenames as JSON keys; no credential.",
+    "currentCorrection": "Separate logName and digestSha256 fields; exact historical fingerprints only, no rule or path exemptions."
   }
 }
