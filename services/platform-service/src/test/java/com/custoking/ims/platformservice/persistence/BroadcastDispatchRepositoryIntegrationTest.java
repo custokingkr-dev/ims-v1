@@ -39,6 +39,56 @@ class BroadcastDispatchRepositoryIntegrationTest {
     }
     Recipient recipient(UUID id, long student, boolean allowed) { return new Recipient(10,student,"SMS","broadcast:"+id+":"+student+":SMS",allowed, allowed ? "ALLOWED" : "SCHOOL_COMMUNICATIONS_NOT_GRANTED","guardian","9999999999","same-hash", Map.of("consentEventId","grant")); }
     void scope(long school) { app.sql("SELECT set_config('app.current_school_id', :school, true)").param("school",String.valueOf(school)).query(String.class).single(); }
+    @Test void slowOwnerPolicyHoldsNoRowLockAndConcurrentEditInvalidatesApproval() throws Exception {
+        UUID id = seed(10);
+        var ds = new DriverManagerDataSource(pg.getJdbcUrl(), "owner", "owner");
+        var ownerRepository = new BroadcastDispatchRepository(JdbcClient.create(ds), new ObjectMapper());
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var release = new java.util.concurrent.CountDownLatch(1);
+        var policy = org.mockito.Mockito.mock(com.custoking.ims.platformservice.application.BroadcastRecipientPolicy.class);
+        org.mockito.Mockito.when(policy.configured()).thenReturn(true);
+        org.mockito.Mockito.when(policy.resolve(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> {
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            entered.countDown();
+            assertThat(release.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            return List.of(recipient(id, 1, true));
+        });
+        var delivery = org.mockito.Mockito.mock(com.custoking.ims.platformservice.application.NotificationDeliveryCommandService.class);
+        var service = new com.custoking.ims.platformservice.application.BroadcastDispatchService(ownerRepository, policy, delivery, "DRY_RUN", true);
+        org.springframework.test.util.ReflectionTestUtils.invokeMethod(service, "configureTransactions", new DataSourceTransactionManager(ds));
+        @SuppressWarnings("unchecked")
+        var reviewed = (Map<String,Object>) org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                com.custoking.ims.platformservice.application.BroadcastDispatchService.class, "summarize", ownerRepository.find(id,false), List.of(recipient(id,1,true)));
+        var executor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        try {
+            var pending = executor.submit(() -> service.approve(id, 5L, (String) reviewed.get("fingerprint")));
+            assertThat(entered.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+            new TransactionTemplate(new DataSourceTransactionManager(ds)).executeWithoutResult(tx -> {
+                var client = JdbcClient.create(ds);
+                client.sql("SET LOCAL lock_timeout = '500ms'").update();
+                assertThat(client.sql("UPDATE notification.notification_broadcasts SET title='Changed' WHERE id=:id").param("id",id).update()).isEqualTo(1);
+            });
+            release.countDown();
+            assertThatThrownBy(() -> pending.get(5, java.util.concurrent.TimeUnit.SECONDS)).hasCauseInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+            assertThat(ownerRepository.find(id,false).status()).isEqualTo("DRAFT");
+            assertThat(owner.sql("SELECT count(*) FROM notification.notification_broadcast_recipients").query(Long.class).single()).isZero();
+        } finally { release.countDown(); executor.shutdownNow(); }
+    }
+
+    @Test void exactClaimRejectsCompetingOutcomeAndAbaBroadcastChanges() {
+        UUID id = seed(10);
+        transaction.executeWithoutResult(tx -> { scope(10); repository.approve(repository.find(id,true),List.of(recipient(id,1,true)),5L); repository.queue(repository.find(id,true),"DRY_RUN",5L); });
+        var snapshot = transaction.execute(tx -> repository.candidate(OffsetDateTime.now(),"DRY_RUN").orElseThrow());
+        // Restore the original value; xmin still invalidates the review of an earlier row version.
+        owner.sql("UPDATE notification.notification_broadcasts SET title='temporary' WHERE id=:id").param("id",id).update();
+        owner.sql("UPDATE notification.notification_broadcasts SET title='Notice' WHERE id=:id").param("id",id).update();
+        transaction.executeWithoutResult(tx -> assertThat(repository.claimExpected(OffsetDateTime.now(),snapshot)).isEmpty());
+        var fresh = transaction.execute(tx -> repository.candidate(OffsetDateTime.now(),"DRY_RUN").orElseThrow());
+        transaction.executeWithoutResult(tx -> repository.outcome(repository.claimExpected(OffsetDateTime.now(),fresh).orElseThrow(),"DRY_RUN",null,"logging",null));
+        transaction.executeWithoutResult(tx -> assertThat(repository.claimExpected(OffsetDateTime.now(),fresh)).isEmpty());
+    }
+
     @Test void migrationManifestDedupeQueueAndCompletionNeverClaimSent() {
         UUID id = seed(10);
         transaction.executeWithoutResult(tx -> {

@@ -18,11 +18,11 @@ public class BroadcastDispatchRepository {
     public BroadcastDispatchRepository(JdbcClient jdbc, ObjectMapper mapper) { this.jdbc = jdbc; this.mapper = mapper; }
 
     public Broadcast find(UUID id, boolean lock) {
-        return jdbc.sql("SELECT id, school_id, title, message, audience_type, channels, communication_category, status, dispatch_mode, approval_mode, approval_fingerprint FROM notification.notification_broadcasts WHERE id = :id" + (lock ? " FOR UPDATE" : ""))
+        return jdbc.sql("SELECT id, school_id, title, message, audience_type, channels, communication_category, status, dispatch_mode, approval_mode, approval_fingerprint, xmin::text AS row_revision FROM notification.notification_broadcasts WHERE id = :id" + (lock ? " FOR UPDATE" : ""))
                 .param("id", id).query((rs, row) -> new Broadcast(rs.getObject("id", UUID.class), (Long) rs.getObject("school_id"),
                         rs.getString("title"), rs.getString("message"), rs.getString("audience_type"),
                         Arrays.stream(rs.getString("channels").split(",")).map(value -> value.trim().toUpperCase(Locale.ROOT)).distinct().toList(),
-                        rs.getString("communication_category"), rs.getString("status"), rs.getString("dispatch_mode"), rs.getString("approval_mode"), rs.getString("approval_fingerprint")))
+                        rs.getString("communication_category"), rs.getString("status"), rs.getString("dispatch_mode"), rs.getString("approval_mode"), rs.getString("approval_fingerprint"), rs.getString("row_revision")))
                 .optional().orElseThrow(() -> new IllegalArgumentException("Broadcast not found"));
     }
 
@@ -90,7 +90,20 @@ public class BroadcastDispatchRepository {
         return claim(now, "DRY_RUN");
     }
 
+    public Optional<QueuedRecipient> candidate(OffsetDateTime now, String mode) {
+        return selectCandidate(now, mode, null, false);
+    }
+
+    public Optional<QueuedRecipient> claimExpected(OffsetDateTime now, QueuedRecipient expected) {
+        Optional<QueuedRecipient> locked = selectCandidate(now, expected.mode(), expected.id(), true);
+        return locked.filter(expected::equals);
+    }
+
     public Optional<QueuedRecipient> claim(OffsetDateTime now, String mode) {
+        return selectCandidate(now, mode, null, true);
+    }
+
+    private Optional<QueuedRecipient> selectCandidate(OffsetDateTime now, String mode, UUID expectedId, boolean lock) {
         if (!List.of("DRY_RUN", "LIVE").contains(mode)) throw new IllegalArgumentException("Unsupported dispatch mode");
         if (!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Claim needs a transaction");
         jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
@@ -98,23 +111,30 @@ public class BroadcastDispatchRepository {
         try {
             claimed = jdbc.sql("""
                     SELECT r.id, r.broadcast_id, r.school_id, r.student_id, r.channel, r.event_id, r.guardian_id,
-                           r.destination_sha256, r.attempts, b.title, b.message, b.dispatch_mode
+                           r.destination_sha256, r.attempts, b.title, b.message, b.dispatch_mode, r.xmin::text AS recipient_revision, b.xmin::text AS broadcast_revision
                     FROM notification.notification_broadcast_recipients r
                     JOIN notification.notification_broadcasts b ON b.id = r.broadcast_id AND b.school_id = r.school_id
                     WHERE r.status IN ('QUEUED', 'FAILED') AND b.dispatch_mode = :mode
                       AND (b.scheduled_at IS NULL OR b.scheduled_at <= :now)
                       AND (r.next_attempt_at IS NULL OR r.next_attempt_at <= :now)
-                    ORDER BY r.created_at, r.id LIMIT 1 FOR UPDATE OF r SKIP LOCKED
-                    """).param("now", now).param("mode", mode).query((rs, row) -> new QueuedRecipient(rs.getObject("id", UUID.class), rs.getObject("broadcast_id", UUID.class),
+                    """ + (expectedId == null ? "" : " AND r.id = :expectedId")
+                    + " ORDER BY r.created_at, r.id LIMIT 1" + (lock ? " FOR UPDATE OF r SKIP LOCKED" : ""))
+                    .params(expectedId == null ? Map.of("now", now, "mode", mode) : Map.of("now", now, "mode", mode, "expectedId", expectedId)).query((rs, row) -> new QueuedRecipient(rs.getObject("id", UUID.class), rs.getObject("broadcast_id", UUID.class),
                             rs.getLong("school_id"), rs.getLong("student_id"), rs.getString("channel"), rs.getString("event_id"), rs.getString("guardian_id"),
-                            rs.getString("destination_sha256"), rs.getInt("attempts"), rs.getString("title"), rs.getString("message"), rs.getString("dispatch_mode"))).optional();
+                            rs.getString("destination_sha256"), rs.getInt("attempts"), rs.getString("title"), rs.getString("message"), rs.getString("dispatch_mode"), rs.getString("recipient_revision"), rs.getString("broadcast_revision"))).optional();
         } finally {
             jdbc.sql("SELECT set_config('app.bypass_rls', 'off', true)").query(String.class).single();
         }
         claimed.ifPresent(row -> jdbc.sql("SELECT set_config('app.current_school_id', :schoolId, true)").param("schoolId", String.valueOf(row.schoolId())).query(String.class).single());
         // Serialize status aggregation within a broadcast so simultaneous last outcomes cannot leave it QUEUED.
-        claimed.ifPresent(row -> jdbc.sql("SELECT id FROM notification.notification_broadcasts WHERE id = :id AND school_id = :schoolId FOR UPDATE")
+        if (lock) claimed.ifPresent(row -> jdbc.sql("SELECT id FROM notification.notification_broadcasts WHERE id = :id AND school_id = :schoolId FOR UPDATE")
                 .param("id", row.broadcastId()).param("schoolId", row.schoolId()).query(UUID.class).single());
+        if (lock && claimed.isPresent()) {
+            QueuedRecipient row = claimed.get();
+            String revision = jdbc.sql("SELECT xmin::text FROM notification.notification_broadcasts WHERE id = :id AND school_id = :schoolId")
+                    .param("id", row.broadcastId()).param("schoolId", row.schoolId()).query(String.class).single();
+            if (!Objects.equals(revision, row.broadcastRevision())) return Optional.empty();
+        }
         return claimed;
     }
 
@@ -137,12 +157,22 @@ public class BroadcastDispatchRepository {
     }
 
     public record Broadcast(UUID id, Long schoolId, String title, String message, String audienceType, List<String> channels,
-            String communicationCategory, String status, String mode, String approvalMode, String approvalFingerprint) {
+            String communicationCategory, String status, String mode, String approvalMode, String approvalFingerprint, String revision) {
+        public Broadcast(UUID id, Long schoolId, String title, String message, String audienceType, List<String> channels,
+                String communicationCategory, String status, String mode, String approvalMode, String approvalFingerprint) {
+            this(id, schoolId, title, message, audienceType, channels, communicationCategory, status, mode, approvalMode, approvalFingerprint, null);
+        }
         public Broadcast(UUID id, Long schoolId, String title, String message, String audienceType, List<String> channels,
                 String communicationCategory, String status, String mode) {
             this(id, schoolId, title, message, audienceType, channels, communicationCategory, status, mode, "DRY_RUN", null);
         }
     }
     public record QueuedRecipient(UUID id, UUID broadcastId, long schoolId, long studentId, String channel, String eventId,
-            String guardianId, String destinationSha256, int attempts, String title, String message, String mode) {}
+            String guardianId, String destinationSha256, int attempts, String title, String message, String mode,
+            String recipientRevision, String broadcastRevision) {
+        public QueuedRecipient(UUID id, UUID broadcastId, long schoolId, long studentId, String channel, String eventId,
+                String guardianId, String destinationSha256, int attempts, String title, String message, String mode) {
+            this(id, broadcastId, schoolId, studentId, channel, eventId, guardianId, destinationSha256, attempts, title, message, mode, null, null);
+        }
+    }
 }

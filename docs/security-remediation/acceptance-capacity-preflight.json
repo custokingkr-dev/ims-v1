@@ -1,0 +1,120 @@
+{
+    "mode":  "READ_ONLY_NO_LOAD",
+    "capturedAt":  "2026-10-07T09:24:18.0923282Z",
+    "project":  "custoking-dev",
+    "instance":  "custoking-db-dev",
+    "billing":  {
+                    "source":  "detailed-billing-export",
+                    "latestUsageAt":  "2026-10-07T02:00:00.0000000Z",
+                    "budgetInr":  2000,
+                    "grossMonthInr":  329.0618,
+                    "scopeProject":  "custoking-dev",
+                    "latestExportAt":  "2026-10-07T05:40:02.0000000Z",
+                    "sourceTable":  "custoking-prod.billing_export.gcp_billing_export_resource_v1_014C0A_C6B9AF_5FABC0",
+                    "estimatedRunInr":  15,
+                    "currency":  "INR"
+                },
+    "logging":  {
+                    "freshnessSource":  "raw-monthly-bytes-samples-in-last-two-hours",
+                    "observedAt":  "2026-10-07T08:30:00Z",
+                    "monthGib":  0.116113,
+                    "rawSeriesCount":  17,
+                    "estimatedRunGib":  0.01
+                },
+    "database":  {
+                     "cpuRatio":  0.080709467421759953,
+                     "observedAt":  "2026-10-07T09:23:00Z",
+                     "tier":  "db-f1-micro",
+                     "memoryUsagePercent":  14.208789840637452,
+                     "state":  "RUNNABLE",
+                     "connections":  9,
+                     "maxConnections":  "200"
+                 },
+    "fixture":  {
+                    "verifiedSynthetic":  false,
+                    "schoolId":  null,
+                    "reason":  "Not inspected by this cloud-metadata-only collector; require a read-only reserved-fixture status check."
+                },
+    "services":  [
+                     {
+                         "name":  "custoking-api-gateway-dev",
+                         "concurrency":  80,
+                         "minInstances":  "0",
+                         "resources":  {
+                                           "cpu":  "1",
+                                           "memory":  "512Mi"
+                                       },
+                         "revision":  "custoking-api-gateway-dev-mux4t5el",
+                         "maxInstances":  "4"
+                     },
+                     {
+                         "name":  "custoking-billing-service-dev",
+                         "concurrency":  80,
+                         "minInstances":  "0",
+                         "resources":  {
+                                           "cpu":  "1",
+                                           "memory":  "768Mi"
+                                       },
+                         "revision":  "custoking-billing-service-dev-mux57mc7",
+                         "maxInstances":  "2"
+                     },
+                     {
+                         "name":  "custoking-frontend-dev",
+                         "concurrency":  80,
+                         "minInstances":  "0",
+                         "resources":  {
+                                           "cpu":  "1",
+                                           "memory":  "512Mi"
+                                       },
+                         "revision":  "custoking-frontend-dev-mux4y4gz",
+                         "maxInstances":  "2"
+                     },
+                     {
+                         "name":  "custoking-identity-service-dev",
+                         "concurrency":  80,
+                         "minInstances":  "0",
+                         "resources":  {
+                                           "cpu":  "1",
+                                           "memory":  "768Mi"
+                                       },
+                         "revision":  "custoking-identity-service-dev-mux4vvwa",
+                         "maxInstances":  "2"
+                     },
+                     {
+                         "name":  "custoking-operations-service-dev",
+                         "concurrency":  80,
+                         "minInstances":  "0",
+                         "resources":  {
+                                           "cpu":  "1",
+                                           "memory":  "768Mi"
+                                       },
+                         "revision":  "custoking-operations-service-dev-mux54kwl",
+                         "maxInstances":  "2"
+                     },
+                     {
+                         "name":  "custoking-platform-service-dev",
+                         "concurrency":  80,
+                         "minInstances":  "0",
+                         "resources":  {
+                                           "cpu":  "1",
+                                           "memory":  "768Mi"
+                                       },
+                         "revision":  "custoking-platform-service-dev-mux5ano8",
+                         "maxInstances":  "2"
+                     },
+                     {
+                         "name":  "custoking-school-core-service-dev",
+                         "concurrency":  80,
+                         "minInstances":  "0",
+                         "resources":  {
+                                           "cpu":  "1",
+                                           "memory":  "2Gi"
+                                       },
+                         "revision":  "custoking-school-core-service-dev-mux510y8",
+                         "maxInstances":  "2"
+                     }
+                 ],
+    "estimatedRunNote":  "INR15 and0.01GiB are conservative planning allowances for the bounded240-read probe, not measured prices. No cost or logging override is supported.",
+    "secretsPersisted":  false,
+    "workloadStarted":  false
+}

@@ -294,6 +294,41 @@ class StudentOnboardingScaleCertificationIntegrationTest {
                 objectMapper.writeValueAsString(controlBefore), objectMapper.writeValueAsString(controlAfter));
     }
 
+    @Test
+    @Timeout(value = 2, unit = TimeUnit.MINUTES)
+    void actualStudentErasureCommitsOutboxAndPhotoCleanupOnlyAfterCommit() {
+        for(String schema : List.of("attendance","fee")) {
+            Flyway.configure().dataSource(postgres.getJdbcUrl(),postgres.getUsername(),postgres.getPassword())
+                    .schemas(schema).defaultSchema(schema).locations("classpath:db/migration/"+schema).load().migrate();
+        }
+        long target=seedSchool("CERT-ERASE-COMMIT",15,26), control=seedSchool("CERT-ERASE-COMMIT-CONTROL",15,26);
+        confirm(target,String.valueOf(preview(target,"COMMIT",0,1).get("fileToken")));
+        confirm(control,String.valueOf(preview(control,"COMMIT-CONTROL",0,1).get("fileToken")));
+        long id=jdbc.sql("SELECT id FROM student.students WHERE school_id=:school").param("school",target).query(Long.class).single();
+        String admission=jdbc.sql("SELECT admission_no FROM student.students WHERE id=:id").param("id",id).query(String.class).single();
+        String key="schools/synthetic-erasure/students/"+id+"/photos/synthetic.jpg";
+        jdbc.sql("UPDATE student.students SET photo_url=:key WHERE id=:id").param("key",key).param("id",id).update();
+        var photo=mock(StudentPhotoStorage.class);
+        var repository=new StudentReadRepository(jdbc,photo,new OutboxWriter(jdbc,objectMapper,"tenant_school"));
+        assertThatThrownBy(() -> transaction.execute(status -> {
+            repository.deleteStudent(id,admission);
+            org.mockito.Mockito.verifyNoInteractions(photo);
+            throw new IllegalStateException("controlled rollback before erasure commit");
+        })).isInstanceOf(IllegalStateException.class);
+        assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE id=:id").param("id",id).query(Long.class).single()).isEqualTo(1);
+        org.mockito.Mockito.verifyNoInteractions(photo);
+        transaction.execute(status -> {
+            repository.deleteStudent(id,admission);
+            org.mockito.Mockito.verifyNoInteractions(photo);
+            return null;
+        });
+        org.mockito.Mockito.verify(photo).deleteStoredPhoto(key);
+        assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE id=:id").param("id",id).query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE school_id=:school").param("school",control).query(Long.class).single()).isEqualTo(1);
+        assertThat(jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events WHERE aggregate_id=:id AND event_type='student.deleted.v1'").param("id",String.valueOf(id)).query(Long.class).single()).isEqualTo(1);
+        System.out.println("IMS_PRIVACY_COMMIT_RESULT|synthetic=true|rollbackPreserved=true|cleanupAfterCommit=true|targetRows=0|controlRows=1|deletedEvents=1|photoProviderCalls=1");
+    }
+
     private static Map<String, Object> preview(long schoolId, String prefix, int first, int count) {
         return inTransaction(() -> students.previewImport(Map.of(
                 "schoolId", schoolId,

@@ -106,6 +106,8 @@ jobs:
           scripts.tests.full_release_routing_test
           scripts.tests.deployment_readiness_audit_test
           scripts.tests.runtime_secret_revocation_test
+          scripts.tests.synthetic_pubsub_drill_test
+          scripts.tests.bounded_dev_read_acceptance_test
       - name: Test OpenAPI CI routing invariants
         run: python3 -m unittest scripts.tests.test_openapi_ci_gate
 
@@ -132,6 +134,22 @@ jobs:
       - name: Run synthetic export and verified-deletion drill
         shell: pwsh
         run: ./scripts/invoke-privacy-export-erasure-drill.ps1
+
+  dev-edge-terraform-validation:
+    name: dev-edge-terraform-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_wrapper: false
+      - name: Validate dev edge and mock-provider acceptance
+        run: |
+          terraform -chdir=deploy/gcp/application-edge init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=deploy/gcp/application-edge fmt -check -recursive
+          terraform -chdir=deploy/gcp/application-edge validate -no-color
+          terraform -chdir=deploy/gcp/application-edge test -no-color
 
   windows-security-helper-validation:
     name: windows-security-helper-validation
@@ -320,7 +338,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   summary:
-    needs: [promotion-source-policy, detect, duplicate-class-drift, static-architecture-audits, privacy-technical-controls, maven-wrapper-validation, service-test, docker-build, secret-scan]
+    needs: [promotion-source-policy, detect, duplicate-class-drift, static-architecture-audits, dev-edge-terraform-validation, windows-security-helper-validation, privacy-technical-controls, maven-wrapper-validation, service-test, docker-build, secret-scan]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -335,6 +353,8 @@ jobs:
             echo "- Docker builds: ${{ needs.docker-build.result }}"
             echo "- Duplicate class drift: ${{ needs.duplicate-class-drift.result }}"
             echo "- Static architecture audits: ${{ needs.static-architecture-audits.result }}"
+            echo "- Windows security helpers: ${{ needs.windows-security-helper-validation.result }}"
+            echo "- Dev edge Terraform: ${{ needs.dev-edge-terraform-validation.result }}"
             echo "- Privacy technical controls: ${{ needs.privacy-technical-controls.result }}"
             echo "- Maven wrapper validation: ${{ needs.maven-wrapper-validation.result }}"
             echo "- Secret scan: ${{ needs.secret-scan.result }}"
@@ -348,6 +368,8 @@ jobs:
             "${{ needs.detect.result }}" \
             "${{ needs.duplicate-class-drift.result }}" \
             "${{ needs.static-architecture-audits.result }}" \
+            "${{ needs.windows-security-helper-validation.result }}" \
+            "${{ needs.dev-edge-terraform-validation.result }}" \
             "${{ needs.privacy-technical-controls.result }}" \
             "${{ needs.maven-wrapper-validation.result }}" \
             "${{ needs.service-test.result }}" \

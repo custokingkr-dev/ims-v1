@@ -1,0 +1,98 @@
+{
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "marker": "SEC-ACPT-20261007",
+  "run": "20261007093838-ced1f9c7",
+  "syntheticOnly": true,
+  "noProviderDelivery": true,
+  "stages": [
+    {
+      "stage": "fixture-preflight",
+      "atUtc": "2026-10-07T09:39:20.110632+00:00",
+      "schools": 2,
+      "occupied": 0
+    },
+    {
+      "stage": "isolated-topology-ready",
+      "atUtc": "2026-10-07T09:40:41.138640+00:00",
+      "temporaryTopics": 2,
+      "temporarySubscriptions": 2
+    },
+    {
+      "stage": "main-source-published",
+      "atUtc": "2026-10-07T09:40:43.294199+00:00",
+      "messages": 2,
+      "logicalEvents": 1
+    },
+    {
+      "stage": "main-delivery-and-duplicate",
+      "atUtc": "2026-10-07T09:41:49.425855+00:00",
+      "inboxRows": 1,
+      "marker": "SEC-ACPT-20261007",
+      "processed": 1,
+      "projectionRows": 1,
+      "tombstones": 0
+    },
+    {
+      "stage": "isolated-poison-published",
+      "atUtc": "2026-10-07T09:41:49.584515+00:00",
+      "messages": 1
+    },
+    {
+      "stage": "isolated-broker-dead-letter-observed",
+      "atUtc": "2026-10-07T09:42:29.820392+00:00",
+      "messages": 1
+    },
+    {
+      "stage": "repaired-envelope-replayed",
+      "atUtc": "2026-10-07T09:42:30.099723+00:00",
+      "messages": 1,
+      "acknowledgedAfterPublish": 1
+    },
+    {
+      "stage": "replay-projection-confirmed",
+      "atUtc": "2026-10-07T09:43:32.279858+00:00",
+      "inboxRows": 2,
+      "marker": "SEC-ACPT-20261007",
+      "processed": 2,
+      "projectionRows": 2,
+      "tombstones": 0
+    },
+    {
+      "stage": "fixture-tombstone-cleanup",
+      "atUtc": "2026-10-07T09:44:34.423153+00:00",
+      "inboxRows": 4,
+      "marker": "SEC-ACPT-20261007",
+      "processed": 4,
+      "projectionRows": 0,
+      "tombstones": 2
+    },
+    {
+      "stage": "temporary-resource-cleanup",
+      "atUtc": "2026-10-07T09:45:14.410901+00:00",
+      "failed": 0
+    }
+  ],
+  "deliveryVerified": true,
+  "duplicateVerified": true,
+  "deadLetterVerified": true,
+  "replayVerified": true,
+  "restartVerified": false,
+  "cleanupVerified": true,
+  "scope": {
+    "delivery": "Actual existing dev reporting topic, configured Pub/Sub OIDC push and platform inbox/projector",
+    "deadLetter": "Isolated nonce-owned dev source/DLQ topics and subscriptions using the same existing platform endpoint and reporting push identity; maxDeliveryAttempts5/retry1..5s versus deployed source10/retry10..600s",
+    "replay": "Repaired only invalid schemaVersion in the verified synthetic DLQ envelope; published to the actual dev reporting source; acknowledged only after successful publish",
+    "cleanup": "Two deletion envelopes processed; zero synthetic reporting projections, two terminal tombstones, four processed marker inbox records; temporary broker resources deleted",
+    "notProven": [
+      "Consumer process restart/in-flight crash recovery",
+      "Drain of real application backlog",
+      "Notification provider delivery or receipt",
+      "Production behavior"
+    ]
+  },
+  "temporaryResourceReadback": {
+    "remainingTopics": 0,
+    "remainingSubscriptions": 0
+  }
+}

@@ -380,6 +380,42 @@ class StudentDimensionProjectionIntegrationTest {
         assertEquals(0L,jdbcClient.sql("SELECT count(*) FROM reporting.fact_payment WHERE student_id=42").query(Long.class).single());
     }
 
+    @Test void syntheticRestoreRequiresDurableErasureReplayBeforeDeliveryResumes() throws Exception {
+        String target=UUID.randomUUID().toString(), control=UUID.randomUUID().toString();
+        feedStudentEvent(target,42,7,"Synthetic erased target");
+        feedStudentEvent(control,43,8,"Synthetic control");
+        assertEquals(2,processor.processBatch());
+        jdbcClient.sql("INSERT INTO notification.notification_inbox_events(event_id,event_type,payload,status) VALUES ('restore-target','notification.requested.v1','{\"studentId\":42,\"destination\":\"synthetic@example.test\"}','RECEIVED')").update();
+        // The backup is confined to this synthetic PostgreSQL container; no cloud/business dump.
+        jdbcClient.sql("CREATE TABLE reporting.synthetic_restore_student AS SELECT * FROM reporting.dim_student; CREATE TABLE notification.synthetic_restore_inbox AS SELECT * FROM notification.notification_inbox_events").update();
+        OffsetDateTime durableDeletedAt=OffsetDateTime.now();
+        dims.deleteStudent(42,durableDeletedAt);
+        assertEquals(0,countStudentRows(42));
+        // Model restoring a backup taken before erasure. Keep workers stopped until the
+        // externally retained deletion record is reapplied; a stale backup lacks that record.
+        jdbcClient.sql("DELETE FROM reporting.student_projection_tombstones WHERE student_id=42; DELETE FROM reporting.dim_student; INSERT INTO reporting.dim_student SELECT * FROM reporting.synthetic_restore_student; DELETE FROM notification.notification_inbox_events; INSERT INTO notification.notification_inbox_events SELECT * FROM notification.synthetic_restore_inbox").update();
+        assertEquals(1,countStudentRows(42));
+        dims.deleteStudent(42,durableDeletedAt);
+        dims.deleteStudent(42,durableDeletedAt); // Replay is idempotent.
+        assertEquals(0,countStudentRows(42));assertEquals(1,countStudentRows(43));
+        assertEquals("Synthetic control",jdbcClient.sql("SELECT full_name FROM reporting.dim_student WHERE id=43").query(String.class).single());
+        assertEquals("SUPPRESSED",jdbcClient.sql("SELECT status FROM notification.notification_inbox_events WHERE event_id='restore-target'").query(String.class).single());
+        assertTrue(!jdbcClient.sql("SELECT payload FROM notification.notification_inbox_events WHERE event_id='restore-target'").query(String.class).single().contains("synthetic@example"));
+        feedStudentEvent(UUID.randomUUID().toString(),42,7,"Late restored target");
+        processor.processBatch();assertEquals(0,countStudentRows(42));
+        jdbcClient.sql("INSERT INTO notification.notification_inbox_events(event_id,event_type,payload,status) VALUES ('restore-late','notification.requested.v1','{\"studentId\":42,\"destination\":\"synthetic@example.test\"}','RECEIVED')").update();
+        var event=new com.custoking.ims.platformservice.persistence.NotificationInboxEvent();
+        event.setEventId("restore-late");event.setStatus(jdbcClient.sql("SELECT status FROM notification.notification_inbox_events WHERE event_id='restore-late'").query(String.class).single());
+        var repository=org.mockito.Mockito.mock(com.custoking.ims.platformservice.persistence.NotificationInboxRepository.class);
+        org.mockito.Mockito.when(repository.findByIdForUpdate("restore-late")).thenReturn(Optional.of(event));
+        var provider=org.mockito.Mockito.mock(NotificationDeliveryProvider.class);
+        var delivery=new NotificationDeliveryService(new ObjectMapper(),provider);
+        new NotificationInboxProcessor(repository,org.mockito.Mockito.mock(com.custoking.ims.platformservice.persistence.NotificationDeliveryAttemptRepository.class),delivery,new ObjectMapper(),"controlled-stub").process(event);
+        org.mockito.Mockito.verifyNoInteractions(provider);
+        jdbcClient.sql("DROP TABLE reporting.synthetic_restore_student; DROP TABLE notification.synthetic_restore_inbox").update();
+        System.out.println("IMS_PRIVACY_RESTORE_RESULT|synthetic=true|tombstoneReplay=true|idempotent=true|targetRows=0|controlRows=1|lateDeliverySuppressed=true|providerCalls=0");
+    }
+
     @Test void feeReminderTargetsUseLiveOwnerContactAndDenyAfterConsentWithdrawal() {
         feedStudentEvent(UUID.randomUUID().toString(),42,7,"Student");assertEquals(1,processor.processBatch());
         jdbcClient.sql("INSERT INTO reporting.academic_events(id,school_id,title,event_type,status) VALUES ('fee-event',7,'Event','ACADEMIC','ACTIVE'); INSERT INTO reporting.event_student_contributions(id,event_id,school_id,student_id,expected_amount) VALUES ('fee-contribution','fee-event',7,42,100)").update();
