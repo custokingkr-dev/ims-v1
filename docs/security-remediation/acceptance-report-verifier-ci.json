@@ -1,0 +1,323 @@
+{
+  "capturedAtUtc": "2026-10-07T18:22:39.040459+00:00",
+  "pullRequest": 326,
+  "pullRequestUrl": "https://github.com/custokingkr-dev/ims-v1/pull/326",
+  "sourceHeadSha": "957cb5b41924e54cfc7e2db71357b86e2de62f31",
+  "ci": {
+    "runId": 37665360944,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 112943517706,
+        "name": "static-architecture-audits",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943517706"
+      },
+      {
+        "id": 112943517863,
+        "name": "detect / detect",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943517863"
+      },
+      {
+        "id": 112943518053,
+        "name": "promotion-source-policy",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943518053"
+      },
+      {
+        "id": 112943518182,
+        "name": "privacy-technical-controls",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943518182"
+      },
+      {
+        "id": 112943518253,
+        "name": "dev-edge-terraform-validation",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943518253"
+      },
+      {
+        "id": 112943518262,
+        "name": "windows-security-helper-validation",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943518262"
+      },
+      {
+        "id": 112943518381,
+        "name": "secret-scan",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943518381"
+      },
+      {
+        "id": 112943518521,
+        "name": "duplicate-class-drift",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943518521"
+      },
+      {
+        "id": 112943603820,
+        "name": "docker-build (billing-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943603820"
+      },
+      {
+        "id": 112943603887,
+        "name": "docker-build (identity-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943603887"
+      },
+      {
+        "id": 112943603956,
+        "name": "service-test (school-core-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943603956"
+      },
+      {
+        "id": 112943603967,
+        "name": "service-test (api-gateway)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943603967"
+      },
+      {
+        "id": 112943604015,
+        "name": "docker-build (platform-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943604015"
+      },
+      {
+        "id": 112943604031,
+        "name": "docker-build (operations-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943604031"
+      },
+      {
+        "id": 112943604035,
+        "name": "docker-build (api-gateway)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943604035"
+      },
+      {
+        "id": 112943604045,
+        "name": "service-test (identity-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943604045"
+      },
+      {
+        "id": 112943604052,
+        "name": "service-test (operations-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943604052"
+      },
+      {
+        "id": 112943604097,
+        "name": "service-test (billing-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943604097"
+      },
+      {
+        "id": 112943604194,
+        "name": "docker-build (school-core-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943604194"
+      },
+      {
+        "id": 112943604234,
+        "name": "service-test (platform-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943604234"
+      },
+      {
+        "id": 112943605786,
+        "name": "maven-wrapper-validation (${{ matrix.os }})",
+        "conclusion": "skipped",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112943605786"
+      },
+      {
+        "id": 112945932611,
+        "name": "summary",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665360944/job/112945932611"
+      }
+    ]
+  },
+  "codeql": {
+    "runId": 37665359995,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665359995",
+    "headSha": "957cb5b41924e54cfc7e2db71357b86e2de62f31",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 112943370556,
+        "name": "analyze (java-kotlin)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665359995/job/112943370556"
+      },
+      {
+        "id": 112943370919,
+        "name": "analyze (javascript-typescript)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665359995/job/112943370919"
+      }
+    ]
+  },
+  "serviceCountsFinalReactorAggregateOnly": {
+    "identity-service": {
+      "jobId": 112943604045,
+      "counts": {
+        "reported": 183,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1,
+        "passed": 182
+      }
+    },
+    "operations-service": {
+      "jobId": 112943604052,
+      "counts": {
+        "reported": 195,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 195
+      }
+    },
+    "billing-service": {
+      "jobId": 112943604097,
+      "counts": {
+        "reported": 95,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 95
+      }
+    },
+    "platform-service": {
+      "jobId": 112943604234,
+      "counts": {
+        "reported": 437,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 437
+      }
+    },
+    "api-gateway": {
+      "jobId": 112943603967,
+      "counts": {
+        "tests": 99,
+        "pass": 99,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    "school-core-service": {
+      "jobId": 112943603956,
+      "counts": {
+        "reported": 952,
+        "passed": 952,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "javaTotals": {
+    "reported": 1862,
+    "passed": 1861,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "restoreVerifier": {
+    "linux": {
+      "tests": 26,
+      "seconds": 28.682,
+      "jobId": 112943517706,
+      "conclusion": "success",
+      "includesRealPostgresAndTls": true
+    },
+    "windows": {
+      "tests": 13,
+      "seconds": 0.769,
+      "jobId": 112943518262,
+      "conclusion": "success"
+    },
+    "windowsCasesOverlapLinuxUnitCases": true,
+    "liveRestoreVerified": false
+  },
+  "historicalFirstAttempt": {
+    "capturedAtUtc": "2026-10-07T18:15:41.603128+00:00",
+    "runId": 37665086262,
+    "headSha": "70172a078642043c6c98a41c490f8a6b57e0064c",
+    "runUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37665086262",
+    "historicalSupersededRun": true,
+    "windows": {
+      "jobId": 112942145826,
+      "conclusion": "success",
+      "verifierTests": 13,
+      "seconds": 0.794,
+      "logSha256": "8530de9210bdb76537128246fa26f1598c7347b8101d87c06bb31f8a2c73fa9b"
+    },
+    "secretScan": {
+      "jobId": 112942145910,
+      "conclusion": "failure",
+      "findingCount": 1,
+      "rule": "generic-api-key",
+      "file": "docs/security-remediation/acceptance-live-durable-photo-erasure.json",
+      "line": 87,
+      "classification": "SHA256_OBJECT_NAME_DIGEST_FALSE_POSITIVE",
+      "allegedValueStored": false
+    },
+    "followupRunId": 37665360944,
+    "followupHeadSha": "957cb5b41924e54cfc7e2db71357b86e2de62f31"
+  },
+  "evidenceLogDigests": [
+    {
+      "logName": "pr326-final-api-gateway.log",
+      "digestSha256": "e4b745e857178eab46a0b69f6a10ba96f76e3288c5fbeb21ca41f24ee4046a92"
+    },
+    {
+      "logName": "pr326-final-billing-service.log",
+      "digestSha256": "5cda78a90970d152246b833ba44d8746bcd9614fc78f63f0dca7c8ba6ae5fe5b"
+    },
+    {
+      "logName": "pr326-final-identity-service.log",
+      "digestSha256": "7dd6cc951dfb5a4001da72da4e47c09c9d35f9374ecc8a2656265809f8e66c4f"
+    },
+    {
+      "logName": "pr326-final-operations-service.log",
+      "digestSha256": "b336b0132f2529bea8d7d45bf9d8e4d081a45456c2d7e5c32ef0ffcc212eb64d"
+    },
+    {
+      "logName": "pr326-final-platform-service.log",
+      "digestSha256": "f535d98f1378081bf2d4beebb15aba1eba102e62c3ef744f3367627cab73dc6c"
+    },
+    {
+      "logName": "pr326-final-school-core-service.log",
+      "digestSha256": "ede42bd5a1addf844b08939afd6b4d591ebe5c249997d4286167b1b3e034230b"
+    },
+    {
+      "logName": "pr326-final-static-architecture-audits.log",
+      "digestSha256": "aad053ceb41488e75f8653d1b17f9694892fcd81f6ee26728c6e0fb134ba504d"
+    },
+    {
+      "logName": "pr326-final-windows-security-helper-validation.log",
+      "digestSha256": "a56605c134e6aa79cf259f8e21a744aef26c77141cea52c599b95ecfdb98948a"
+    }
+  ],
+  "evidencePublicationInitialSecretScan": {
+    "pullRequest": 327,
+    "sourceHeadSha": "898274fedead3aa2b826da688d2af69ed943bd6c",
+    "ciRunId": 37673599157,
+    "jobId": 112971300310,
+    "conclusion": "failure",
+    "findings": 2,
+    "rule": "generic-api-key",
+    "verifiedScope": "Two SHA256 digests of already reviewed gateway job logs, using log filenames as JSON keys; no credential.",
+    "currentCorrection": "Separate logName and digestSha256 fields; exact historical fingerprints only, no rule or path exemptions."
+  }
+}
