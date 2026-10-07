@@ -1,0 +1,33 @@
+﻿{
+    "scope":  "isolated dev catalog and exact reserved synthetic marker PITR; no business rows or agreed RPO/RTO certification",
+    "project":  "custoking-dev",
+    "source":  "custoking-db-dev",
+    "clone":  "custoking-dev-security-restore-20261007093317-75f819f7",
+    "job":  "ims-dev-security-restore-20261007093317-75f819f7",
+    "pointInTimeUtc":  "2026-10-07T09:28:17Z",
+    "startedUtc":  "2026-10-07T09:33:17.8641020Z",
+    "success":  false,
+    "cleanup":  {
+                    "jobRemoved":  true,
+                    "cloneRemoved":  true,
+                    "cloneProtectionDisabledForDeletion":  true
+                },
+    "schemaCatalog":  [
+
+                      ],
+    "syntheticFixture":  {
+                             "restoredVerified":  false,
+                             "sourceVerifiedCount":  2,
+                             "sourceProvenance":  "SEC-ACPT-20261007",
+                             "expectedSha256":  "c845fb66371f309c21696710b38e86fb7440aab44ad7278f967974d7c43bae92",
+                             "sourceVerifiedAtUtc":  "2026-10-07T09:27:39.792829+00:00"
+                         },
+    "principalKind":  "personal",
+    "sourceReadiness":  "RUNNABLE",
+    "sourceSslMode":  "ENCRYPTED_ONLY",
+    "cloneOperation":  "3dc13f09-06a1-4cd9-b73d-5bc200000049",
+    "cloneReadyUtc":  "2026-10-07T09:46:59.6916115Z",
+    "cloneReadinessElapsedSeconds":  821.837,
+    "failure":  "Exact synthetic marker recovery checksum/count mismatch",
+    "finishedUtc":  "2026-10-07T09:50:58.5355928Z"
+}

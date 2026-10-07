@@ -24,6 +24,7 @@ dependency-check-report.*
 secrets/
 
 # Logs and temp files
+/tmp/
 *.log
 *.tmp
 *.swp

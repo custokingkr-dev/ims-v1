@@ -1,0 +1,9 @@
+# Reviewed dev rollback image retention
+
+A fresh metadata inspection found dev registry cleanup deleting images older than seven days with any tag state, retaining only the three most recent versions per package. Those rules alone did not guarantee retention of the reviewed security rollback images. [Before configuration](acceptance-registry-retention.json).
+
+Added the conditional `keep-reviewed-security-rollback` KEEP policy for the prefix `security-rollback-reviewed-`, preserving the existing delete-seven-days and keep-three policies exactly. Created and independently resolved **28 new tags for18 distinct existing digests**: source/index and runtime images of all seven services from the reviewed baseline9509d20c4413 and currentf901c5f0631d releases. No existing tag was overwritten, no image content was changed and no Cloud Run configuration/traffic was changed. Only `custoking-dev` was updated. [Exact policy and tag/digest evidence](acceptance-registry-rollback-protection.json), [policy source](../../deploy/gcp/artifact-registry-cleanup-policies.json).
+
+Google documents that a matching [KEEP policy takes precedence over DELETE](https://docs.cloud.google.com/artifact-registry/docs/repositories/cleanup-policy), and that cleanup execution is asynchronous. This result verifies configured keep conditions and actual tag-to-digest existence, not a future scheduled cleanup run. Docker tags remain mutable; it is not protection against an authorized manual deletion. Future rollback must still satisfy current signature, advisory and deployment gates. Other retained/unknown revision names are not certified rollback images merely because their revisions were kept.
+
+Do not move/remove reviewed protection tags during routine cleanup. Update the reviewed rollback set only through a documented successful release and retention review. The general seven-day cleanup remains active for images outside these keep conditions.

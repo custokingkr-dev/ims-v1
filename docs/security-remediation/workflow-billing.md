@@ -1,5 +1,7 @@
 # Workflow and billing remediation evidence
 
+This workstream report preserves its original implementation checkpoints. The [current implementation ledger](IMPLEMENTATION-STATUS.md) records subsequent merged source, dev releases, live acceptance and remaining owner actions. Earlier statements that deployment or live fixtures were pending are historical.
+
 Owner: workflow/billing implementation agent. Date: 2026-10-06. Changes are in the shared security worktree and have not been deployed by this agent. This report describes the owned portions of the saved register; it does not close cross-service or live-environment checks.
 
 | Finding | Owned implementation and status | Evidence / remaining verification |

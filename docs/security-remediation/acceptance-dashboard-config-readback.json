@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "database": "ims-dashboard-dev",
+  "type": "FIRESTORE_NATIVE",
+  "locationId": "asia-south2",
+  "deleteProtectionState": "DELETE_PROTECTION_ENABLED",
+  "ttl": [
+    {
+      "name": "projects/custoking-dev/databases/ims-dashboard-dev/collectionGroups/dashboardSecurityState/fields/expiresAt",
+      "state": "ACTIVE"
+    }
+  ],
+  "checkedAtUtc": "2026-10-07T10:02:26.471524+00:00",
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e"
+}

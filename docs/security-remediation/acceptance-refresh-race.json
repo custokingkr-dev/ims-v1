@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "marker": "SEC-ACPT-20261007",
+  "userId": 990007202,
+  "checks": [
+    {
+      "check": "synthetic-password-login",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "foreign-origin-refresh-rejected-before-rotation",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    },
+    {
+      "check": "allowlisted-origin-cookie-refresh",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "rotated-access-authoritative-accepted",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "old-refresh-cookie-reuse-denied",
+      "status": 401,
+      "expected": 401,
+      "passed": true
+    },
+    {
+      "check": "reuse-fences-old-access",
+      "status": 401,
+      "expected": 401,
+      "passed": true
+    },
+    {
+      "check": "reuse-fences-descendant-access",
+      "status": 401,
+      "expected": 401,
+      "passed": true
+    },
+    {
+      "check": "race-fixture-fresh-session",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "concurrent-refresh-single-winner-family-reuse-fenced",
+      "statuses": [
+        200,
+        401
+      ],
+      "expected": [
+        200,
+        401
+      ],
+      "passed": true
+    },
+    {
+      "check": "concurrent-reuse-fences-winner-access",
+      "status": 401,
+      "expected": 401,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "checkedAtUtc": "2026-10-07T09:46:31.026067+00:00",
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification"
+}

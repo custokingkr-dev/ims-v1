@@ -1,6 +1,6 @@
 [
   {
-    "name": "delete-images-older-than-7-days",
+    "name": "delete-old-release-images",
     "action": {
       "type": "Delete"
     },
@@ -10,12 +10,22 @@
     }
   },
   {
-    "name": "keep-last-3-versions-per-service",
+    "name": "keep-recent-release-images",
     "action": {
       "type": "Keep"
     },
     "mostRecentVersions": {
       "keepCount": 3
+    }
+  },
+  {
+    "name": "keep-reviewed-security-rollback",
+    "action": {
+      "type": "Keep"
+    },
+    "condition": {
+      "tagState": "tagged",
+      "tagPrefixes": ["security-rollback-reviewed-"]
     }
   }
 ]

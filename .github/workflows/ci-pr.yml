@@ -108,6 +108,10 @@ jobs:
           scripts.tests.runtime_secret_revocation_test
           scripts.tests.synthetic_pubsub_drill_test
           scripts.tests.bounded_dev_read_acceptance_test
+          scripts.tests.security_acceptance_tool_test
+          scripts.tests.obsolete_revision_cleanup_test
+          scripts.tests.http2_parser_probe_test
+          scripts.tests.final_live_fixture_acceptance_test
       - name: Test OpenAPI CI routing invariants
         run: python3 -m unittest scripts.tests.test_openapi_ci_gate
 

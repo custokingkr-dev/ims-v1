@@ -1,0 +1,620 @@
+{
+  "project": "custoking-dev",
+  "marker": "SEC-ACPT-20261007",
+  "factorMaintenance": {
+    "marker": "SEC-ACPT-20261007",
+    "ordinaryActors": 2,
+    "ownedSchools": 2,
+    "ownedStudents": 20,
+    "privilegedActorsUntouched": true,
+    "resetAudited": true,
+    "checkedAtUtc": "2026-10-07T12:08:26.319950+00:00",
+    "project": "custoking-dev",
+    "readyRevision": "custoking-platform-service-dev-muy24qr0"
+  },
+  "browser": {
+    "schemaVersion": 1,
+    "project": "custoking-dev",
+    "marker": "SEC-ACPT-20261007",
+    "afterRevision": "custoking-platform-service-dev-muy24qr0",
+    "startedAtUtc": "2026-10-07T12:08:54.240Z",
+    "authenticator": "Chromium CTAP2 software authenticator",
+    "physicalHardwareProof": false,
+    "applicationDelete": true,
+    "noProviderDelivery": true,
+    "checks": [
+      {
+        "check": "fresh-normal-login",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "actual-rp-status",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "registration-options",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "actual-browser-registration-verified",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "assertion-options",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "actual-browser-fresh-step-up-verified",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "marker-student-preflight-990007301",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "marker-student-preflight-990007302",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "marker-student-preflight-990007303",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "marker-student-preflight-990007304",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "marker-student-preflight-990007305",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "marker-student-preflight-990007306",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "marker-student-preflight-990007307",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "marker-student-preflight-990007308",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "marker-student-preflight-990007309",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "marker-student-preflight-990007310",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007101
+      },
+      {
+        "check": "authoritative-step-up-expiry-issued",
+        "schoolId": 990007101,
+        "expiresAt": "2026-10-07T12:13:57.943061Z",
+        "passed": true
+      },
+      {
+        "check": "fresh-normal-login",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "actual-rp-status",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "registration-options",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "actual-browser-registration-verified",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "assertion-options",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "actual-browser-fresh-step-up-verified",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "marker-student-preflight-990007311",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "marker-student-preflight-990007312",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "marker-student-preflight-990007313",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "marker-student-preflight-990007314",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "marker-student-preflight-990007315",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "marker-student-preflight-990007316",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "marker-student-preflight-990007317",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "marker-student-preflight-990007318",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "marker-student-preflight-990007319",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "marker-student-preflight-990007320",
+        "status": 200,
+        "expected": 200,
+        "passed": true,
+        "schoolId": 990007102
+      },
+      {
+        "check": "authoritative-step-up-expiry-issued",
+        "schoolId": 990007102,
+        "expiresAt": "2026-10-07T12:14:01.293408Z",
+        "passed": true
+      },
+      {
+        "check": "renewed-actual-browser-step-up-before-delete",
+        "schoolId": 990007101,
+        "status": 200,
+        "expiresAt": "2026-10-07T12:14:35.901425Z",
+        "passed": true
+      },
+      {
+        "check": "renewed-actual-browser-step-up-before-delete",
+        "schoolId": 990007102,
+        "status": 200,
+        "expiresAt": "2026-10-07T12:14:37.859955Z",
+        "passed": true
+      }
+    ],
+    "deletions": [
+      {
+        "studentId": 990007301,
+        "schoolId": 990007101,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:35.551Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007302,
+        "schoolId": 990007101,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:35.676Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007303,
+        "schoolId": 990007101,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:35.786Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007304,
+        "schoolId": 990007101,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:36.044Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007305,
+        "schoolId": 990007101,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:36.164Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007306,
+        "schoolId": 990007101,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:36.282Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007307,
+        "schoolId": 990007101,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:36.411Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007308,
+        "schoolId": 990007101,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:36.625Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007309,
+        "schoolId": 990007101,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:36.745Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007310,
+        "schoolId": 990007101,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:36.857Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007311,
+        "schoolId": 990007102,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:37.206Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007312,
+        "schoolId": 990007102,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:37.343Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007313,
+        "schoolId": 990007102,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:37.456Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007314,
+        "schoolId": 990007102,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:37.580Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007315,
+        "schoolId": 990007102,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:37.692Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007316,
+        "schoolId": 990007102,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:37.805Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007317,
+        "schoolId": 990007102,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:37.909Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007318,
+        "schoolId": 990007102,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:38.022Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007319,
+        "schoolId": 990007102,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:38.201Z",
+        "passed": true
+      },
+      {
+        "studentId": 990007320,
+        "schoolId": 990007102,
+        "status": 200,
+        "deleted": true,
+        "permanent": true,
+        "atUtc": "2026-10-07T12:09:38.325Z",
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "photo": {
+      "studentId": 990007301,
+      "nonce": "1ca4babd672c6fc4374080d7",
+      "inputPngSha256": "032201e638078663e4e819dd796ddb8c9f9d14af56e3963633fc2cb2574adfe4",
+      "inputBytes": 379,
+      "uploadStatus": 200,
+      "before": {
+        "project": "custoking-dev",
+        "marker": "SEC-ACPT-20261007",
+        "studentId": 990007301,
+        "objectKey": "schools/d66193a6-147a-4d26-b4db-da8e599e5fbc/students/990007301/photos/5b352b44c1c7ad0f88ac26358fd169aa6bb18e8309af729671023dd271a750ea.jpg",
+        "liveObjectBefore": true,
+        "generation": "1791374943953500",
+        "contentType": "image/jpeg",
+        "bytes": 25135,
+        "softDeletePolicy": {
+          "effectiveTime": "2026-08-17T22:34:37.349000+00:00",
+          "retentionDurationSeconds": "604800"
+        },
+        "versioningEnabled": false,
+        "retentionPolicy": null,
+        "existingRuntimeBucketRoles": [
+          "roles/storage.objectAdmin"
+        ],
+        "runtimeIamChanged": false,
+        "checkedAtUtc": "2026-10-07T12:09:34.446742+00:00"
+      },
+      "after": {
+        "project": "custoking-dev",
+        "marker": "SEC-ACPT-20261007",
+        "studentId": 990007301,
+        "objectKey": "schools/d66193a6-147a-4d26-b4db-da8e599e5fbc/students/990007301/photos/5b352b44c1c7ad0f88ac26358fd169aa6bb18e8309af729671023dd271a750ea.jpg",
+        "generation": "1791374943953500",
+        "liveObjectAfter": "NOT_FOUND",
+        "pinnedAccessibleGenerationAfter": "NOT_FOUND",
+        "softDeletedGenerationObserved": true,
+        "softDeleteTime": "2026-10-07T12:09:36+0000",
+        "hardDeleteTime": "2026-10-14T12:09:36+0000",
+        "physicalPurgeVerified": false,
+        "bucketPolicyUnchanged": true,
+        "checkedAtUtc": "2026-10-07T12:09:44.081017+00:00",
+        "passed": true
+      }
+    },
+    "completedAtUtc": "2026-10-07T12:09:44.089Z"
+  },
+  "initialInspection": {
+    "deletionOutbox": 20,
+    "marker": "SEC-ACPT-20261007",
+    "processedDeletionInbox": 0,
+    "publishedDeletionOutbox": 20,
+    "reportingProjectionRemaining": 0,
+    "reservedStudentsRemaining": 0,
+    "schoolStudentsRemaining": 0,
+    "studentTombstones": 18,
+    "project": "custoking-dev",
+    "checkedAtUtc": "2026-10-07T12:10:58.913030+00:00",
+    "queryCorrection": "Initial inbox lookup incorrectly joined bare outbox row ID. Authoritative OutboxRelay eventId is school-core: followed by row ID. Initial processedDeletionInbox=0 is a query mismatch, not failed delivery; initial18 tombstones were a genuine partial asynchronous observation."
+  },
+  "database": {
+    "deletionOutbox": 20,
+    "marker": "SEC-ACPT-20261007",
+    "processedDeletionInbox": 20,
+    "publishedDeletionOutbox": 20,
+    "reportingProjectionRemaining": 0,
+    "reservedStudentsRemaining": 0,
+    "schoolStudentsRemaining": 0,
+    "studentTombstones": 20,
+    "project": "custoking-dev",
+    "checkedAtUtc": "2026-10-07T12:20:14.132155+00:00"
+  },
+  "failedCleanupRollback": {
+    "classStillPresent": 1,
+    "fixtureDisableAuditRows": 0,
+    "marker": "SEC-ACPT-20261007",
+    "ordinaryActorsStillActive": 3,
+    "schoolsStillPresent": 2,
+    "sectionsStillPresent": 2,
+    "studentTombstones": 20,
+    "studentsRemaining": 0,
+    "yearStillPresent": 1,
+    "project": "custoking-dev",
+    "checkedAtUtc": "2026-10-07T12:18:49.721405+00:00",
+    "rollbackVerified": true,
+    "initialFailureCategory": "relation-missing",
+    "initialIncorrectRelation": "tenant_school.school_staff",
+    "authoritativeRelation": "tenant_school.staff_members",
+    "failedOwnedJob": {
+      "name": "ims-sec-final-disable-parents-9a4f7c022a36",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:15:37.611123+00:00"
+    }
+  },
+  "fixtures": {
+    "activeAssignments": 0,
+    "activeSessions": 0,
+    "disabledOrdinaryActors": 3,
+    "marker": "SEC-ACPT-20261007",
+    "preservedBrokerTombstones": 2,
+    "preservedStudentTombstones": 20,
+    "remainingClass": 0,
+    "remainingSchools": 0,
+    "remainingSections": 0,
+    "remainingYear": 0,
+    "loginRejections": [
+      {
+        "userId": 990007201,
+        "status": 401,
+        "passed": true
+      },
+      {
+        "userId": 990007202,
+        "status": 401,
+        "passed": true
+      },
+      {
+        "userId": 990007205,
+        "status": 401,
+        "passed": true
+      }
+    ],
+    "revokedAccessRejections": [
+      {
+        "userId": 990007201,
+        "status": 401,
+        "passed": true
+      },
+      {
+        "userId": 990007202,
+        "status": 401,
+        "passed": true
+      },
+      {
+        "userId": 990007205,
+        "status": 401,
+        "passed": true
+      }
+    ],
+    "preCleanupNormalLogins": [
+      {
+        "userId": 990007201,
+        "status": 200,
+        "authoritativePrincipalVerified": true
+      },
+      {
+        "userId": 990007202,
+        "status": 200,
+        "authoritativePrincipalVerified": true
+      },
+      {
+        "userId": 990007205,
+        "status": 200,
+        "authoritativePrincipalVerified": true
+      }
+    ],
+    "project": "custoking-dev",
+    "checkedAtUtc": "2026-10-07T12:20:43.938679+00:00",
+    "readyRevision": "custoking-platform-service-dev-muy24qr0",
+    "passed": true
+  }
+}
