@@ -119,6 +119,15 @@ jobs:
           python3 -O -m unittest
           scripts.tests.dev_precommit_journal_acceptance_test
           scripts.tests.dev_precommit_journal_acceptance_postgres_test
+          scripts.tests.dev_photo_erasure_acceptance_test
+          scripts.tests.dev_photo_erasure_acceptance_postgres_test
+      - name: Install isolated restore-verifier test dependency
+        run: python3 -m pip install 'psycopg[binary]==3.3.4'
+      - name: Verify restore-target rejection and real PostgreSQL TLS under optimization
+        run: >-
+          python3 -O -m unittest
+          scripts.tests.dev_restore_target_verifier_test
+          scripts.tests.dev_restore_target_verifier_postgres_test
       - name: Test OpenAPI CI routing invariants
         run: python3 -m unittest scripts.tests.test_openapi_ci_gate
 
@@ -182,6 +191,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Verify PowerShell 5 helper serialization and native exit handling
         run: python -m unittest scripts.tests.signed_probe_serialization_test scripts.tests.pubsub_native_progress_test scripts.tests.dev_erasure_journal_infrastructure_test
+      - name: Verify optimized restore-verifier subprocess deadlines on Windows
+        run: python -O -m unittest scripts.tests.dev_restore_target_verifier_test
       - name: Verify Scheduler create and update command arguments
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tests/configure-async-relay-scheduler-test.ps1
 

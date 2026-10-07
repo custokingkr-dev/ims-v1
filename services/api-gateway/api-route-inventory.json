@@ -11,11 +11,11 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 47,
-    "endpoints": 447,
+    "controllers": 49,
+    "endpoints": 449,
     "canonicalEndpoints": 345,
     "compatibilityEndpoints": 90,
-    "internalEndpoints": 12,
+    "internalEndpoints": 14,
     "diagnosticAliases": 12,
     "gatewayRoutes": 70,
     "frontendCompatibilityCalls": 0,
@@ -118,7 +118,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 119
+      "line": 123
     },
     {
       "order": 1,
@@ -130,7 +130,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 120
+      "line": 124
     },
     {
       "order": 2,
@@ -142,7 +142,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 121
+      "line": 125
     },
     {
       "order": 3,
@@ -154,7 +154,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 122
+      "line": 126
     },
     {
       "order": 4,
@@ -166,7 +166,7 @@
         "POST"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 123
+      "line": 127
     },
     {
       "order": 5,
@@ -178,7 +178,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 124
+      "line": 128
     },
     {
       "order": 6,
@@ -190,7 +190,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 125
+      "line": 129
     },
     {
       "order": 7,
@@ -202,7 +202,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 126
+      "line": 130
     },
     {
       "order": 8,
@@ -214,7 +214,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 127
+      "line": 131
     },
     {
       "order": 9,
@@ -226,7 +226,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 128
+      "line": 132
     },
     {
       "order": 10,
@@ -238,7 +238,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 129
+      "line": 133
     },
     {
       "order": 11,
@@ -250,7 +250,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 130
+      "line": 134
     },
     {
       "order": 12,
@@ -262,7 +262,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 131
+      "line": 135
     },
     {
       "order": 13,
@@ -274,7 +274,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 132
+      "line": 136
     },
     {
       "order": 14,
@@ -286,7 +286,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 133
+      "line": 137
     },
     {
       "order": 15,
@@ -298,7 +298,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 134
+      "line": 138
     },
     {
       "order": 16,
@@ -310,7 +310,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 135
+      "line": 139
     },
     {
       "order": 17,
@@ -322,7 +322,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 136
+      "line": 140
     },
     {
       "order": 18,
@@ -334,7 +334,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 137
+      "line": 141
     },
     {
       "order": 19,
@@ -346,7 +346,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 138
+      "line": 142
     },
     {
       "order": 20,
@@ -358,7 +358,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 139
+      "line": 143
     },
     {
       "order": 21,
@@ -370,7 +370,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 140
+      "line": 144
     },
     {
       "order": 22,
@@ -382,7 +382,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 141
+      "line": 145
     },
     {
       "order": 23,
@@ -394,7 +394,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 142
+      "line": 146
     },
     {
       "order": 24,
@@ -406,7 +406,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 143
+      "line": 147
     },
     {
       "order": 25,
@@ -418,7 +418,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 144
+      "line": 148
     },
     {
       "order": 26,
@@ -430,7 +430,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 145
+      "line": 149
     },
     {
       "order": 27,
@@ -442,7 +442,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 146
+      "line": 150
     },
     {
       "order": 28,
@@ -454,7 +454,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 147
+      "line": 151
     },
     {
       "order": 29,
@@ -466,7 +466,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 148
+      "line": 152
     },
     {
       "order": 30,
@@ -478,7 +478,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 149
+      "line": 153
     },
     {
       "order": 31,
@@ -490,7 +490,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 150
+      "line": 154
     },
     {
       "order": 32,
@@ -502,7 +502,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 151
+      "line": 155
     },
     {
       "order": 33,
@@ -514,7 +514,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 152
+      "line": 156
     },
     {
       "order": 34,
@@ -526,7 +526,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 153
+      "line": 157
     },
     {
       "order": 35,
@@ -538,7 +538,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 154
+      "line": 158
     },
     {
       "order": 36,
@@ -550,7 +550,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 155
+      "line": 159
     },
     {
       "order": 37,
@@ -562,7 +562,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 156
+      "line": 160
     },
     {
       "order": 38,
@@ -574,7 +574,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 157
+      "line": 161
     },
     {
       "order": 39,
@@ -586,7 +586,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 158
+      "line": 162
     },
     {
       "order": 40,
@@ -598,7 +598,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 159
+      "line": 163
     },
     {
       "order": 41,
@@ -610,7 +610,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 160
+      "line": 164
     },
     {
       "order": 42,
@@ -622,7 +622,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 161
+      "line": 165
     },
     {
       "order": 43,
@@ -634,7 +634,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 162
+      "line": 166
     },
     {
       "order": 44,
@@ -646,7 +646,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 163
+      "line": 167
     },
     {
       "order": 45,
@@ -658,7 +658,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 164
+      "line": 168
     },
     {
       "order": 46,
@@ -670,7 +670,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 165
+      "line": 169
     },
     {
       "order": 47,
@@ -682,7 +682,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 166
+      "line": 170
     },
     {
       "order": 48,
@@ -694,7 +694,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 167
+      "line": 171
     },
     {
       "order": 49,
@@ -706,7 +706,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 168
+      "line": 172
     },
     {
       "order": 50,
@@ -718,7 +718,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 169
+      "line": 173
     },
     {
       "order": 51,
@@ -730,7 +730,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 170
+      "line": 174
     },
     {
       "order": 52,
@@ -742,7 +742,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 171
+      "line": 175
     },
     {
       "order": 53,
@@ -754,7 +754,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 172
+      "line": 176
     },
     {
       "order": 54,
@@ -766,7 +766,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 173
+      "line": 177
     },
     {
       "order": 55,
@@ -778,7 +778,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 174
+      "line": 178
     },
     {
       "order": 56,
@@ -790,7 +790,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 175
+      "line": 179
     },
     {
       "order": 57,
@@ -802,7 +802,7 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 176
+      "line": 180
     },
     {
       "order": 58,
@@ -815,7 +815,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 177
+      "line": 181
     },
     {
       "order": 59,
@@ -828,7 +828,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 178
+      "line": 182
     },
     {
       "order": 60,
@@ -841,7 +841,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 179
+      "line": 183
     },
     {
       "order": 61,
@@ -854,7 +854,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 180
+      "line": 184
     },
     {
       "order": 62,
@@ -867,7 +867,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 181
+      "line": 185
     },
     {
       "order": 63,
@@ -880,7 +880,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 182
+      "line": 186
     },
     {
       "order": 64,
@@ -893,7 +893,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 183
+      "line": 187
     },
     {
       "order": 65,
@@ -906,7 +906,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 184
+      "line": 188
     },
     {
       "order": 66,
@@ -919,7 +919,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 185
+      "line": 189
     },
     {
       "order": 67,
@@ -932,7 +932,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 186
+      "line": 190
     },
     {
       "order": 68,
@@ -945,7 +945,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 187
+      "line": 191
     },
     {
       "order": 69,
@@ -958,7 +958,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 188
+      "line": 192
     }
   ],
   "clientMigrationReferences": [],
@@ -1155,6 +1155,16 @@
     },
     {
       "service": "platform-service",
+      "controller": "GenericNotificationReportController",
+      "classification": "internal",
+      "basePaths": [
+        "/api/v1/internal/notifications/reports"
+      ],
+      "endpointCount": 1,
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportController.java"
+    },
+    {
+      "service": "platform-service",
       "controller": "Msg91BroadcastReportController",
       "classification": "canonical",
       "basePaths": [
@@ -1252,6 +1262,16 @@
       ],
       "endpointCount": 9,
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/SenderProfileController.java"
+    },
+    {
+      "service": "school-core-service",
+      "controller": "AbsenteeRecipientPolicyController",
+      "classification": "internal",
+      "basePaths": [
+        "/api/v1/internal/notifications/broadcast-recipients/absentees"
+      ],
+      "endpointCount": 1,
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/AbsenteeRecipientPolicyController.java"
     },
     {
       "service": "school-core-service",
@@ -2533,6 +2553,15 @@
       "classification": "internal",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/NotificationDeliveryCommandController.java",
       "line": 61
+    },
+    {
+      "service": "platform-service",
+      "controller": "GenericNotificationReportController",
+      "method": "POST",
+      "path": "/api/v1/internal/notifications/reports/reconcile",
+      "classification": "internal",
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportController.java",
+      "line": 55
     },
     {
       "service": "platform-service",
@@ -3904,6 +3933,15 @@
     },
     {
       "service": "school-core-service",
+      "controller": "AbsenteeRecipientPolicyController",
+      "method": "POST",
+      "path": "/api/v1/internal/notifications/broadcast-recipients/absentees",
+      "classification": "internal",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/AbsenteeRecipientPolicyController.java",
+      "line": 31
+    },
+    {
+      "service": "school-core-service",
       "controller": "BroadcastRecipientPolicyController",
       "method": "POST",
       "path": "/api/v1/internal/notifications/broadcast-recipients/fee-reminders",
@@ -3918,7 +3956,7 @@
       "path": "/api/v1/internal/outbox/relay",
       "classification": "internal",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/OutboxRelayTriggerController.java",
-      "line": 24
+      "line": 31
     },
     {
       "service": "school-core-service",

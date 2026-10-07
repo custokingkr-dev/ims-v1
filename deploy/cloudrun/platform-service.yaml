@@ -56,6 +56,13 @@ spec:
               value: ims-api-gateway-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${user_context_caller_service_accounts}
             - name: ASYNC_DRAIN_CALLER_SERVICE_ACCOUNTS
               value: ims-async-scheduler-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${async_drain_caller_service_accounts}
+            # Report ingestion stays disabled until a dedicated caller and managed secret are reviewed.
+            - name: NOTIFICATION_REPORT_RECONCILIATION_ENABLED
+              value: "false"
+            - name: NOTIFICATION_REPORT_RECONCILIATION_TOKEN
+              value: ""
+            - name: NOTIFICATION_REPORT_CALLER_SERVICE_ACCOUNTS
+              value: ""
             - name: NOTIFICATION_DELIVERY_CALLER_SERVICE_ACCOUNTS
               value: ims-school-core-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${notification_delivery_caller_service_accounts}
             - name: SPRING_PROFILES_ACTIVE

@@ -1,0 +1,412 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "sourceHeadSha": "01522d74d039b9f46162572ddafd1a5c90d6e7ee",
+  "releaseRunId": 37651698357,
+  "releaseEvidence": "acceptance-student-photo-ownership-dev-release.json",
+  "success": true,
+  "marker": "SEC-PHOTO-DEV-20261007-f0803775c0f7",
+  "ids": {
+    "schoolId": 990008401,
+    "userId": 990008501,
+    "studentId": 990008601
+  },
+  "checkedAtUtc": "2026-10-07T17:51:31.985220+00:00",
+  "freshSevenRevisionReadback": {
+    "project": "custoking-dev",
+    "releaseSourceSha": "01522d74d039b9f46162572ddafd1a5c90d6e7ee",
+    "releaseEvidenceVerified": true,
+    "services": {
+      "custoking-api-gateway-dev": {
+        "revision": "custoking-api-gateway-dev-muy1nc06",
+        "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8",
+        "ready": true,
+        "trafficPercent": 100,
+        "taggedOtherRevisions": []
+      },
+      "custoking-billing-service-dev": {
+        "revision": "custoking-billing-service-dev-muyac2uc",
+        "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:0123ac05060ea6c10af6a81aaa94cbede70857f4de1e08c9b41b8f0898df88cb",
+        "ready": true,
+        "trafficPercent": 100,
+        "taggedOtherRevisions": []
+      },
+      "custoking-frontend-dev": {
+        "revision": "custoking-frontend-dev-muy1s1uk",
+        "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+        "ready": true,
+        "trafficPercent": 100,
+        "taggedOtherRevisions": []
+      },
+      "custoking-identity-service-dev": {
+        "revision": "custoking-identity-service-dev-muya2gx1",
+        "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:de80a851e23d5986df716f96dfd60971daabf54ab24504085c5c74bb33eb620d",
+        "ready": true,
+        "trafficPercent": 100,
+        "taggedOtherRevisions": []
+      },
+      "custoking-operations-service-dev": {
+        "revision": "custoking-operations-service-dev-muya8x4v",
+        "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:6f806ccffa97e3327870464b40b1244e4d7b60ba675c44a9c9e592612bef469c",
+        "ready": true,
+        "trafficPercent": 100,
+        "taggedOtherRevisions": []
+      },
+      "custoking-platform-service-dev": {
+        "revision": "custoking-platform-service-dev-muyaf7rv",
+        "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:455166a055eff70275105365b79cba1d625adb6aeac05e77e398eb7a9a4a2a9a",
+        "ready": true,
+        "trafficPercent": 100,
+        "taggedOtherRevisions": []
+      },
+      "custoking-school-core-service-dev": {
+        "revision": "custoking-school-core-service-dev-00072-mhh",
+        "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:4b0fae8287c757b6300d4255e87237189defd9f84118a4a18e55308964fc9018",
+        "ready": true,
+        "trafficPercent": 100,
+        "taggedOtherRevisions": []
+      }
+    },
+    "journalEnvironment": {
+      "STUDENT_ERASURE_JOURNAL_ENABLED": "true",
+      "STUDENT_ERASURE_JOURNAL_PROJECT_ID": "custoking-dev",
+      "STUDENT_ERASURE_JOURNAL_BUCKET": "custoking-dev-erasure-journal",
+      "STUDENT_ERASURE_JOURNAL_SOURCE_LINEAGE_ID": "58bc724a-592f-49f1-b22f-0e5f95aa6808",
+      "STUDENT_ERASURE_JOURNAL_RESTORE_EPOCH": "d9c4f31c-3420-48a7-8fbe-7fc26d2065bf",
+      "STUDENT_ERASURE_JOURNAL_EPOCH_GENERATION": "1791384645925940",
+      "STUDENT_ERASURE_JOURNAL_EPOCH_SHA256": "aae5c2aedd259b60e7cdff757508a4a0584bb6ab26def2e5eddd148ede7ab108"
+    }
+  },
+  "normalAppPhotoUpload": {
+    "status": 200,
+    "readStatus": 200,
+    "normalizedRaster": true,
+    "syntheticPattern": true,
+    "bytes": 8987,
+    "generation": "1791394574200597",
+    "keySha256": "93cdd4ce92abf3982a1902f62dd3cfc44ea612bf8da671deb427e7ceedd60cc8"
+  },
+  "browserBoundary": {
+    "schemaVersion": 1,
+    "project": "custoking-dev",
+    "marker": "SEC-PHOTO-DEV-20261007-f0803775c0f7",
+    "studentId": 990008601,
+    "expectedSourceSha": "01522d74d039b9f46162572ddafd1a5c90d6e7ee",
+    "startedAtUtc": "2026-10-07T17:41:52.679Z",
+    "authenticator": "Chromium software CTAP2",
+    "physicalHardwareProof": false,
+    "providerCalls": 0,
+    "checks": [
+      {
+        "name": "normal-login",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "owned-student-preflight",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "normal-owned-photo-read",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "school-admin-export-role-denied",
+        "status": 403,
+        "expected": 403,
+        "passed": true
+      },
+      {
+        "name": "caller-injected-foreign-key-rejected",
+        "status": 400,
+        "expected": 400,
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "photoBytes": 8987,
+    "exportSaved": false,
+    "completedAtUtc": "2026-10-07T17:42:01.952Z"
+  },
+  "browserDeletion": {
+    "schemaVersion": 1,
+    "project": "custoking-dev",
+    "marker": "SEC-PHOTO-DEV-20261007-f0803775c0f7",
+    "studentId": 990008601,
+    "expectedSourceSha": "01522d74d039b9f46162572ddafd1a5c90d6e7ee",
+    "startedAtUtc": "2026-10-07T17:42:13.688Z",
+    "authenticator": "Chromium software CTAP2",
+    "physicalHardwareProof": false,
+    "providerCalls": 0,
+    "checks": [
+      {
+        "name": "normal-login",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "owned-student-preflight",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "actual-rp-status",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "registration-options",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "browser-registration-verified",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "assertion-options",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "fresh-step-up",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "confirmed-application-delete",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "source-absent-through-api",
+        "status": 404,
+        "expected": 404,
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "completedAtUtc": "2026-10-07T17:42:16.699Z"
+  },
+  "photoDeletion": {
+    "queueState": "DONE",
+    "queueRows": 1,
+    "attempts": 1,
+    "fixedGeneration": "1791394574200597",
+    "operationMatchesReceipt": true,
+    "exactActiveGenerationAbsent": true,
+    "absenceMethod": "Exact generation-qualified metadata describe returned NOT_FOUND; no object delete performed by harness",
+    "physicalPurgeProven": false
+  },
+  "journal": {
+    "canonical": true,
+    "intentId": "c0504ac6411b21fa7fb43d5fc47fcebd6c57066a1f77959b6eaf38102ae90367",
+    "generation": "1791394936593720",
+    "sha256": "d058fa82c4df695aba04965e1584824c5f6f702a7b2eaf3d5825950c004cc25c",
+    "originalIncarnationMatchesReceipt": true
+  },
+  "source": {
+    "rows": 0,
+    "children": 0,
+    "imports": 0
+  },
+  "downstream": {
+    "activeSessions": 0,
+    "deadLetter": 0,
+    "disabledActor": 1,
+    "inbox": 1,
+    "marker": "SEC-PHOTO-DEV-20261007-f0803775c0f7",
+    "outbox": 1,
+    "outboxAttempts": 1,
+    "photoDone": 1,
+    "processed": 1,
+    "projection": 0,
+    "published": 1,
+    "receipt": 1,
+    "source": 0,
+    "tombstone": 1,
+    "project": "custoking-dev",
+    "mode": "downstream",
+    "checkedAtUtc": "2026-10-07T17:50:31.381335+00:00"
+  },
+  "cleanup": {
+    "activeSessions": 0,
+    "disabled": 1,
+    "marker": "SEC-PHOTO-DEV-20261007-f0803775c0f7",
+    "receipt": 1,
+    "school": 0,
+    "disabledActorLoginStatus": 401,
+    "privateConfigRemoved": true,
+    "project": "custoking-dev",
+    "mode": "cleanup",
+    "checkedAtUtc": "2026-10-07T17:48:35.724793+00:00"
+  },
+  "ownedTemporaryJobs": [
+    {
+      "name": "ims-sec-final-journal-collision-0795bfda0acf",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T17:34:14.617769+00:00"
+    },
+    {
+      "name": "ims-sec-final-journal-seed-9e19d93b6526",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T17:34:43.020098+00:00"
+    },
+    {
+      "name": "ims-sec-final-photo-before-ba34e36255e7",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T17:38:25.215982+00:00"
+    },
+    {
+      "name": "ims-sec-final-photo-before-ffafab761d73",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T17:41:24.449485+00:00"
+    },
+    {
+      "name": "ims-sec-final-journal-verify-b958b64534f0",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T17:43:56.672576+00:00"
+    },
+    {
+      "name": "ims-sec-final-journal-verify-4ca7ec1f43c7",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T17:46:09.673113+00:00"
+    },
+    {
+      "name": "ims-sec-final-photo-after-0384a160f3d0",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T17:46:40.602102+00:00"
+    },
+    {
+      "name": "ims-sec-final-photo-cleanup-guard-5e7042ab0e1a",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T17:48:06.629074+00:00"
+    },
+    {
+      "name": "ims-sec-final-journal-cleanup-8a6ed7eccb81",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T17:48:35.225072+00:00"
+    },
+    {
+      "name": "ims-sec-final-photo-downstream-ee1af181888e",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T17:50:31.381335+00:00"
+    }
+  ],
+  "privateArtifactAbsence": {
+    "config": true,
+    "exportArchive": true
+  },
+  "controlledTests": {
+    "total": 31,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "optimized": true,
+    "realPostgreSQL": true,
+    "log": "tmp/dev-photo-and-journal-final-tests.log"
+  },
+  "checkpoints": [
+    {
+      "stage": "SCHOOL_ADMIN positive-export expectation",
+      "actual": 403,
+      "classification": "Correct operations-or-superadmin role denial; adjusted expected boundary, no role/gate broadened",
+      "proof": {
+        "schemaVersion": 1,
+        "project": "custoking-dev",
+        "marker": "SEC-PHOTO-DEV-20261007-f0803775c0f7",
+        "studentId": 990008601,
+        "expectedSourceSha": "01522d74d039b9f46162572ddafd1a5c90d6e7ee",
+        "startedAtUtc": "2026-10-07T17:35:51.579Z",
+        "authenticator": "Chromium software CTAP2",
+        "physicalHardwareProof": false,
+        "providerCalls": 0,
+        "checks": [
+          {
+            "name": "normal-login",
+            "status": 200,
+            "expected": 200,
+            "passed": true
+          },
+          {
+            "name": "owned-student-preflight",
+            "status": 200,
+            "expected": 200,
+            "passed": true
+          },
+          {
+            "name": "normal-owned-photo-upload",
+            "status": 200,
+            "expected": 200,
+            "passed": true
+          },
+          {
+            "name": "normal-owned-photo-read",
+            "status": 200,
+            "expected": 200,
+            "passed": true
+          },
+          {
+            "name": "normal-owned-photo-export",
+            "status": 403,
+            "expected": 200,
+            "passed": false
+          }
+        ],
+        "passed": false,
+        "exportSaved": false,
+        "completedAtUtc": "2026-10-07T17:36:14.397Z",
+        "failure": "BOUNDED_APPLICATION_CHECK_FAILED"
+      }
+    },
+    {
+      "stage": "Photo metadata CLI schema",
+      "failure": "EXACT_PHOTO_METADATA_REQUIRED",
+      "correction": "content_type normalized alongside contentType; no pin/delete occurred before correction"
+    },
+    {
+      "stage": "Structured Logging numeric generation",
+      "failure": "PINNED_INTENT_PATH_REQUIRED",
+      "correction": "SQL decimal TEXT and strict parser; rounded floats rejected; above2^53 regression"
+    }
+  ],
+  "limits": [
+    "One reserved owned nonpersonal fixture; no existing business row/object enumerated or mutated.",
+    "Positive archive export unexercised: SCHOOL_ADMIN was correctly denied403; no OPERATIONS actor created.",
+    "Foreign-key injection rejection was exercised; no live cross-tenant photo fixture was exercised.",
+    "Generation-qualified active absence does not prove soft-delete/version/recovery-copy physical expiry; retention unchanged.",
+    "No manual scheduler drain/republish, external provider, restore/cutover/epoch change, hardware or full backlog certification."
+  ],
+  "sourceHelpers": [
+    {
+      "path": "scripts/security/prepare-dev-photo-erasure-acceptance.py",
+      "sha256": "ec162a8402635b17f32c4b1c28635aa4ba894d529e550565b62a0728a3a9855f"
+    },
+    {
+      "path": "scripts/security/run-dev-photo-upload.mjs",
+      "sha256": "3fd0b312186e3e6dc681b4c59d00933878927945b98d798954115ee3ae72dccd"
+    },
+    {
+      "path": "scripts/security/run-dev-photo-delete.mjs",
+      "sha256": "31bb0275220951e5c20b550feec3637e59b24ef67d8e4339225dbd4233ba26fb"
+    },
+    {
+      "path": "scripts/security/prepare-dev-precommit-journal-acceptance.py",
+      "sha256": "d1e23598c0f76ea974adf9603073994c7f419f6b4eab3d1e0ab01b8dc087a2a6"
+    }
+  ]
+}

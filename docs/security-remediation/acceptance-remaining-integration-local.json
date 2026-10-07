@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "curatedAtUtc": "2026-10-07T18:03:50.378340+00:00",
+  "status": "LOCAL_PLATFORM_FULL_SUITE_PASS",
+  "platform": {
+    "command": ".\\mvnw.cmd -B -pl services/platform-service test --no-transfer-progress",
+    "completedAtUtc": "2026-10-07T18:00:04Z",
+    "tests": 437,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "focusedReportSuiteOverlapsFullSuite": true
+  },
+  "deploymentPerformed": false,
+  "productionChanged": false
+}
