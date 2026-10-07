@@ -41,6 +41,17 @@ public class GoogleDrivePhotoImportClient {
     static final String CREDENTIAL_MODE_USER = "user";
     static final String CREDENTIAL_MODE_SERVICE_ACCOUNT = "service-account";
 
+    private final String api;
+    @Value("${student.photo-import.drive.max-listed-files:5000}")
+    private int maxListedFiles = 5000;
+    @Value("${student.photo-import.drive.max-list-pages:20}")
+    private int maxListPages = 20;
+    @Value("${student.photo-import.drive.json-max-bytes:2097152}")
+    private int jsonMaxBytes = 2097152;
+    @Value("${student.photo-import.drive.list-timeout-seconds:60}")
+    private int listTimeoutSeconds = 60;
+    private static final java.util.concurrent.Semaphore JSON_SLOTS = new java.util.concurrent.Semaphore(8);
+    private static final java.util.concurrent.Semaphore LIST_SLOTS = new java.util.concurrent.Semaphore(2);
     private final boolean enabled;
     private final String configuredRootFolder;
     private final String oauthClientId;
@@ -59,6 +70,7 @@ public class GoogleDrivePhotoImportClient {
             @Value("${student.photo-import.oauth.client-secret:}") String oauthClientSecret,
             @Value("${student.photo-import.oauth.refresh-token:}") String oauthRefreshToken,
             @Value("${student.photo-import.credential-mode:user}") String credentialMode) {
+        this.api = API;
         this.enabled = enabled;
         this.configuredRootFolder = setting(rootFolderId);
         this.oauthClientId = setting(oauthClientId);
@@ -186,32 +198,43 @@ public class GoogleDrivePhotoImportClient {
 
     public List<DriveFile> listFiles(String folderId) {
         requireEnabled();
-        List<DriveFile> result = new ArrayList<>();
-        String pageToken = null;
-        do {
-            String query = "'" + folderId + "' in parents and trashed = false";
-            StringBuilder uri = new StringBuilder(API)
-                    .append("?q=").append(encode(query))
-                    .append("&pageSize=1000")
-                    .append("&supportsAllDrives=true")
-                    .append("&includeItemsFromAllDrives=true")
-                    .append("&fields=").append(encode(
-                            "nextPageToken,files(id,name,mimeType,size,md5Checksum,sha256Checksum,headRevisionId,version,modifiedTime,trashed)"));
-            if (pageToken != null) {
-                uri.append("&pageToken=").append(encode(pageToken));
-            }
-            Map<String, Object> payload = jsonGet(uri.toString());
-            Object files = payload.get("files");
-            if (files instanceof List<?> values) {
-                for (Object value : values) {
-                    if (value instanceof Map<?, ?> row) {
-                        result.add(toDriveFile(row));
+        if (!LIST_SLOTS.tryAcquire()) throw new DrivePhotoImportException("drive_rate_limited", "Drive scanning is busy; retry shortly");
+        try {
+            int fileLimit = boundedSetting(maxListedFiles, 20_000);
+            int pageLimit = boundedSetting(maxListPages, 100);
+            long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(boundedSetting(listTimeoutSeconds, 120));
+            List<DriveFile> result = new ArrayList<>();
+            java.util.Set<String> seenTokens = new java.util.HashSet<>();
+            String pageToken = null;
+            int pages = 0;
+            do {
+                if (++pages > pageLimit) throw listingLimit();
+                String query = "'" + folderId + "' in parents and trashed = false";
+                StringBuilder uri = new StringBuilder(api)
+                        .append("?q=").append(encode(query))
+                        .append("&pageSize=1000")
+                        .append("&supportsAllDrives=true")
+                        .append("&includeItemsFromAllDrives=true")
+                        .append("&fields=").append(encode(
+                                "nextPageToken,files(id,name,mimeType,size,md5Checksum,sha256Checksum,headRevisionId,version,modifiedTime,trashed)"));
+                if (pageToken != null) {
+                    uri.append("&pageToken=").append(encode(pageToken));
+                }
+                Map<String, Object> payload = jsonGet(uri.toString(), deadline);
+                Object files = payload.get("files");
+                if (files instanceof List<?> values) {
+                    for (Object value : values) {
+                        if (value instanceof Map<?, ?> row) {
+                            if (result.size() >= fileLimit) throw listingLimit();
+                            result.add(toDriveFile(row));
+                        }
                     }
                 }
-            }
-            pageToken = string(payload.get("nextPageToken"));
-        } while (pageToken != null && !pageToken.isBlank());
-        return result.stream().sorted(Comparator.comparing(DriveFile::name, String.CASE_INSENSITIVE_ORDER)).toList();
+                pageToken = string(payload.get("nextPageToken"));
+                if (pageToken != null && !pageToken.isBlank() && !seenTokens.add(pageToken)) throw listingLimit();
+            } while (pageToken != null && !pageToken.isBlank());
+            return result.stream().sorted(Comparator.comparing(DriveFile::name, String.CASE_INSENSITIVE_ORDER)).toList();
+        } finally { LIST_SLOTS.release(); }
     }
 
     public byte[] download(DriveFile file, long maxBytes) {
@@ -222,8 +245,8 @@ public class GoogleDrivePhotoImportClient {
                     file.name() + " is larger than " + (effectiveMax / (1024 * 1024)) + " MB");
         }
         String uri = file.isGoogleSheet()
-                ? API + "/" + encode(file.id()) + "/export?mimeType=" + encode(XLSX_MIME)
-                : API + "/" + encode(file.id()) + "?alt=media&supportsAllDrives=true";
+                ? api + "/" + encode(file.id()) + "/export?mimeType=" + encode(XLSX_MIME)
+                : api + "/" + encode(file.id()) + "?alt=media&supportsAllDrives=true";
         HttpRequest request = request(uri);
         if (!DOWNLOAD_SLOTS.tryAcquire()) throw new DrivePhotoImportException("drive_rate_limited", "Photo downloading is busy; retry shortly");
         try {
@@ -264,15 +287,19 @@ public class GoogleDrivePhotoImportClient {
     }
 
     private Map<String, Object> fileMetadata(String id, String fields) {
-        return jsonGet(API + "/" + encode(id)
+        return jsonGet(api + "/" + encode(id)
                 + "?supportsAllDrives=true&fields=" + encode(fields));
     }
 
     private Map<String, Object> jsonGet(String uri) {
+        return jsonGet(uri, System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(30));
+    }
+
+    private Map<String, Object> jsonGet(String uri, long deadline) {
         try {
-            HttpResponse<String> response = http.send(request(uri), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<byte[]> response = sendBounded(request(uri), Math.min(deadline, System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(30)));
             if (response.statusCode() != 200) {
-                throw driveFailure(response.statusCode(), response.body().getBytes(StandardCharsets.UTF_8));
+                throw driveFailure(response.statusCode(), response.body());
             }
             return objectMapper.readValue(response.body(), new TypeReference<>() {});
         } catch (DrivePhotoImportException ex) {
@@ -286,6 +313,7 @@ public class GoogleDrivePhotoImportClient {
     }
 
     private Map<String, Object> jsonPost(String uri, Map<String, Object> body) {
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(30);
         try {
             HttpRequest request = HttpRequest.newBuilder(URI.create(uri))
                     .timeout(Duration.ofSeconds(30))
@@ -294,9 +322,9 @@ public class GoogleDrivePhotoImportClient {
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
                     .build();
-            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<byte[]> response = sendBounded(request, deadline);
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw driveFailure(response.statusCode(), response.body().getBytes(StandardCharsets.UTF_8));
+                throw driveFailure(response.statusCode(), response.body());
             }
             return objectMapper.readValue(response.body(), new TypeReference<>() {});
         } catch (DrivePhotoImportException ex) {
@@ -306,6 +334,34 @@ public class GoogleDrivePhotoImportClient {
             throw new DrivePhotoImportException("drive_unavailable", "Drive request was interrupted", ex);
         } catch (IOException ex) {
             throw new DrivePhotoImportException("drive_unavailable", "Could not write to Google Drive", ex);
+        }
+    }
+
+    private static int boundedSetting(int value, int ceiling) {
+        if (value <= 0 || value > ceiling) throw new IllegalArgumentException("Drive safety limit is outside its allowed range");
+        return value;
+    }
+
+    private static DrivePhotoImportException listingLimit() {
+        return new DrivePhotoImportException("folder_too_large", "Drive folder exceeds the safe file/page scan limit; split it into smaller import folders");
+    }
+
+    private HttpResponse<byte[]> sendBounded(HttpRequest request, long deadline) throws IOException, InterruptedException {
+        if (!JSON_SLOTS.tryAcquire()) throw new DrivePhotoImportException("drive_rate_limited", "Drive requests are busy; retry shortly");
+        java.util.concurrent.CompletableFuture<HttpResponse<byte[]>> future = null;
+        try {
+            long remaining = deadline - System.nanoTime();
+            if (remaining <= 0) throw new java.net.http.HttpTimeoutException("Drive response timed out");
+            int limit = boundedSetting(jsonMaxBytes, 8 * 1024 * 1024);
+            future = http.sendAsync(request, info -> new com.custoking.ims.schoolcoreservice.infrastructure.BoundedHttpBody(limit));
+            return future.get(Math.max(1, deadline - System.nanoTime()), java.util.concurrent.TimeUnit.NANOSECONDS);
+        } catch (java.util.concurrent.TimeoutException timeout) {
+            throw new java.net.http.HttpTimeoutException("Drive response timed out");
+        } catch (java.util.concurrent.ExecutionException failure) {
+            throw new IOException("Drive response could not be read safely");
+        } finally {
+            if (future != null && !future.isDone()) future.cancel(true);
+            JSON_SLOTS.release();
         }
     }
 
@@ -415,7 +471,7 @@ public class GoogleDrivePhotoImportClient {
         payload.put("parents", List.of(parentId));
         payload.put("appProperties", appProperties);
         return toManagedFolder(jsonPost(
-                API + "?supportsAllDrives=true&fields="
+                api + "?supportsAllDrives=true&fields="
                         + encode("id,name,mimeType,webViewLink,createdTime,appProperties"),
                 payload));
     }

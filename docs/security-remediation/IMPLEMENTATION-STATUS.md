@@ -2,6 +2,14 @@
 
 The requested multi-agent implementation covers all 34 findings and 12 assurance tasks. This ledger separates implemented source, controlled tests and live acceptance. **All seven application services are deployed to dev; the security plan still has open live acceptance criteria.** Production has not been changed.
 
+## Remaining-work follow-up ? 2026-10-07
+
+Additional review found and fixed unbounded Google Drive metadata/pagination and SMS template variables that could overwrite validated routing/correlation. The full local school suite ran899 tests:898 passed, one Windows symlink privilege skip, zero failures/errors. The focused platform suites passed18 tests. These application follow-ups require mandatory CI and dev deployment; the previous full seven-service release remains the live baseline until that completes. [Drive/DNS scope](outbound-upload-followup.md), [SMS and fresh configuration scope](acceptance-remaining-dev-config.md), [local counts](acceptance-remaining-local-tests.json).
+
+The six existing dashboard security identities were imported into the established dev state; unrelated managed state was independently unchanged. No infrastructure apply or web deployment occurred. The targeted plan proposes no creation/deletion/replacement and only reviewed display/description drift. Three Terraform mock runs and13 helper tests passed, including four actual local PostgreSQL replay/export checks. The expired Firestore fixture still returned200; asynchronous physical cleanup remains unobserved. [State adoption](acceptance-dashboard-state-adoption.md).
+
+The new external-journal toolkit generates bounded, reviewed dev-only export, immutable storage and isolated replay plans; it executes no cloud/SQL operations or delivery resume. Precommit erasure durability, durable photo cleanup, operational journal provisioning and full restore fencing remain unimplemented. Generic live MSG91 inbox delivery also remains blocked pending current-owner consent and uncertain-outcome handling. These are explicit unfinished code/contract work, not merely missing credentials. [Journal design and limits](operational-erasure-journal.md), [updated remaining fix plan](acceptance-owner-actions.md).
+
 ## Current source and dev acceptance ? 2026-10-07
 
 [PR 319](https://github.com/custokingkr-dev/ims-v1/pull/319) merged the final application changes into dev as `f901c5f0631d9fcff617374c8e569401c1af84d6`. [Implementation CI 37604084992](https://github.com/custokingkr-dev/ims-v1/actions/runs/37604084992) passed all mandatory gates, including Windows helpers, six dev-edge Terraform tests and both changed Java suites. [CodeQL 37604084653](https://github.com/custokingkr-dev/ims-v1/actions/runs/37604084653) passed both languages; the reviewed PR 319 merge ref has zero open alerts. That is a scoped result, not a repository-wide historical alert count. [Exact implementation CI evidence](acceptance-implementation-ci.json).
@@ -48,7 +56,7 @@ Historical successful boundary evidence includes 15 signed caller checks, 12 ano
 | SEC-18 | Implemented recursive PDF active-content rejection, root confinement and browser download behavior; Windows symlink fixture was skipped locally; actual Linux CI catalog storage suite passed 8/8 with the symlink case executed. This is not antivirus/CDR. |
 | SEC-19 | Implemented centralized safe CSV text; dangerous prefixes covered. |
 | SEC-20 | Dashboard auth-off refusal, pinned origin and query limits implemented. Actual wrapper replay/logout/expiry checks against Firestore passed; real OAuth web deployment remains open. |
-| SEC-21 | Managed named Firestore, exact conditional get/create IAM, stable managed secret and cross-instance replay/revocation passed. TTL ACTIVE, physical expired-document deletion not yet observed; Terraform import and web OAuth deployment remain open. |
+| SEC-21 | Managed named Firestore, exact conditional get/create IAM, stable managed secret and cross-instance replay/revocation passed. TTL ACTIVE, physical expired-document deletion not yet observed; exact Terraform state adoption passed, while web OAuth deployment remains open. |
 | SEC-22 | Implemented and tested nonroot gateway/frontend port8080; immutable release image gates passed; anonymous live HTTP cannot prove process UID, and all seven runtime rollouts passed; exact deployed image hashes verify gateway User=node/frontend User=nginx; observed process UID is not claimed. |
 | SEC-23 | Implemented private photo caches/short signed TTL; actual18-object dev metadata correction. Old caches cannot be retrospectively revoked. |
 | SEC-24 | Implemented legacy URL restrictions and reviewed GCS handling; compatibility fixtures passed. |

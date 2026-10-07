@@ -95,9 +95,12 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
         if ((flowId == null || flowId.isBlank()) && properties.isDryRun()) {
             flowId = request.template();
         }
-        Map<String, Object> recipient = new LinkedHashMap<>();
+        Map<String, Object> recipient = variables(payload);
+        if (recipient.keySet().stream().anyMatch(key -> "mobiles".equalsIgnoreCase(key)
+                || "CRQID".equalsIgnoreCase(key))) {
+            throw new IllegalArgumentException("SMS variables cannot supply routing or correlation fields");
+        }
         recipient.put("mobiles", mobile);
-        recipient.putAll(variables(payload));
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("template_id", required(flowId, "flowId"));
         body.put("recipients", java.util.List.of(recipient));

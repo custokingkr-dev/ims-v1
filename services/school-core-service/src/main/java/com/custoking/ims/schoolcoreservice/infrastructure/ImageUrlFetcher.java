@@ -17,14 +17,25 @@ public class ImageUrlFetcher {
 
     private final long maxBytes;
     private final boolean allowLoopbackForTest;
+    @FunctionalInterface
+    interface AddressLookup { InetAddress[] resolve(String host) throws java.net.UnknownHostException; }
+    private final AddressLookup addressLookup;
 
     @Autowired
     public ImageUrlFetcher(@Value("${student.photo.max-bytes:5242880}") long maxBytes) {
         this(maxBytes, false);
     }
     private ImageUrlFetcher(long maxBytes, boolean allowLoopbackForTest) {
+        this(maxBytes, allowLoopbackForTest, InetAddress::getAllByName);
+    }
+    private ImageUrlFetcher(long maxBytes, boolean allowLoopbackForTest, AddressLookup addressLookup) {
         this.maxBytes = maxBytes;
         this.allowLoopbackForTest = allowLoopbackForTest;
+        this.addressLookup = addressLookup;
+    }
+    // Offline fixtures control DNS answers while keeping every production address/scheme/port guard.
+    static ImageUrlFetcher forTestUsingResolver(long maxBytes, AddressLookup addressLookup) {
+        return new ImageUrlFetcher(maxBytes, false, addressLookup);
     }
     static ImageUrlFetcher forTestAllowingLoopback(long maxBytes) {
         return new ImageUrlFetcher(maxBytes, true);
@@ -137,7 +148,7 @@ public class ImageUrlFetcher {
         try {
             long remaining = deadline - System.nanoTime();
             if (remaining <= 0) throw new java.util.concurrent.TimeoutException();
-            lookup = DNS_LOOKUPS.submit(() -> InetAddress.getAllByName(host));
+            lookup = DNS_LOOKUPS.submit(() -> addressLookup.resolve(host));
             addrs = lookup.get(remaining, java.util.concurrent.TimeUnit.NANOSECONDS);
         } catch (java.util.concurrent.TimeoutException e) {
             throw new ImageFetchException("timeout", "Photo source resolution timed out");

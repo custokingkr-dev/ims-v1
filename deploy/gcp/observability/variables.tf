@@ -1,7 +1,10 @@
 variable "project" {
   description = "Google Cloud project ID that owns the Cloud Run services and observability resources."
   type        = string
-  default     = "custoking"
+  validation {
+    condition     = contains(["custoking-dev", "custoking-prod"], var.project)
+    error_message = "An explicit current environment project is required: custoking-dev or custoking-prod."
+  }
 }
 
 variable "region" {
@@ -319,6 +322,12 @@ variable "dashboard_domain" {
 
 variable "enable_shared_dashboard" {
   description = "Whether to run the shared owner/ops dashboard on Cloud Run behind IAP."
+  type        = bool
+  default     = false
+}
+
+variable "enable_dashboard_security_state" {
+  description = "Manage the persistent dashboard replay/revocation database and identity independently of the OAuth web service. Keep enabled after state adoption."
   type        = bool
   default     = false
 }

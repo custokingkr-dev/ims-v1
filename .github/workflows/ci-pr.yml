@@ -112,6 +112,8 @@ jobs:
           scripts.tests.obsolete_revision_cleanup_test
           scripts.tests.http2_parser_probe_test
           scripts.tests.final_live_fixture_acceptance_test
+          scripts.tests.dashboard_state_adoption_test
+          scripts.tests.dev_erasure_journal_test
       - name: Test OpenAPI CI routing invariants
         run: python3 -m unittest scripts.tests.test_openapi_ci_gate
 
@@ -154,6 +156,12 @@ jobs:
           terraform -chdir=deploy/gcp/application-edge fmt -check -recursive
           terraform -chdir=deploy/gcp/application-edge validate -no-color
           terraform -chdir=deploy/gcp/application-edge test -no-color
+      - name: Validate persistent dashboard state without a web deployment
+        run: |
+          terraform -chdir=deploy/gcp/observability init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=deploy/gcp/observability fmt -check -recursive
+          terraform -chdir=deploy/gcp/observability validate -no-color
+          terraform -chdir=deploy/gcp/observability test -no-color
 
   windows-security-helper-validation:
     name: windows-security-helper-validation
