@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "checkedAtUtc": "2026-10-07T17:27:08.030974+00:00",
+  "readOnly": true,
+  "noCloudMutation": true,
+  "ttl": {
+    "database": "ims-dashboard-dev",
+    "documentId": "expired-5d010f4bf88d45efb59105858cdf18aa69b1ae9c93dcd41b0c69924f5b4680ad",
+    "originalExpiry": "2026-10-06T09:47:58.010Z",
+    "priorGetStatus": 200,
+    "priorObservedAtUtc": "2026-10-07T13:24:20.896Z",
+    "databaseGetStatus": 200,
+    "documentGetStatus": 200,
+    "physicalAbsenceObserved": false,
+    "ttlDeletionAttributionProven": false,
+    "principal": "Current operator GET-only observation; not dashboard service-account IAM retest",
+    "documentContentLogged": false,
+    "observedExpiry": "2026-10-06T09:47:58.010Z",
+    "policyReadbackSucceeded": true,
+    "exactExpiresAtPolicyCount": 1,
+    "expiresAtTtlState": "ACTIVE"
+  },
+  "repository": {
+    "repository": "custokingkr-dev/ims-v1",
+    "apiSucceeded": true,
+    "permissions": {
+      "admin": false,
+      "maintain": false,
+      "push": true,
+      "triage": true,
+      "pull": true
+    },
+    "canAdministerProtection": false,
+    "devProtectionReadbackSucceeded": true,
+    "devProtected": false
+  },
+  "dashboardConfiguration": {
+    "dedicatedOAuthSecretMetadataReadable": false,
+    "secretValuesRead": false,
+    "unrelatedOAuthReuse": false,
+    "secretNotFound": true,
+    "dashboardServiceMetadataReadable": false,
+    "serviceNotFound": true,
+    "moduleTfvarsFileCount": 0,
+    "currentProcessTfVarAvailable": {
+      "dashboard_oauth_client_id": false,
+      "dashboard_public_url": false,
+      "dashboard_allowed_emails": false
+    },
+    "callbackRegistrationVerified": false,
+    "allowedHumanIdentitiesApproved": false
+  },
+  "evidenceWorktreeCommit": "2a7bea8e582c38aa46af5892eb84c5ae997471d3",
+  "completedAtUtc": "2026-10-07T17:28:05.965013+00:00",
+  "restoreTargetAvailability": {
+    "project": "custoking-dev",
+    "checkedAtUtc": "2026-10-07T17:31:21.614521+00:00",
+    "readOnly": true,
+    "instances": [
+      {
+        "name": "custoking-db-dev",
+        "region": "asia-south2",
+        "state": "RUNNABLE",
+        "serverCaMode": "GOOGLE_MANAGED_INTERNAL_CA",
+        "primarySource": true,
+        "securityRestoreName": false
+      }
+    ]
+  },
+  "productionChanged": false
+}

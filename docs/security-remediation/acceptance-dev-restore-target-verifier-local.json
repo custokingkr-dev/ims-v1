@@ -1,0 +1,43 @@
+{
+  "capturedAtUtc": "2026-10-07T18:10:59.637520+00:00",
+  "scope": "LOCAL_TLS_AND_SELECTED_CATALOG_FENCES_NOT_LIVE_RESTORE",
+  "testModules": [
+    "scripts.tests.dev_restore_target_verifier_test",
+    "scripts.tests.dev_restore_target_verifier_postgres_test"
+  ],
+  "optimizedPython": true,
+  "returnCode": 0,
+  "testsReported": 26,
+  "elapsedSeconds": 37.266,
+  "migrationSqlChains": {
+    "identity": 10,
+    "billing": 10,
+    "tenant_school": 30,
+    "student": 39,
+    "attendance": 11,
+    "fee": 11,
+    "catalog": 26,
+    "workflow": 7,
+    "firefighting": 14,
+    "reporting": 35,
+    "notification": 17,
+    "audit": 3
+  },
+  "flywayHistoriesOrCallbacksExecuted": false,
+  "liveTargetVerified": false,
+  "restorationReady": false,
+  "deliveryResume": false,
+  "hashAlgorithm": "SHA256_UTF8_NORMALIZED_LF",
+  "sourceHashes": {
+    "scripts/security/verify-dev-restore-target.py": "86a5a8a0d5081e7506584a70b48b72b9427c53142769496d2b2650b8337608e6",
+    "scripts/tests/dev_restore_target_verifier_test.py": "48300abe6817ad232c6e6f671272cfaef2888f1d370072b7a00554a4e182daf5",
+    "scripts/tests/dev_restore_target_verifier_postgres_test.py": "9e7045b7d50d4d3a86155cccfcae5d32d1c52a3164f9f733bd129310cc7fc19d",
+    "docs/security-remediation/dev-restore-target-verifier.md": "f38e67e8c15347a1a33fbef06e2c15db1e07f058e99f5e96cbe3d7770dfdb8d6"
+  },
+  "logSha256": "d0c7b4e87cf9383d5e7bf4e622db8e43da40e879adaeba507032f793e854b48a",
+  "ownedFixtureContainersAbsent": true,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "productionChanged": false
+}

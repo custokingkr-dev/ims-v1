@@ -9,3 +9,8 @@
 # Keep these suppressions bound to the exact historical findings.
 f185f3e923b73d01b5b32b87a15482667b591e42:tools/live-dashboard/auth.test.mjs:generic-api-key:8
 f185f3e923b73d01b5b32b87a15482667b591e42:tools/live-dashboard/server.test.mjs:generic-api-key:8
+
+# Verified evidence false positive: this historical field is the SHA256 digest of
+# one synthetic GCS object name, not a credential. The current field is named
+# objectNameDigestSha256. Bind the exception to this one historical finding.
+70172a078642043c6c98a41c490f8a6b57e0064c:docs/security-remediation/acceptance-live-durable-photo-erasure.json:generic-api-key:87

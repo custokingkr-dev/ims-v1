@@ -5,6 +5,21 @@ import org.springframework.mock.web.*;
 import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 class MachineCallerFilterTest {
+ @Test void normalizedReportRouteRequiresItsOwnExactPurposeCallerAndUnknownPathsStayDenied() throws Exception {
+  var env=new MockEnvironment().withProperty("NOTIFICATION_REPORT_CALLER_SERVICE_ACCOUNTS","reports@synthetic.iam.gserviceaccount.com")
+    .withProperty("NOTIFICATION_DELIVERY_CALLER_SERVICE_ACCOUNTS","delivery@synthetic.iam.gserviceaccount.com");
+  var filter=new MachineCallerFilter(env,token->Optional.of(token+"@synthetic.iam.gserviceaccount.com"));
+  String path="/api/v1/internal/notifications/reports/reconcile";
+  for(String caller:java.util.List.of("gateway","delivery")) {
+   var request=new MockHttpServletRequest("POST",path);request.addHeader("Authorization","Bearer "+caller);
+   request.addHeader("X-Notification-Service-Token","shared");var response=new MockHttpServletResponse();var chain=new MockFilterChain();
+   filter.doFilter(request,response,chain);assertEquals(403,response.getStatus());assertNull(chain.getRequest());
+  }
+  var request=new MockHttpServletRequest("POST",path);request.addHeader("Authorization","Bearer reports");
+  var response=new MockHttpServletResponse();var chain=new MockFilterChain();filter.doFilter(request,response,chain);assertNotNull(chain.getRequest());
+  request=new MockHttpServletRequest("POST",path+"/extra");request.addHeader("Authorization","Bearer reports");
+  response=new MockHttpServletResponse();filter.doFilter(request,response,new MockFilterChain());assertEquals(403,response.getStatus());
+ }
  @Test void sharedTokenAndForgedPrincipalCannotAuthorizeMachineRoute() throws Exception {
   var env=new MockEnvironment().withProperty("OUTBOX_RELAY_CALLER_SERVICE_ACCOUNTS","scheduler@project.iam.gserviceaccount.com");
   var filter=new MachineCallerFilter(env, token->Optional.of("gateway@project.iam.gserviceaccount.com"));

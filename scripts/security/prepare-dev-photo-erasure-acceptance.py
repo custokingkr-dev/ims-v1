@@ -11,7 +11,7 @@ import re
 import uuid
 
 PROJECT = 'custoking-dev'
-IDS = {'schoolId': 990008101, 'userId': 990008201, 'studentId': 990008301}
+IDS = {'schoolId': 990008401, 'userId': 990008501, 'studentId': 990008601}
 SHA = re.compile(r'[a-f0-9]{64}')
 NONCE = re.compile(r'[a-f0-9]{12}')
 JOURNAL_ENV_KEYS = frozenset('STUDENT_ERASURE_JOURNAL_' + suffix for suffix in (
@@ -26,15 +26,16 @@ def canonical(value):
 
 def marker(nonce):
     require(isinstance(nonce, str) and NONCE.fullmatch(nonce), 'INVALID_NONCE')
-    return 'SEC-JOURNAL-DEV-20261007-' + nonce
+    return 'SEC-PHOTO-DEV-20261007-' + nonce
 
 def validate_plan(plan):
     require(plan.get('project') == PROJECT and plan.get('region') == 'asia-south2', 'DEV_SCOPE_REQUIRED')
     require(plan.get('ids') == IDS, 'FRESH_RESERVED_IDS_REQUIRED')
     require(plan.get('marker') == marker(plan.get('nonce')), 'MARKER_BINDING_REQUIRED')
     require(isinstance(plan.get('sourceSha'), str) and re.fullmatch(r'[a-f0-9]{40}', plan['sourceSha']), 'EXACT_SOURCE_REQUIRED')
+    require(plan.get('sourceSha') == '01522d74d039b9f46162572ddafd1a5c90d6e7ee' and plan.get('releaseRunId') == 37651698357, 'EXACT_PHOTO_RELEASE_REQUIRED')
     services = plan.get('services', {})
-    require(set(services) == {'custoking-school-core-service-dev', 'custoking-identity-service-dev', 'custoking-frontend-dev', 'custoking-api-gateway-dev'}, 'EXACT_SERVICES_REQUIRED')
+    require(set(services) == {'custoking-school-core-service-dev', 'custoking-identity-service-dev', 'custoking-frontend-dev', 'custoking-api-gateway-dev','custoking-operations-service-dev','custoking-platform-service-dev','custoking-billing-service-dev'}, 'EXACT_SERVICES_REQUIRED')
     for name, entry in services.items():
         require(isinstance(entry, dict) and re.fullmatch(re.escape(name) + r'-[a-z0-9-]+', entry.get('revision', '')), 'EXACT_REVISION_REQUIRED')
         require(re.fullmatch(re.escape('asia-south2-docker.pkg.dev/custoking-dev/custoking/' + name.removesuffix('-dev')) + r'@sha256:[a-f0-9]{64}', entry.get('image', '')), 'IMMUTABLE_DEV_IMAGE_REQUIRED')
@@ -55,16 +56,16 @@ def collision_sql(plan):
     # Includes durable deletion witnesses, not merely current source rows.
     return """BEGIN READ ONLY; SET LOCAL statement_timeout='10s'; SET LOCAL app.bypass_rls='on';
 SELECT jsonb_build_object('marker','%s','database',current_database(),
- 'source', (SELECT count(*) FROM student.students WHERE id=990008301),
- 'school', (SELECT count(*) FROM tenant_school.schools WHERE id=990008101),
- 'actor', (SELECT count(*) FROM identity.app_users WHERE id=990008201 OR email='%s@security-fixture.invalid'),
- 'receipt', (SELECT count(*) FROM student.erasure_journal_receipts WHERE student_id=990008301),
- 'photoQueue', (SELECT count(*) FROM tenant_school.photo_cleanup_outbox WHERE student_id=990008301),
- 'sourceOutbox', (SELECT count(*) FROM tenant_school.outbox_events WHERE aggregate_id='990008301'),
- 'reportingInbox', (SELECT count(*) FROM reporting.reporting_event_inbox WHERE aggregate_id='990008301'),
- 'projection', (SELECT count(*) FROM reporting.dim_student WHERE id=990008301),
+ 'source', (SELECT count(*) FROM student.students WHERE id=990008601),
+ 'school', (SELECT count(*) FROM tenant_school.schools WHERE id=990008401),
+ 'actor', (SELECT count(*) FROM identity.app_users WHERE id=990008501 OR email='%s@security-fixture.invalid'),
+ 'receipt', (SELECT count(*) FROM student.erasure_journal_receipts WHERE student_id=990008601),
+ 'photoQueue', (SELECT count(*) FROM tenant_school.photo_cleanup_outbox WHERE student_id=990008601),
+ 'sourceOutbox', (SELECT count(*) FROM tenant_school.outbox_events WHERE aggregate_id='990008601'),
+ 'reportingInbox', (SELECT count(*) FROM reporting.reporting_event_inbox WHERE aggregate_id='990008601'),
+ 'projection', (SELECT count(*) FROM reporting.dim_student WHERE id=990008601),
  'parents', (SELECT count(*) FROM tenant_school.school_classes WHERE id='%s-CLASS') + (SELECT count(*) FROM tenant_school.academic_years WHERE id='%s-YEAR') + (SELECT count(*) FROM tenant_school.school_sections WHERE id='%s-SECTION'),
- 'tombstone', (SELECT count(*) FROM reporting.student_projection_tombstones WHERE student_id=990008301)); COMMIT;
+ 'tombstone', (SELECT count(*) FROM reporting.student_projection_tombstones WHERE student_id=990008601)); COMMIT;
 """ % (m, m.lower(), m, m, m)
 
 def verify_collision(plan, observed):
@@ -134,10 +135,13 @@ def transport(plan):
     spec = importlib.util.spec_from_file_location('existing_fixture_transport', pathlib.Path(__file__).with_name('final-live-fixture-acceptance.py'))
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
     module.MARKER = plan['marker']
+    module.TMP = pathlib.Path(__file__).resolve().parents[2]/'tmp'/'dev-photo-acceptance'
+    module.TMP.mkdir(exist_ok=True)
     module.cloud = bounded_cloud
     return module
 
 def actual_ready(plan, release):
+    require(release.get('runId') == 37651698357, 'EXACT_PHOTO_RELEASE_REQUIRED')
     require(release.get('sourceHeadSha') == plan['sourceSha'] and release.get('conclusion') == 'success' and release.get('status') == 'completed', 'SUCCESSFUL_EXACT_RELEASE_REQUIRED')
     rows = {('custoking-' + r['service'] + '-dev'): r for r in release.get('services', [])}
     observed = dict(project=PROJECT, releaseSourceSha=release['sourceHeadSha'], releaseEvidenceVerified=True, services={}, journalEnvironment={})
@@ -169,41 +173,41 @@ def seed_sql(plan, hashed):
     m = plan['marker']
     require(re.fullmatch(r'\$2[aby]\$12\$[./A-Za-z0-9]{53}', hashed), 'BCRYPT_HASH_REQUIRED')
     # Collision checks are repeated under a fixed transaction advisory lock. No ON CONFLICT reuse.
-    sql = collision_sql(plan).replace('BEGIN READ ONLY;', 'BEGIN; SET LOCAL lock_timeout=\'5s\'; SELECT pg_advisory_xact_lock(990008101);')
+    sql = collision_sql(plan).replace('BEGIN READ ONLY;', 'BEGIN; SET LOCAL lock_timeout=\'5s\'; SELECT pg_advisory_xact_lock(990008401);')
     sql = sql[:sql.index('SELECT jsonb_build_object')]
-    sql += """DO $$ BEGIN IF EXISTS(SELECT 1 FROM student.students WHERE id=990008301) OR EXISTS(SELECT 1 FROM tenant_school.schools WHERE id=990008101) OR EXISTS(SELECT 1 FROM identity.app_users WHERE id=990008201 OR email='%s@security-fixture.invalid') OR EXISTS(SELECT 1 FROM student.erasure_journal_receipts WHERE student_id=990008301) OR EXISTS(SELECT 1 FROM reporting.student_projection_tombstones WHERE student_id=990008301) OR EXISTS(SELECT 1 FROM reporting.dim_student WHERE id=990008301) OR EXISTS(SELECT 1 FROM tenant_school.outbox_events WHERE aggregate_id='990008301') OR EXISTS(SELECT 1 FROM reporting.reporting_event_inbox WHERE aggregate_id='990008301') OR EXISTS(SELECT 1 FROM tenant_school.photo_cleanup_outbox WHERE student_id=990008301) OR EXISTS(SELECT 1 FROM tenant_school.school_classes WHERE id='%s-CLASS') OR EXISTS(SELECT 1 FROM tenant_school.academic_years WHERE id='%s-YEAR') OR EXISTS(SELECT 1 FROM tenant_school.school_sections WHERE id='%s-SECTION') OR (SELECT count(*) FROM identity.roles WHERE name='SCHOOL_ADMIN')<>1 THEN RAISE EXCEPTION 'Reserved fixture collision'; END IF; END $$;
-INSERT INTO tenant_school.schools(id,name,short_code,active,created_at) VALUES(990008101,'%s','SJ%s',true,now());
-INSERT INTO tenant_school.school_module_entitlements(school_id,module_code,enabled,notes) VALUES(990008101,'STUDENTS',true,'%s');
-INSERT INTO identity.app_users(id,full_name,email,password_hash,role,branch_id,branch_name,created_at) VALUES(990008201,'%s','%s@security-fixture.invalid','%s','SCHOOL_ADMIN',990008101,'%s',now());
-INSERT INTO identity.user_role_assignments(user_id,role_id,school_id,active) SELECT 990008201,id,990008101,true FROM identity.roles WHERE name='SCHOOL_ADMIN';
+    sql += """DO $$ BEGIN IF EXISTS(SELECT 1 FROM student.students WHERE id=990008601) OR EXISTS(SELECT 1 FROM tenant_school.schools WHERE id=990008401) OR EXISTS(SELECT 1 FROM identity.app_users WHERE id=990008501 OR email='%s@security-fixture.invalid') OR EXISTS(SELECT 1 FROM student.erasure_journal_receipts WHERE student_id=990008601) OR EXISTS(SELECT 1 FROM reporting.student_projection_tombstones WHERE student_id=990008601) OR EXISTS(SELECT 1 FROM reporting.dim_student WHERE id=990008601) OR EXISTS(SELECT 1 FROM tenant_school.outbox_events WHERE aggregate_id='990008601') OR EXISTS(SELECT 1 FROM reporting.reporting_event_inbox WHERE aggregate_id='990008601') OR EXISTS(SELECT 1 FROM tenant_school.photo_cleanup_outbox WHERE student_id=990008601) OR EXISTS(SELECT 1 FROM tenant_school.school_classes WHERE id='%s-CLASS') OR EXISTS(SELECT 1 FROM tenant_school.academic_years WHERE id='%s-YEAR') OR EXISTS(SELECT 1 FROM tenant_school.school_sections WHERE id='%s-SECTION') OR (SELECT count(*) FROM identity.roles WHERE name='SCHOOL_ADMIN')<>1 THEN RAISE EXCEPTION 'Reserved fixture collision'; END IF; END $$;
+INSERT INTO tenant_school.schools(id,name,short_code,active,created_at) VALUES(990008401,'%s','SJ%s',true,now());
+INSERT INTO tenant_school.school_module_entitlements(school_id,module_code,enabled,notes) VALUES(990008401,'STUDENTS',true,'%s');
+INSERT INTO identity.app_users(id,full_name,email,password_hash,role,branch_id,branch_name,created_at) VALUES(990008501,'%s','%s@security-fixture.invalid','%s','SCHOOL_ADMIN',990008401,'%s',now());
+INSERT INTO identity.user_role_assignments(user_id,role_id,school_id,active) SELECT 990008501,id,990008401,true FROM identity.roles WHERE name='SCHOOL_ADMIN';
 INSERT INTO tenant_school.school_classes(id,name,sort_order) VALUES('%s-CLASS','%s',99);
 INSERT INTO tenant_school.academic_years(id,label,active) VALUES('%s-YEAR','%s',true);
-INSERT INTO tenant_school.school_sections(id,name,active,school_class_id,school_id) VALUES('%s-SECTION','%s',true,'%s-CLASS',990008101);
-INSERT INTO student.students(id,admission_no,full_name,created_at,updated_at,school_id,class_id,section_id,academic_year_id,created_by) VALUES(990008301,'%s-STUDENT','%s',now(),now(),990008101,'%s-CLASS','%s-SECTION','%s-YEAR','%s');
-SELECT jsonb_build_object('marker','%s','studentIncarnation',(SELECT erasure_incarnation::text FROM student.students WHERE id=990008301),'seeded',(SELECT count(*) FROM student.students WHERE id=990008301 AND school_id=990008101 AND admission_no='%s-STUDENT' AND created_by='%s')); COMMIT;
+INSERT INTO tenant_school.school_sections(id,name,active,school_class_id,school_id) VALUES('%s-SECTION','%s',true,'%s-CLASS',990008401);
+INSERT INTO student.students(id,admission_no,full_name,created_at,updated_at,school_id,class_id,section_id,academic_year_id,created_by) VALUES(990008601,'%s-STUDENT','%s',now(),now(),990008401,'%s-CLASS','%s-SECTION','%s-YEAR','%s');
+SELECT jsonb_build_object('marker','%s','studentIncarnation',(SELECT erasure_incarnation::text FROM student.students WHERE id=990008601),'seeded',(SELECT count(*) FROM student.students WHERE id=990008601 AND school_id=990008401 AND admission_no='%s-STUDENT' AND created_by='%s')); COMMIT;
 """ % (m.lower(),m,m,m,m,plan['nonce'],m,m,m.lower(),hashed,m,m,m,m,m,m,m,m,m,m,m,m,m,m,m,m,m)
     return sql
 
 def verify_sql(plan):
     m = plan['marker']
     children = ['student.student_guardians','student.student_enrollments','student.student_consent_events','student.student_review_items','student.photo_import_rows','student.student_promotion_batch_items','attendance.absentee_notifications','attendance.attendance_student_records','fee.payment_records','fee.fee_assignments']
-    childsum = ' + '.join('(SELECT count(*) FROM '+t+' WHERE student_id=990008301)' for t in children)
-    return "BEGIN READ ONLY; SET LOCAL statement_timeout='10s'; SET LOCAL app.bypass_rls='on'; SELECT jsonb_build_object('marker','"+m+"','receipt',(SELECT to_jsonb(r)||jsonb_build_object('journal_generation',r.journal_generation::text) FROM student.erasure_journal_receipts r WHERE student_id=990008301 AND school_id=990008101),'source',(SELECT count(*) FROM student.students WHERE id=990008301),'children',"+childsum+",'imports',(SELECT count(*) FROM student.import_rows WHERE applied_student_id=990008301),'tombstone',(SELECT count(*) FROM reporting.student_projection_tombstones WHERE student_id=990008301),'incarnationInsert',has_column_privilege('ims_school_core_rt','student.students','erasure_incarnation','INSERT'),'receiptDelete',has_table_privilege('ims_school_core_rt','student.erasure_journal_receipts','DELETE'),'photoDelete',has_table_privilege('ims_school_core_rt','tenant_school.photo_cleanup_outbox','DELETE')); COMMIT;"
+    childsum = ' + '.join('(SELECT count(*) FROM '+t+' WHERE student_id=990008601)' for t in children)
+    return "BEGIN READ ONLY; SET LOCAL statement_timeout='10s'; SET LOCAL app.bypass_rls='on'; SELECT jsonb_build_object('marker','"+m+"','receipt',(SELECT to_jsonb(r)||jsonb_build_object('journal_generation',r.journal_generation::text) FROM student.erasure_journal_receipts r WHERE student_id=990008601 AND school_id=990008401),'source',(SELECT count(*) FROM student.students WHERE id=990008601),'children',"+childsum+",'imports',(SELECT count(*) FROM student.import_rows WHERE applied_student_id=990008601),'tombstone',(SELECT count(*) FROM reporting.student_projection_tombstones WHERE student_id=990008601),'incarnationInsert',has_column_privilege('ims_school_core_rt','student.students','erasure_incarnation','INSERT'),'receiptDelete',has_table_privilege('ims_school_core_rt','student.erasure_journal_receipts','DELETE'),'photoDelete',has_table_privilege('ims_school_core_rt','tenant_school.photo_cleanup_outbox','DELETE')); COMMIT;"
 
 def cleanup_sql(plan):
     m=plan['marker']
-    return """BEGIN; SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='5s'; SET LOCAL app.bypass_rls='on'; SELECT pg_advisory_xact_lock(990008101);
-DO $$ BEGIN IF EXISTS(SELECT 1 FROM student.students WHERE id=990008301 OR school_id=990008101) OR (SELECT count(*) FROM student.erasure_journal_receipts WHERE student_id=990008301 AND school_id=990008101)<>1 OR EXISTS(SELECT 1 FROM tenant_school.school_sections WHERE school_id=990008101 AND (id<>'%s-SECTION' OR name<>'%s')) OR EXISTS(SELECT 1 FROM tenant_school.school_sections WHERE school_class_id='%s-CLASS' AND school_id<>990008101) OR EXISTS(SELECT 1 FROM student.students WHERE class_id='%s-CLASS' OR academic_year_id='%s-YEAR') OR EXISTS(SELECT 1 FROM tenant_school.school_module_entitlements WHERE school_id=990008101 AND notes IS DISTINCT FROM '%s') OR (SELECT count(*) FROM identity.app_users WHERE id=990008201 AND full_name='%s' AND email='%s@security-fixture.invalid' AND branch_id=990008101 AND role='SCHOOL_ADMIN')<>1 OR (SELECT count(*) FROM tenant_school.schools WHERE id=990008101 AND name='%s')<>1 THEN RAISE EXCEPTION 'Exact cleanup ownership failed'; END IF; END $$;
-UPDATE identity.app_users SET deleted_at=coalesce(deleted_at,now()),deleted_by='%s',credential_version=credential_version+1 WHERE id=990008201;
-UPDATE identity.auth_sessions SET status='REVOKED' WHERE user_id=990008201;
-UPDATE identity.user_role_assignments SET active=false,revoked_at=now() WHERE user_id=990008201;
-INSERT INTO identity.rbac_audit_log(event_type,target_user_id,new_value,correlation_id) VALUES('SYNTHETIC_ORDINARY_ACTOR_DISABLED',990008201,'Exact journal acceptance fixture disabled','%s');
-DELETE FROM tenant_school.school_sections WHERE id='%s-SECTION' AND school_id=990008101 AND name='%s';
-DELETE FROM tenant_school.school_module_entitlements WHERE school_id=990008101 AND notes='%s';
-DELETE FROM tenant_school.schools WHERE id=990008101 AND name='%s';
+    return """BEGIN; SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='5s'; SET LOCAL app.bypass_rls='on'; SELECT pg_advisory_xact_lock(990008401);
+DO $$ BEGIN IF EXISTS(SELECT 1 FROM student.students WHERE id=990008601 OR school_id=990008401) OR (SELECT count(*) FROM student.erasure_journal_receipts WHERE student_id=990008601 AND school_id=990008401)<>1 OR EXISTS(SELECT 1 FROM tenant_school.school_sections WHERE school_id=990008401 AND (id<>'%s-SECTION' OR name<>'%s')) OR EXISTS(SELECT 1 FROM tenant_school.school_sections WHERE school_class_id='%s-CLASS' AND school_id<>990008401) OR EXISTS(SELECT 1 FROM student.students WHERE class_id='%s-CLASS' OR academic_year_id='%s-YEAR') OR EXISTS(SELECT 1 FROM tenant_school.school_module_entitlements WHERE school_id=990008401 AND notes IS DISTINCT FROM '%s') OR (SELECT count(*) FROM identity.app_users WHERE id=990008501 AND full_name='%s' AND email='%s@security-fixture.invalid' AND branch_id=990008401 AND role='SCHOOL_ADMIN')<>1 OR (SELECT count(*) FROM tenant_school.schools WHERE id=990008401 AND name='%s')<>1 THEN RAISE EXCEPTION 'Exact cleanup ownership failed'; END IF; END $$;
+UPDATE identity.app_users SET deleted_at=coalesce(deleted_at,now()),deleted_by='%s',credential_version=credential_version+1 WHERE id=990008501;
+UPDATE identity.auth_sessions SET status='REVOKED' WHERE user_id=990008501;
+UPDATE identity.user_role_assignments SET active=false,revoked_at=now() WHERE user_id=990008501;
+INSERT INTO identity.rbac_audit_log(event_type,target_user_id,new_value,correlation_id) VALUES('SYNTHETIC_ORDINARY_ACTOR_DISABLED',990008501,'Exact journal acceptance fixture disabled','%s');
+DELETE FROM tenant_school.school_sections WHERE id='%s-SECTION' AND school_id=990008401 AND name='%s';
+DELETE FROM tenant_school.school_module_entitlements WHERE school_id=990008401 AND notes='%s';
+DELETE FROM tenant_school.schools WHERE id=990008401 AND name='%s';
 DELETE FROM tenant_school.school_classes WHERE id='%s-CLASS' AND name='%s';
 DELETE FROM tenant_school.academic_years WHERE id='%s-YEAR' AND label='%s';
-SELECT jsonb_build_object('marker','%s','disabled',(SELECT count(*) FROM identity.app_users WHERE id=990008201 AND deleted_at IS NOT NULL),'activeSessions',(SELECT count(*) FROM identity.auth_sessions WHERE user_id=990008201 AND status='ACTIVE'),'school',(SELECT count(*) FROM tenant_school.schools WHERE id=990008101),'receipt',(SELECT count(*) FROM student.erasure_journal_receipts WHERE student_id=990008301)); COMMIT;
+SELECT jsonb_build_object('marker','%s','disabled',(SELECT count(*) FROM identity.app_users WHERE id=990008501 AND deleted_at IS NOT NULL),'activeSessions',(SELECT count(*) FROM identity.auth_sessions WHERE user_id=990008501 AND status='ACTIVE'),'school',(SELECT count(*) FROM tenant_school.schools WHERE id=990008401),'receipt',(SELECT count(*) FROM student.erasure_journal_receipts WHERE student_id=990008601)); COMMIT;
 """ % (m,m,m,m,m,m,m,m.lower(),m,m,m,m,m,m,m,m,m,m,m,m)
 
 def parse_decimal_generation(value):
@@ -214,7 +218,7 @@ def main():
     import secrets, datetime
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--plan',required=True); parser.add_argument('--out',required=True)
-    parser.add_argument('--apply-dev',action='store_true'); parser.add_argument('--mode',choices=['prepare','seed','verify','cleanup'],default='prepare')
+    parser.add_argument('--apply-dev',action='store_true'); parser.add_argument('--mode',choices=['prepare','seed','photo-before','verify','cleanup','downstream'],default='prepare')
     parser.add_argument('--release-evidence'); parser.add_argument('--release-evidence-sha256'); parser.add_argument('--browser-proof')
     args=parser.parse_args(); plan=validate_plan(read_json(args.plan))
     out=pathlib.Path(args.out); require(not out.exists(),'OUTPUT_ALREADY_EXISTS')
@@ -228,7 +232,7 @@ def main():
         releasebytes=releasepath.read_bytes()
         require(SHA.fullmatch(args.release_evidence_sha256) and hashlib.sha256(releasebytes).hexdigest()==args.release_evidence_sha256,'RELEASE_HASH_MISMATCH')
         ready=actual_ready(plan,json.loads(releasebytes))
-        module=transport(plan); private=module.TMP/('dev-journal-'+plan['nonce']+'-private.json')
+        module=transport(plan); private=module.TMP/('dev-photo-'+plan['nonce']+'-private.json')
         if args.mode=='seed':
             require(not private.exists(),'PRIVATE_CONFIG_ALREADY_EXISTS')
             verify_collision(plan,module.owner_sql('journal-collision',collision_sql(plan)))
@@ -241,6 +245,15 @@ def main():
             config['studentIncarnation']=str(uuid.UUID(result['studentIncarnation']))
             private.write_text(json.dumps(config),encoding='utf-8')
             result.update(privateConfig=str(private),ready=ready)
+        elif args.mode=='photo-before':
+            config=read_json(private)
+            result=module.owner_sql('photo-before',photo_sql(plan, False))
+            target=validate_photo_target(plan,result)
+            meta=json.loads(bounded_cloud(['storage','objects','describe','gs://'+target['bucket']+'/'+target['key'],'--format=json'],60,16384))
+            generation=int(meta.get('generation',0)); require(generation>0 and int(meta.get('size',0))<=5242880 and meta.get('contentType',meta.get('content_type'))=='image/jpeg','EXACT_PHOTO_METADATA_REQUIRED')
+            target['generation']=generation; config['ownedPhoto']=target
+            private.write_text(json.dumps(config),encoding='utf-8')
+            result=dict(marker=plan['marker'],ownedPhoto=target,metadataVerified=True)
         elif args.mode=='verify':
             require(args.browser_proof,'APPLICATION_BROWSER_PROOF_REQUIRED')
             browser=read_json(args.browser_proof)
@@ -259,10 +272,20 @@ def main():
             raw=bounded_cloud(['storage','cat','gs://custoking-dev-erasure-journal/'+obj+'#'+str(generation)],60,4096).encode('utf-8')
             result['journal']=verify_intent(plan,receipt,raw)
             result['downstreamTombstoneObserved']=result.get('tombstone')==1
-            result['photoChecked']=False
+            target=config.get('ownedPhoto'); require(isinstance(target,dict),'PINNED_PHOTO_BEFORE_REQUIRED')
+            photo=module.owner_sql('photo-after',photo_sql(plan, True))
+            require(photo.get('rows')==1 and photo.get('state')=='DONE' and photo.get('generation')==str(target['generation']) and photo.get('bucket')==target['bucket'] and photo.get('key')==target['key'] and photo.get('operationId')==receipt.get('operation_id'),'PHOTO_CLEANUP_NOT_COMPLETE')
+            require_generation_absent(target)
+            result['photoChecked']=True; result['photoCleanup']=photo; result['exactGenerationAbsent']=True
+        elif args.mode=='downstream':
+            result=module.owner_sql('photo-downstream',downstream_sql(plan))
+            required=dict(source=0,projection=0,tombstone=1,receipt=1,outbox=1,published=1,deadLetter=0,inbox=1,processed=1,disabledActor=1,activeSessions=0,photoDone=1)
+            require(all(result.get(k)==v for k,v in required.items()),'EXACT_DOWNSTREAM_NOT_CONVERGED')
         else:
             config=read_json(private)
             require(config.get('marker')==plan['marker'] and all(config.get(k)==v for k,v in IDS.items()),'PRIVATE_FIXTURE_BINDING_REQUIRED')
+            photo=module.owner_sql('photo-cleanup-guard',photo_sql(plan, True))
+            require(photo.get('rows')==1 and photo.get('state')=='DONE','PHOTO_CLEANUP_REQUIRED_BEFORE_PARENT_CLEANUP')
             result=module.owner_sql('journal-cleanup',cleanup_sql(plan))
             require(result.get('disabled')==1 and result.get('activeSessions')==0 and result.get('school')==0 and result.get('receipt')==1,'CLEANUP_NOT_CONFIRMED')
             status,_=module.req('POST','/api/v1/auth/login',dict(email=config['email'],password=config['password']))
@@ -272,6 +295,33 @@ def main():
             result['privateConfigRemoved']=True
         result.update(project=PROJECT,mode=args.mode,checkedAtUtc=datetime.datetime.now(datetime.timezone.utc).isoformat())
     out.write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
+
+
+def downstream_sql(plan):
+    validate_plan(plan); m=plan['marker']
+    return """BEGIN READ ONLY; SET LOCAL statement_timeout='10s'; SET LOCAL lock_timeout='3s'; SET LOCAL app.bypass_rls='on';
+WITH own_outbox AS (SELECT id,published_at,dead_lettered_at,attempts FROM tenant_school.outbox_events WHERE school_id=990008401 AND aggregate_id='990008601' AND event_type='student.deleted.v1' AND event_key='StudentDeleted:990008601'),
+own_inbox AS (SELECT i.status,i.attempt_count FROM reporting.reporting_event_inbox i JOIN own_outbox o ON i.event_id='school-core:'||o.id::text WHERE i.school_id=990008401 AND i.aggregate_id='990008601' AND i.event_type='student.deleted.v1')
+SELECT jsonb_build_object('marker','%s','source',(SELECT count(*) FROM student.students WHERE id=990008601),'projection',(SELECT count(*) FROM reporting.dim_student WHERE id=990008601),'tombstone',(SELECT count(*) FROM reporting.student_projection_tombstones WHERE student_id=990008601),'receipt',(SELECT count(*) FROM student.erasure_journal_receipts WHERE student_id=990008601 AND school_id=990008401),'outbox',(SELECT count(*) FROM own_outbox),'published',(SELECT count(*) FROM own_outbox WHERE published_at IS NOT NULL),'deadLetter',(SELECT count(*) FROM own_outbox WHERE dead_lettered_at IS NOT NULL),'outboxAttempts',(SELECT max(attempts) FROM own_outbox),'inbox',(SELECT count(*) FROM own_inbox),'processed',(SELECT count(*) FROM own_inbox WHERE status='PROCESSED'),'disabledActor',(SELECT count(*) FROM identity.app_users WHERE id=990008501 AND deleted_at IS NOT NULL),'activeSessions',(SELECT count(*) FROM identity.auth_sessions WHERE user_id=990008501 AND status='ACTIVE'),'photoDone',(SELECT count(*) FROM tenant_school.photo_cleanup_outbox WHERE student_id=990008601 AND school_id=990008401 AND state='DONE')); COMMIT;""" % m
+
+def photo_sql(plan, after):
+    validate_plan(plan); m=plan['marker']
+    if after:
+        return "BEGIN READ ONLY; SET LOCAL statement_timeout='10s'; SELECT jsonb_build_object('marker','"+m+"','rows',(SELECT count(*) FROM tenant_school.photo_cleanup_outbox WHERE student_id=990008601 AND school_id=990008401),'state',q.state,'generation',q.object_generation::text,'bucket',q.bucket,'key',q.object_key,'operationId',q.erasure_operation_id,'attempts',q.attempts) FROM tenant_school.photo_cleanup_outbox q WHERE q.student_id=990008601 AND q.school_id=990008401; COMMIT;"
+    return "BEGIN READ ONLY; SET LOCAL statement_timeout='10s'; SET LOCAL app.bypass_rls='on'; SELECT jsonb_build_object('marker','"+m+"','key',s.photo_url,'schoolUid',t.school_uid::text,'bucket','custoking-dev-student-photos') FROM student.students s JOIN tenant_school.schools t ON t.id=s.school_id WHERE s.id=990008601 AND s.school_id=990008401 AND s.admission_no='"+m+"-STUDENT'; COMMIT;"
+
+def validate_photo_target(plan,row):
+    validate_plan(plan); require(row.get('marker')==plan['marker'],'PHOTO_MARKER_REQUIRED')
+    uid=str(uuid.UUID(row.get('schoolUid','')))
+    require(uid==row['schoolUid'] and row.get('bucket')=='custoking-dev-student-photos','PHOTO_BUCKET_UID_REQUIRED')
+    key=row.get('key',''); require(re.fullmatch('schools/'+re.escape(uid)+r'/students/990008601/photos/[a-f0-9]{64}\.jpg',key),'EXACT_OWNED_PHOTO_REQUIRED')
+    return dict(bucket=row['bucket'],key=key,schoolUid=uid)
+
+def require_generation_absent(target):
+    import subprocess
+    require(re.fullmatch(r'schools/[a-f0-9-]{36}/students/990008601/photos/[a-f0-9]{64}\.jpg',target.get('key','')) and target.get('bucket')=='custoking-dev-student-photos' and type(target.get('generation')) is int and target['generation']>0,'PINNED_GENERATION_REQUIRED')
+    proc=subprocess.run(['gcloud.cmd','storage','objects','describe','gs://'+target['bucket']+'/'+target['key']+'#'+str(target['generation']),'--project='+PROJECT,'--format=json'],capture_output=True,text=True,timeout=60)
+    require(proc.returncode!=0 and any(x in proc.stderr.lower() for x in ('not_found','not found','404','does not exist')),'EXACT_GENERATION_ABSENCE_UNCONFIRMED')
 
 if __name__=='__main__':
     main()
