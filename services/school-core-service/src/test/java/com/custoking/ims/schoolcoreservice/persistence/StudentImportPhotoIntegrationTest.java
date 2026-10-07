@@ -102,6 +102,17 @@ class StudentImportPhotoIntegrationTest {
     }
 
     @Test
+    void callerSuppliedForeignPhotoKeyCannotCreatePersistedStudent() throws Exception {
+        long schoolId=seedSchool(1,1);
+        var students=new StudentReadRepository(jdbc,mock(StudentPhotoStorage.class),new OutboxWriter(jdbc,new ObjectMapper(),"tenant_school"));
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->students.createStudent(Map.of(
+                "schoolId",schoolId,"fullName","Owned student","admissionNumber","FOREIGN-PHOTO",
+                "photoUrl","schools/22222222-2222-4222-8222-222222222222/students/9/photos/known.jpg")))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("photo upload workflow");
+        assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE admission_no='FOREIGN-PHOTO'").query(Long.class).single()).isZero();
+    }
+
+    @Test
     void previewImport_storesOriginalFileUnderSchoolUidFolder() throws Exception {
         long schoolId = seedSchool(5, 2);
         String schoolUid = schoolUid(schoolId);
@@ -252,9 +263,11 @@ class StudentImportPhotoIntegrationTest {
                 .param("sectionId", schoolId + "-c1-A")
                 .query(Long.class)
                 .single();
+        String ownedPhoto="schools/"+schoolUid(schoolId)+"/students/"+studentId+"/photos/photo.jpg";
+        jdbc.sql("UPDATE student.students SET photo_url=:photo WHERE id=:id").param("photo",ownedPhoto).param("id",studentId).update();
         StudentPhotoStorage photoStorage = mock(StudentPhotoStorage.class);
         byte[] photoBytes = "jpeg-data".getBytes(StandardCharsets.UTF_8);
-        when(photoStorage.readStoredPhoto("schools/school-1/students/1/photos/photo.jpg"))
+        when(photoStorage.readStoredPhoto(ownedPhoto, schoolUid(schoolId), studentId))
                 .thenReturn(Optional.of(new StudentPhotoStorage.StoredPhoto(photoBytes, "image/jpeg")));
         StudentReadRepository studentRepo = new StudentReadRepository(
                 jdbc, photoStorage, new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
@@ -276,7 +289,7 @@ class StudentImportPhotoIntegrationTest {
         assertThat(content).isPresent();
         assertThat(content.orElseThrow().data()).isEqualTo(photoBytes);
         assertThat(content.orElseThrow().contentType()).isEqualTo("image/jpeg");
-        verify(photoStorage).readStoredPhoto("schools/school-1/students/1/photos/photo.jpg");
+        verify(photoStorage).readStoredPhoto(ownedPhoto, schoolUid(schoolId), studentId);
     }
 
     @Test

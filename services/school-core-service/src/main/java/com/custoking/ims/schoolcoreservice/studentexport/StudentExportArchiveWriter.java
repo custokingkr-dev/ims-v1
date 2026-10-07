@@ -95,7 +95,7 @@ public class StudentExportArchiveWriter {
                     List<Future<Optional<StoredPhoto>>> reads = batch.stream()
                             .map(mapping -> executor.submit(
                                     () -> StringUtils.hasText(mapping.student().storedPhoto())
-                                            ? photoStorage.readStoredPhoto(mapping.student().storedPhoto())
+                                            ? photoStorage.readStoredPhoto(mapping.student().storedPhoto(), data.school().schoolUid(), mapping.student().id())
                                             : Optional.<StoredPhoto>empty()))
                             .toList();
                     for (int index = 0; index < batch.size(); index++) {
