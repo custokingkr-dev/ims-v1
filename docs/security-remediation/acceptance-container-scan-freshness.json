@@ -25,128 +25,6 @@
     "f6b8eb4d6687ba6ae437753f195430a65a6dfecb": 85
   },
   "analysisCount": 43,
-  "latestAnalysisByCategory": {
-    "api-gateway": {
-      "id": 1653217733,
-      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
-      "createdAt": "2026-08-21T13:00:40Z",
-      "resultsCount": 0,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    "operations-service": {
-      "id": 1653216325,
-      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
-      "createdAt": "2026-08-21T13:00:21Z",
-      "resultsCount": 17,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    "school-core-service": {
-      "id": 1653214874,
-      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
-      "createdAt": "2026-08-21T13:00:00Z",
-      "resultsCount": 17,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    "identity-service": {
-      "id": 1653214770,
-      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
-      "createdAt": "2026-08-21T12:59:59Z",
-      "resultsCount": 17,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    "platform-service": {
-      "id": 1653214572,
-      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
-      "createdAt": "2026-08-21T12:59:56Z",
-      "resultsCount": 17,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    "dashboard": {
-      "id": 1653214503,
-      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
-      "createdAt": "2026-08-21T12:59:54Z",
-      "resultsCount": 0,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    "billing-service": {
-      "id": 1653214148,
-      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
-      "createdAt": "2026-08-21T12:59:49Z",
-      "resultsCount": 17,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    "frontend": {
-      "id": 1653213622,
-      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
-      "createdAt": "2026-08-21T12:59:41Z",
-      "resultsCount": 0,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    ".github/workflows/security-scan.yml:scan/context:services/school-core-service/image:custoking-school-core-service/name:school-core-service": {
-      "id": 1599894177,
-      "commitSha": "d517504935460973621538cbc413b839d0813df6",
-      "createdAt": "2026-08-11T06:31:25Z",
-      "resultsCount": 52,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    ".github/workflows/security-scan.yml:scan/context:services/platform-service/image:custoking-platform-service/name:platform-service": {
-      "id": 1599885412,
-      "commitSha": "d517504935460973621538cbc413b839d0813df6",
-      "createdAt": "2026-08-11T06:28:48Z",
-      "resultsCount": 52,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    ".github/workflows/security-scan.yml:scan/context:services/billing-service/image:custoking-billing-service/name:billing-service": {
-      "id": 1599882467,
-      "commitSha": "d517504935460973621538cbc413b839d0813df6",
-      "createdAt": "2026-08-11T06:27:59Z",
-      "resultsCount": 52,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    ".github/workflows/security-scan.yml:scan/context:services/identity-service/image:custoking-identity-service/name:identity-service": {
-      "id": 1599882277,
-      "commitSha": "d517504935460973621538cbc413b839d0813df6",
-      "createdAt": "2026-08-11T06:27:56Z",
-      "resultsCount": 52,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    ".github/workflows/security-scan.yml:scan/context:services/operations-service/image:custoking-operations-service/name:operations-service": {
-      "id": 1599881734,
-      "commitSha": "d517504935460973621538cbc413b839d0813df6",
-      "createdAt": "2026-08-11T06:27:46Z",
-      "resultsCount": 52,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    ".github/workflows/security-scan.yml:scan/context:frontend/image:custoking-frontend/name:frontend": {
-      "id": 1599878877,
-      "commitSha": "d517504935460973621538cbc413b839d0813df6",
-      "createdAt": "2026-08-11T06:27:04Z",
-      "resultsCount": 0,
-      "error": "",
-      "ref": "refs/heads/dev"
-    },
-    ".github/workflows/security-scan.yml:scan/context:services/api-gateway/image:custoking-api-gateway/name:api-gateway": {
-      "id": 1599878409,
-      "commitSha": "d517504935460973621538cbc413b839d0813df6",
-      "createdAt": "2026-08-11T06:26:57Z",
-      "resultsCount": 0,
-      "error": "",
-      "ref": "refs/heads/dev"
-    }
-  },
   "currentDeployedImageApplicabilityEstablished": false,
   "alertsDismissedOrAnalysesDeleted": false,
   "authorizedScanDispatch": {
@@ -163,6 +41,143 @@
     "patchFreshnessVerified": false,
     "baselineOnlyReason": "Workflow omits SECURITY_PATCH_EPOCH build argument while all eight Dockerfiles use it in package patch layer; cache may reuse previous patch layer."
   },
+  "latestAnalyses": [
+    {
+      "category": "api-gateway",
+      "id": 1653217733,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T13:00:40Z",
+      "resultsCount": 0,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": "operations-service",
+      "id": 1653216325,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T13:00:21Z",
+      "resultsCount": 17,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": "school-core-service",
+      "id": 1653214874,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T13:00:00Z",
+      "resultsCount": 17,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": "identity-service",
+      "id": 1653214770,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T12:59:59Z",
+      "resultsCount": 17,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": "platform-service",
+      "id": 1653214572,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T12:59:56Z",
+      "resultsCount": 17,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": "dashboard",
+      "id": 1653214503,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T12:59:54Z",
+      "resultsCount": 0,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": "billing-service",
+      "id": 1653214148,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T12:59:49Z",
+      "resultsCount": 17,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": "frontend",
+      "id": 1653213622,
+      "commitSha": "f6b8eb4d6687ba6ae437753f195430a65a6dfecb",
+      "createdAt": "2026-08-21T12:59:41Z",
+      "resultsCount": 0,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": ".github/workflows/security-scan.yml:scan/context:services/school-core-service/image:custoking-school-core-service/name:school-core-service",
+      "id": 1599894177,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:31:25Z",
+      "resultsCount": 52,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": ".github/workflows/security-scan.yml:scan/context:services/platform-service/image:custoking-platform-service/name:platform-service",
+      "id": 1599885412,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:28:48Z",
+      "resultsCount": 52,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": ".github/workflows/security-scan.yml:scan/context:services/billing-service/image:custoking-billing-service/name:billing-service",
+      "id": 1599882467,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:27:59Z",
+      "resultsCount": 52,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": ".github/workflows/security-scan.yml:scan/context:services/identity-service/image:custoking-identity-service/name:identity-service",
+      "id": 1599882277,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:27:56Z",
+      "resultsCount": 52,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": ".github/workflows/security-scan.yml:scan/context:services/operations-service/image:custoking-operations-service/name:operations-service",
+      "id": 1599881734,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:27:46Z",
+      "resultsCount": 52,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": ".github/workflows/security-scan.yml:scan/context:frontend/image:custoking-frontend/name:frontend",
+      "id": 1599878877,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:27:04Z",
+      "resultsCount": 0,
+      "error": "",
+      "ref": "refs/heads/dev"
+    },
+    {
+      "category": ".github/workflows/security-scan.yml:scan/context:services/api-gateway/image:custoking-api-gateway/name:api-gateway",
+      "id": 1599878409,
+      "commitSha": "d517504935460973621538cbc413b839d0813df6",
+      "createdAt": "2026-08-11T06:26:57Z",
+      "resultsCount": 0,
+      "error": "",
+      "ref": "refs/heads/dev"
+    }
+  ],
   "sourceFix": {
     "file": ".github/workflows/security-scan.yml",
     "problem": "All eight runtime Dockerfiles default SECURITY_PATCH_EPOCH to unset and use it in the OS patch RUN, but the cached daily scan did not supply the argument. A cached patch layer can skip package refresh.",
