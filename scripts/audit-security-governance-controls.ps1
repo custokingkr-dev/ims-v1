@@ -300,10 +300,12 @@ Require-Text $LiveProvider @(
   'PROVIDER_OUTCOME_UNCONFIRMED'
 )
 Require-Text $LiveWorker @(
-  'transaction.execute(tx -> prepareNext())',
+  'TransactionSynchronizationManager.isActualTransactionActive()',
+  'transaction.execute(tx -> queue.candidate(OffsetDateTime.now(), "LIVE"))',
+  'queue.claimExpected(OffsetDateTime.now(), snapshot)',
   'provider.submit(plan.prepared())',
   'ledger.reserve(row,prepared)',
-  'queue.claim(OffsetDateTime.now(),"LIVE")',
+  'new NotificationPolicyGuard().requireAllowed',
   'POLICY_BINDING_CHANGED'
 )
 Require-Text $LiveLedger @(
@@ -851,6 +853,7 @@ $approvedActionPins = @{
   "gitleaks/gitleaks-action@v3"         = "e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e"
   "google-github-actions/auth@v3"       = "7c6bc770dae815cd3e89ee6cdf493a5fab2cc093"
   "google-github-actions/setup-gcloud@v3" = "aa5489c8933f4cc7a4f7d45035b3b1440c9c10db"
+  "hashicorp/setup-terraform@v3"        = "b9cd54a3c349d3f38e8881555d616ced269862dd"
   "sigstore/cosign-installer@v4.1.2"    = "6f9f17788090df1f26f669e9d70d6ae9567deba6"
 }
 $actionSourceFiles = @(

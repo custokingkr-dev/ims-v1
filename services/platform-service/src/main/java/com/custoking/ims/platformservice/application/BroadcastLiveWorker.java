@@ -35,10 +35,23 @@ public class BroadcastLiveWorker {
     }
     public int drainBatch() {
         if (!workflows.liveQueueEnabled()) return 0;
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Recipient policy must be resolved outside a database transaction");
         int handled=0; long deadline=System.nanoTime()+java.time.Duration.ofSeconds(20).toNanos();
         while (handled<3 && System.nanoTime()<deadline) {
-            Plan plan = transaction.execute(tx -> prepareNext());
-            if (plan == null) break;
+            var candidate = transaction.execute(tx -> queue.candidate(OffsetDateTime.now(), "LIVE"));
+            if (candidate == null || candidate.isEmpty()) break;
+            QueuedRecipient snapshot = candidate.get();
+            List<BroadcastRecipientPolicy.Recipient> decisions = null;
+            if (configuration.schoolAllowed(snapshot.schoolId()) && configuration.channel().equals(snapshot.channel())
+                    && configuration.destinationAllowed(snapshot.destinationSha256())) {
+                try { decisions = policy.resolve(snapshot.schoolId(), snapshot.broadcastId(), List.of(snapshot.channel()), List.of(snapshot.studentId())); }
+                catch (RuntimeException unavailable) { /* Retry preparation only; never reserve or send. */ }
+            }
+            final var review = decisions;
+            Plan plan = transaction.execute(tx -> queue.claimExpected(OffsetDateTime.now(), snapshot)
+                    .map(row -> prepare(row, review)).orElse(null));
+            if (plan == null) { handled++; continue; }
             handled++;
             if (plan.prepared() == null) continue;
             // Returning from execute proves the reservation committed. A crash before/after the
@@ -51,18 +64,14 @@ public class BroadcastLiveWorker {
         }
         return handled;
     }
-    private Plan prepareNext() {
-        var claimed=queue.claim(OffsetDateTime.now(),"LIVE");
-        if (claimed.isEmpty()) return null;
-        QueuedRecipient row=claimed.get();
+    private Plan prepare(QueuedRecipient row, List<BroadcastRecipientPolicy.Recipient> decisions) {
         if (!configuration.schoolAllowed(row.schoolId()) || !configuration.channel().equals(row.channel())
                 || !configuration.destinationAllowed(row.destinationSha256())) {
             ledger.preparationOutcome(row,"SUPPRESSED","LIVE_RECIPIENT_NOT_ADMITTED"); return new Plan(row,null);
         }
         BroadcastLiveProvider.Prepared prepared;
         try {
-            var decisions=policy.resolve(row.schoolId(),row.broadcastId(),List.of(row.channel()),List.of(row.studentId()));
-            if (decisions.size()!=1) throw new IllegalStateException("Incomplete recipient policy");
+            if (decisions == null || decisions.size()!=1) throw new IllegalStateException("Incomplete recipient policy");
             var decision=decisions.getFirst();
             if (!decision.allowed()) {
                 ledger.preparationOutcome(row,"SUPPRESSED",safeReason(decision.reason())); return new Plan(row,null);
@@ -72,7 +81,20 @@ public class BroadcastLiveWorker {
                     || !row.destinationSha256().equals(decision.destinationSha256())) {
                 ledger.preparationOutcome(row,"SUPPRESSED","POLICY_BINDING_CHANGED"); return new Plan(row,null);
             }
+            // Recheck evidence after acquiring the locks: waiting must not extend owner consent validity.
+            var event = new com.custoking.ims.platformservice.persistence.NotificationInboxEvent();
+            event.setEventId(row.eventId()); event.setEventType("notification.requested.v1");
+            var payload = new java.util.LinkedHashMap<String,Object>();
+            payload.put("sourceEventType", "school.broadcast-requested.v1"); payload.put("sourceEventId", row.eventId());
+            payload.put("broadcastRequestId", row.eventId()); payload.put("notificationType", "SCHOOL_NOTICE");
+            payload.put("template", "school-notice.v1"); payload.put("recipientType", "GUARDIAN");
+            payload.put("recipientId", decision.guardianId()); payload.put("schoolId", row.schoolId());
+            payload.put("studentId", row.studentId()); payload.put("channel", row.channel());
+            payload.put("destination", decision.destination()); payload.put("policyEvidence", decision.policyEvidence());
+            new NotificationPolicyGuard().requireAllowed(event, new tools.jackson.databind.ObjectMapper().valueToTree(payload));
             prepared=provider.prepare(row,decision);
+        } catch (NotificationSuppressedException denied) {
+            ledger.preparationOutcome(row,"SUPPRESSED",safeReason(denied.reasonCode())); return new Plan(row,null);
         } catch (RuntimeException failure) {
             ledger.preparationOutcome(row,"FAILED","LIVE_PREPARATION_UNAVAILABLE"); return new Plan(row,null);
         }

@@ -21,6 +21,7 @@ class BroadcastDispatchServiceTest {
         service = new BroadcastDispatchService(repository, policy, delivery, "DRY_RUN", true);
         when(repository.find(id, true)).thenReturn(broadcast("DRAFT"));
         when(repository.find(id, false)).thenReturn(broadcast("DRAFT"));
+        when(repository.find(id, false)).thenReturn(broadcast("DRAFT"));
     }
     Broadcast broadcast(String status) { return new Broadcast(id, 10L, "Notice", "Message", "ALL_PARENTS", List.of("SMS"), "SCHOOL_NOTICE", status, "DRY_RUN"); }
     Recipient recipient(long student, boolean allowed, String hash) {
@@ -54,6 +55,7 @@ class BroadcastDispatchServiceTest {
     @Test void queueRequiresApprovalAndDefaultsOffAndNeverAdvertisesLiveSend() {
         assertThatThrownBy(() -> service.queue(id, 5L)).hasMessageContaining("Preview and approve");
         when(repository.find(id, true)).thenReturn(broadcast("APPROVED"));
+        when(repository.find(id, false)).thenReturn(broadcast("APPROVED"));
         var disabled = new BroadcastDispatchService(repository, policy, delivery, "OFF", true);
         assertThat(disabled.capabilities(true)).containsEntry("canQueue", false).containsEntry("canSend", false);
         assertThatThrownBy(() -> disabled.queue(id, 5L)).hasMessageContaining("off");
@@ -64,6 +66,7 @@ class BroadcastDispatchServiceTest {
     }
     @Test void queueAndApprovalReplaysPreserveApprovedManifest() {
         when(repository.find(id, true)).thenReturn(broadcast("QUEUED"));
+        when(repository.find(id, false)).thenReturn(broadcast("QUEUED"));
         when(repository.outcomes(any())).thenReturn(Map.of("status", "QUEUED"));
         assertThat(service.queue(id, 5L)).containsEntry("status", "QUEUED");
         service.approve(id, 5L, "old-fingerprint");

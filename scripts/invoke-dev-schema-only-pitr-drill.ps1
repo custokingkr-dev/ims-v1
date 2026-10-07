@@ -1,4 +1,5 @@
-param([ValidateRange(5,30)][int]$MaxMinutes=20)
+param([ValidateRange(5,30)][int]$MaxMinutes=20,
+      [string]$SyntheticFixtureProof='')
 $ErrorActionPreference='Stop'
 $project='custoking-dev'; $region='asia-south2'; $source='custoking-db-dev'
 $stamp=[datetime]::UtcNow.ToString('yyyyMMddHHmmss'); $nonce=[guid]::NewGuid().ToString('N').Substring(0,8)
@@ -7,6 +8,16 @@ $evidencePath=Join-Path $PSScriptRoot "../docs/security-remediation/dev-pitr-$st
 $jobFile=Join-Path $PSScriptRoot "../tmp/$job.json"
 $started=[datetime]::UtcNow; $point=$started.AddMinutes(-5).ToString('yyyy-MM-ddTHH:mm:ssZ')
 $evidence=[ordered]@{scope='isolated dev schema-only PITR; no agreed RPO/RTO certification';project=$project;source=$source;clone=$clone;job=$job;pointInTimeUtc=$point;startedUtc=$started.ToString('o');success=$false;cleanup=[ordered]@{jobRemoved=$false;cloneRemoved=$false};schemaCatalog=@()}
+$expectedFixtureSha=$null
+if($SyntheticFixtureProof){
+  $fixture=Get-Content -LiteralPath $SyntheticFixtureProof -Raw|ConvertFrom-Json
+  $verifiedAt=([datetimeoffset]$fixture.checkedAtUtc).UtcDateTime
+  if($fixture.project -ne $project -or $fixture.marker -cne 'SEC-ACPT-20261007' -or $fixture.completed -ne $true -or $fixture.reservedOnly -ne $true -or (@($fixture.schoolIds)-join ',') -cne '990007101,990007102' -or $verifiedAt -lt $started.AddHours(-1) -or $verifiedAt -gt ([datetimeoffset]$point).UtcDateTime){throw 'Require fresh exact reserved fixture proof established before PITR point'}
+  $sha=[Security.Cryptography.SHA256]::Create()
+  try{$expectedFixtureSha=([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes('990007101:SEC-ACPT-20261007-1|990007102:SEC-ACPT-20261007-2')))).Replace('-','').ToLowerInvariant()}finally{$sha.Dispose()}
+  $evidence.scope='isolated dev catalog and exact reserved synthetic marker PITR; no business rows or agreed RPO/RTO certification'
+  $evidence.syntheticFixture=@{sourceVerifiedCount=2;sourceProvenance=$fixture.marker;sourceVerifiedAtUtc=$fixture.checkedAtUtc;expectedSha256=$expectedFixtureSha;restoredVerified=$false}
+}
 $cloneAttempted=$false; $jobAttempted=$false; $cloneOperation=$null
 function Cloud([string[]]$Arguments,[int]$Seconds=60) {
   $worker=Start-Job -ScriptBlock { param($argsList)
@@ -64,6 +75,9 @@ try {
   $schemas=@('identity','tenant_school','student','attendance','fee','catalog','workflow','firefighting','reporting','notification','audit','billing')
   $values=($schemas|ForEach-Object{"('$_')"}) -join ','
   $sql="BEGIN READ ONLY; WITH expected(schema_name) AS (VALUES $values) SELECT 'SCHEMA_CATALOG|' || e.schema_name || '|' || (n.oid IS NOT NULL)::text || '|' || count(c.oid)::text FROM expected e LEFT JOIN pg_namespace n ON n.nspname=e.schema_name LEFT JOIN pg_class c ON c.relnamespace=n.oid AND c.relkind IN ('r','p') GROUP BY e.schema_name,n.oid ORDER BY e.schema_name; COMMIT;"
+  if($expectedFixtureSha){
+    $sql=$sql.Replace('COMMIT;',"SET LOCAL app.bypass_rls='on'; SELECT 'SYNTHETIC_MARKER|' || count(*)::text || '|' || encode(sha256(convert_to(string_agg(id::text || ':' || name, '|' ORDER BY id),'UTF8')),'hex') FROM tenant_school.schools WHERE (id=990007101 AND name='SEC-ACPT-20261007-1') OR (id=990007102 AND name='SEC-ACPT-20261007-2'); COMMIT;")
+  }
   $image='docker.io/library/postgres@sha256:95206741a5b214807675e14165369d05b93a9cf692223b616d07cca227e74b0b'
   $definition=@{apiVersion='run.googleapis.com/v1';kind='Job';metadata=@{name=$job;namespace=$project;labels=@{purpose='isolated-schema-only-recovery'}};spec=@{template=@{metadata=@{annotations=@{'run.googleapis.com/network-interfaces'='[{"network":"default","subnetwork":"default"}]';'run.googleapis.com/vpc-access-egress'='private-ranges-only'}};spec=@{taskCount=1;parallelism=1;template=@{spec=@{serviceAccountName="ims-db-migration-dev@$project.iam.gserviceaccount.com";maxRetries=0;timeoutSeconds=120;containers=@(@{image=$image;command=@('psql');args=@('-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-c',$sql);resources=@{limits=@{cpu='1';memory='512Mi'}};env=@(@{name='PGHOST';value=[string]$private[0].ipAddress},@{name='PGPORT';value='5432'},@{name='PGUSER';value='appuser'},@{name='PGDATABASE';value='custoking_dev'},@{name='PGSSLMODE';value='require'},@{name='PGCONNECT_TIMEOUT';value='10'},@{name='PGOPTIONS';value='-c default_transaction_read_only=on -c statement_timeout=10000 -c lock_timeout=3000'},@{name='PGPASSWORD';valueFrom=@{secretKeyRef=@{name='db-password-dev';key='latest'}}})})}}}}}}
   $definition|ConvertTo-Json -Depth 30|Set-Content -LiteralPath $jobFile -Encoding UTF8
@@ -86,6 +100,12 @@ try {
     if($catalog.Count -eq $schemas.Count){break};Start-Sleep -Seconds 5
   } while([datetime]::UtcNow -lt $logDeadline)
   if($catalog.Count -ne $schemas.Count -or @($catalog|Where-Object{-not $_.present -or $_.tableCount -le 0}).Count -gt 0){throw 'Restored schema catalog validation incomplete'}
+  if($expectedFixtureSha){
+    $markerLogs=Cloud @('logging','read',"resource.type=cloud_run_job AND resource.labels.job_name=$job AND textPayload:SYNTHETIC_MARKER","--project=$project",'--limit=10','--format=json')|ConvertFrom-Json
+    $markers=@($markerLogs|ForEach-Object{if([string]$_.textPayload -match '^SYNTHETIC_MARKER\|([0-9]+)\|([a-f0-9]{64})$'){@{count=[int]$Matches[1];sha256=$Matches[2]}}})
+    if($markers.Count -ne 1 -or $markers[0].count -ne 2 -or $markers[0].sha256 -cne $expectedFixtureSha){throw 'Exact synthetic marker recovery checksum/count mismatch'}
+    $evidence.syntheticFixture.restoredVerified=$true;$evidence.syntheticFixture.restoredCount=2;$evidence.syntheticFixture.restoredSha256=$markers[0].sha256
+  }
   $evidence.schemaCatalog=$catalog; $evidence.image=$image; $evidence.validationServiceAccount="ims-db-migration-dev@$project.iam.gserviceaccount.com"
   $evidence.validationCompleteElapsedSeconds=[math]::Round(([datetime]::UtcNow-$started).TotalSeconds,3); $evidence.success=$true
 } catch { $evidence.failure=$_.Exception.Message; Write-Host "Dev schema-only recovery drill failed: $($_.Exception.Message)" }

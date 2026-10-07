@@ -25,7 +25,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class BroadcastLiveWorkerTest {
-    private static final String HASH = "a".repeat(64);
+    private static final String HASH = NotificationPolicyGuard.destinationSha256("EMAIL", "guardian@synthetic.invalid");
     private static final UUID BROADCAST = UUID.fromString("847cd80f-c6fb-4d78-a13a-e667b0b316d3");
     private static final String EVENT = "broadcast:" + BROADCAST + ":1:EMAIL";
     private final QueuedRecipient row = new QueuedRecipient(UUID.randomUUID(), BROADCAST, 1, 1, "EMAIL", EVENT,
@@ -36,17 +36,17 @@ class BroadcastLiveWorkerTest {
         var f = fixture();
         when(f.ledger.reserve(row, prepared)).thenAnswer(invocation -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
-            assertThat(f.transactions.commits).isZero();
+            assertThat(f.transactions.commits).isEqualTo(1);
             return true;
         });
         when(f.provider.submit(prepared)).thenAnswer(invocation -> {
-            assertThat(f.transactions.commits).isEqualTo(1);
+            assertThat(f.transactions.commits).isEqualTo(2);
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             return new Result("ACCEPTED", "provider-id", "PROVIDER_QUEUED");
         });
         doAnswer(invocation -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
-            assertThat(f.transactions.commits).isEqualTo(1);
+            assertThat(f.transactions.commits).isEqualTo(2);
             return null;
         }).when(f.ledger).finish(eq(row), eq(prepared), any());
         assertThat(f.worker.drainBatch()).isEqualTo(1);
@@ -61,7 +61,7 @@ class BroadcastLiveWorkerTest {
     @Test void failedReservationCommitNeverReachesProvider() {
         var f = fixture(); f.transactions.failCommit = true;
         assertThatThrownBy(f.worker::drainBatch).hasMessage("Synthetic commit failure");
-        verify(f.ledger).reserve(row, prepared);
+        verify(f.ledger, never()).reserve(row, prepared);
         verify(f.provider, never()).submit(any());
         verify(f.ledger, never()).finish(any(), any(), any());
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
@@ -70,7 +70,7 @@ class BroadcastLiveWorkerTest {
     @Test void uncertainProviderExceptionBecomesUnknownAndExistingReservationPreventsResend() {
         var f = fixture();
         // Re-offer the row to prove the durable reservation guard also blocks an accidental re-claim.
-        when(f.queue.claim(any(), eq("LIVE"))).thenReturn(Optional.of(row), Optional.empty(), Optional.of(row), Optional.empty());
+        when(f.queue.candidate(any(), eq("LIVE"))).thenReturn(Optional.of(row), Optional.empty(), Optional.of(row), Optional.empty());
         AtomicBoolean reserved = new AtomicBoolean();
         when(f.ledger.reserve(row, prepared)).thenAnswer(invocation -> !reserved.getAndSet(true));
         when(f.provider.submit(prepared)).thenThrow(new IllegalStateException("guardian@synthetic.invalid private message secret"));
@@ -85,7 +85,7 @@ class BroadcastLiveWorkerTest {
 
     @Test void failureToPersistAcceptedOutcomeDoesNotPermitAnotherSubmission() {
         var f = fixture();
-        when(f.queue.claim(any(), eq("LIVE"))).thenReturn(Optional.of(row), Optional.of(row), Optional.empty());
+        when(f.queue.candidate(any(), eq("LIVE"))).thenReturn(Optional.of(row), Optional.of(row), Optional.empty());
         when(f.ledger.reserve(row, prepared)).thenReturn(true, false);
         doThrow(new IllegalStateException("Synthetic persistence failure")).when(f.ledger).finish(any(), any(), any());
         assertThatThrownBy(f.worker::drainBatch).hasMessage("Synthetic persistence failure");
@@ -128,7 +128,7 @@ class BroadcastLiveWorkerTest {
                 new QueuedRecipient(row.id(), BROADCAST, 2, 1, "EMAIL", EVENT, "g1", HASH, 0, "Title", "Message", "LIVE"),
                 new QueuedRecipient(row.id(), BROADCAST, 1, 1, "EMAIL", EVENT, "g1", "f".repeat(64), 0, "Title", "Message", "LIVE"),
                 new QueuedRecipient(row.id(), BROADCAST, 1, 1, "SMS", EVENT, "g1", HASH, 0, "Title", "Message", "LIVE"))) {
-            var f = fixture(); when(f.queue.claim(any(), eq("LIVE"))).thenReturn(Optional.of(changed), Optional.empty());
+            var f = fixture(); when(f.queue.candidate(any(), eq("LIVE"))).thenReturn(Optional.of(changed), Optional.empty());
             f.worker.drainBatch();
             verify(f.ledger).preparationOutcome(changed, "SUPPRESSED", "LIVE_RECIPIENT_NOT_ADMITTED");
             verifyNoInteractions(f.policy, f.provider); verify(f.ledger, never()).reserve(any(), any());
@@ -151,20 +151,52 @@ class BroadcastLiveWorkerTest {
         var disabled = fixture(); when(disabled.workflows.liveQueueEnabled()).thenReturn(false);
         assertThat(disabled.worker.drainBatch()).isZero();
         verifyNoInteractions(disabled.queue, disabled.policy, disabled.provider, disabled.ledger);
-        var bounded = fixture(); when(bounded.queue.claim(any(), eq("LIVE"))).thenReturn(Optional.of(row));
+        var bounded = fixture(); when(bounded.queue.candidate(any(), eq("LIVE"))).thenReturn(Optional.of(row));
         when(bounded.ledger.reserve(row, prepared)).thenReturn(false);
         assertThat(bounded.worker.drainBatch()).isEqualTo(3);
-        verify(bounded.queue, times(3)).claim(any(), eq("LIVE")); verify(bounded.provider, never()).submit(any());
+        verify(bounded.queue, times(3)).candidate(any(), eq("LIVE")); verify(bounded.provider, never()).submit(any());
     }
 
-    private Recipient allowed() { return new Recipient(1, 1, "EMAIL", EVENT, true, "ALLOWED", "g1", "guardian@synthetic.invalid", HASH, Map.of()); }
+    @Test void changedSnapshotIsDiscardedBeforePreparationReservationOrSend() {
+        var f = fixture();
+        doReturn(Optional.empty()).when(f.queue).claimExpected(any(), eq(row));
+        assertThat(f.worker.drainBatch()).isEqualTo(1);
+        verify(f.policy).resolve(1,BROADCAST,List.of("EMAIL"),List.of(1L));
+        verifyNoInteractions(f.ledger, f.provider);
+    }
+
+    @Test void evidenceExpiredDuringLockWaitCannotReserveOrSend() {
+        var f = fixture();
+        var expired = new java.util.HashMap<>(currentEvidence);
+        expired.put("evaluatedAt",java.time.OffsetDateTime.now().minusMinutes(3).toString());
+        expired.put("expiresAt",java.time.OffsetDateTime.now().minusMinutes(1).toString());
+        when(f.policy.resolve(anyLong(),any(),any(),any())).thenReturn(List.of(new Recipient(1,1,"EMAIL",EVENT,true,"ALLOWED","g1","guardian@synthetic.invalid",HASH,expired)));
+        f.worker.drainBatch();
+        verify(f.ledger).preparationOutcome(row,"SUPPRESSED","POLICY_EVIDENCE_STALE");
+        verify(f.ledger,never()).reserve(any(),any()); verifyNoInteractions(f.provider);
+    }
+
+    private final Map<String,Object> currentEvidence = evidence();
+    private Recipient allowed() { return new Recipient(1, 1, "EMAIL", EVENT, true, "ALLOWED", "g1", "guardian@synthetic.invalid", HASH, currentEvidence); }
+    private Map<String,Object> evidence() {
+        var now = java.time.OffsetDateTime.now();
+        return Map.ofEntries(Map.entry("decision","ALLOW"), Map.entry("purpose","SCHOOL_COMMUNICATIONS"),
+                Map.entry("lawfulBasis","CONSENT"), Map.entry("preference","ENABLED"), Map.entry("policyVersion","guardian-communications.v2"),
+                Map.entry("guardianId","g1"), Map.entry("consentEventId","synthetic-consent"), Map.entry("consentNoticeVersion","v1"),
+                Map.entry("sourceEventId",EVENT), Map.entry("schoolId",1), Map.entry("studentId",1), Map.entry("channel","EMAIL"),
+                Map.entry("destinationSha256",HASH), Map.entry("evaluatedAt",now.toString()), Map.entry("expiresAt",now.plusMinutes(2).toString()));
+    }
     private Fixture fixture() {
         var queue = mock(BroadcastDispatchRepository.class); var ledger = mock(BroadcastLiveRepository.class);
         var policy = mock(BroadcastRecipientPolicy.class); var provider = mock(BroadcastLiveProvider.class);
         var workflows = mock(BroadcastDispatchService.class); var manager = new TrackingTransactions();
         when(workflows.liveQueueEnabled()).thenReturn(true);
-        when(queue.claim(any(), eq("LIVE"))).thenReturn(Optional.of(row), Optional.empty());
-        when(policy.resolve(1, BROADCAST, List.of("EMAIL"), List.of(1L))).thenReturn(List.of(allowed()));
+        when(queue.candidate(any(), eq("LIVE"))).thenReturn(Optional.of(row), Optional.empty());
+        when(queue.claimExpected(any(), any())).thenAnswer(i -> Optional.of(i.getArgument(1)));
+        when(policy.resolve(1, BROADCAST, List.of("EMAIL"), List.of(1L))).thenAnswer(i -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            return List.of(allowed());
+        });
         when(provider.prepare(row, allowed())).thenReturn(prepared);
         when(provider.submit(prepared)).thenReturn(new Result("ACCEPTED", "provider-id", "PROVIDER_QUEUED"));
         when(ledger.reserve(row, prepared)).thenReturn(true);

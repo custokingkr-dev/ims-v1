@@ -43,27 +43,44 @@ public class BroadcastDeliveryWorker {
 
     public int drainBatch() {
         if (!workflows.queueEnabled()) return 0;
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Recipient policy must be resolved outside a database transaction");
         int processed = 0;
         long deadline = System.nanoTime() + java.time.Duration.ofSeconds(20).toNanos();
-        while (processed < 25 && System.nanoTime() < deadline && Boolean.TRUE.equals(transaction.execute(status -> processNext()))) processed++;
+        while (processed < 25 && System.nanoTime() < deadline) {
+            var candidate = transaction.execute(tx -> repository.candidate(OffsetDateTime.now(), "DRY_RUN"));
+            if (candidate == null || candidate.isEmpty()) break;
+            QueuedRecipient snapshot = candidate.get();
+            List<Recipient> decisions = null;
+            try { decisions = policy.resolve(snapshot.schoolId(), snapshot.broadcastId(), List.of(snapshot.channel()), List.of(snapshot.studentId())); }
+            catch (RuntimeException unavailable) { /* Persist a safe bounded preparation retry after revalidation. */ }
+            final List<Recipient> review = decisions;
+            transaction.executeWithoutResult(tx -> repository.claimExpected(OffsetDateTime.now(), snapshot)
+                    .ifPresent(row -> attempt(row, review)));
+            processed++;
+        }
         return processed;
     }
 
-    private boolean processNext() {
-        var claimed = repository.claim(OffsetDateTime.now());
-        if (claimed.isEmpty()) return false;
-        attempt(claimed.get()); return true;
+    void attempt(QueuedRecipient row) {
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Recipient policy must be resolved outside a database transaction");
+        List<Recipient> decisions = null;
+        if ("DRY_RUN".equals(row.mode()) && delivery.dryRun()) {
+            try { decisions = policy.resolve(row.schoolId(), row.broadcastId(), List.of(row.channel()), List.of(row.studentId())); }
+            catch (RuntimeException unavailable) { /* Record safe retry below. */ }
+        }
+        attempt(row, decisions);
     }
 
-    void attempt(QueuedRecipient row) {
+    private void attempt(QueuedRecipient row, List<Recipient> decisions) {
         String status;
         String reason = null;
         String provider = null;
         try {
             // A configuration change can never turn a dry-run queue into a live send.
             if (!"DRY_RUN".equals(row.mode()) || !delivery.dryRun()) throw new IllegalStateException("Live broadcast delivery is blocked");
-            List<Recipient> decisions = policy.resolve(row.schoolId(), row.broadcastId(), List.of(row.channel()), List.of(row.studentId()));
-            if (decisions.size() != 1) throw new IllegalStateException("Recipient policy response was incomplete");
+            if (decisions == null || decisions.size() != 1) throw new IllegalStateException("Recipient policy response was incomplete");
             Recipient decision = decisions.getFirst();
             if (!decision.allowed()) {
                 status = "SUPPRESSED"; reason = decision.reason();

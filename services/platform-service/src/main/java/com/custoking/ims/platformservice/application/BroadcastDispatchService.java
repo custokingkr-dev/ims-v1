@@ -8,6 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import java.util.function.Supplier;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
@@ -24,6 +28,27 @@ public class BroadcastDispatchService {
     private final boolean workerReady;
     private final LiveBroadcastConfiguration live;
     private final BroadcastLiveProvider liveProvider;
+    private TransactionTemplate mutations;
+
+    @Autowired
+    void configureTransactions(PlatformTransactionManager manager) {
+        mutations = new TransactionTemplate(manager);
+        mutations.setTimeout(10);
+    }
+
+    private <T> T mutate(Supplier<T> operation) {
+        // Unproxied unit-test construction only; Spring always injects the transaction manager.
+        return mutations == null ? operation.get() : mutations.execute(tx -> operation.get());
+    }
+
+    private void requireUnchanged(Broadcast expected, Broadcast actual) {
+        if (!expected.equals(actual)) throw new ResponseStatusException(HttpStatus.CONFLICT, "Broadcast changed during recipient review. Preview and retry.");
+    }
+
+    private void requireOutsideTransaction() {
+        if (TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Recipient policy must be resolved outside a database transaction");
+    }
 
     public BroadcastDispatchService(BroadcastDispatchRepository repository, BroadcastRecipientPolicy policy,
             NotificationDeliveryCommandService delivery, @Value("${notification.broadcast.mode:OFF}") String mode,
@@ -72,9 +97,9 @@ public class BroadcastDispatchService {
         return summarize(broadcast, recipients);
     }
 
-    @Transactional
     public void approve(UUID id, Long actorId, String previewFingerprint) {
-        Broadcast broadcast = supported(repository.find(id, true));
+        requireOutsideTransaction();
+        Broadcast broadcast = supported(repository.find(id, false));
         if (!"DRAFT".equals(broadcast.status())) return; // replay preserves the already-approved manifest
         List<Recipient> recipients = resolve(broadcast);
         Map<String, Object> preview = summarize(broadcast, recipients);
@@ -82,17 +107,21 @@ public class BroadcastDispatchService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Recipient eligibility changed or was not reviewed. Preview the audience again before approving.");
         }
         if ((long) preview.get("eligible") == 0) throw new ResponseStatusException(HttpStatus.CONFLICT, "No recipients currently meet the communication policy");
-        repository.approve(broadcast, recipients, actorId, "LIVE".equals(mode) ? "LIVE" : "DRY_RUN", previewFingerprint);
+        mutate(() -> {
+            Broadcast locked = supported(repository.find(id, true));
+            requireUnchanged(broadcast, locked);
+            repository.approve(locked, recipients, actorId, "LIVE".equals(mode) ? "LIVE" : "DRY_RUN", previewFingerprint);
+            return null;
+        });
     }
 
-    @Transactional
     public Map<String, Object> queue(UUID id, Long actorId) {
         return queue(id, actorId, null, null);
     }
 
-    @Transactional
     public Map<String, Object> queue(UUID id, Long actorId, String confirmedMode, String fingerprint) {
-        Broadcast broadcast = supported(repository.find(id, true));
+        requireOutsideTransaction();
+        Broadcast broadcast = supported(repository.find(id, false));
         boolean liveRequest = "LIVE".equals(mode);
         if (!(liveRequest ? liveQueueEnabled() && live.schoolAllowed(broadcast.schoolId()) : queueEnabled()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, String.valueOf(capabilities(true, broadcast.schoolId()).get("queueUnavailableReason")));
@@ -106,8 +135,12 @@ public class BroadcastDispatchService {
         if (liveRequest && !fingerprint.equals(summarize(broadcast, resolve(broadcast)).get("fingerprint")))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Recipient eligibility changed. Create and review a new draft before live sending.");
         if (!mode.equals(broadcast.approvalMode())) throw new ResponseStatusException(HttpStatus.CONFLICT, "Approval mode differs from dispatch mode");
-        repository.queue(broadcast, mode, actorId);
-        return repository.outcomes(repository.find(id, false));
+        return mutate(() -> {
+            Broadcast locked = supported(repository.find(id, true));
+            requireUnchanged(broadcast, locked);
+            repository.queue(locked, mode, actorId);
+            return repository.outcomes(repository.find(id, false));
+        });
     }
 
     public Map<String, Object> outcomes(UUID id) { return repository.outcomes(repository.find(id, false)); }
