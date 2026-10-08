@@ -1,0 +1,278 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T16:19:14.421506+00:00",
+  "sourceHeadSha": "5a048e29bfda6858b86d5533501ef5da4f37626a",
+  "runId": 37803078011,
+  "selectedFreshScans": [
+    {
+      "service": "platform-service",
+      "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:af1c8c7247e6c505619d76b6a4abc4e25201b298dafee63dda0ab024f3f51ad3",
+      "runtimeImageFromManifest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:e5fe5011d30e139c4a77bb151020e093d928e35640e9f2f8cbeb286d02e39903",
+      "sarifSha256": "0be0c70ac2379f80f46d9212e41a1701880b692825b514afad521af8ffbccc1a",
+      "findingCount": 17,
+      "severityCounts": {
+        "MEDIUM": 13,
+        "LOW": 4
+      },
+      "findings": [
+        {
+          "advisory": "CVE-2026-18374",
+          "package": "libc-bin",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-89092",
+          "package": "libc-bin",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-18374",
+          "package": "libc6",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-89092",
+          "package": "libc6",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2025-66382",
+          "package": "libexpat1",
+          "installedVersion": "2.6.1-2ubuntu0.6",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-86145",
+          "package": "libpcre2-8-0",
+          "installedVersion": "10.42-4ubuntu2.1",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-89161",
+          "package": "libpcre2-8-0",
+          "installedVersion": "10.42-4ubuntu2.1",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-46675",
+          "package": "libpng16-16t64",
+          "installedVersion": "1.6.43-5ubuntu0.7",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-40228",
+          "package": "libsystemd0",
+          "installedVersion": "255.4-1ubuntu8.17",
+          "scannerFixedVersion": "",
+          "severity": "LOW"
+        },
+        {
+          "advisory": "CVE-2026-40228",
+          "package": "libudev1",
+          "installedVersion": "255.4-1ubuntu8.17",
+          "scannerFixedVersion": "",
+          "severity": "LOW"
+        },
+        {
+          "advisory": "CVE-2026-18374",
+          "package": "locales",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-89092",
+          "package": "locales",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2024-56433",
+          "package": "login",
+          "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+          "scannerFixedVersion": "",
+          "severity": "LOW"
+        },
+        {
+          "advisory": "CVE-2024-56433",
+          "package": "passwd",
+          "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+          "scannerFixedVersion": "",
+          "severity": "LOW"
+        },
+        {
+          "advisory": "CVE-2026-18477",
+          "package": "tar",
+          "installedVersion": "1.35+dfsg-3ubuntu0.4",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-18508",
+          "package": "tar",
+          "installedVersion": "1.35+dfsg-3ubuntu0.4",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-85091",
+          "package": "zlib1g",
+          "installedVersion": "1:1.3.dfsg-3.1ubuntu2.2",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "service": "school-core-service",
+      "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:e87b28c337bea431be9cfe068a303e19206e6dfa8a03875c4e0b0851ccaccb17",
+      "runtimeImageFromManifest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:30da779883d4ea1db7d482ca718987148e80e45a00a74466db4f363a2551bad2",
+      "sarifSha256": "e464e159ae42d85b7d1d6725927a01647c28ab942f35abe418fdff13482f73cd",
+      "findingCount": 17,
+      "severityCounts": {
+        "MEDIUM": 13,
+        "LOW": 4
+      },
+      "findings": [
+        {
+          "advisory": "CVE-2026-18374",
+          "package": "libc-bin",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-89092",
+          "package": "libc-bin",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-18374",
+          "package": "libc6",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-89092",
+          "package": "libc6",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2025-66382",
+          "package": "libexpat1",
+          "installedVersion": "2.6.1-2ubuntu0.6",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-86145",
+          "package": "libpcre2-8-0",
+          "installedVersion": "10.42-4ubuntu2.1",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-89161",
+          "package": "libpcre2-8-0",
+          "installedVersion": "10.42-4ubuntu2.1",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-46675",
+          "package": "libpng16-16t64",
+          "installedVersion": "1.6.43-5ubuntu0.7",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-40228",
+          "package": "libsystemd0",
+          "installedVersion": "255.4-1ubuntu8.17",
+          "scannerFixedVersion": "",
+          "severity": "LOW"
+        },
+        {
+          "advisory": "CVE-2026-40228",
+          "package": "libudev1",
+          "installedVersion": "255.4-1ubuntu8.17",
+          "scannerFixedVersion": "",
+          "severity": "LOW"
+        },
+        {
+          "advisory": "CVE-2026-18374",
+          "package": "locales",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-89092",
+          "package": "locales",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2024-56433",
+          "package": "login",
+          "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+          "scannerFixedVersion": "",
+          "severity": "LOW"
+        },
+        {
+          "advisory": "CVE-2024-56433",
+          "package": "passwd",
+          "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+          "scannerFixedVersion": "",
+          "severity": "LOW"
+        },
+        {
+          "advisory": "CVE-2026-18477",
+          "package": "tar",
+          "installedVersion": "1.35+dfsg-3ubuntu0.4",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-18508",
+          "package": "tar",
+          "installedVersion": "1.35+dfsg-3ubuntu0.4",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        },
+        {
+          "advisory": "CVE-2026-85091",
+          "package": "zlib1g",
+          "installedVersion": "1:1.3.dfsg-3.1ubuntu2.2",
+          "scannerFixedVersion": "",
+          "severity": "MEDIUM"
+        }
+      ]
+    }
+  ],
+  "scopedImageCount": 2,
+  "retainedFiveImageEvidenceKeepsOriginalDate": true,
+  "findingAbsenceUsedAsInventory": false,
+  "nativeApplicabilityComplete": false,
+  "fixPlan": "Use supported distribution fixes and per-advisory applicability review; upstream version or scanner finding absence alone does not establish remediation. Keep the existing libpng vendor/scanner disagreement and residual native owner row open.",
+  "primaryReadback": "acceptance-execution-boundary-native-research.json"
+}
