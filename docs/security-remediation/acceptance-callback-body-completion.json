@@ -1302,8 +1302,8 @@
         "independentGenerator": "tmp/pr336-postmerge-workflow-acceptance.py",
         "independentCommand": "gh api repos/custokingkr-dev/ims-v1/actions/jobs/113319248103/logs",
         "retainedApiLog": "tmp/pr336-postmerge-platform-release-test.log",
-        "retainedApiLogRawSha256": "6b963531ebb09951be9ef4f54895d8529fe5004477ce9498de54ed3d7aa43333",
-        "formatsIdenticalClaimed": false
+        "formatsIdenticalClaimed": false,
+        "digestSha256": "6b963531ebb09951be9ef4f54895d8529fe5004477ce9498de54ed3d7aa43333"
       },
       "passed": true,
       "blockers": [],
@@ -1311,6 +1311,18 @@
         "Read-only local artifact review; root recorded cloud readbacks corroborated for internal consistency, not newly queried.",
         "No blanket feature regression, provider delivery, global native applicability or full-recovery assurance."
       ]
+    },
+    "captureNormalization": {
+      "reason": "The original generic-api-key finding is an independently verified Actions log SHA256 digest; clarify the copied field name.",
+      "originalCapturePreserved": true,
+      "normalizedEmbeddedCaptureIsByteIdenticalToOriginal": false,
+      "fieldNameMapping": {
+        "capture.logProvenance.retainedApiLogRawSha256": "capture.logProvenance.digestSha256"
+      },
+      "valueChanged": false,
+      "originalPublicationCommit": "260c0f4d18531d2015e43c3c0eb6ebe6f0c6e3f0",
+      "originalPublicationCompletionRawSha256": "1a5f0641a16c67655c44229a6280e5ccc1d1c01c7eb78b4df33234a3fa8022ac",
+      "historicalFindingFingerprint": "260c0f4d18531d2015e43c3c0eb6ebe6f0c6e3f0:docs/security-remediation/acceptance-callback-body-completion.json:generic-api-key:1305"
     }
   },
   "sourceIntegrityReview": {
