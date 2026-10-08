@@ -3,7 +3,6 @@ package com.custoking.ims.platformservice.infrastructure;
 import com.custoking.ims.platformservice.application.*;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
-import tools.jackson.databind.ObjectMapper;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -14,13 +13,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.*;
 
 class Msg91GenericSubmissionTransportTest {
-    final ObjectMapper mapper=new ObjectMapper();
     final NotificationDeliveryRequest request=new NotificationDeliveryRequest("one","fee-reminder.v1","SMS","GUARDIAN","one","{\"destination\":\"919999999999\"}");
     final String accepted="{\"type\":\"success\",\"message\":\"5762846b4f8d285d378b4567\"}";
     String body() { return "{\"template_id\":\"synthetic\",\"CRQID\":\""+NotificationSubmissionResult.correlationId("one")+"\",\"recipients\":[{\"mobiles\":\"919999999999\"}]}"; }
     @Test void exactDocumentedAcceptanceIsBoundToRequestAndCorrelationNotDelivery() {
         var calls=new AtomicInteger();
-        var transport=new Msg91GenericSubmissionTransport(mapper,wire->{
+        var transport=new Msg91GenericSubmissionTransport(wire->{
             calls.incrementAndGet();assertThat(wire.uri()).isEqualTo(Msg91GenericSubmissionTransport.SMS_ENDPOINT);
             assertThat(wire.timeout()).contains(Duration.ofSeconds(10));return new Msg91BroadcastLiveProvider.Reply(200,accepted);
         });
@@ -29,7 +27,7 @@ class Msg91GenericSubmissionTransportTest {
         assertThat(result.providerRequestId()).isEqualTo("5762846b4f8d285d378b4567");assertThat(result.binds(request)).isTrue();assertThat(calls.get()).isEqualTo(1);
     }
     @Test void narrowDocumentedRejectionAndEveryAmbiguousResponseAreDistinct() {
-        var codec=new Msg91SubmissionCodec(mapper);
+        var codec=new Msg91SubmissionCodec();
         assertThat(codec.decode(request,200,"{\"type\":\"error\",\"message\":\"flow id missing\"}").status()).isEqualTo(NotificationSubmissionResult.Status.REJECTED);
         for(int http:new int[]{408,409,425,429,500,502,503,301,401})
             assertThat(codec.decode(request,http,accepted).status()).isEqualTo(NotificationSubmissionResult.Status.UNKNOWN);
@@ -39,9 +37,36 @@ class Msg91GenericSubmissionTransportTest {
             assertThat(codec.decode(request,200,body).status()).isEqualTo(NotificationSubmissionResult.Status.UNKNOWN);
     }
     @Test void requestRoutingTamperCannotReachTransport() {
-        var calls=new AtomicInteger();var transport=new Msg91GenericSubmissionTransport(mapper,wire->{calls.incrementAndGet();return new Msg91BroadcastLiveProvider.Reply(200,accepted);});
+        var calls=new AtomicInteger();var transport=new Msg91GenericSubmissionTransport(wire->{calls.incrementAndGet();return new Msg91BroadcastLiveProvider.Reply(200,accepted);});
         assertThat(transport.submit(request,body().replace("919999999999","918888888888"),"synthetic_auth_key").status()).isEqualTo(NotificationSubmissionResult.Status.UNKNOWN);
         assertThat(transport.submit(request,body().replace(NotificationSubmissionResult.correlationId("one"),"spoofed"),"synthetic_auth_key").status()).isEqualTo(NotificationSubmissionResult.Status.UNKNOWN);
+        assertThat(calls.get()).isZero();
+    }
+    @Test void duplicateOrTrailingAcknowledgementsNeverBecomeAcceptance() {
+        var codec=new Msg91SubmissionCodec();
+        for(String response:new String[]{
+            "{\"type\":\"error\",\"type\":\"success\",\"message\":\"5762846b4f8d285d378b4567\"}",
+            "{\"type\":\"success\",\"message\":\"uncertain\",\"mess\\u0061ge\":\"5762846b4f8d285d378b4567\"}",
+            accepted+" {}",accepted+" null",accepted+" trailing",
+            "{\"type\":\"error\",\"type\":\"error\",\"message\":\"flow id missing\"}"}) {
+            var result=codec.decode(request,200,response);
+            assertThat(result.status()).as("ambiguous acknowledgement").isEqualTo(NotificationSubmissionResult.Status.UNKNOWN);
+            assertThat(result.providerRequestId()).isNull();
+        }
+    }
+    @Test void ambiguousPreparedRoutingCannotReachTransport() {
+        var calls=new AtomicInteger();
+        var transport=new Msg91GenericSubmissionTransport(wire->{calls.incrementAndGet();return new Msg91BroadcastLiveProvider.Reply(200,accepted);});
+        String correlation=NotificationSubmissionResult.correlationId("one");
+        for(String prepared:new String[]{
+            body().replace("\"CRQID\":\""+correlation+"\"","\"CRQID\":\"other\",\"CRQID\":\""+correlation+"\""),
+            body().replace("\"mobiles\":\"919999999999\"","\"mobiles\":\"918888888888\",\"mobil\\u0065s\":\"919999999999\""),
+            body()+" {}",body()+" null"}) {
+            assertThat(transport.submit(request,prepared,"synthetic_auth_key").status()).isEqualTo(NotificationSubmissionResult.Status.UNKNOWN);
+        }
+        var ambiguousRequest=new NotificationDeliveryRequest(request.eventId(),request.template(),request.channel(),
+            request.recipientType(),request.recipientId(),"{\"destination\":\"918888888888\",\"destination\":\"919999999999\"}");
+        assertThat(transport.submit(ambiguousRequest,body(),"synthetic_auth_key").status()).isEqualTo(NotificationSubmissionResult.Status.UNKNOWN);
         assertThat(calls.get()).isZero();
     }
     @Test void realFakeHttpAcceptanceMalformedAndRejectionAreDecodedWithoutRetries() throws Exception {
@@ -91,7 +116,7 @@ class Msg91GenericSubmissionTransportTest {
         }
         Msg91GenericSubmissionTransport transport() {
             var actual=new Msg91BroadcastLiveProvider.SingleRequestTransport();
-            return new Msg91GenericSubmissionTransport(mapper,wire->actual.post(HttpRequest.newBuilder(
+            return new Msg91GenericSubmissionTransport(wire->actual.post(HttpRequest.newBuilder(
                 URI.create("http://127.0.0.1:"+server.getAddress().getPort()+"/"))
                 .timeout(delay>0?Duration.ofMillis(200):Duration.ofSeconds(3))
                 .POST(wire.bodyPublisher().orElseThrow()).build()));

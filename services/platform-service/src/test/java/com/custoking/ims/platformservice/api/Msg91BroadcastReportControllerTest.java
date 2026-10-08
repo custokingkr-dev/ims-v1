@@ -104,6 +104,18 @@ class Msg91BroadcastReportControllerTest {
         verifyNoInteractions(f.ledger);
     }
 
+    @Test void duplicateEscapedDuplicateAndTrailingDocumentsNeverReachLedger() throws Exception {
+        var f=fixture(true,SERVICE,WEBHOOK);
+        String valid=body("DELIVERED");
+        for(String invalid:List.of(
+                valid.replace("\"status\":\"DELIVERED\"","\"status\":\"FAILED\",\"status\":\"DELIVERED\""),
+                valid.replace("\"providerMessageId\":","\"providerMessageId\":\"unconfirmed\",\"providerMessageI\\u0064\":"),
+                valid+" {}",valid+" null",valid+" trailing")) {
+            f.mvc.perform(authenticated(invalid)).andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(f.ledger);assertThat(f.transactions.commits).isZero();
+    }
+
     @Test void databaseFailureReturnsRetryableGenericErrorWithoutItsSensitiveCause() throws Exception {
         var f = fixture(true, SERVICE, WEBHOOK);
         when(f.ledger.report(anyString(), anyString(), anyString(), anyString(), anyString(), any(), anyString()))
@@ -146,7 +158,7 @@ class Msg91BroadcastReportControllerTest {
     private Fixture fixture(boolean enabled, String service, String webhook) {
         var ledger = mock(BroadcastLiveRepository.class); var manager = new TrackingTransactions();
         var config = new LiveBroadcastConfiguration(enabled, "EMAIL", true, "1", "a".repeat(64), webhook);
-        var controller = new Msg91BroadcastReportController(service, config, ledger, mapper, manager);
+        var controller = new Msg91BroadcastReportController(service, config, ledger, manager);
         return new Fixture(MockMvcBuilders.standaloneSetup(controller).build(), ledger, manager);
     }
     private static String sha(String value) throws Exception { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8))); }

@@ -58,33 +58,40 @@ def gh_json(gh: str, endpoint: str, *, allow_not_found: bool = False) -> Any:
         raise RuntimeError(f"GitHub API returned invalid JSON for {endpoint}: {error}") from error
 
 
+MAX_API_PAGES = 50
+MAX_API_PAGE_ITEMS = 100
+
+
+def bounded_pages(repository: str, endpoint: str, gh: str, *, envelope: str | None = None) -> list[dict[str, Any]]:
+    collected: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for page in range(1, MAX_API_PAGES + 1):
+        response = gh_json(gh, f"repos/{repository}/{endpoint}&page={page}")
+        if envelope is not None:
+            if not isinstance(response, dict) or not isinstance(response.get(envelope), list):
+                raise RuntimeError("Invalid GitHub pagination response")
+            batch = response[envelope]
+        else:
+            batch = response
+        if not isinstance(batch, list) or len(batch) > MAX_API_PAGE_ITEMS:
+            raise RuntimeError("Invalid GitHub pagination response")
+        for item in batch:
+            if not isinstance(item, dict) or type(item.get("id")) is not int or item["id"] <= 0 or item["id"] in seen:
+                raise RuntimeError("Invalid or repeated GitHub pagination identity")
+            seen.add(item["id"])
+            collected.append(item)
+        if len(batch) < MAX_API_PAGE_ITEMS:
+            return collected
+    raise RuntimeError("GitHub pagination limit exceeded; incomplete evidence rejected")
+
+
 def paged_check_runs(repository: str, commit: str, gh: str) -> dict[str, Any]:
-    runs: list[dict[str, Any]] = []
-    page = 1
-    while True:
-        response = gh_json(
-            gh,
-            f"repos/{repository}/commits/{commit}/check-runs?filter=latest&per_page=100&page={page}",
-        )
-        batch = list(response.get("check_runs") or [])
-        runs.extend(batch)
-        if len(batch) < 100:
-            return {"total_count": len(runs), "check_runs": runs}
-        page += 1
+    runs = bounded_pages(repository, f"commits/{commit}/check-runs?filter=latest&per_page=100", gh, envelope="check_runs")
+    return {"total_count": len(runs), "check_runs": runs}
 
 
 def paged_rulesets(repository: str, gh: str) -> list[dict[str, Any]]:
-    summaries: list[dict[str, Any]] = []
-    page = 1
-    while True:
-        batch = list(gh_json(
-            gh,
-            f"repos/{repository}/rulesets?includes_parents=true&per_page=100&page={page}",
-        ) or [])
-        summaries.extend(batch)
-        if len(batch) < 100:
-            return summaries
-        page += 1
+    return bounded_pages(repository, "rulesets?includes_parents=true&per_page=100", gh)
 
 
 def live_evidence(repository: str, commit: str, branches: list[str], gh: str) -> dict[str, Any]:
@@ -207,13 +214,8 @@ def ruleset_status_sources(
 
 
 def producer_id(value: Any) -> int | None:
-    if isinstance(value, bool):
-        return None
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError):
-        return None
-    return parsed if parsed > 0 else None
+    # GitHub app/integration identifiers are JSON integers, never coercible labels.
+    return value if type(value) is int and value > 0 else None
 
 
 def producer_configuration(

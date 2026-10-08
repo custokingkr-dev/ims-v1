@@ -25,3 +25,13 @@ docs/security-remediation/acceptance-provider-assertion-dev-release.json text eo
 docs/security-remediation/acceptance-provider-assertion-image-protection.json text eol=lf
 docs/security-remediation/acceptance-provider-assertion-public-smoke.json text eol=lf
 docs/security-remediation/acceptance-provider-assertion-completion.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-local.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-governance-local.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-replay-local.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-provider-local.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-revision-preflight.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-ci.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-dev-release.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-image-protection.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-public-smoke.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-completion.json text eol=lf

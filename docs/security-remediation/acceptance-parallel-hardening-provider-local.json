@@ -1,0 +1,322 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T11:45:12.885488+00:00",
+  "baseHeadSha": "f773331ab0a0fe04f627008a0247074ec42c119e",
+  "scope": "Local MSG91 wire interpretation and EMAIL HTTP refusal hardening; source not a selected account contract or deployed/provider/hardware/restore acceptance",
+  "sourceRecords": [
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91WireJson.java",
+      "sha256": "ecb6b4520eda0dcd6997e9698516356c37fb94e97b115d4b9de4c78da4d82ec6",
+      "encoding": "UTF-8",
+      "newlineHashConvention": "normalized LF / indexed Git text"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SubmissionCodec.java",
+      "sha256": "746102ed85a61ef6ec78d786ad1423ef0ade452a2a70a79cf00979ad7369e68f",
+      "encoding": "UTF-8",
+      "newlineHashConvention": "normalized LF / indexed Git text"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91GenericSubmissionTransport.java",
+      "sha256": "e521f12de1be4d1f00a6804a41f91de7377e7fa7c69a3bb62b58560268e821c8",
+      "encoding": "UTF-8",
+      "newlineHashConvention": "normalized LF / indexed Git text"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91NotificationDeliveryProvider.java",
+      "sha256": "00177a6dafa3da2ffca6624619e22541adb64edeb16553869b473ffd5d476f4e",
+      "encoding": "UTF-8",
+      "newlineHashConvention": "normalized LF / indexed Git text"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91BroadcastLiveProvider.java",
+      "sha256": "c26f4ebcaeaf1da5cc6625bb22af81544d4f6e29a84f2cdab3aacd9789f353c9",
+      "encoding": "UTF-8",
+      "newlineHashConvention": "normalized LF / indexed Git text"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+      "sha256": "63db72fed0156ee51d4e1ac099154f571562a374afa7c783a660a66a19e289c1",
+      "encoding": "UTF-8",
+      "newlineHashConvention": "normalized LF / indexed Git text"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91GenericSubmissionTransportTest.java",
+      "sha256": "941a5dbe7f63c0bbe4a105ba0a7b74b2ff2b20eb49d5ef09935e338853395a31",
+      "encoding": "UTF-8",
+      "newlineHashConvention": "normalized LF / indexed Git text"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91BroadcastLiveProviderTest.java",
+      "sha256": "fb1955c218744e060508634e9866660ea2cbff11be5f04bdd6467f614cac7514",
+      "encoding": "UTF-8",
+      "newlineHashConvention": "normalized LF / indexed Git text"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91NotificationDeliveryProviderTest.java",
+      "sha256": "e773a6064263e9cc7ab6a898d1a800dbf3d6110b749760a5b2b2d3bb81daccdb",
+      "encoding": "UTF-8",
+      "newlineHashConvention": "normalized LF / indexed Git text"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java",
+      "sha256": "d308279c76eb6575d3050791e6aacd53dbd3e66ef1b91de3f0db155c1a4de779",
+      "encoding": "UTF-8",
+      "newlineHashConvention": "normalized LF / indexed Git text"
+    }
+  ],
+  "normalizedLfSha256": {
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91WireJson.java": "ecb6b4520eda0dcd6997e9698516356c37fb94e97b115d4b9de4c78da4d82ec6",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SubmissionCodec.java": "746102ed85a61ef6ec78d786ad1423ef0ade452a2a70a79cf00979ad7369e68f",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91GenericSubmissionTransport.java": "e521f12de1be4d1f00a6804a41f91de7377e7fa7c69a3bb62b58560268e821c8",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91NotificationDeliveryProvider.java": "00177a6dafa3da2ffca6624619e22541adb64edeb16553869b473ffd5d476f4e",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91BroadcastLiveProvider.java": "c26f4ebcaeaf1da5cc6625bb22af81544d4f6e29a84f2cdab3aacd9789f353c9",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java": "63db72fed0156ee51d4e1ac099154f571562a374afa7c783a660a66a19e289c1",
+    "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91GenericSubmissionTransportTest.java": "941a5dbe7f63c0bbe4a105ba0a7b74b2ff2b20eb49d5ef09935e338853395a31",
+    "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91BroadcastLiveProviderTest.java": "fb1955c218744e060508634e9866660ea2cbff11be5f04bdd6467f614cac7514",
+    "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91NotificationDeliveryProviderTest.java": "e773a6064263e9cc7ab6a898d1a800dbf3d6110b749760a5b2b2d3bb81daccdb",
+    "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java": "d308279c76eb6575d3050791e6aacd53dbd3e66ef1b91de3f0db155c1a4de779"
+  },
+  "sourceRecordsSha256": "061f7900281683701ef64b0654dd379a0b7a05a9a37ab2864940a6a8be5268e4",
+  "actualTestRecords": [
+    {
+      "path": "tmp/provider-wire-ambiguity-before.log",
+      "rawSha256": "5c6cca44da738d6a4ab8feb7b9111c75511300bbc8d3fb35fbba21a2674b77ee",
+      "bytes": 14920,
+      "encoding": "UTF-16 with BOM",
+      "reported": 22,
+      "failed": 4,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 18,
+      "buildOutcome": "FAILURE",
+      "finishedAtFromActualLog": "2026-10-08T16:52:02+05:30",
+      "scope": "Pre-fix interpretation regressions; known intentional red run",
+      "boundToFinalSourceRecords": false,
+      "overlappingTestsDoNotAddToFullAggregate": true
+    },
+    {
+      "path": "tmp/provider-wire-ambiguity-after.log",
+      "rawSha256": "fc359f215d48e1aea247bc86098349da2d7a6db46505b76e5788fb98d12a506e",
+      "bytes": 9804,
+      "encoding": "UTF-16 with BOM",
+      "reported": 38,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 38,
+      "buildOutcome": "SUCCESS",
+      "finishedAtFromActualLog": "2026-10-08T16:53:37+05:30",
+      "scope": "Initial strict wire parser/UTF-8 checkpoint; overlapping focused tests",
+      "boundToFinalSourceRecords": false,
+      "overlappingTestsDoNotAddToFullAggregate": true
+    },
+    {
+      "path": "tmp/provider-wire-ambiguity-final-focused.log",
+      "rawSha256": "774d9a984ed46cb59d6364d59ec7443c2e0f46f71d60136fe01422e6ff27264b",
+      "bytes": 8838,
+      "encoding": "UTF-16 with BOM",
+      "reported": 39,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 39,
+      "buildOutcome": "SUCCESS",
+      "finishedAtFromActualLog": "2026-10-08T16:55:26+05:30",
+      "scope": "Strict wire plus valid split Unicode checkpoint; overlapping focused tests",
+      "boundToFinalSourceRecords": false,
+      "overlappingTestsDoNotAddToFullAggregate": true
+    },
+    {
+      "path": "tmp/platform-provider-wire-final.log",
+      "rawSha256": "8f68d64f35fcb8aacbf1e18c63e64c764701f5d8df1e90d5cb8d9565038f496b",
+      "bytes": 6801046,
+      "encoding": "UTF-16 with BOM",
+      "reported": 453,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 452,
+      "buildOutcome": "FAILURE",
+      "finishedAtFromActualLog": "2026-10-08T16:59:22+05:30",
+      "scope": "Pre-refusal full checkpoint: incomplete oversized chunk denied408 instead of required413; cause unproved",
+      "boundToFinalSourceRecords": false,
+      "overlappingTestsDoNotAddToFullAggregate": true
+    },
+    {
+      "path": "tmp/provider-wire-refusal-final-focused.log",
+      "rawSha256": "ad05443261e6dc7d8369561b302f2c5f6215e9bd0c43979beeffee9004966654",
+      "bytes": 14560,
+      "encoding": "UTF-16 with BOM",
+      "reported": 44,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 44,
+      "buildOutcome": "SUCCESS",
+      "finishedAtFromActualLog": "2026-10-08T17:02:24+05:30",
+      "scope": "Strict wire and EMAIL refusal checkpoint plus unchanged actual Tomcat controls; overlapping tests",
+      "boundToFinalSourceRecords": false,
+      "overlappingTestsDoNotAddToFullAggregate": true
+    },
+    {
+      "path": "tmp/platform-provider-wire-refusal-final.log",
+      "rawSha256": "46c9f9c49681673638c8d5a8dc3090360d680d0b5e03f7bafcb1f33bbe80b998",
+      "bytes": 6797814,
+      "encoding": "UTF-16 with BOM",
+      "reported": 454,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 454,
+      "buildOutcome": "SUCCESS",
+      "finishedAtFromActualLog": "2026-10-08T17:07:34+05:30",
+      "scope": "Pre-existing EMAIL callback/builder follow-up full checkpoint; not final source",
+      "boundToFinalSourceRecords": false,
+      "overlappingTestsDoNotAddToFullAggregate": true
+    },
+    {
+      "path": "tmp/provider-wire-all-boundaries-focused.log",
+      "rawSha256": "6b3c1274cff27d66bdd9eeb5bb5e7b6c3992a0d091b6e72f8df0515c144136dc",
+      "bytes": 22388,
+      "encoding": "UTF-16 with BOM",
+      "reported": 54,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 54,
+      "buildOutcome": "SUCCESS",
+      "finishedAtFromActualLog": "2026-10-08T17:09:37+05:30",
+      "scope": "All-boundary focused checkpoint before adding ordinary positive builder controls; overlapping tests",
+      "boundToFinalSourceRecords": false,
+      "overlappingTestsDoNotAddToFullAggregate": true
+    },
+    {
+      "path": "tmp/provider-wire-final-frozen-focused.log",
+      "rawSha256": "2052e68079bc85deed9da54a0aa50eef0a73c411c5127bd341425b0674c4753e",
+      "bytes": 21422,
+      "encoding": "UTF-16 with BOM",
+      "reported": 54,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 54,
+      "buildOutcome": "SUCCESS",
+      "finishedAtFromActualLog": "2026-10-08T17:11:01+05:30",
+      "scope": "Final frozen source: six focused provider/report suites, including actual MockMvc and Tomcat boundaries",
+      "boundToFinalSourceRecords": true,
+      "overlappingTestsDoNotAddToFullAggregate": true
+    },
+    {
+      "path": "tmp/platform-provider-wire-all-final.log",
+      "rawSha256": "3d4ea85b147d923315107ead13dc73a8d7a5ee864fac209ebcf45c2a9c890dba",
+      "bytes": 6816684,
+      "encoding": "UTF-16 with BOM",
+      "reported": 456,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 456,
+      "buildOutcome": "SUCCESS",
+      "finishedAtFromActualLog": "2026-10-08T17:14:28+05:30",
+      "scope": "Final frozen source: full platform suite, including actual PostgreSQL/Flyway chains",
+      "boundToFinalSourceRecords": true,
+      "overlappingTestsDoNotAddToFullAggregate": true
+    }
+  ],
+  "finalFullAggregate": {
+    "reported": 456,
+    "passed": 456,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "finalFocusedAggregate": {
+    "reported": 54,
+    "passed": 54,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "subsetOfFullSuite": true
+  },
+  "finalFullSuite": {
+    "reported": 456,
+    "passed": 456,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "log": "tmp/platform-provider-wire-all-final.log",
+    "rawLogSha256": "3d4ea85b147d923315107ead13dc73a8d7a5ee864fac209ebcf45c2a9c890dba",
+    "finishedAt": "2026-10-08T17:14:28+05:30",
+    "buildOutcome": "SUCCESS"
+  },
+  "finalFocused": {
+    "reported": 54,
+    "passed": 54,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "log": "tmp/provider-wire-final-frozen-focused.log",
+    "rawLogSha256": "2052e68079bc85deed9da54a0aa50eef0a73c411c5127bd341425b0674c4753e",
+    "finishedAt": "2026-10-08T17:11:01+05:30",
+    "buildOutcome": "SUCCESS",
+    "subsetOfFullSuite": true
+  },
+  "preservedFailureScopes": [
+    "Four pre-fix regressions reproduced ambiguous provider wire acceptance/routing and malformed UTF-8 replacement",
+    "Pre-refusal full453 run failed one existing incomplete-chunk413 expectation with observed denial408; no weakening or body-reader change; root cause remains unproved"
+  ],
+  "reviewedParserInventory": [
+    "Generic SMS prepared wire body and original request payload: independent strict parser",
+    "Generic SMS acknowledgement: independent strict parser",
+    "Generic SMS/OTP/EMAIL/WhatsApp builder payload: independent strict parser",
+    "EMAIL broadcast prepared body and acknowledgement: independent strict parser",
+    "Existing EMAIL broadcast callback: independent strict bytes parser before durable report transaction",
+    "Dormant SMS-v3 report and normalized generic report receiver: existing strict duplicate/trailing parser retained unchanged",
+    "Actual fixed-endpoint response subscriber: bounded UTF-8 decoder rejects malformed bytes and preserves valid split Unicode"
+  ],
+  "emailRefusalScope": {
+    "retainedDocumentedHttpRefusals": [
+      401,
+      403,
+      404,
+      422
+    ],
+    "requiresSingleNonContradictoryJsonObject": true,
+    "unknownStatusesPreviouslyDefinitive": [
+      400,
+      405,
+      413,
+      415
+    ],
+    "newDefinitive402Added": false,
+    "vendorSpecificRefusalSchemaInvented": false,
+    "automaticResendAdded": false
+  },
+  "authorizationRoutesSchemasBodyCapsLiveAdmissionUnchanged": true,
+  "latestAcceptedProviderBaseline": {
+    "path": "docs/security-remediation/acceptance-provider-assertion-dev-release.json",
+    "rawSha256": "cff544bd1d447c2fceeffbb951f7c38ae6719ea976450b770542d1064f1a5b3b",
+    "separatelyDatedObservation": true
+  },
+  "ownerSelectedAccountContractVerified": false,
+  "authenticatedRawVendorBridgeImplemented": false,
+  "authoritativeUnknownLostResponseAttestationImplemented": false,
+  "liveProviderAdmissionEnabled": false,
+  "externalMessageSent": false,
+  "controlledProviderAcceptanceVerified": false,
+  "recipientOrIncidentReceiptVerified": false,
+  "newSourceCiOrDeploymentClaimed": false,
+  "wholeRemainingPlanComplete": false,
+  "primarySourcesCheckedOn": "2026-10-08",
+  "primarySources": [
+    "https://www.rfc-editor.org/rfc/rfc8259.html",
+    "https://msg91.com/help/email/email-rejection-types-and-error-codes",
+    "https://msg91.com/help/webhooks/how-can-i-get-the-delivery-reports-on-my-webhook-url",
+    "https://msg91.com/help/webhook-new/how-to-receive-email-delivery-reports-via-webhook-new/",
+    "https://msg91.com/help/webhook-new/how-to-receive-whatsapp-delivery-reports-via-webhook-new",
+    "https://docs.msg91.com/sms/send-sms",
+    "https://api.msg91.com/apidoc/textsms/send-sms-flow.php",
+    "https://msg91.com/help/transactional-email/how-to-check-transactional-email-delivery-report"
+  ]
+}

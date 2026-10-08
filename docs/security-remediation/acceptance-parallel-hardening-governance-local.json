@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-08T11:35:20.341790+00:00",
+  "change": "Retain exact statically audited per_page100 endpoint literals; bounded pagination appends only page parameter",
+  "sourceHashesNormalizedLf": {
+    "scripts/verify-github-governance-checks.py": "53a5dc8f1f39f6631b1d7b3a5e4172688d8906adc0cbb07f791864060ea9bf9a",
+    "scripts/tests/test_verify_github_governance_checks.py": "bc5d127909ea1c78773d7ea021a749dba95daffd763ae785ad87f08200747fdf"
+  },
+  "checks": [
+    {
+      "name": "optimizedFocusedTests",
+      "exitCode": 0,
+      "logSha256": "acaa546573112338d80877733c0037147d24baf8c4efada73568e38cbb211040",
+      "testsReported": 9,
+      "scope": "Source/static only; no cloud policy enforcement claim"
+    },
+    {
+      "name": "staticGovernanceAudit",
+      "exitCode": 0,
+      "logSha256": "3bd0dbda182ee41c6f6f91076267d6f8b3566830ab5634f5f7312be009916ea2",
+      "testsReported": null,
+      "scope": "Source/static only; no cloud policy enforcement claim"
+    }
+  ],
+  "cloudCalls": 0,
+  "sourceFrozen": true,
+  "earlierProofPreserved": "tmp/governance-owner-followup-local.json",
+  "datedOwnerObservation": {
+    "schemaVersion": 1,
+    "checkedAtUtc": "2026-10-08T11:20:25.376354+00:00",
+    "project": "custoking-dev",
+    "sourceScope": "Narrow governance verifier pagination/producer metadata hardening",
+    "sourceHashesNormalizedLf": {
+      "scripts/verify-github-governance-checks.py": "4ce4eb0add8f6d45c4182494b89a64e6b513980d411fd3227d8a093e86b89711",
+      "scripts/tests/test_verify_github_governance_checks.py": "bc5d127909ea1c78773d7ea021a749dba95daffd763ae785ad87f08200747fdf"
+    },
+    "tests": {
+      "reported": 9,
+      "passed": 9,
+      "optimizedPython": true,
+      "logSha256": "45dcca630af2237689246cadf686d97a881feb23f24c7f258c8c04b34fbf9433"
+    },
+    "freshOwnerMetadata": {
+      "repository": {
+        "readable": true,
+        "permissions": {
+          "admin": false,
+          "maintain": false,
+          "push": true,
+          "triage": true,
+          "pull": true
+        }
+      },
+      "devBranch": {
+        "readable": true,
+        "protected": false,
+        "sourceSha": "f773331ab0a0fe04f627008a0247074ec42c119e"
+      },
+      "dashboardService": {
+        "readable": false,
+        "notFound": true,
+        "secretValuesRead": false,
+        "errorClassification": "CANNOT_FIND_SERVICE"
+      },
+      "dedicatedOAuthSecret": {
+        "readable": false,
+        "notFound": true,
+        "secretValuesRead": false
+      },
+      "ownedDomainMappings": {
+        "readable": true,
+        "count": 0,
+        "metadataSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+        "secretValuesRead": false
+      },
+      "edgeForwardingRules": {
+        "readable": true,
+        "count": 0,
+        "metadataSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+        "secretValuesRead": false
+      }
+    },
+    "sourceChanges": [
+      "At most50 API pages of at most100 unique positive integer record IDs; rejects full final page as incomplete rather than guessing",
+      "Strict envelope/page types, repeated identities and oversized/malformed page rejection",
+      "Producer app/integration IDs require positive JSON integer, rejecting booleans/floats/strings"
+    ],
+    "remainingAcceptance": [
+      "Repository admin still required to enforce reviewed settings; bounded read does not grant policy readiness",
+      "Dedicated dashboard OAuth client/callback/allowed identities and managed references required; no OAuth reuse",
+      "Owned hostname and approved edge budget/configuration required before apply/cutover",
+      "No physical authenticator/retention/restore/cost policy approval inferred",
+      "Pagination hardening limits records/pages; existing120-second per-CLI timeout is retained, not a new whole-live-audit process/output guarantee"
+    ],
+    "cloudMutation": false,
+    "secretValuesRead": false,
+    "deploymentExecuted": false
+  },
+  "datedOwnerObservationIsNotFinalFrozenSourceProof": true
+}

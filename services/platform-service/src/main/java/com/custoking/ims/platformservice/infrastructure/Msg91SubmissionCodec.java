@@ -2,21 +2,18 @@ package com.custoking.ims.platformservice.infrastructure;
 
 import com.custoking.ims.platformservice.application.NotificationDeliveryRequest;
 import com.custoking.ims.platformservice.application.NotificationSubmissionResult;
-import tools.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
 
 /** Narrow documented SMS FLOW response, never a delivery report or vendor deduplication promise. */
 final class Msg91SubmissionCodec {
-    private final ObjectMapper mapper;
-    Msg91SubmissionCodec(ObjectMapper mapper) { this.mapper=mapper; }
     NotificationSubmissionResult decode(NotificationDeliveryRequest request,int http,String body) {
         if(body==null || body.getBytes(StandardCharsets.UTF_8).length>16_384)
             return unknown(request,"PROVIDER_RESPONSE_INVALID");
         if(!"SMS".equals(request.channel())) return unknown(request,"PROVIDER_CHANNEL_RECEIPT_UNVERIFIED");
         if(http!=200 && http!=400) return unknown(request,"PROVIDER_HTTP_UNCONFIRMED");
         try {
-            var response=mapper.readTree(body);
+            var response=Msg91WireJson.read(body);
             if(!response.isObject() || response.size()<2 || response.size()>3
                 || !response.path("type").isString() || !response.path("message").isString())
                 return unknown(request,"PROVIDER_RESPONSE_INVALID");

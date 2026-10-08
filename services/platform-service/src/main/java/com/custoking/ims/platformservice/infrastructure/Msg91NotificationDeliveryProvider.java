@@ -43,7 +43,7 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
         this.properties = properties;
         this.senderProfiles = senderProfiles;
         this.objectMapper = objectMapper;
-        this.submissionTransport = new Msg91GenericSubmissionTransport(objectMapper);
+        this.submissionTransport = new Msg91GenericSubmissionTransport();
     }
 
     @Bean
@@ -89,7 +89,7 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
 
 
     Object bodyFor(NotificationDeliveryRequest request) {
-        JsonNode payload = objectMapper.readTree(request.payload());
+        JsonNode payload = Msg91WireJson.read(request.payload());
         Channel channel = Channel.from(request.channel());
         SenderProfile senderProfile = senderProfile(payload);
         return switch (channel) {

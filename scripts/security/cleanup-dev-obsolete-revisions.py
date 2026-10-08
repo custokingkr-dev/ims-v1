@@ -5,7 +5,7 @@ from pathlib import Path
 PROJECT='custoking-dev'; REGION='asia-south2'
 ROLES={'identity-service':'ims_identity_rt','school-core-service':'ims_school_core_rt','operations-service':'ims_operations_rt','platform-service':'ims_platform_rt','billing-service':'ims_billing_rt','api-gateway':None,'frontend':None}
 def read(args):
- p=subprocess.run(['gcloud.cmd',*args,'--project='+PROJECT,'--format=json'],capture_output=True,text=True,timeout=90)
+ p=subprocess.run(['gcloud.cmd',*args,'--project='+PROJECT,'--quiet','--format=json'],capture_output=True,text=True,timeout=90)
  if p.returncode: raise RuntimeError('Metadata command failed: '+args[0]+' '+args[1])
  return json.loads(p.stdout)
 def collect(item):
