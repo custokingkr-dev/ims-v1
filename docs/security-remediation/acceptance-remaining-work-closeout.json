@@ -233,6 +233,10 @@
     {
       "file": "acceptance-evidence-secret-scan-false-positive.json",
       "capturedBytesSha256": "44ad6ce8d130bcf9c6e5c1b4b73026c6b801a3ede497df924f11209cbe4b551d"
+    },
+    {
+      "file": "acceptance-evidence-postmerge-secret-scan.json",
+      "capturedBytesSha256": "44c97845174a3d9352a17b6935c72d02eb380b291d4c25014072fb68dac79e49"
     }
   ],
   "helperPreparation": {
@@ -344,5 +348,15 @@
     "exactHistoricalFingerprint": "8bc25bb598d3d8a3cabd19b833dbb972f720e652:docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json:generic-api-key:175",
     "correctedHeadCiRequired": true,
     "noBroadSuppression": true
+  },
+  "publicationPostMergeSecretGateFollowup": {
+    "publishedPr": 331,
+    "mergedEvidenceCommit": "34c2bf35d8be0239ad3d65c50b74faea164bc2c7",
+    "initialPostMergeCdRunId": 37752713944,
+    "initialPostMergeCdConclusion": "failure",
+    "noDeploymentSelected": true,
+    "sameSourceVerifiedChecksumAssignedNewSquashFingerprint": true,
+    "classificationRecord": "acceptance-evidence-postmerge-secret-scan.json",
+    "correctedCiAndPostMergeCdRequired": true
   }
 }
