@@ -1,0 +1,443 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T12:33:48.062496+00:00",
+  "scope": "Local forward EMAIL pre-authentication bounded body reader, strict UTF8 and shared async lifecycle/processing ownership; no new provider account contract or live acceptance",
+  "baseHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+  "sourceFreezeProof": "tmp/provider-email-body-source-freeze.json",
+  "sourceFreezeProofRawSha256": "7e1daf676f7f2e29b361034df0baffbfb1561f70cf680c8531af73331c3d2079",
+  "normalizedLfSha256": {
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java": "f432ee20f34e598d04854c5dc2b67edbe677089831f7a0dfc17d4a5c9a649e80",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/AsyncNotificationReportBody.java": "65bccd508123202a5a73e24d5dec021d4252cb38af6b9d031969bf963f2eca9b",
+    "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java": "870407d5041fc4db005b6314f29d6852dd588e42fc5fe1821cafa68590aa0563",
+    "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportHttpIntegrationTest.java": "bb1af9ca1e553ae8541a2c9fe9e0e8bd7a7c2816ea3724c9252d8753df5a9c52",
+    "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportPostgresIntegrationTest.java": "1a40a72462c0b8baf861775986f8e831474a34b058dcf5cf9f7250597de96287",
+    "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/internal/AsyncNotificationReportBodyTest.java": "8ca6c07efeefb01edce165a781ab05ef7916b628e630617aba6381de266b0d26"
+  },
+  "finalFocused": {
+    "log": "tmp/provider-email-body-final-focused.log",
+    "rawLogSha256": "82b456a4b153523ce23283bd4a725ac076c78f69ca882f21f0060996247c52f3",
+    "rawLogBytes": 63070,
+    "encoding": "utf-16",
+    "scope": "Nine focused suites including real loopback EMAIL/generic Tomcat, real selected PostgreSQL locked receipt rollback, lifecycle and existing provider controls",
+    "boundToFinalFrozenSource": true,
+    "buildOutcome": "BUILD SUCCESS",
+    "reported": 74,
+    "passed": 74,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "finishedAt": "2026-10-08T17:59:08+05:30"
+  },
+  "finalFullSuite": {
+    "log": "tmp/platform-provider-email-body-final.log",
+    "rawLogSha256": "1cb3631736cd7cf1899ee85cd24af3411239886ccd25da36e053fb09dc828725",
+    "rawLogBytes": 6919482,
+    "encoding": "utf-16",
+    "scope": "Final whole platform suite against frozen source, actual PostgreSQL/Flyway tests with Docker",
+    "boundToFinalFrozenSource": true,
+    "buildOutcome": "BUILD SUCCESS",
+    "reported": 475,
+    "passed": 475,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "finishedAt": "2026-10-08T18:03:31+05:30"
+  },
+  "finalSurefireCounts": {
+    "tests": 475,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "checkpoints": [
+    {
+      "log": "tmp/provider-email-body-auth-before.log",
+      "rawLogSha256": "f00bb84ff330ee7b3825f9f0c0632e5e573111b479398b8ad28784424d1f9634",
+      "rawLogBytes": 16922,
+      "encoding": "utf-16",
+      "scope": "Original @RequestBody pipeline accessed the controlled unauthorized servlet input:1 ERROR, before forward fix",
+      "boundToFinalFrozenSource": false,
+      "buildOutcome": "BUILD FAILURE",
+      "reported": 1,
+      "passed": 0,
+      "failed": 0,
+      "errors": 1,
+      "skipped": 0,
+      "finishedAt": "2026-10-08T17:45:09+05:30"
+    },
+    {
+      "log": "tmp/provider-email-body-first-focused.log",
+      "rawLogSha256": "8bb96b56024476e6dca9584487c7691b7720519c625b3d201ce9cd7456ab156a",
+      "rawLogBytes": 28198,
+      "encoding": "utf-16",
+      "scope": "Intermediate EMAIL bounded-reader HTTP/MVC plus unchanged generic actualHTTP; predates lifecycle/encoding/transaction follow-up",
+      "boundToFinalFrozenSource": false,
+      "buildOutcome": "BUILD SUCCESS",
+      "reported": 22,
+      "passed": 22,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "finishedAt": "2026-10-08T17:50:19+05:30"
+    },
+    {
+      "log": "tmp/provider-email-reader-lifecycle-before-compile.log",
+      "rawLogSha256": "7133dc240bb27261c2166d13537e91d39a139bb843b8390fdba563796ee1e435",
+      "rawLogBytes": 9222,
+      "encoding": "utf-16",
+      "scope": "Test-edit compilation diagnostic; no tests executed and no security regression acceptance implied",
+      "boundToFinalFrozenSource": false,
+      "buildOutcome": "BUILD FAILURE",
+      "reported": null,
+      "passed": null,
+      "failed": null,
+      "errors": null,
+      "skipped": null,
+      "finishedAt": "2026-10-08T17:53:29+05:30"
+    },
+    {
+      "log": "tmp/provider-email-reader-lifecycle-before.log",
+      "rawLogSha256": "23ed4d559df414ead2e309db4e828441a64d72300c46c2f8081aa609f6d397ad",
+      "rawLogBytes": 18120,
+      "encoding": "utf-16",
+      "scope": "Controlled lifecycle before-fix8tests:1FAILURE+4ERRORS demonstrate early action-slot release and setup/reset gaps",
+      "boundToFinalFrozenSource": false,
+      "buildOutcome": "BUILD FAILURE",
+      "reported": 8,
+      "passed": 3,
+      "failed": 1,
+      "errors": 4,
+      "skipped": 0,
+      "finishedAt": "2026-10-08T17:54:38+05:30"
+    },
+    {
+      "log": "tmp/provider-email-body-final-focused.log",
+      "rawLogSha256": "82b456a4b153523ce23283bd4a725ac076c78f69ca882f21f0060996247c52f3",
+      "rawLogBytes": 63070,
+      "encoding": "utf-16",
+      "scope": "Nine focused suites including real loopback EMAIL/generic Tomcat, real selected PostgreSQL locked receipt rollback, lifecycle and existing provider controls",
+      "boundToFinalFrozenSource": true,
+      "buildOutcome": "BUILD SUCCESS",
+      "reported": 74,
+      "passed": 74,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "finishedAt": "2026-10-08T17:59:08+05:30"
+    },
+    {
+      "log": "tmp/platform-provider-email-body-final.log",
+      "rawLogSha256": "1cb3631736cd7cf1899ee85cd24af3411239886ccd25da36e053fb09dc828725",
+      "rawLogBytes": 6919482,
+      "encoding": "utf-16",
+      "scope": "Final whole platform suite against frozen source, actual PostgreSQL/Flyway tests with Docker",
+      "boundToFinalFrozenSource": true,
+      "buildOutcome": "BUILD SUCCESS",
+      "reported": 475,
+      "passed": 475,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "finishedAt": "2026-10-08T18:03:31+05:30"
+    }
+  ],
+  "independentSourceReview": {
+    "path": "tmp/callback-body-final-independent-source-review.json",
+    "rawSha256": "b2ad5f14206179eb19866f8f520f474cd5a87ae20e95988782ddecb86a0d8412"
+  },
+  "preservedPreviousProviderProof": {
+    "path": "tmp/provider-wire-final-local-proof.json",
+    "rawSha256": "c2cc91eb144a5d749cdad42f549617ab5a3aa9fbcf470f4a768c2aeec0a17459",
+    "scope": "Separately preserved earlier wire proof, including pre-fix4FAIL,453/1FAIL and454PASS checkpoints; overlapping counts are not added"
+  },
+  "boundaries": {
+    "emailBytes": 32768,
+    "emailOverflowReadBytes": 32769,
+    "genericBytes": 8192,
+    "genericOverflowReadBytes": 8193,
+    "perReaderActiveLimit": 2,
+    "bodyDeadlineMilliseconds": 5000,
+    "emailSpringTransactionTimeoutSeconds": 5,
+    "datasourceConnectionAcquisitionHasNewFiveSecondWholeOperationCap": false,
+    "processingSlotRetainedUntilOwnedActionExit": true,
+    "normalGenericResponsesChanged": false,
+    "emailSchemaOrRouteChanged": false,
+    "emailJsonEncoding": "strict UTF8; existing UTF8BOM accepted; UTF16/UTF32/malformed UTF8 rejected",
+    "emailSuccessAcknowledgement": "202 {\"accepted\":true}",
+    "authenticationBeforeBodyMetadataOrStreamAccess": true,
+    "liveSendOrReportAdmissionEnabled": false
+  },
+  "postgresRegression": {
+    "selectedTest": "Msg91BroadcastReportPostgresIntegrationTest.lockedReceiptUpdateTimesOutRollsBackPartialLedgerWritesAndReleasesBothSlots",
+    "runtimeRole": "app_rt NOSUPERUSER NOBYPASSRLS NOINHERIT NOCREATEROLE NOCREATEDB",
+    "migrationScope": "actual full notification migration chain only",
+    "lockScope": "one synthetic recipient row, held by local PostgreSQL owner fixture",
+    "observedBehavior": "two authenticated HTTP actions return503 under selected lock; partial report/submission mutations roll back; later receipt returns202 and commits exactly one report",
+    "globalRestorationAcceptanceClaim": false
+  },
+  "limitations": [
+    "No cloud calls, dev probes, vendor sends, live config, sender/recipient owner assumptions, or account-selected raw webhook bridge.",
+    "Body reading has5s deadline; SQL uses separate Spring transaction/JDBC remaining timeout5s. Existing connection acquisition and external driver cancellation are not claimed to have a new whole-operation5s guarantee.",
+    "Mock lifecycle failures are controlled local regressions, not live incident receipts.",
+    "Prior logs remain raw and individually dated; intermediate and before-fix cases are not final frozen acceptance and overlapping test counts are not summed."
+  ],
+  "primarySources": [
+    "https://raw.githubusercontent.com/spring-projects/spring-framework/v7.0.9/spring-web/src/main/java/org/springframework/http/converter/ByteArrayHttpMessageConverter.java",
+    "https://raw.githubusercontent.com/spring-projects/spring-framework/v7.0.9/spring-webmvc/src/main/java/org/springframework/web/servlet/mvc/annotation/ResponseStatusExceptionResolver.java",
+    "https://raw.githubusercontent.com/apache/tomcat/11.0.25/webapps/docs/config/http.xml",
+    "https://docs.cloud.google.com/run/quotas",
+    "https://www.rfc-editor.org/rfc/rfc8259.html"
+  ],
+  "cloudOperations": 0,
+  "externalProviderOperations": 0,
+  "liveAcceptanceClaim": false,
+  "wholeSavedPlanComplete": false,
+  "sourceCaptureRawSha256": "932b2a1c919467fb3333e9644f4a6d10a82d320e48ccf1f7cbe350c0d06adee1",
+  "independentFinalSourceReview": {
+    "temporaryFile": "tmp/callback-body-final-independent-source-review.json",
+    "rawSha256": "b2ad5f14206179eb19866f8f520f474cd5a87ae20e95988782ddecb86a0d8412",
+    "capture": {
+      "schemaVersion": 1,
+      "checkedAtUtc": "2026-10-08T12:31:12.915173+00:00",
+      "verdict": "PASS_FROZEN_SOURCE_REVIEW",
+      "sourceFreezeProof": {
+        "path": "tmp\\provider-email-body-source-freeze.json",
+        "rawSha256": "7e1daf676f7f2e29b361034df0baffbfb1561f70cf680c8531af73331c3d2079",
+        "baseHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e"
+      },
+      "normalizedLfSha256": {
+        "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java": "f432ee20f34e598d04854c5dc2b67edbe677089831f7a0dfc17d4a5c9a649e80",
+        "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/AsyncNotificationReportBody.java": "65bccd508123202a5a73e24d5dec021d4252cb38af6b9d031969bf963f2eca9b",
+        "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java": "870407d5041fc4db005b6314f29d6852dd588e42fc5fe1821cafa68590aa0563",
+        "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportHttpIntegrationTest.java": "bb1af9ca1e553ae8541a2c9fe9e0e8bd7a7c2816ea3724c9252d8753df5a9c52",
+        "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportPostgresIntegrationTest.java": "1a40a72462c0b8baf861775986f8e831474a34b058dcf5cf9f7250597de96287",
+        "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/internal/AsyncNotificationReportBodyTest.java": "8ca6c07efeefb01edce165a781ab05ef7916b628e630617aba6381de266b0d26"
+      },
+      "hashesBeforeAfterReadStable": true,
+      "focusedResultVerified": {
+        "reported": 74,
+        "passed": 74,
+        "failed": 0,
+        "errors": 0,
+        "skipped": 0,
+        "log": "tmp/provider-email-body-final-focused.log",
+        "rawLogSha256": "82b456a4b153523ce23283bd4a725ac076c78f69ca882f21f0060996247c52f3",
+        "finishedAt": "2026-10-08T17:59:08+05:30",
+        "buildOutcome": "BUILD SUCCESS"
+      },
+      "fullSuiteVerified": false,
+      "preliminaryFindingsResolved": [
+        "Stream acquisition runtime failure releases permit and safely completes uninstalled async context",
+        "Setup/listener completion failure has one-time fallback release; repeated completion cannot overrelease",
+        "Body timer reset failure refuses processing and releases capacity",
+        "Processing ownership keeps2-slot permit through action finally even after disconnect/onError/onComplete",
+        "EMAIL transaction deadline5 seconds bounds transaction-owned JDBC statements and rollback",
+        "REPORT UTF8 decoding rejects malformed/UTF16/UTF32, preserving prior UTF8 BOM compatibility"
+      ],
+      "checks": [
+        "Both existing EMAIL credentials verified before length/stream acquisition; existing gateway/machine boundary unchanged",
+        "Known/unknown length max32768+one overflow probe; retained generic8192 default and constant JSON acknowledgement/failure",
+        "Servlet-owned nonblocking callbacks; no worker retains recycled stream; action receives copied owned bytes",
+        "Strict duplicate/trailing JSON, exact normalized fields and sanitized persistence errors unchanged",
+        "Actual PG fixture locksrecipient after partial report/ledger writes, observes runtime blocking, checks503+rollback pristine states, then successful202/oneevidence recovery"
+      ],
+      "scopeLimits": [
+        "Local source/focused fakeHTTP+PG evidence only, no vendor traffic/account callback acceptance",
+        "Body5s and transaction5s are separate boundaries, not universal end-to-end5second response guarantee",
+        "Existing generic provider live block/reservation/UNKNOWN-noresend preserved",
+        "Full platform suite must complete on frozen source separately;74focused overlap must not be added to full count"
+      ],
+      "sourceMutation": false,
+      "cloudCalls": 0,
+      "mavenExecutedByReviewer": false
+    }
+  },
+  "independentGovernanceAuditReview": {
+    "temporaryFile": "tmp/callback-body-governance-audit-independent-review.json",
+    "rawSha256": "be01d8f04bb706ec394e11128d7796e0e3eee1f522e4f5620d7c884bff78b765",
+    "capture": {
+      "schemaVersion": 1,
+      "checkedAtUtc": "2026-10-08T12:35:51.097444+00:00",
+      "verdict": "PASS_SCOPED_STATIC_AUDIT_SOURCE_REVIEW",
+      "scriptNormalizedLfSha256": "0f55e91cf2236793897b63e462de0ca08aecf216c261ce518d77a60f80dd4cd2",
+      "newProofRawSha256": "12be84b6360bda68933ee129a5d2e44ef410c8a934241e8d000ef3c153d16e68",
+      "negativeFixtures": [
+        {
+          "control": "eager-body",
+          "fixtureHashMatches": true,
+          "reportedExitCode": 1
+        },
+        {
+          "control": "before-auth",
+          "fixtureHashMatches": true,
+          "reportedExitCode": 1
+        },
+        {
+          "control": "uncounted-read",
+          "fixtureHashMatches": true,
+          "reportedExitCode": 1
+        }
+      ],
+      "checks": [
+        "Preexisting service/callback token names, constant-time compare and callback minimum32 are preserved",
+        "Obsolete postbuffer literal replaced with paired EMAIL32768/5s reader binding and shared max+1/clock/2slot/lifecycle checks",
+        "Explicit eager@RequestBody/directgetInputStream forbidden; service+callback authentication source order checked before sharedreceive",
+        "Added transaction5s/strictUTF8/duplicate/trailing checks strengthen audit rather than relaxing old token boundary",
+        "Historical realfailure preserved; three controlled negatives exit1; realfiveaudits success recorded separately"
+      ],
+      "reportedAuditResults": {
+        "actualSourceAuditsPassed": 5,
+        "negativeControlsPassed": 3
+      },
+      "limits": [
+        "Text matching/source order can be spoofed by comments or unreachable code; not semantic/runtime equivalence proof",
+        "Reported prior executions verified for proof/hash/fixture consistency, not rerun by reviewer",
+        "Separate frozen6Java/Tomcat/PG independent review retained unmodified"
+      ],
+      "sourceMutation": false,
+      "cloudCalls": 0,
+      "auditExecutedByReviewer": false
+    }
+  },
+  "independentReleaseHelperPreparationReview": {
+    "temporaryFile": "tmp/callback-body-acceptance-helper-review.json",
+    "rawSha256": "c71b4c543e938b46ba9d06f442f065740842937fb9590d9f1103529206345a19",
+    "capture": {
+      "schemaVersion": 1,
+      "capturedAtUtc": "2026-10-08T12:32:48.476894+00:00",
+      "reviewStatus": "STATIC_TEMPLATE_REVIEW_PASS_AFTER_SCOPE_PATCHES",
+      "preparationHelper": {
+        "path": "tmp/prepare-callback-body-acceptance.py",
+        "rawSha256": "b7f6f7dab1a224598cbf7c4e4e93d1a8be14d3b2c36494ac26405af56759bb1e"
+      },
+      "donorPinsVerified": [
+        {
+          "path": "tmp/verify-parallel-hardening-dev-release.py",
+          "rawSha256": "86d39afca6cb5a8208eb54889eac1e7760a289d154f9fd9cdd508416b441a235"
+        },
+        {
+          "path": "tmp/protect-parallel-hardening-dev-images.py",
+          "rawSha256": "6490c31497bbd8e05a240c68aa61c3fdd54043d46bf9d542a2a99d36c8d6b0bb"
+        },
+        {
+          "path": "tmp/run-parallel-hardening-public-smoke.py",
+          "rawSha256": "a7ca0f97dda00aa0d01920679eab62168fa1ef93224e38fba1c098297570ae64"
+        }
+      ],
+      "baseVerifier": {
+        "path": "tmp/verify-remaining-dev-release.py",
+        "rawSha256": "8e4bcc5f673f09c0e69679d03efd4d6f89db38dc3a64d86f06ffeae36b5a8182"
+      },
+      "method": "AST/text inspection and manually evaluated literal string substitutions only; compile() used in memory. No helper imports, generator execution, exec(), cloud calls or generated acceptance helper files.",
+      "inMemorySyntheticInputs": {
+        "source": "1111111111111111111111111111111111111111",
+        "cdRun": 987654321,
+        "codeqlRun": 987654322,
+        "testCount": 464,
+        "futureProofSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "scope": "Template syntax/seam testing only. These identifiers are not actual accepted source/run/proof evidence."
+      },
+      "compilation": {
+        "outerPreparationScript": true,
+        "repinnedVerifierWrapper": true,
+        "fullyExpandedNestedVerifier": true,
+        "literalInnerSeamsMatchedExactlyOnce": 20,
+        "repinnedProtector": true,
+        "repinnedPublicSmoke": true,
+        "compiledCodeExecuted": false
+      },
+      "checks": [
+        "Donor byte pins and baseline base-verifier SHA match actual local files",
+        "Global source/CD/QL/path repin occurs before immediate previous proof-name insertion, so accepted900/6414 survives as the previous platform proof",
+        "Exact source/run and resolved ROOT/tmp/callback-body-release-RUN path checked before first metadata/cloud operation",
+        "Exactly one selected platform manifest and typed1fresh/0cached scan scope; positive digest-bound libpng16-16t64 inventory>=1.6.43-5ubuntu0.7, never finding-absence inference",
+        "Actual selected platform test aggregate matches frozen increased count with zero failures/errors/skips; protector independently checks typed reported/passed exact count and skipped0",
+        "All7Ready/latest/currentdesired100 runtime checks; changed platform must differ from both baseline5a and immediate accepted900 while other6revision/runtime tuples remain exact5a",
+        "Five dedicated SQL roles/no owner migration env/migrationsfalse, disabled provider/report and blank report-purpose credentials, seven journal pins and explicit upstream/CORS config retained",
+        "Exactly1newplatform owner-job artifact plus5baseline exact job absence queries, with explicit dev project; no general job enumeration",
+        "Generated helper file creation uses exclusive x mode; future release/protection/smoke permanent output paths have overwrite refusal before cloud",
+        "Protector plans only2platform source/runtime run-qualified KEEP tags, create-only command, exact existing tag API readback/no different-digest overwrite; complete cleanupPolicies and all7runtime equality before/after",
+        "Public smoke retains12base+3internal denial cases and frontendHTTP/CSP success, with all7runtime equality before/after and historical failed harness scopes preserved"
+      ],
+      "initialStaticConcernsResolved": [
+        {
+          "concern": "Artifact basename plus tmp containment was weaker than exact directory pin",
+          "resolution": "Generator replaces seam with resolved ROOT/tmp/callback-body-release-RUN equality before metadata"
+        },
+        {
+          "concern": "Donor scan guard allowed extra fresh/cached retained rows",
+          "resolution": "Generated verifier requires scanrows exactlyCHANGED and typed scannedCount1/cachedCount0"
+        },
+        {
+          "concern": "Protector relied on verifier proof for no skips/exact count",
+          "resolution": "Generator adds EXPECTED_PLATFORM_TESTS and typed exact reported/passed plus skipped0 guards"
+        }
+      ],
+      "acceptedProofsUnchanged": [
+        {
+          "path": "docs/security-remediation/acceptance-parallel-hardening-dev-release.json",
+          "rawSha256": "641426feef65b55c162dcdc19dcda21592f5b167d868a98e39e6cca36f84ec47",
+          "source": "900dcbbf62a7d0d57faef220853e82f427db864e",
+          "releaseRunId": 37773335297,
+          "role": "Immediate previously accepted platform runtime"
+        },
+        {
+          "path": "docs/security-remediation/acceptance-runtime-patch-cycle-dev-release.json",
+          "rawSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f",
+          "source": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+          "releaseRunId": 37746479841,
+          "role": "Six retained runtime/revision/configuration and5owner-job baseline"
+        }
+      ],
+      "bounds": {
+        "verifierCheckedWholeBudgetSeconds": 300,
+        "verifierMetadataCallMaximumSeconds": 45,
+        "metadataResponseCapBytes": 2097152,
+        "platformTestLogCapBytes": 8388608,
+        "localMetadataFileCapBytes": 2097152,
+        "serviceReadConcurrency": 3,
+        "protectorCheckedBudgetSeconds": 300,
+        "protectorGcloudCallMaximumSeconds": 35,
+        "exactTagReadCurlWholeMaximumSeconds": 12,
+        "tagReadMaximumBytes": 65536,
+        "smokeChildMaximumSeconds": 150,
+        "qualification": "Static bounds are inspected from helpers; no deadline or network behavior was executed during this review. Public smoke uses the existing checked300-second budget across its operations."
+      },
+      "rfc8259": {
+        "primarySource": "https://www.rfc-editor.org/rfc/rfc8259.html#section-8.1",
+        "section": "8.1 Character Encoding",
+        "accessedDateUtc": "2026-10-08",
+        "observation": "Inter-system JSON outside a closed ecosystem must use UTF8. Network senders must not add a BOM; receivers may ignore one. Explicit strict UTF8 decoding of external EMAIL callback bytes is consistent with this interoperability requirement and prevents byte-parser encoding autodetection from accepting UTF16/UTF32 transport bytes. This requirement does not itself prove the selected provider account schema or authorize live sending."
+      },
+      "actualOperations": {
+        "helperExecutions": 0,
+        "acceptanceHelperFilesGenerated": 0,
+        "cloudCalls": 0,
+        "providerCalls": 0,
+        "sourceWrites": 0,
+        "permanentDocWrites": 0,
+        "syntheticAcceptedCloudEvidenceCreated": false,
+        "gitMutations": 0
+      },
+      "limits": "Review covers future templates and current accepted baseline bytes only. Future actual merged source, CD/QL runs, frozen final count and raw successful new release proof must still be supplied and independently verified before protection or public smoke."
+    }
+  },
+  "staticAuditEvidence": {
+    "file": "acceptance-callback-body-static-audits.json",
+    "rawSha256": "12be84b6360bda68933ee129a5d2e44ef410c8a934241e8d000ef3c153d16e68"
+  },
+  "additionalSourceNormalizedLfSha256": {
+    "scripts/audit-security-governance-controls.ps1": "0f55e91cf2236793897b63e462de0ca08aecf216c261ce518d77a60f80dd4cd2"
+  },
+  "separatelyAcceptedPreviousRelease": {
+    "file": "acceptance-parallel-hardening-dev-release.json",
+    "rawSha256": "641426feef65b55c162dcdc19dcda21592f5b167d868a98e39e6cca36f84ec47",
+    "sourceSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+    "runId": 37773335297,
+    "certifiesThisForwardSource": false
+  },
+  "sourceCiAcceptanceComplete": false,
+  "sourceDevAcceptanceComplete": false,
+  "findingsAndFixPlan": "callback-body-boundary-2026-10-08.md",
+  "ownerActionPlan": "acceptance-owner-actions.md"
+}

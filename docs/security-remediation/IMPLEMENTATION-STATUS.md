@@ -1,6 +1,6 @@
 # Security implementation and verification ledger
 
-Latest parallel source follow-up: [provider wire, governance and recovery preparation fixes](parallel-hardening-2026-10-08.md). Final exact-source CI/dev acceptance is recorded separately; the [owner actions](acceptance-owner-actions.md) remain open until their actual completion evidence exists.
+Latest completed parallel follow-up: [PR335 provider wire, governance and recovery preparation fixes](parallel-hardening-2026-10-08.md). Its [exact CI/CodeQL and dev completion](acceptance-parallel-hardening-completion.json) passed:456/456 platform tests, seven Ready services at100%, one changed platform/six retained runtime revisions, two additive rollback tags and fifteen public denials/frontend CSP. A separate [EMAIL preauthentication body-buffering and reader-lifecycle fix](callback-body-boundary-2026-10-08.md) passed475/475 frozen local platform tests and74 overlapping focused tests; its own CI/dev acceptance remains pending at this checkpoint. The [owner actions](acceptance-owner-actions.md) remain open until their actual completion evidence exists.
 
 ## Latest implementation follow-up — 2026-10-08
 

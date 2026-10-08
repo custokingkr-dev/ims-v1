@@ -1,0 +1,1368 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T12:15:24.227606+00:00",
+  "project": "custoking-dev",
+  "sourcePullRequest": 335,
+  "sourceHeadSha": "0b35f5e70e9c7e1aaa9b20cc3cfe89f76c200b2f",
+  "syntheticMergeSha": "fc08fcfb25bf2a3b6604c22e75797cea7e586c10",
+  "mergedSourceSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+  "sourceCiRunId": 37772400976,
+  "sourceCodeqlRunId": 37772400705,
+  "devReleaseRunId": 37773335297,
+  "postmergeCodeqlRunId": 37773334851,
+  "parallelHardeningSourceAndDevAcceptanceComplete": true,
+  "platformReleaseTests": {
+    "service": "platform-service",
+    "jobId": 113298158436,
+    "conclusion": "success",
+    "reported": 456,
+    "passed": 456,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "logSha256": "aba2f6675467611dc95ac97e9127331b7fce176d92151b353049b837f6908662",
+    "rawLogSaved": false
+  },
+  "readyServiceCount": 7,
+  "changedRuntimeCount": 1,
+  "retainedBaselineRuntimeAndRevisionCount": 6,
+  "ownerJobAbsenceScope": "One new platform migration job plus five exact historical PR330 jobs; not a global job inventory",
+  "platformPackageEvidence": {
+    "service": "platform-service",
+    "package": "libpng16-16t64",
+    "installedVersion": "1.6.43-5ubuntu0.7",
+    "minimumVersion": "1.6.43-5ubuntu0.7",
+    "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:7fc7f7473bc63e3df804e36f0b666655b5d80958ef99d08309829a9f1f32ae52",
+    "runtimeImageFromManifest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:1c8ef786050dbf4625f1724c73e9760f9bd4d81ebe0213e236329421e771369f",
+    "sarifSha256": "043a56d7967663b902d0221ac6d84259bbbc1574b602ff180f7b29076e2dccf5",
+    "sarifArtifact": "trivy\\platform-service-sha256-7fc7f7473bc63e3df804e36f0b666655b5d80958ef99d08309829a9f1f32ae52.sarif",
+    "findingAbsenceUsedAsInventory": false,
+    "nativeApplicabilityClaim": false
+  },
+  "freshPlatformScans": 1,
+  "cachedPlatformScans": 0,
+  "configuredAdditiveRollbackTags": 2,
+  "publicDenials": 15,
+  "frontendCspPassed": true,
+  "evidence": [
+    {
+      "file": "acceptance-parallel-hardening-local.json",
+      "capturedBytesSha256": "1868572999288c71ae1923b10df4452f712e5a7ca4b53d5508c4c6c1b176ca73"
+    },
+    {
+      "file": "acceptance-parallel-hardening-provider-local.json",
+      "capturedBytesSha256": "c2cc91eb144a5d749cdad42f549617ab5a3aa9fbcf470f4a768c2aeec0a17459"
+    },
+    {
+      "file": "acceptance-parallel-hardening-governance-local.json",
+      "capturedBytesSha256": "dbb1aff9d4aaedf46ad0db526247411fb7cb0c4a9d557d38558a21f69affeec6"
+    },
+    {
+      "file": "acceptance-parallel-hardening-replay-local.json",
+      "capturedBytesSha256": "eb3f2fdeb55dbf05fd24d67f6faa311e1737815a1d46d1ab2f1603d5241cd3c6"
+    },
+    {
+      "file": "acceptance-parallel-hardening-revision-preflight.json",
+      "capturedBytesSha256": "59116208dd02f4985f82ce6d9eabe86860c0cb133eac25ddca9556dc6f680e8d"
+    },
+    {
+      "file": "acceptance-parallel-hardening-ci.json",
+      "capturedBytesSha256": "c5a17a176887130e9fc48f1dfc833fc89a68fd6a41938eb081904bc1064d65a2"
+    },
+    {
+      "file": "acceptance-parallel-hardening-dev-release.json",
+      "capturedBytesSha256": "641426feef65b55c162dcdc19dcda21592f5b167d868a98e39e6cca36f84ec47"
+    },
+    {
+      "file": "acceptance-parallel-hardening-image-protection.json",
+      "capturedBytesSha256": "8da5a9833ab5222386c46fec2467334520ebe1266ad0799ed373db265aa09879"
+    },
+    {
+      "file": "acceptance-parallel-hardening-public-smoke.json",
+      "capturedBytesSha256": "5d3ab921a8519db46657b10dbd5a8f70ed9c7579635a43464521024152dd786c"
+    }
+  ],
+  "independentWorkflowReview": {
+    "temporaryFile": "tmp/pr335-postmerge-independent-workflow-proof.json",
+    "rawSha256": "61eb3f7a56c6457d209cd769333eea1e9fb4a2ad3fdfd91c48867b5fa6700a11",
+    "capture": {
+      "schemaVersion": 1,
+      "capturedAtUtc": "2026-10-08T12:08:49.374138+00:00",
+      "sourceHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+      "releaseRunId": 37773335297,
+      "codeqlRunId": 37773334851,
+      "runs": {
+        "37773335297": {
+          "attempt": 1,
+          "conclusion": "success",
+          "createdAt": "2026-10-08T11:55:52Z",
+          "headSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+          "jobs": [
+            {
+              "completedAt": "2026-10-08T11:56:03Z",
+              "conclusion": "success",
+              "databaseId": 113298019022,
+              "name": "resolve-target",
+              "startedAt": "2026-10-08T11:55:55Z",
+              "status": "completed",
+              "steps": [
+                {
+                  "completedAt": "2026-10-08T11:55:55Z",
+                  "conclusion": "success",
+                  "name": "Set up job",
+                  "number": 1,
+                  "startedAt": "2026-10-08T11:55:55Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:02Z",
+                  "conclusion": "success",
+                  "name": "Run $ErrorActionPreference = \"Stop\"",
+                  "number": 2,
+                  "startedAt": "2026-10-08T11:55:55Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:02Z",
+                  "conclusion": "success",
+                  "name": "Complete job",
+                  "number": 3,
+                  "startedAt": "2026-10-08T11:56:02Z",
+                  "status": "completed"
+                }
+              ],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297/job/113298019022"
+            },
+            {
+              "completedAt": "2026-10-08T11:56:17Z",
+              "conclusion": "success",
+              "databaseId": 113298080725,
+              "name": "release-secret-scan",
+              "startedAt": "2026-10-08T11:56:05Z",
+              "status": "completed",
+              "steps": [
+                {
+                  "completedAt": "2026-10-08T11:56:07Z",
+                  "conclusion": "success",
+                  "name": "Set up job",
+                  "number": 1,
+                  "startedAt": "2026-10-08T11:56:06Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:11Z",
+                  "conclusion": "success",
+                  "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 2,
+                  "startedAt": "2026-10-08T11:56:07Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:14Z",
+                  "conclusion": "success",
+                  "name": "Run gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e",
+                  "number": 3,
+                  "startedAt": "2026-10-08T11:56:11Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:15Z",
+                  "conclusion": "success",
+                  "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 6,
+                  "startedAt": "2026-10-08T11:56:14Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:15Z",
+                  "conclusion": "success",
+                  "name": "Complete job",
+                  "number": 7,
+                  "startedAt": "2026-10-08T11:56:15Z",
+                  "status": "completed"
+                }
+              ],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297/job/113298080725"
+            },
+            {
+              "completedAt": "2026-10-08T11:56:15Z",
+              "conclusion": "success",
+              "databaseId": 113298080982,
+              "name": "detect / detect",
+              "startedAt": "2026-10-08T11:56:05Z",
+              "status": "completed",
+              "steps": [
+                {
+                  "completedAt": "2026-10-08T11:56:06Z",
+                  "conclusion": "success",
+                  "name": "Set up job",
+                  "number": 1,
+                  "startedAt": "2026-10-08T11:56:05Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:09Z",
+                  "conclusion": "success",
+                  "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 2,
+                  "startedAt": "2026-10-08T11:56:06Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:14Z",
+                  "conclusion": "success",
+                  "name": "Detect affected services",
+                  "number": 3,
+                  "startedAt": "2026-10-08T11:56:09Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:14Z",
+                  "conclusion": "success",
+                  "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 6,
+                  "startedAt": "2026-10-08T11:56:14Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:14Z",
+                  "conclusion": "success",
+                  "name": "Complete job",
+                  "number": 7,
+                  "startedAt": "2026-10-08T11:56:14Z",
+                  "status": "completed"
+                }
+              ],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297/job/113298080982"
+            },
+            {
+              "completedAt": "2026-10-08T11:56:38Z",
+              "conclusion": "success",
+              "databaseId": 113298158361,
+              "name": "release-static-gate",
+              "startedAt": "2026-10-08T11:56:19Z",
+              "status": "completed",
+              "steps": [
+                {
+                  "completedAt": "2026-10-08T11:56:20Z",
+                  "conclusion": "success",
+                  "name": "Set up job",
+                  "number": 1,
+                  "startedAt": "2026-10-08T11:56:20Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:24Z",
+                  "conclusion": "success",
+                  "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 2,
+                  "startedAt": "2026-10-08T11:56:20Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:35Z",
+                  "conclusion": "success",
+                  "name": "Verify offline architecture invariants",
+                  "number": 3,
+                  "startedAt": "2026-10-08T11:56:24Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:35Z",
+                  "conclusion": "success",
+                  "name": "Verify full release uses rendered serial deployment",
+                  "number": 4,
+                  "startedAt": "2026-10-08T11:56:35Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:35Z",
+                  "conclusion": "success",
+                  "name": "Verify guarded duplicate classes",
+                  "number": 5,
+                  "startedAt": "2026-10-08T11:56:35Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:35Z",
+                  "conclusion": "success",
+                  "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 10,
+                  "startedAt": "2026-10-08T11:56:35Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:35Z",
+                  "conclusion": "success",
+                  "name": "Complete job",
+                  "number": 11,
+                  "startedAt": "2026-10-08T11:56:35Z",
+                  "status": "completed"
+                }
+              ],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297/job/113298158361"
+            },
+            {
+              "completedAt": "2026-10-08T11:58:16Z",
+              "conclusion": "success",
+              "databaseId": 113298158436,
+              "name": "release-service-test (platform-service)",
+              "startedAt": "2026-10-08T11:56:19Z",
+              "status": "completed",
+              "steps": [
+                {
+                  "completedAt": "2026-10-08T11:56:21Z",
+                  "conclusion": "success",
+                  "name": "Set up job",
+                  "number": 1,
+                  "startedAt": "2026-10-08T11:56:20Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:24Z",
+                  "conclusion": "success",
+                  "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 2,
+                  "startedAt": "2026-10-08T11:56:21Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:27Z",
+                  "conclusion": "success",
+                  "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+                  "number": 3,
+                  "startedAt": "2026-10-08T11:56:24Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:27Z",
+                  "conclusion": "skipped",
+                  "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+                  "number": 4,
+                  "startedAt": "2026-10-08T11:56:27Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:27Z",
+                  "conclusion": "skipped",
+                  "name": "Install Node dependencies",
+                  "number": 5,
+                  "startedAt": "2026-10-08T11:56:27Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:12Z",
+                  "conclusion": "success",
+                  "name": "Run Maven tests",
+                  "number": 6,
+                  "startedAt": "2026-10-08T11:56:27Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:12Z",
+                  "conclusion": "skipped",
+                  "name": "Run gateway tests",
+                  "number": 7,
+                  "startedAt": "2026-10-08T11:58:12Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:12Z",
+                  "conclusion": "skipped",
+                  "name": "Run frontend unit tests and production build",
+                  "number": 8,
+                  "startedAt": "2026-10-08T11:58:12Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:12Z",
+                  "conclusion": "skipped",
+                  "name": "Remove broken Google Chrome apt source",
+                  "number": 9,
+                  "startedAt": "2026-10-08T11:58:12Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:12Z",
+                  "conclusion": "skipped",
+                  "name": "Install Playwright Chromium",
+                  "number": 10,
+                  "startedAt": "2026-10-08T11:58:12Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:12Z",
+                  "conclusion": "skipped",
+                  "name": "Run authenticated frontend browser tests",
+                  "number": 11,
+                  "startedAt": "2026-10-08T11:58:12Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:13Z",
+                  "conclusion": "success",
+                  "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+                  "number": 21,
+                  "startedAt": "2026-10-08T11:58:12Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:13Z",
+                  "conclusion": "success",
+                  "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 22,
+                  "startedAt": "2026-10-08T11:58:13Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:13Z",
+                  "conclusion": "success",
+                  "name": "Complete job",
+                  "number": 23,
+                  "startedAt": "2026-10-08T11:58:13Z",
+                  "status": "completed"
+                }
+              ],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297/job/113298158436"
+            },
+            {
+              "completedAt": "2026-10-08T11:56:15Z",
+              "conclusion": "skipped",
+              "databaseId": 113298159992,
+              "name": "configuration-reconciliation-required",
+              "startedAt": "2026-10-08T11:56:16Z",
+              "status": "completed",
+              "steps": [],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297/job/113298159992"
+            },
+            {
+              "completedAt": "2026-10-08T11:56:15Z",
+              "conclusion": "skipped",
+              "databaseId": 113298161253,
+              "name": "no-deployment",
+              "startedAt": "2026-10-08T11:56:16Z",
+              "status": "completed",
+              "steps": [],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297/job/113298161253"
+            },
+            {
+              "completedAt": "2026-10-08T12:00:02Z",
+              "conclusion": "success",
+              "databaseId": 113298894872,
+              "name": "build-images (pom.xml|services/platform-service, ./., services/platform-service/Dockerfile, custo...",
+              "startedAt": "2026-10-08T11:58:19Z",
+              "status": "completed",
+              "steps": [
+                {
+                  "completedAt": "2026-10-08T11:58:23Z",
+                  "conclusion": "success",
+                  "name": "Set up job",
+                  "number": 1,
+                  "startedAt": "2026-10-08T11:58:19Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:27Z",
+                  "conclusion": "success",
+                  "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 2,
+                  "startedAt": "2026-10-08T11:58:23Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:28Z",
+                  "conclusion": "success",
+                  "name": "Verify commit belongs to dev",
+                  "number": 3,
+                  "startedAt": "2026-10-08T11:58:27Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:29Z",
+                  "conclusion": "success",
+                  "name": "Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+                  "number": 4,
+                  "startedAt": "2026-10-08T11:58:28Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:34Z",
+                  "conclusion": "success",
+                  "name": "Run google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+                  "number": 5,
+                  "startedAt": "2026-10-08T11:58:29Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:43Z",
+                  "conclusion": "success",
+                  "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+                  "number": 6,
+                  "startedAt": "2026-10-08T11:58:34Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:44Z",
+                  "conclusion": "success",
+                  "name": "Configure Docker for Artifact Registry",
+                  "number": 7,
+                  "startedAt": "2026-10-08T11:58:43Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:48Z",
+                  "conclusion": "success",
+                  "name": "Resolve content-addressed image",
+                  "number": 8,
+                  "startedAt": "2026-10-08T11:58:44Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:58:48Z",
+                  "conclusion": "skipped",
+                  "name": "Attach commit tag to reused image",
+                  "number": 9,
+                  "startedAt": "2026-10-08T11:58:48Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:53Z",
+                  "conclusion": "success",
+                  "name": "Build and push image",
+                  "number": 10,
+                  "startedAt": "2026-10-08T11:58:48Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:53Z",
+                  "conclusion": "success",
+                  "name": "Write image summary",
+                  "number": 11,
+                  "startedAt": "2026-10-08T11:59:53Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:55Z",
+                  "conclusion": "success",
+                  "name": "Post Build and push image",
+                  "number": 19,
+                  "startedAt": "2026-10-08T11:59:53Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:58Z",
+                  "conclusion": "success",
+                  "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+                  "number": 20,
+                  "startedAt": "2026-10-08T11:59:55Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:58Z",
+                  "conclusion": "success",
+                  "name": "Post Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+                  "number": 21,
+                  "startedAt": "2026-10-08T11:59:58Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:58Z",
+                  "conclusion": "success",
+                  "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 22,
+                  "startedAt": "2026-10-08T11:59:58Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:58Z",
+                  "conclusion": "success",
+                  "name": "Complete job",
+                  "number": 23,
+                  "startedAt": "2026-10-08T11:59:58Z",
+                  "status": "completed"
+                }
+              ],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297/job/113298894872"
+            },
+            {
+              "completedAt": "2026-10-08T12:04:53Z",
+              "conclusion": "success",
+              "databaseId": 113299547069,
+              "name": "release",
+              "startedAt": "2026-10-08T12:00:06Z",
+              "status": "completed",
+              "steps": [
+                {
+                  "completedAt": "2026-10-08T12:00:14Z",
+                  "conclusion": "success",
+                  "name": "Set up job",
+                  "number": 1,
+                  "startedAt": "2026-10-08T12:00:07Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:00:19Z",
+                  "conclusion": "success",
+                  "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 2,
+                  "startedAt": "2026-10-08T12:00:14Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:00:25Z",
+                  "conclusion": "success",
+                  "name": "Verify commit belongs to environment branch",
+                  "number": 3,
+                  "startedAt": "2026-10-08T12:00:19Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:00:26Z",
+                  "conclusion": "success",
+                  "name": "Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+                  "number": 4,
+                  "startedAt": "2026-10-08T12:00:25Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:00:32Z",
+                  "conclusion": "success",
+                  "name": "Run google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db",
+                  "number": 5,
+                  "startedAt": "2026-10-08T12:00:26Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:00:43Z",
+                  "conclusion": "success",
+                  "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+                  "number": 6,
+                  "startedAt": "2026-10-08T12:00:32Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:00:44Z",
+                  "conclusion": "success",
+                  "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+                  "number": 7,
+                  "startedAt": "2026-10-08T12:00:43Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:00:45Z",
+                  "conclusion": "success",
+                  "name": "Initialize release evidence",
+                  "number": 8,
+                  "startedAt": "2026-10-08T12:00:44Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:00:49Z",
+                  "conclusion": "success",
+                  "name": "Ensure development database is running",
+                  "number": 9,
+                  "startedAt": "2026-10-08T12:00:45Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:00:50Z",
+                  "conclusion": "success",
+                  "name": "Configure Docker for Artifact Registry inspection",
+                  "number": 10,
+                  "startedAt": "2026-10-08T12:00:49Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:01:01Z",
+                  "conclusion": "success",
+                  "name": "Resolve immutable release images",
+                  "number": 11,
+                  "startedAt": "2026-10-08T12:00:50Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:01:05Z",
+                  "conclusion": "success",
+                  "name": "Restore cached Trivy verdicts",
+                  "number": 12,
+                  "startedAt": "2026-10-08T12:01:01Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:01:05Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest HIGH/CRITICAL gate (identity-service)",
+                  "number": 13,
+                  "startedAt": "2026-10-08T12:01:05Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:01:05Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest SARIF evidence (identity-service)",
+                  "number": 14,
+                  "startedAt": "2026-10-08T12:01:05Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:01:05Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest HIGH/CRITICAL gate (school-core-service)",
+                  "number": 15,
+                  "startedAt": "2026-10-08T12:01:05Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:01:05Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest SARIF evidence (school-core-service)",
+                  "number": 16,
+                  "startedAt": "2026-10-08T12:01:05Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:01:05Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest HIGH/CRITICAL gate (operations-service)",
+                  "number": 17,
+                  "startedAt": "2026-10-08T12:01:05Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:01:05Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest SARIF evidence (operations-service)",
+                  "number": 18,
+                  "startedAt": "2026-10-08T12:01:05Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:01:51Z",
+                  "conclusion": "success",
+                  "name": "Trivy exact-digest HIGH/CRITICAL gate (platform-service)",
+                  "number": 19,
+                  "startedAt": "2026-10-08T12:01:05Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:02:20Z",
+                  "conclusion": "success",
+                  "name": "Trivy exact-digest SARIF evidence (platform-service)",
+                  "number": 20,
+                  "startedAt": "2026-10-08T12:01:51Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:02:20Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest HIGH/CRITICAL gate (billing-service)",
+                  "number": 21,
+                  "startedAt": "2026-10-08T12:02:20Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:02:20Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest SARIF evidence (billing-service)",
+                  "number": 22,
+                  "startedAt": "2026-10-08T12:02:20Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:02:20Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest HIGH/CRITICAL gate (frontend)",
+                  "number": 23,
+                  "startedAt": "2026-10-08T12:02:20Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:02:20Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest SARIF evidence (frontend)",
+                  "number": 24,
+                  "startedAt": "2026-10-08T12:02:20Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:02:20Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest HIGH/CRITICAL gate (api-gateway)",
+                  "number": 25,
+                  "startedAt": "2026-10-08T12:02:20Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:02:20Z",
+                  "conclusion": "skipped",
+                  "name": "Trivy exact-digest SARIF evidence (api-gateway)",
+                  "number": 26,
+                  "startedAt": "2026-10-08T12:02:20Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:02:38Z",
+                  "conclusion": "success",
+                  "name": "Store Trivy verdicts for reuse",
+                  "number": 27,
+                  "startedAt": "2026-10-08T12:02:20Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:02:38Z",
+                  "conclusion": "success",
+                  "name": "Enforce exact-digest Trivy gates and evidence",
+                  "number": 28,
+                  "startedAt": "2026-10-08T12:02:38Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:12Z",
+                  "conclusion": "success",
+                  "name": "Fast dev deployment",
+                  "number": 29,
+                  "startedAt": "2026-10-08T12:02:38Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:12Z",
+                  "conclusion": "skipped",
+                  "name": "Create and serially promote Cloud Deploy releases",
+                  "number": 30,
+                  "startedAt": "2026-10-08T12:04:12Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:12Z",
+                  "conclusion": "skipped",
+                  "name": "Confirm Cloud Deploy rollouts",
+                  "number": 31,
+                  "startedAt": "2026-10-08T12:04:12Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:15Z",
+                  "conclusion": "success",
+                  "name": "Verify changed Cloud Run services",
+                  "number": 32,
+                  "startedAt": "2026-10-08T12:04:12Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:25Z",
+                  "conclusion": "success",
+                  "name": "Gateway health smoke after rollout",
+                  "number": 33,
+                  "startedAt": "2026-10-08T12:04:15Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:36Z",
+                  "conclusion": "success",
+                  "name": "Sign dev-tested image digests",
+                  "number": 34,
+                  "startedAt": "2026-10-08T12:04:25Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:46Z",
+                  "conclusion": "success",
+                  "name": "Approve dev-tested image digests for production",
+                  "number": 35,
+                  "startedAt": "2026-10-08T12:04:36Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:46Z",
+                  "conclusion": "success",
+                  "name": "Write release summary",
+                  "number": 36,
+                  "startedAt": "2026-10-08T12:04:46Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:46Z",
+                  "conclusion": "skipped",
+                  "name": "Restore development database state",
+                  "number": 37,
+                  "startedAt": "2026-10-08T12:04:46Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:47Z",
+                  "conclusion": "success",
+                  "name": "Run actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+                  "number": 38,
+                  "startedAt": "2026-10-08T12:04:46Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:48Z",
+                  "conclusion": "success",
+                  "name": "Post Trivy exact-digest SARIF evidence (platform-service)",
+                  "number": 72,
+                  "startedAt": "2026-10-08T12:04:47Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:48Z",
+                  "conclusion": "success",
+                  "name": "Post Trivy exact-digest HIGH/CRITICAL gate (platform-service)",
+                  "number": 73,
+                  "startedAt": "2026-10-08T12:04:48Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:48Z",
+                  "conclusion": "success",
+                  "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+                  "number": 74,
+                  "startedAt": "2026-10-08T12:04:48Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:48Z",
+                  "conclusion": "success",
+                  "name": "Post Run google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093",
+                  "number": 75,
+                  "startedAt": "2026-10-08T12:04:48Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:49Z",
+                  "conclusion": "success",
+                  "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 76,
+                  "startedAt": "2026-10-08T12:04:48Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T12:04:49Z",
+                  "conclusion": "success",
+                  "name": "Complete job",
+                  "number": 77,
+                  "startedAt": "2026-10-08T12:04:49Z",
+                  "status": "completed"
+                }
+              ],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297/job/113299547069"
+            }
+          ],
+          "status": "completed",
+          "updatedAt": "2026-10-08T12:04:54Z",
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297"
+        },
+        "37773334851": {
+          "attempt": 1,
+          "conclusion": "success",
+          "createdAt": "2026-10-08T11:55:52Z",
+          "headSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+          "jobs": [
+            {
+              "completedAt": "2026-10-08T11:57:19Z",
+              "conclusion": "success",
+              "databaseId": 113298017185,
+              "name": "analyze (javascript-typescript)",
+              "startedAt": "2026-10-08T11:55:54Z",
+              "status": "completed",
+              "steps": [
+                {
+                  "completedAt": "2026-10-08T11:55:56Z",
+                  "conclusion": "success",
+                  "name": "Set up job",
+                  "number": 1,
+                  "startedAt": "2026-10-08T11:55:55Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:55:58Z",
+                  "conclusion": "success",
+                  "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 2,
+                  "startedAt": "2026-10-08T11:55:56Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:11Z",
+                  "conclusion": "success",
+                  "name": "Initialize CodeQL",
+                  "number": 3,
+                  "startedAt": "2026-10-08T11:55:58Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:57:16Z",
+                  "conclusion": "success",
+                  "name": "Analyze",
+                  "number": 4,
+                  "startedAt": "2026-10-08T11:56:11Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:57:16Z",
+                  "conclusion": "success",
+                  "name": "Post Analyze",
+                  "number": 6,
+                  "startedAt": "2026-10-08T11:57:16Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:57:17Z",
+                  "conclusion": "success",
+                  "name": "Post Initialize CodeQL",
+                  "number": 7,
+                  "startedAt": "2026-10-08T11:57:16Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:57:17Z",
+                  "conclusion": "success",
+                  "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 8,
+                  "startedAt": "2026-10-08T11:57:17Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:57:17Z",
+                  "conclusion": "success",
+                  "name": "Complete job",
+                  "number": 9,
+                  "startedAt": "2026-10-08T11:57:17Z",
+                  "status": "completed"
+                }
+              ],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773334851/job/113298017185"
+            },
+            {
+              "completedAt": "2026-10-08T11:59:42Z",
+              "conclusion": "success",
+              "databaseId": 113298017429,
+              "name": "analyze (java-kotlin)",
+              "startedAt": "2026-10-08T11:55:55Z",
+              "status": "completed",
+              "steps": [
+                {
+                  "completedAt": "2026-10-08T11:55:57Z",
+                  "conclusion": "success",
+                  "name": "Set up job",
+                  "number": 1,
+                  "startedAt": "2026-10-08T11:55:56Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:00Z",
+                  "conclusion": "success",
+                  "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 2,
+                  "startedAt": "2026-10-08T11:55:57Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:56:12Z",
+                  "conclusion": "success",
+                  "name": "Initialize CodeQL",
+                  "number": 3,
+                  "startedAt": "2026-10-08T11:56:00Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:38Z",
+                  "conclusion": "success",
+                  "name": "Analyze",
+                  "number": 4,
+                  "startedAt": "2026-10-08T11:56:12Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:39Z",
+                  "conclusion": "success",
+                  "name": "Post Analyze",
+                  "number": 6,
+                  "startedAt": "2026-10-08T11:59:38Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:39Z",
+                  "conclusion": "success",
+                  "name": "Post Initialize CodeQL",
+                  "number": 7,
+                  "startedAt": "2026-10-08T11:59:39Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:40Z",
+                  "conclusion": "success",
+                  "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+                  "number": 8,
+                  "startedAt": "2026-10-08T11:59:39Z",
+                  "status": "completed"
+                },
+                {
+                  "completedAt": "2026-10-08T11:59:40Z",
+                  "conclusion": "success",
+                  "name": "Complete job",
+                  "number": 9,
+                  "startedAt": "2026-10-08T11:59:40Z",
+                  "status": "completed"
+                }
+              ],
+              "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773334851/job/113298017429"
+            }
+          ],
+          "status": "completed",
+          "updatedAt": "2026-10-08T11:59:43Z",
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773334851"
+        }
+      },
+      "previousPr335ProofSha256Unchanged": "5f600a06f356d544377005fdbc235f53eddd3229e348ec57bf5f697604337ac6",
+      "previousAcceptedProofHashesUnchanged": {
+        "acceptance-provider-assertion-dev-release.json": "cff544bd1d447c2fceeffbb951f7c38ae6719ea976450b770542d1064f1a5b3b",
+        "acceptance-provider-assertion-image-protection.json": "20037a2efa2f21362c2adef58306f1be105ce39e2f848f58d8627ac91de5c834",
+        "acceptance-provider-assertion-public-smoke.json": "05f943bc53db2f996529e83955883c0422690de50d8c291b2286ef6096767c64"
+      },
+      "decision": "WORKFLOW_ACCEPTED",
+      "cloudReads": 0,
+      "cloudMutations": 0,
+      "providerCalls": 0,
+      "sourceWrites": 0,
+      "scope": "GitHub workflow source and actual dev-ref CodeQL evidence only. Runtime/configuration/jobs/package acceptance requires the separate root runtime verifier; no live provider/restore/fixtures/hardware acceptance.",
+      "actualRunProvenance": [
+        {
+          "id": 37773335297,
+          "head_sha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+          "head_branch": "dev",
+          "event": "push",
+          "path": ".github/workflows/build-release.yml",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "created_at": "2026-10-08T11:55:52Z",
+          "updated_at": "2026-10-08T12:04:54Z",
+          "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773335297"
+        },
+        {
+          "id": 37773334851,
+          "head_sha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+          "head_branch": "dev",
+          "event": "push",
+          "path": ".github/workflows/codeql-analysis.yml",
+          "run_attempt": 1,
+          "status": "completed",
+          "conclusion": "success",
+          "created_at": "2026-10-08T11:55:52Z",
+          "updated_at": "2026-10-08T11:59:43Z",
+          "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37773334851"
+        }
+      ],
+      "analysisRunWindowTraversal": {
+        "tool": "CodeQL",
+        "ref": "refs/heads/dev",
+        "ordering": "created descending verified",
+        "pagesRead": 1,
+        "recordsRead": 100,
+        "maxPages": 4,
+        "selectedRunWindowComplete": true,
+        "stopReason": "Before selected run start"
+      },
+      "actualCodeqlAnalyses": [
+        {
+          "id": 1915455734,
+          "category": "/language:java-kotlin",
+          "ref": "refs/heads/dev",
+          "commit_sha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+          "created_at": "2026-10-08T11:59:33Z",
+          "results_count": 0,
+          "error": "",
+          "rules_count": 120
+        },
+        {
+          "id": 1915442749,
+          "category": "/language:javascript-typescript",
+          "ref": "refs/heads/dev",
+          "commit_sha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+          "created_at": "2026-10-08T11:57:11Z",
+          "results_count": 0,
+          "error": "",
+          "rules_count": 103
+        }
+      ],
+      "scopedDevCodeqlOpenAlerts": 0,
+      "releaseArtifact": {
+        "id": 11549580981,
+        "name": "release-evidence-dev-900dcbbf62a7d0d57faef220853e82f427db864e",
+        "size_in_bytes": 10871,
+        "digest": "sha256:27ea81acc1d746d564da00b9d4f88712916935c6420e6bf9fd3c039b08d64f4f",
+        "created_at": "2026-10-08T12:04:47Z",
+        "updated_at": "2026-10-08T12:04:47Z",
+        "expired": false
+      },
+      "releaseArtifactScope": "GitHub artifact identity/digest only; contents not downloaded or runtime-attested by this independent workflow verifier",
+      "actualPlatformFinalAggregate": {
+        "reported": 456,
+        "passed": 456,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "jobId": 113298158436,
+        "rawLogSha256": "d96a10442400d51902ec3e9d258243f3ec65ab9cdb259e6b7db155421afc58ff"
+      },
+      "requiredReleaseStepSuccesses": [
+        "Resolve immutable release images",
+        "Enforce exact-digest Trivy gates and evidence",
+        "Fast dev deployment",
+        "Verify changed Cloud Run services",
+        "Gateway health smoke after rollout",
+        "Sign dev-tested image digests",
+        "Approve dev-tested image digests for production",
+        "Write release summary"
+      ],
+      "actualPlatformTrivySteps": [
+        {
+          "name": "Trivy exact-digest HIGH/CRITICAL gate (platform-service)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Trivy exact-digest SARIF evidence (platform-service)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "postmergeAnalysisCommitIsMergedSourceNotSyntheticPrMerge": true,
+      "curationHarnessCorrection": {
+        "path": "tmp/pr335-postmerge-codeql-pagination-stop.json",
+        "rawSha256": "bd6eaa61710cb739a3b8b3ff209cb1341d05d0b841406ed091a69d0a54789987",
+        "workflowOrTestFailure": false,
+        "cloudCalls": 0
+      },
+      "acceptanceCollectorSha256": "e9adc83d2f186098b41167e01888920267b0e9179e98faddabfe3624c4dd00a3",
+      "analysisWindowOfflineRecoveryChecks": {
+        "passed": 7,
+        "actualNetworkCalls": 0,
+        "path": "tmp/pr335-postmerge-analysis-window-offline-checks.json",
+        "rawSha256": "08942c4774815017ec89b0468af4391b155dec544509eb22e5b839625dbcf518"
+      }
+    }
+  },
+  "independentRuntimeArtifactReview": {
+    "temporaryFile": "tmp/pr335-independent-runtime-artifact-review.json",
+    "rawSha256": "f9cde4584661149d4706555ac68f88d8c1d699263e5f1029253c6c2321bcd112",
+    "capture": {
+      "reviewedAtUtc": "2026-10-08T12:12:21.601962+00:00",
+      "sourceHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+      "releaseRunId": 37773335297,
+      "proofRawSha256": "641426feef65b55c162dcdc19dcda21592f5b167d868a98e39e6cca36f84ec47",
+      "independentWorkflowProofRawSha256": "61eb3f7a56c6457d209cd769333eea1e9fb4a2ad3fdfd91c48867b5fa6700a11",
+      "artifactsRawSha256": {
+        "deployment.json": "4de1fec520a3b6f27ee5df498d03e1383b9594b2fd09f127fc95f650baa5a509",
+        "dev-approvals.json": "802a27db1124f3f6505668f477958254d0f5b2df2f0e2e73b05efeb3bcd3cc88",
+        "gateway-smoke.json": "61430287f3c756b53faf3ca523cb7ed9e3d934268140d7273d53b6cbd512707e",
+        "images.json": "85c8e93e46456da6a1a3d82a00a0d2bc14af06f628ad049cc91492aec9f4f97f",
+        "services-smoke.json": "9a4aa2e3364689229deb97d50a4cae1877eb377e5dfd5933e9364801f6f524be",
+        "summary.md": "a7db7aa30396d67dd978d44a14686528b6beca0a04503f31be96a8b54e731451",
+        "migrations\\ims-migrate-platform-dev-20261008120250-305679d6.job.json": "8ea91d74cb697dbcf0462a4e4503e9b51dad9cfcaab1751429a620ffd5a94e66",
+        "migrations\\platform-service.json": "7435c4bd1906f65374d367ac912fc52ebe4bfe144bf76397c8a5c8a22e32e283",
+        "trivy\\exact-digest-scan.json": "e1832c49d060cd0f27aec278636b9963ea01fe561ea2dc27402caa26f8596598",
+        "trivy\\platform-service-sha256-7fc7f7473bc63e3df804e36f0b666655b5d80958ef99d08309829a9f1f32ae52.sarif": "043a56d7967663b902d0221ac6d84259bbbc1574b602ff180f7b29076e2dccf5",
+        "trivy\\platform-service-sha256-7fc7f7473bc63e3df804e36f0b666655b5d80958ef99d08309829a9f1f32ae52.table.txt": "28af8b8dd0a5c17e7dab6e138ef8b14f3bb70b6d70105d57a6157c7f2dd62e47",
+        "trivy\\scan-cache.json": "329864c52bb1e92ceea6e6c58b2c95eb83f783c20d3d224508a86b14597cf99a"
+      },
+      "sevenReadyCurrentAndDesired100": true,
+      "oneChangedPlatformAgainstImmediateCffProof": true,
+      "sixExactRetained5aRevisionsDigests": true,
+      "safeSelectedRolesAndProviderConfiguration": true,
+      "platformTestsReportedAndPassed": 456,
+      "platformTestsSkipped": 0,
+      "freshPlatformSarifLibpng": "1.6.43-5ubuntu0.7",
+      "ownerJobAbsenceScope": "one new platform exact job plus five historical baseline exact jobs, not all jobs",
+      "passed": true,
+      "blockers": [],
+      "limitations": [
+        "Read-only local artifact review; root recorded cloud readbacks are corroborated for internal consistency, not newly queried.",
+        "Independent aggregate agrees exactly; two separately fetched raw-log hashes differ and raw logs were not retained, so no identical raw-test-log claim.",
+        "No blanket feature regression, provider delivery, global native applicability or full-recovery assurance."
+      ]
+    }
+  },
+  "independentLogProvenanceClarification": {
+    "temporaryFile": "tmp/pr335-runtime-artifact-review-log-provenance.json",
+    "rawSha256": "ca24b04154af6aeef1e9babf08275ed4d2bdeafb2c891f40cf426f44806e4be7",
+    "capture": {
+      "reviewedAtUtc": "2026-10-08T12:13:58.019408+00:00",
+      "sourceHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+      "releaseRunId": 37773335297,
+      "jobId": 113298158436,
+      "priorReviewPreserved": true,
+      "correction": "API log IS retained; only root formatted gh-run-view log was not retained. Distinct log acquisition/formatting paths explain nonmatching digest representations without a count inconsistency.",
+      "rootRepresentation": {
+        "generator": "tmp/verify-parallel-hardening-dev-release.py",
+        "command": "gh run view 37773335297 --repo custokingkr-dev/ims-v1 --job 113298158436 --log",
+        "hashInput": "formatted stdout encoded UTF-8, with gh job/step prefixes",
+        "sha256": "aba2f6675467611dc95ac97e9127331b7fce176d92151b353049b837f6908662",
+        "retained": false
+      },
+      "independentRepresentation": {
+        "generator": "tmp/pr335-postmerge-workflow-acceptance.py",
+        "command": "gh api repos/custokingkr-dev/ims-v1/actions/jobs/113298158436/logs",
+        "retainedPath": "tmp/pr335-postmerge-platform-release-test.log",
+        "verifiedRetainedRawSha256": "d96a10442400d51902ec3e9d258243f3ec65ab9cdb259e6b7db155421afc58ff",
+        "retained": true
+      },
+      "retainedFinalAggregate": {
+        "reported": 456,
+        "passed": 456,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "limitation": "Root formatted representation cannot be byte-recomputed because that stdout was not saved; generator proves differing representation, retained API bytes and final aggregate independently verified.",
+      "passed": true
+    }
+  },
+  "retainedApiTestLog": {
+    "temporaryFile": "tmp/pr335-postmerge-platform-release-test.log",
+    "rawSha256": "d96a10442400d51902ec3e9d258243f3ec65ab9cdb259e6b7db155421afc58ff",
+    "representation": "gh api actions/jobs/113298158436/logs; differs from gh run view formatted stdout hashed by root verifier"
+  },
+  "historicalEvidenceCountChecked": 42,
+  "laterCallbackBodyForwardFix": {
+    "required": true,
+    "status": "Source implementation and separate CI/dev acceptance pending",
+    "scope": "Direct IAM-authorized invoker body buffering before dual callback authentication; public gateway already bounds 32768 bytes"
+  },
+  "securityPlanComplete": false,
+  "allPossibleAttacksEliminated": false,
+  "allBusinessFeaturesIndividuallyExercised": false,
+  "liveProviderAdmission": false,
+  "governedFullRestoreComplete": false,
+  "globalHistoricalCoverageProven": false,
+  "deliveryResume": false,
+  "physicalAuthenticatorAcceptanceComplete": false,
+  "irreversibleRevisionDeletionApproved": false,
+  "revisionsDeleted": 0,
+  "productionChanged": false,
+  "openOwnerActionIds": [
+    "edge",
+    "repository",
+    "dashboard",
+    "provider",
+    "hardware",
+    "retention_restore",
+    "capacity_cleanup",
+    "http2",
+    "egress_files"
+  ],
+  "additionalOpenFindings": [
+    "Residual native advisory/backport/scanner review and retained historical alerts",
+    "Unclassified local snapshot image custody"
+  ],
+  "findingsAndFixPlan": "parallel-hardening-2026-10-08.md",
+  "ownerCompletionCriteria": "acceptance-owner-actions.md",
+  "limits": [
+    "Counts overlap and are not summed; local, PR CI and release evidence are separate.",
+    "One new scan is fresh; retained native observations keep their dates.",
+    "KEEP retention does not prevent manual deletion.",
+    "This dated acceptance does not certify the later callback-body source or its subsequent release.",
+    "Publication CI/CodeQL and any later dev release require separate actual acceptance."
+  ]
+}
