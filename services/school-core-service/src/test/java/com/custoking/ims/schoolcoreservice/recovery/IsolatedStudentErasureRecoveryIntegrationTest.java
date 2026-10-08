@@ -118,4 +118,19 @@ class IsolatedStudentErasureRecoveryIntegrationTest {
         assertThatThrownBy(()->plainTx.execute(status->{StudentErasureRecoveryMain.requireTargetBinding(plainJdbc,plainSource,plainSource.getUrl());return null;})).isInstanceOf(IllegalStateException.class);
         owner.sql("ALTER ROLE ims_dev_restore_executor BYPASSRLS").update();try(var e=executor(f)){assertThatThrownBy(e::execute).isInstanceOf(IllegalStateException.class);}finally{owner.sql("ALTER ROLE ims_dev_restore_executor NOBYPASSRLS").update();}assertThat(source(f.student)).isOne();
     }
+    @Test void epochControlChangedAfterSourceWorkRollsBackEveryTerminalWrite()throws Exception {
+        for(String change:List.of("generation","active","missing")){
+            Fixture f=fixture();String key="control/"+RecoveryFixture.LINEAGE+"/current.json";
+            var original=f.inputs.store.objects.get(key);
+            f.inputs.store.onFreezeRead=()->{if(f.inputs.store.freezeReads==2){
+                if(change.equals("missing"))f.inputs.store.objects.remove(key);
+                else f.inputs.store.objects.put(key,new com.custoking.ims.schoolcoreservice.erasure.ErasureJournalStore.StoredObject(
+                    change.equals("generation")?original.generation()+1:original.generation(),
+                    change.equals("active")?new String(original.body(),java.nio.charset.StandardCharsets.UTF_8).replace("RECONCILING","ACTIVE").getBytes(java.nio.charset.StandardCharsets.UTF_8):original.body()));
+            }};
+            try(var e=executor(f)){assertThatThrownBy(e::execute).as(change).isInstanceOf(IllegalStateException.class);}
+            assertThat(source(f.student)).as(change).isOne();assertThat(count("fee.payment_records",f.student)).isOne();assertThat(count("student.student_enrollments",f.student)).isOne();assertThat(count("student.erasure_journal_receipts",f.student)).isZero();assertThat(count("tenant_school.photo_cleanup_outbox",f.student)).isZero();
+            assertThat(owner.sql("SELECT count(*)FROM tenant_school.outbox_events WHERE event_key=:key").param("key","StudentDeleted:"+f.student).query(Long.class).single()).isZero();
+        }
+    }
 }

@@ -1,0 +1,8 @@
+{
+  "capturedAtUtc": "2026-10-08T17:24:48.258890+00:00",
+  "scope": "Dedicated dashboard service metadata error classification only",
+  "exitCode": 1,
+  "classification": "NOT_FOUND",
+  "rawErrorOrSecretValuesRetained": false,
+  "cloudMutations": 0
+}

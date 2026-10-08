@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:31:17.380263+00:00",
+  "stage": "initial",
+  "nativeExit": 1,
+  "counts": {
+    "tests": 13,
+    "failures": 4,
+    "errors": 0,
+    "skipped": 0
+  },
+  "logPath": "tmp/provider-canonical-initial.log",
+  "logRawSha256": "d73ec1e9f838861b940e313ba05c0eba66524ae7721346b9eb52788d859f6e00",
+  "reportPath": "tmp/provider-canonical-initial-surefire.xml",
+  "reportRawSha256": "e89934ec27e29a6210ead473969d468b489bf75029ec4fe7842acd497a29012e",
+  "sourceLfSha256": "e521f12de1be4d1f00a6804a41f91de7377e7fa7c69a3bb62b58560268e821c8",
+  "testLfSha256": "0eb60717db20945d396b7919c2a322f6ba6438f113fbf6389e02cd3a0b6c01e7",
+  "sourceAndTestsUnchangedDuringRun": true,
+  "failedCases": [
+    "noncanonicalPersistedDestinationsCannotBecomeAcceptedReservations",
+    "nonnullPassthroughCannotEnterTheCanonicalSubmissionContract",
+    "routingAliasesCannotEnterTheCanonicalSubmissionContract",
+    "wireRoutingRequiresAnExactStringRecipient"
+  ],
+  "scope": "Controlled injected/local HTTP fixtures only; no live provider or website attack performed."
+}

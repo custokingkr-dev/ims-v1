@@ -64,3 +64,16 @@ docs/security-remediation/acceptance-execution-boundary-image-protection.json te
 docs/security-remediation/acceptance-execution-boundary-public-smoke.json text eol=lf
 docs/security-remediation/acceptance-execution-boundary-native-inventory.json text eol=lf
 docs/security-remediation/acceptance-execution-boundary-completion.json text eol=lf
+
+# Preserve new remaining-round capture bytes.
+docs/security-remediation/acceptance-remaining-round-provider-initial.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-provider-local.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-recovery-local.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-platform-full.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-school-full.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-source-review.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-owner-readback.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-owner-followup.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-infra-review.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-native-research.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-local.json text eol=lf

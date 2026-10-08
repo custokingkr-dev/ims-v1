@@ -45,7 +45,7 @@ final class IsolatedStudentErasureRecovery implements AutoCloseable {
                 var receipt=journal.verifyForReplay(reference);
                 RecoveryAuthorization.require(receipt.intentId().equals(RecoveryAuthorization.text(task,"intentId")) && receipt.operationId().toString().equals(RecoveryAuthorization.text(task,"operationId")) && receipt.studentId()==RecoveryAuthorization.positive(task,"studentId") && receipt.schoolId()==RecoveryAuthorization.positive(task,"schoolId") && receipt.incarnation().toString().equals(RecoveryAuthorization.text(task,"studentIncarnation")) && receipt.restoreEpoch().toString().equals(RecoveryAuthorization.text(task,"restoreEpoch")) && receipt.sourceLineageId().equals(RecoveryAuthorization.text(authority.approval,"lineage")));
                 students.reconcileErasure(reference);
-                authority.requireFresh(45);freeze();StudentErasureRecoveryMain.requireTargetBinding(jdbc,source,approvedUrl);RecoveryAuthorization.require(System.nanoTime()<deadline && System.nanoTime()<transactionDeadline);
+                authority.requireFresh(45);freeze();reconciliationEpoch();StudentErasureRecoveryMain.requireTargetBinding(jdbc,source,approvedUrl);authority.requireFresh(45);RecoveryAuthorization.require(System.nanoTime()<deadline && System.nanoTime()<transactionDeadline);
                 return null;
             });
             completed++;
@@ -53,14 +53,29 @@ final class IsolatedStudentErasureRecovery implements AutoCloseable {
         return Map.of("mode","ISOLATED_SOURCE_REPLAY_ONLY","approvalSha256",authority.approvalSha,"completedSourceTasks",completed,"restorationReady",false,"deliveryResume",false,"downstreamReconciliationRequired",true,"physicalPhotoErasurePerformed",false,"freezeIsOperatorAttestation",true);
     }
     private void freeze() {
+        var observed=latestControl(RecoveryAuthorization.text(authority.approval,"freezeObject"),32768);
+        RecoveryAuthorization.require(observed.generation()==RecoveryAuthorization.generation(authority.approval,"freezeGeneration") && RecoveryAuthorization.sha(observed.body()).equals(RecoveryAuthorization.text(authority.approval,"freezeSha256")));
+        authority.verifyFreeze(observed.body());
+    }
+    // Commit-admission recheck only: a GCS read and the SQL commit are not an atomic global lease.
+    // Never replace the approved generation with a newer control or infer delivery-resume authority.
+    private void reconciliationEpoch() {
+        var observed=latestControl("control/"+RecoveryAuthorization.text(authority.approval,"lineage")+"/current.json",2048);
+        RecoveryAuthorization.require(observed.generation()==RecoveryAuthorization.generation(authority.approval,"epochGeneration") && RecoveryAuthorization.sha(observed.body()).equals(RecoveryAuthorization.text(authority.approval,"epochSha256")));
+        JsonNode control=RecoveryAuthorization.parse(observed.body(),2048);
+        RecoveryAuthorization.fields(control,"schemaVersion","project","sourceInstance","database","sourceLineageId","restoreEpoch","state");
+        RecoveryAuthorization.require(RecoveryAuthorization.version(control) && RecoveryAuthorization.text(control,"project").equals("custoking-dev") && RecoveryAuthorization.text(control,"sourceInstance").equals("custoking-db-dev") && RecoveryAuthorization.text(control,"database").equals("custoking_dev") && RecoveryAuthorization.text(control,"sourceLineageId").equals(RecoveryAuthorization.text(authority.approval,"lineage")) && RecoveryAuthorization.text(control,"restoreEpoch").equals(RecoveryAuthorization.text(authority.approval,"epoch")) && RecoveryAuthorization.text(control,"state").equals("RECONCILING"));
+    }
+    private ErasureJournalStore.StoredObject latestControl(String object,int limit) {
         RecoveryAuthorization.require(slots.tryAcquire());
-        Future<ErasureJournalStore.StoredObject> future=controlReads.submit(()->{
-            try{return store.readLatest(ErasureJournalConfiguration.BUCKET,RecoveryAuthorization.text(authority.approval,"freezeObject"),32768);}finally{slots.release();}
-        });
+        Future<ErasureJournalStore.StoredObject> future;
+        try {
+            future=controlReads.submit(()->{try{return store.readLatest(ErasureJournalConfiguration.BUCKET,object,limit);}finally{slots.release();}});
+        } catch(RejectedExecutionException e){slots.release();throw RecoveryAuthorization.rejected();}
         try {
             var observed=future.get(4,TimeUnit.SECONDS);
-            RecoveryAuthorization.require(observed!=null && observed.generation()==RecoveryAuthorization.generation(authority.approval,"freezeGeneration") && RecoveryAuthorization.sha(observed.body()).equals(RecoveryAuthorization.text(authority.approval,"freezeSha256")));
-            authority.verifyFreeze(observed.body());
+            RecoveryAuthorization.require(observed!=null && observed.body()!=null && observed.body().length>0 && observed.body().length<=limit);
+            return observed;
         } catch(InterruptedException e){Thread.currentThread().interrupt();future.cancel(true);throw RecoveryAuthorization.rejected();}
         catch(Exception e){future.cancel(true);throw RecoveryAuthorization.rejected();}
     }

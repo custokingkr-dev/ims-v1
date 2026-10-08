@@ -1,5 +1,8 @@
 # Security findings and fix plan
 
+Latest dated follow-up: [recovery/provider findings and fix plan](security-remediation/remaining-security-completion-2026-10-08.md) and [native advisory matrix](security-remediation/remaining-round-native-advisory-research.md). Three source gaps are fixed and locally verified; new CI/dev acceptance and eleven owner-dependent action/finding groups remain required.
+
+
 Current implementation, deployment and remaining acceptance criteria are tracked in [the security implementation ledger](security-remediation/IMPLEMENTATION-STATUS.md) and [the dev release report](security-remediation/dev-security-release.md). This document preserves the original 2026-10-06 assessment; its initial status is historical.
 
 This is the consolidated remediation register for the IMS reviews dated 6 October 2026. It preserves findings from both the [architecture and security review](CODEBASE-ARCHITECTURE-SECURITY-REVIEW-2026-10-06.md) and the [attack assessment](CYBERSECURITY-ATTACK-ASSESSMENT-2026-10-06.md), including code weaknesses, conditional risks, reliability/privacy debt and verification gaps. Those reports retain detailed source references, research links and test evidence.
