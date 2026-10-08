@@ -77,3 +77,14 @@ docs/security-remediation/acceptance-remaining-round-owner-followup.json text eo
 docs/security-remediation/acceptance-remaining-round-infra-review.json text eol=lf
 docs/security-remediation/acceptance-remaining-round-native-research.json text eol=lf
 docs/security-remediation/acceptance-remaining-round-local.json text eol=lf
+
+# Preserve accepted remaining-round dev evidence.
+docs/security-remediation/acceptance-remaining-round-ci.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-release-tests.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-dev-release.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-image-protection.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-public-smoke.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-curation-review.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-ci-provenance-review.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-native-inventory.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-completion.json text eol=lf
