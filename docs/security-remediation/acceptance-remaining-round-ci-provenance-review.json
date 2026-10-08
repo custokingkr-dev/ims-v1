@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:59:33.983837+00:00",
+  "decision": "PASS_SCOPED_FORWARD_CI_PROVENANCE_CORRECTION",
+  "files": {
+    "tmp/generate-remaining-round-acceptance-bounded-provenance.py": "de7b9299f010afbd81e64ced41d4ee233328762932f7d919f8023636db8e0c6a",
+    "tmp/test-remaining-round-ci-provenance.py": "d876214c03883c2e110f172e6c54115ebac24a921d44b938479bcf35ac52bf5b",
+    "tmp/remaining-round-ci-provenance-preparation-proof.json": "20932e89dfa05f8b8b648cfd0cbe362ac8e249cba4d5ebfa176e9cd8c07a0213"
+  },
+  "priorIndependentReview": {
+    "path": "tmp/remaining-round-curation-independent-review.json",
+    "digestSha256": "b1b0a341c9f414269290743085ecea2581505bd4db09a8f616fae852158fa4db",
+    "initialFindingPreserved": true
+  },
+  "originalsUnchanged": {
+    "tmp/generate-remaining-round-acceptance-bounded.py": "e6f75b9463a08b57db4fe6d278595a0f43ff215386699f493d6cc247222162c6",
+    "tmp/remaining-round-bounded-acceptance-preparation-proof.json": "32a2c4e5ee52ae8db8d4bfcd62044fcf8eff04138c4d9b1b4e9e5df28a8a8ee7",
+    "tmp/generate-remaining-round-acceptance.py": "0ddeea962f58904669317e87ddb25d7c00ca243fb53e9d1494259415907f27c7",
+    "tmp/remaining-round-acceptance-preparation-proof.json": "59ce2e315a0b459ad412f356e73a32aaecd3eb567d8be973e2bbca9913b9d36a"
+  },
+  "sourceSchemaCompatibility": {
+    "sourceCiCollectorDigestSha256": "7b0b4a7c2b5259e6329670bb1e4148ea854bf5e8bb1c0e6f20b3a6a17f5988ba",
+    "emittedFields": [
+      "decision",
+      "sourceHead",
+      "baseHead",
+      "mergeTree"
+    ],
+    "requiredKeysUnchanged": true
+  },
+  "verifiedSourceGuards": [
+    "Generation verifies pinned CI bytes and MERGE_READY/sourceHead/baseHead/mergeTree against approved head and supplied parent/tree before creating derived output.",
+    "Generated collector validates exact supplied tuple and CI raw hash, then validates accepted proof head/base/tree before invoking inherited prerequisites.",
+    "Wrapper definitions are moved before __main__; collect invokes prerequisites before Transport construction.",
+    "Existing bounded file reads, donor/baseline hashes, caps, two-service counts, locked preview/protection stages and create-only namespaces remain unchanged by the focused diff."
+  ],
+  "savedFocusedEvidence": {
+    "tests": {
+      "reported": 5,
+      "passed": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "nativeExitCode": 0,
+      "logPath": "tmp/remaining-round-ci-provenance-controls.log",
+      "rawLogSha256": "d0d3c79af297487d8d1c8594e4f86a33d3c14e0b860183bf84a322072a9c5544",
+      "olderBroadGuardsRerun": false
+    },
+    "independentlyRerun": false,
+    "logHashMatches": true,
+    "casesReviewed": [
+      "wrong parent at generation",
+      "wrong tree at generation",
+      "wrong parent in independent emitted collector before Transport",
+      "wrong tree in independent emitted collector before Transport",
+      "matching exact parent/tree compiles with protection locked"
+    ]
+  },
+  "outerSourceAstCompilationPassed": true,
+  "newBlockingFindings": [],
+  "scope": "Focused source/dataflow and saved five-case proof review; no helper execution, broad rerun, future runtime/source acceptance or network action.",
+  "githubCalls": 0,
+  "cloudCalls": 0,
+  "mavenCalls": 0,
+  "sourceWrites": 0
+}
