@@ -1,0 +1,297 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T12:17:41.717390+00:00",
+  "reviewedSourceHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+  "scope": "Read-only dependency/source/primary-documentation review of the accepted PR335 source before the forward callback fix. No source edits, Maven, stress, live HTTP, cloud calls, secret reads or runtime dependency extraction.",
+  "localDependency": {
+    "springBootParentVersion": "4.1.1",
+    "springBootDependenciesBomSha256": "1c929eeccb48f8ee12225e9fec725177170b89575754bd903f184c185db77775",
+    "bomManagedSpringFrameworkVersion": "7.0.9",
+    "artifact": "org.springframework:spring-web:7.0.9",
+    "jarSha256": "941ced476427bde2533872f293da535fd0258de3f3a650a7f1bfe01ed2927302",
+    "classSha256": {
+      "org/springframework/http/converter/ByteArrayHttpMessageConverter.class": "4cb6bde18074dd88b19730d475d1d13844c4da04ab6988a7b27c419f2dbc0db4",
+      "org/springframework/web/method/support/InvocableHandlerMethod.class": "a77acf34120118a56c0cca9e0ef89f33f9efb64727d4fdaba3841a1df4ac906d"
+    },
+    "disassembly": [
+      {
+        "path": "tmp/pr336-ByteArrayHttpMessageConverter-javap.txt",
+        "rawSha256": "4e585fa5b1e537c424c53a1306a384350a5a1d914e144551e366318093cfe534",
+        "localBytecodeMethodEvidence": [
+          "32: invokevirtual #38                 // Method java/io/InputStream.readNBytes:(I)[B",
+          "44: invokevirtual #44                 // Method java/io/InputStream.readAllBytes:()[B"
+        ]
+      },
+      {
+        "path": "tmp/pr336-InvocableHandlerMethod-javap.txt",
+        "rawSha256": "6444f93e9252bcdc5cf1fab3258ae8b2b9ff46d7c61878a1ae813f2004aaf95d",
+        "localBytecodeMethodEvidence": [
+          "4: invokevirtual #45                 // Method getMethodArgumentValues:(Lorg/springframework/web/context/request/NativeWebRequest;Lorg/springframework/web/method/support/ModelAndViewContainer;[Ljava/lang/Object;)[Ljava/lang/Object;",
+          "82: invokevirtual #98                 // Method doInvoke:([Ljava/lang/Object;)Ljava/lang/Object;"
+        ]
+      }
+    ]
+  },
+  "primarySources": [
+    {
+      "url": "https://raw.githubusercontent.com/spring-projects/spring-framework/v7.0.9/spring-web/src/main/java/org/springframework/http/converter/ByteArrayHttpMessageConverter.java",
+      "version": "7.0.9",
+      "lines": [
+        49,
+        50,
+        51,
+        52
+      ],
+      "shortCodeExcerpt": "message.getBody().readNBytes((int) length) : message.getBody().readAllBytes()",
+      "observation": "For nonnegative Content-Length below Integer.MAX_VALUE the converter reads that length; otherwise it reads to EOF. No endpoint-specific32KiB bound is present in this converter."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/spring-projects/spring-framework/v7.0.9/spring-web/src/main/java/org/springframework/web/method/support/InvocableHandlerMethod.java",
+      "version": "7.0.9",
+      "lines": [
+        159,
+        169
+      ],
+      "shortCodeExcerpts": [
+        "getMethodArgumentValues(request, mavContainer, providedArgs)",
+        "doInvoke(args)"
+      ],
+      "observation": "Arguments are resolved before invoking the controller method; the observed byte-array body conversion therefore precedes the token checks inside that handler."
+    },
+    {
+      "url": "https://docs.cloud.google.com/run/quotas",
+      "accessedDateUtc": "2026-10-08",
+      "documentationUpdatedDate": "2026-10-07",
+      "observation": "Maximum HTTP/1 request size32MiB when using an HTTP/1 server. The page explicitly says this limit does not apply to an HTTP/2 server. The reviewed platform manifest names its container port http1; this source review does not independently inspect the actual protocol configuration."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/apache/tomcat/11.0.25/webapps/docs/config/http.xml",
+      "version": "11.0.25",
+      "lines": [
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        199
+      ],
+      "observation": "maxPostSize limits bytes converted into request parameters for URL-encoded/multipart form handling. Its default2MiB is not a general JSON/POST body bound. Current Tomcat11 online documentation11.0.26 independently states the same scope."
+    },
+    {
+      "url": "https://tomcat.apache.org/tomcat-11.0-doc/config/http.html",
+      "observedOnlineVersion": "11.0.26",
+      "observation": "Current online reference is newer than locked11.0.25; version-pinned upstream source is used above for the exact dependency claim."
+    },
+    {
+      "url": "https://docs.cloud.google.com/run/docs/authenticating/service-to-service",
+      "observation": "Private service invocation requires the appropriate invoker role plus proof of calling service identity. This outer admission is distinct from the callback credentials enforced by the application."
+    }
+  ],
+  "localSourceRecords": [
+    {
+      "path": "pom.xml",
+      "sourceHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+      "normalizedLfSha256": "98f2856b931d6eee40f1630f84a93d7bd82d1c7d2270453084d69f0a09397448",
+      "evidence": [
+        {
+          "line": 8,
+          "excerpt": "<artifactId>spring-boot-starter-parent</artifactId>"
+        },
+        {
+          "line": 9,
+          "excerpt": "<version>4.1.1</version>"
+        },
+        {
+          "line": 39,
+          "excerpt": "<tomcat.version>11.0.25</tomcat.version>"
+        }
+      ]
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+      "sourceHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+      "normalizedLfSha256": "63db72fed0156ee51d4e1ac099154f571562a374afa7c783a660a66a19e289c1",
+      "evidence": [
+        {
+          "line": 25,
+          "excerpt": "@RequestMapping(\"/api/v1/notifications/provider-reports/msg91/email\")"
+        },
+        {
+          "line": 42,
+          "excerpt": "@RequestHeader(value=\"X-MSG91-Webhook-Token\",required=false) String callbackToken, @RequestBody byte[] bytes) {"
+        },
+        {
+          "line": 43,
+          "excerpt": "requireToken(token,\"notification:report\");"
+        },
+        {
+          "line": 45,
+          "excerpt": "if (configuration.webhookToken().length()<32 || !equal(configuration.webhookToken(),callbackToken))"
+        },
+        {
+          "line": 47,
+          "excerpt": "if (bytes.length>32768) throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,\"Provider report is too large\");"
+        }
+      ]
+    },
+    {
+      "path": "services/api-gateway/server.js",
+      "sourceHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+      "normalizedLfSha256": "971e8cbf69da34a13973935d4e38e47152ba6c3af1dfa7761e90987108242680",
+      "evidence": [
+        {
+          "line": 606,
+          "excerpt": "const report = parsed.pathname === '/api/v1/notifications/provider-reports/msg91/email';"
+        },
+        {
+          "line": 607,
+          "excerpt": "if (report && Number(req.headers['content-length']) > 32768) {"
+        },
+        {
+          "line": 612,
+          "excerpt": "...(report ? { maxBodyBytes: 32768 } : {}),"
+        },
+        {
+          "line": 963,
+          "excerpt": "async function* boundedRequestBody(req, maxBytes = MAX_BODY_BYTES) {"
+        },
+        {
+          "line": 968,
+          "excerpt": "if (received > maxBytes) throw new PayloadTooLargeError();"
+        }
+      ]
+    },
+    {
+      "path": "deploy/cloudrun/platform-service.yaml",
+      "sourceHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+      "normalizedLfSha256": "fc0d23609724fe1c9b3e77f5d0b77e13fda9356ce7be8c8d464aa684c64fbe52",
+      "evidence": [
+        {
+          "line": 27,
+          "excerpt": "containerConcurrency: 80"
+        },
+        {
+          "line": 28,
+          "excerpt": "timeoutSeconds: 300"
+        },
+        {
+          "line": 32,
+          "excerpt": "- name: http1"
+        },
+        {
+          "line": 37,
+          "excerpt": "memory: 768Mi"
+        },
+        {
+          "line": 43,
+          "excerpt": "timeoutSeconds: 5"
+        },
+        {
+          "line": 50,
+          "excerpt": "timeoutSeconds: 5"
+        }
+      ]
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/security/MachineCallerFilter.java",
+      "sourceHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+      "normalizedLfSha256": "bc395031b0955a7efa4fae2dc0b8701e84de5a54a8acd25e3b9fbd4b004cf78c",
+      "evidence": [
+        {
+          "line": 40,
+          "excerpt": "static String callerProperty(String path) {"
+        },
+        {
+          "line": 64,
+          "excerpt": "if(property==null) {"
+        },
+        {
+          "line": 67,
+          "excerpt": "chain.doFilter(request,response); return;"
+        }
+      ]
+    }
+  ],
+  "existingControls": {
+    "gateway": {
+      "routeLimitBytes": 32768,
+      "contentLengthFastRejection": true,
+      "actualChunkedStreamByteCounter": true,
+      "overLimitChunkNotForwarded": true,
+      "evidenceScope": "Exact accepted source; no new gateway requests run"
+    },
+    "privateService": {
+      "savedPublicNegativeCases": [
+        {
+          "service": "platform-service",
+          "case": "anonymous_private",
+          "status": 403,
+          "passed": true
+        },
+        {
+          "service": "platform-service",
+          "case": "forged_user_without_id_token",
+          "status": 403,
+          "passed": true
+        }
+      ],
+      "smokeProofPath": "docs/security-remediation/acceptance-parallel-hardening-public-smoke.json",
+      "smokeProofRawSha256": "5d3ab921a8519db46657b10dbd5a8f70ed9c7579635a43464521024152dd786c",
+      "freshIamReadPerformed": false,
+      "qualification": "Saved direct anonymous/forged platform403cases primarily prove ingress denial; no authenticated wrong-callback body probe or new IAM attestation was performed."
+    },
+    "acceptedDeployment": {
+      "proofPath": "docs/security-remediation/acceptance-parallel-hardening-dev-release.json",
+      "proofRawSha256": "641426feef65b55c162dcdc19dcda21592f5b167d868a98e39e6cca36f84ec47",
+      "sourceHeadSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+      "runId": 37773335297,
+      "platformRevision": "custoking-platform-service-dev-00037-4hk",
+      "platformRuntimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:1c8ef786050dbf4625f1724c73e9760f9bd4d81ebe0213e236329421e771369f",
+      "providerLiveEnabled": "false",
+      "deliveryProvider": "logging",
+      "msg91DryRun": "true",
+      "qualification": "Disabled live sending does not remove this existing callback method, which intentionally accepts receipts after sending is disabled. Actual legacy callback-token configuration/values were not read."
+    }
+  },
+  "assessment": {
+    "confirmedGap": "Spring resolves the entire byte-array request argument before this handler checks both callback credentials and the32KiB limit. An IAM-authorized direct caller that reaches this route without valid callback credentials can cause body allocation before application rejection.",
+    "severityScope": "Authenticated direct-invoker resource-consumption/availability hardening. Existing public gateway32KiB cap and private IAM admission reduce exposure; no public unauthenticated unbounded exploit or demonstrated exhaustion is asserted.",
+    "quotaQualification": "Cloud Run documented32MiB HTTP/1 cap is1024times the route32KiB allowance; it does not establish acceptable per-request JVM allocation. Concurrency/memory effects are unmeasured and no crash was reproduced.",
+    "recommendedNarrowFix": "Resolve headers/request/response without @RequestBody byte[]; authenticate both credentials before consuming the body; then enforce32KiB actual-byte cap and a container-supported whole-read deadline before parsing/persistence. Preserve exact JSON/binding, token scope, response semantics and the existing disabled live-send gate.",
+    "suggestedNonstressCoverage": [
+      "Invalid credential rejected before stream acquisition/read",
+      "Valid tokens with over-limit Content-Length rejected before body read",
+      "Ordinary bounded chunked requests capped at32769observed bytes",
+      "Embedded-container read timeout and subsequent request isolation",
+      "No late parsing/persistence after timeout or credential refusal"
+    ],
+    "limitations": [
+      "No exploit/stress/live request was run",
+      "No quantified CVSS/production outage inference",
+      "No immutable-image process/package extraction or negative-VEX claim",
+      "No active selected provider account/template/recipient contract was inferred",
+      "Forward source fix and test completion remain owned by the provider agent"
+    ]
+  },
+  "performedActions": {
+    "localGitReadOnly": true,
+    "localDependencyJarReadAndJavapOnly": true,
+    "primaryDocumentationBrowsing": true,
+    "mavenCalls": 0,
+    "stressFixtures": 0,
+    "liveHttpRequests": 0,
+    "cloudCalls": 0,
+    "secretReads": 0,
+    "sourceWrites": 0,
+    "permanentDocWrites": 0,
+    "gitMutations": 0
+  },
+  "sourceCaptureRawSha256": "8041528e377fae71043710f5066d2d58ac0a75206c6d51ad657d240627b678b1",
+  "laterSourceAcceptanceRequiresSeparateProof": true
+}

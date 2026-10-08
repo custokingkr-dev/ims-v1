@@ -48,6 +48,7 @@ param(
   [string]$LiveWorker = "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/BroadcastLiveWorker.java",
   [string]$LiveLedger = "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/BroadcastLiveRepository.java",
   [string]$LiveReports = "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+  [string]$ReportBodyReader = "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/AsyncNotificationReportBody.java",
   [string]$LiveConfiguration = "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/LiveBroadcastConfiguration.java",
   [string]$PlatformApplicationConfig = "services/platform-service/src/main/resources/application.yml",
   [string]$PlatformCloudRunManifest = "deploy/cloudrun/platform-service.yaml",
@@ -70,7 +71,7 @@ $paths = @($ReadinessAudit, $GovernanceConfigurator, $GitHubExactCheckVerifier,
   $NotificationResilienceConfigurator, $ReportingResilienceConfigurator,
   $ScaleFixtureScript, $LoadCertificationScript,
   $CicdTerraform, $DependabotConfig, $CodeQlWorkflow,
-  $ContainerWorkflow, $Msg91Provider, $LiveProvider, $LiveWorker, $LiveLedger, $LiveReports, $LiveConfiguration, $PlatformApplicationConfig,
+  $ContainerWorkflow, $Msg91Provider, $LiveProvider, $LiveWorker, $LiveLedger, $LiveReports, $ReportBodyReader, $LiveConfiguration, $PlatformApplicationConfig,
   $PlatformCloudRunManifest, $NotificationConsentEvidence)
 $contents = @{}
 foreach ($relative in $paths) {
@@ -320,7 +321,26 @@ Require-Text $LiveLedger @(
 Require-Text $LiveReports @(
   'X-Notification-Service-Token', 'X-MSG91-Webhook-Token',
   'MessageDigest.isEqual', 'configuration.webhookToken().length()<32',
-  'bytes.length>32768', 'Provider report persistence unavailable'
+  'Duration.ofSeconds(5),32768', 'BODY.receive(request,response,this::record',
+  'transaction.setTimeout(5)', 'StandardCharsets.UTF_8.newDecoder()',
+  'CodingErrorAction.REPORT', 'STRICT_DUPLICATE_DETECTION',
+  'FAIL_ON_TRAILING_TOKENS', 'Provider report persistence unavailable'
+)
+if ($contents[$LiveReports].Contains('@RequestBody') -or $contents[$LiveReports].Contains('getInputStream(')) {
+  $violations.Add("EMAIL reports must authenticate before their shared bounded servlet reader; eager body conversion/direct stream reads are forbidden.") | Out-Null
+}
+$serviceAuthAt = $contents[$LiveReports].IndexOf('requireToken(token,"notification:report");')
+$callbackAuthAt = $contents[$LiveReports].IndexOf('configuration.webhookToken().length()<32')
+$bodyReadAt = $contents[$LiveReports].IndexOf('BODY.receive(request,response,this::record')
+if ($serviceAuthAt -lt 0 -or $callbackAuthAt -le $serviceAuthAt -or $bodyReadAt -le $callbackAuthAt) {
+  $violations.Add("EMAIL service and callback credentials must precede the bounded body read.") | Out-Null
+}
+Require-Text $ReportBodyReader @(
+  'new Semaphore(2)', 'this(timeout,8192',
+  'request.getContentLengthLong()>maxBytes', 'maxBytes+1-body.size()',
+  'body.size()>maxBytes', 'System.nanoTime()>=deadline',
+  'context.setTimeout(timeoutMillis)', 'processing=true',
+  'processing=false', 'if(!released)', 'if(!processing)release()'
 )
 Require-Text $LiveConfiguration @(
   'schools.size() <= 100', 'destinations.size() <= 1000',

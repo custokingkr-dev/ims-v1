@@ -2,6 +2,9 @@ package com.custoking.ims.platformservice.api;
 
 import com.custoking.ims.platformservice.application.LiveBroadcastConfiguration;
 import com.custoking.ims.platformservice.persistence.BroadcastLiveRepository;
+import com.custoking.ims.platformservice.api.internal.AsyncNotificationReportBody;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -13,11 +16,12 @@ import tools.jackson.core.StreamReadFeature;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 import java.nio.charset.StandardCharsets;
+import java.nio.ByteBuffer;
+import java.nio.charset.CodingErrorAction;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 /** Narrow provider callback; gateway service identity plus an account-specific callback secret. */
@@ -27,6 +31,7 @@ public class Msg91BroadcastReportController {
     private final String serviceToken;
     private final LiveBroadcastConfiguration configuration;
     private final BroadcastLiveRepository ledger;
+    private static final AsyncNotificationReportBody BODY=new AsyncNotificationReportBody(java.time.Duration.ofSeconds(5),32768,"Provider report is too large");
     private static final JsonMapper REPORT_JSON=JsonMapper.builder()
             .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
             .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
@@ -34,26 +39,34 @@ public class Msg91BroadcastReportController {
     public Msg91BroadcastReportController(@Value("${notification.status.token:}") String serviceToken,
             LiveBroadcastConfiguration configuration, BroadcastLiveRepository ledger, PlatformTransactionManager manager) {
         this.serviceToken=serviceToken==null ? "" : serviceToken.trim(); this.configuration=configuration;
-        this.ledger=ledger; transaction=new TransactionTemplate(manager);
+        this.ledger=ledger; transaction=new TransactionTemplate(manager);transaction.setTimeout(5);
     }
     @PostMapping(consumes="application/json")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public Map<String, Boolean> report(@RequestHeader(value="X-Notification-Service-Token",required=false) String token,
-            @RequestHeader(value="X-MSG91-Webhook-Token",required=false) String callbackToken, @RequestBody byte[] bytes) {
+    public void report(@RequestHeader(value="X-Notification-Service-Token",required=false) String token,
+            @RequestHeader(value="X-MSG91-Webhook-Token",required=false) String callbackToken,
+            HttpServletRequest request,HttpServletResponse response) throws java.io.IOException {
         requireToken(token,"notification:report");
         // Receipts must continue working after the live send gate is disabled.
         if (configuration.webhookToken().length()<32 || !equal(configuration.webhookToken(),callbackToken))
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Invalid provider callback credential");
-        if (bytes.length>32768) throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,"Provider report is too large");
+        // Both credentials are checked before even inspecting length or acquiring a servlet stream.
+        BODY.receive(request,response,this::record,(reply,status,reason)->reply.sendError(status,reason));
+    }
+    private void record(byte[] bytes) {
         final Report report;
-        try { report=parse(REPORT_JSON.readTree(bytes)); }
+        try {
+            String json=StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();
+            if(json.startsWith("\uFEFF"))json=json.substring(1); // Preserve an existing UTF-8 BOM's interpretation.
+            report=parse(REPORT_JSON.readTree(json));
+        }
         catch (Exception invalid) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid provider report"); }
         try {
             transaction.executeWithoutResult(tx -> ledger.report(report.correlation(),report.providerId(),report.destinationHash(),report.senderHash(),
                     report.status(),report.at(),report.hash()));
         } catch (RuntimeException unavailable) { throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Provider report persistence unavailable"); }
         // Unknown correlation/binding gets the same acknowledgement; it never creates a ledger.
-        return Map.of("accepted",true);
     }
     private void requireToken(String token,String scope) {
         if (!"notification:report".equals(scope) || serviceToken.isBlank() || !equal(serviceToken,token))

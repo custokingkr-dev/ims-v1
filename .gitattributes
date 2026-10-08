@@ -35,3 +35,12 @@ docs/security-remediation/acceptance-parallel-hardening-dev-release.json text eo
 docs/security-remediation/acceptance-parallel-hardening-image-protection.json text eol=lf
 docs/security-remediation/acceptance-parallel-hardening-public-smoke.json text eol=lf
 docs/security-remediation/acceptance-parallel-hardening-completion.json text eol=lf
+# Preserve exact callback body-boundary follow-up captures.
+docs/security-remediation/acceptance-callback-body-primary-review.json text eol=lf
+docs/security-remediation/acceptance-callback-body-local.json text eol=lf
+docs/security-remediation/acceptance-callback-body-static-audits.json text eol=lf
+docs/security-remediation/acceptance-callback-body-ci.json text eol=lf
+docs/security-remediation/acceptance-callback-body-dev-release.json text eol=lf
+docs/security-remediation/acceptance-callback-body-image-protection.json text eol=lf
+docs/security-remediation/acceptance-callback-body-public-smoke.json text eol=lf
+docs/security-remediation/acceptance-callback-body-completion.json text eol=lf
