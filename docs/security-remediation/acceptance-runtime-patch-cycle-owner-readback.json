@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "checkedAtUtc": "2026-10-08T07:57:00.135905+00:00",
+  "readOnly": true,
+  "noCloudMutation": true,
+  "ttl": {
+    "database": "ims-dashboard-dev",
+    "documentId": "expired-5d010f4bf88d45efb59105858cdf18aa69b1ae9c93dcd41b0c69924f5b4680ad",
+    "originalExpiry": "2026-10-06T09:47:58.010Z",
+    "priorGetStatus": 200,
+    "priorObservedAtUtc": "2026-10-07T13:24:20.896Z",
+    "databaseGetStatus": 200,
+    "documentGetStatus": 404,
+    "physicalAbsenceObserved": true,
+    "ttlDeletionAttributionProven": false,
+    "principal": "Current operator GET-only observation; not dashboard service-account IAM retest",
+    "documentContentLogged": false,
+    "policyReadback": {
+      "field": "projects/custoking-dev/databases/ims-dashboard-dev/collectionGroups/dashboardSecurityState/fields/expiresAt",
+      "state": "ACTIVE",
+      "checkedAtUtc": "2026-10-08T07:58:11.226948+00:00",
+      "rawMetadataSha256": "584b3471d91b7baa116df45d3d3a0953470f8e83579fe2655c96934dde347a3f",
+      "readOnly": true
+    }
+  },
+  "repository": {
+    "repository": "custokingkr-dev/ims-v1",
+    "apiSucceeded": true,
+    "permissions": {
+      "admin": false,
+      "maintain": false,
+      "push": true,
+      "triage": true,
+      "pull": true
+    },
+    "canAdministerProtection": false,
+    "devProtectionReadbackSucceeded": true,
+    "devProtected": false
+  },
+  "dashboardConfiguration": {
+    "dedicatedOAuthSecretMetadataReadable": false,
+    "secretValuesRead": false,
+    "unrelatedOAuthReuse": false,
+    "secretNotFound": true,
+    "dashboardServiceMetadataReadable": false,
+    "serviceNotFound": true
+  },
+  "evidenceWorktreeCommit": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+  "sourceEvidenceFileSha256": "1230ac6856e14254cb8125950f2235a51c37b306ac25bf031b4484237f51e10e",
+  "scope": "Exact synthetic expired-document GET and ACTIVE TTL metadata; physical absence is observed, deletion attribution is unproved. Dedicated dashboard OAuth/service remain absent and repository administration unavailable. No secret values or document content logged; no creation/deletion/configuration mutation."
+}
