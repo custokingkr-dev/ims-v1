@@ -297,12 +297,16 @@ public class StudentPhotoStorage {
         requireCropCoordinate(cropX, "cropX");
         requireCropCoordinate(cropY, "cropY");
         try (var budget = MediaWorkBudget.acquire()) {
-        validatePixelCount(data);
+        String detectedFormat = validatePixelCount(data);
         try {
-            BufferedImage oriented = Thumbnails.of(new ByteArrayInputStream(data))
-                    .useExifOrientation(true)
-                    .scale(1)
-                    .asBufferedImage();
+            // EXIF orientation is needed for JPEG only. Other readers must not parse
+            // optional metadata when decoding the already dimension-checked pixels.
+            BufferedImage oriented = "JPEG".equalsIgnoreCase(detectedFormat)
+                    || "JPG".equalsIgnoreCase(detectedFormat)
+                    ? Thumbnails.of(new ByteArrayInputStream(data))
+                            .useExifOrientation(true).scale(1).asBufferedImage()
+                    : decodePixelsWithoutMetadata(data);
+            if (oriented == null) throw new IllegalArgumentException("Could not read the image");
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             Thumbnails.of(oriented)
                     .size(dimension, dimension)
@@ -405,7 +409,22 @@ public class StudentPhotoStorage {
         }
     }
 
-    private void validatePixelCount(byte[] data) {
+    private static BufferedImage decodePixelsWithoutMetadata(byte[] data) throws IOException {
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
+            if (input == null) throw new IOException("Image input unavailable");
+            var readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) throw new IOException("Image reader unavailable");
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                return reader.read(0);
+            } finally {
+                reader.dispose();
+            }
+        }
+    }
+
+    private String validatePixelCount(byte[] data) {
         try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
             if (input == null) {
                 throw new IllegalArgumentException("Could not read the image");
@@ -421,6 +440,7 @@ public class StudentPhotoStorage {
                 if (pixels > MAX_DECODED_PIXELS) {
                     throw new IllegalArgumentException("Photo dimensions are too large");
                 }
+                return reader.getFormatName();
             } finally {
                 reader.dispose();
             }
