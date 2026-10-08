@@ -1,0 +1,37 @@
+{
+  "capturedAtUtc": "2026-10-08T14:14:52.410620+00:00",
+  "readOnly": true,
+  "cloudMutations": 0,
+  "secretValuesOrCaAddressesRead": false,
+  "priorProofPreserved": true,
+  "records": [
+    {
+      "scope": "dedicated-dashboard-service-reclassification",
+      "exitCode": 1,
+      "evidenceDigestSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "errorCategory": "NOT_FOUND",
+      "rawErrorOrRecipientLogged": false
+    },
+    {
+      "scope": "dev-environment-branch-policy",
+      "exitCode": 0,
+      "evidenceDigestSha256": "afb6dd12dda50f43c94150ca24c3ec1d4d1236fcfa9a64cf244ff12d4ded21d4",
+      "totalCount": 1,
+      "branchPolicies": [
+        {
+          "name": "dev",
+          "type": "branch"
+        }
+      ],
+      "saturated": false
+    },
+    {
+      "scope": "source-unique-ca-mode-only",
+      "exitCode": 0,
+      "evidenceDigestSha256": "be584759d084419271db5fc0fb8b32a537de19a56db4329589e9bcf4e2c81c47",
+      "metadata": {
+        "name": "custoking-db-dev"
+      }
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T14:44:59.606381+00:00",
+  "verdict": "LOCAL_ROUTING_CORRECTION_PASS_SOURCE_FROZEN",
+  "sources": [
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodec.java",
+      "normalizedLfSha256": "80c302c63ad364dd7a6bd0550d22e4e2b3d0137fdc38e0a79fe3a5c0dfd74f26"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridge.java",
+      "normalizedLfSha256": "5699ff062d27504a811984ab07fb012634cfdc6b8a2634f76c97f8ef852fd4e9"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/GenericAcceptedReportBindingRepository.java",
+      "normalizedLfSha256": "c611893ed3f3033963190d53b6610a472b7068ed18e5bc2d1f8c1c7349384db8"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodecTest.java",
+      "normalizedLfSha256": "2e61c281cb4ab26fd55a79c8e98c40ab610e023e0e8f7a0bd717be6e9464368f"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridgeTest.java",
+      "normalizedLfSha256": "bd622184f3b650c8ac91515568fbc338295e0f6667fd544266828cb15c4214bc"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridgePostgresTest.java",
+      "normalizedLfSha256": "bc6f558951b74116640a7d6ca34678d966caf4d3b7c75559a2defd65cd846ce6"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/persistence/GenericAcceptedReportBindingIntegrationTest.java",
+      "normalizedLfSha256": "6295571be821983d5e228fd2d5959dd58d34e77b6fdec0c266bbff095fa4eefb"
+    }
+  ],
+  "tests": {
+    "reported": 20,
+    "passed": 20,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "realPostgresCases": 6,
+    "rawLogSha256": "26fd804b0a0615a7952133298f316349a2560b91c4d44c2d5347445ebfcd45fc",
+    "log": "tmp/provider-sms-routing-final-focused.log",
+    "fullPlatformSuiteAfterCorrection": false
+  },
+  "oldSourceRegression": {
+    "reported": 1,
+    "failures": 1,
+    "errors": 0,
+    "skipped": 0,
+    "failure": "Expected routing alias rejection was absent",
+    "rawLogSha256": "ddbd874967e6cff6f42282f43c5cb9ba9217ce47411209bc32dcfabc39790340",
+    "log": "tmp/provider-sms-routing-old-source-regression.log"
+  },
+  "priorProofPreserved": {
+    "path": "tmp\\provider-sms-v3-bridge-local-proof.json",
+    "rawSha256": "9811b2b1435ed695b2c958182eb0398d2013b77b7f856f5ec2ad5c024d1c8530",
+    "scope": "17-case checkpoint before routing fix; prior full488 also predates correction"
+  },
+  "fix": [
+    "Reject every mobile/phone/to/recipientMobile alias, including null/identical values",
+    "Reject nonnull msg91Body passthrough; null matches canonical builder fallback",
+    "Require string canonical ASCII destination10..15 digits; do not strip/normalize ambiguous routing",
+    "Existing persisted request hash/correlation/provider/school and same transaction erasure fences preserved"
+  ],
+  "controls": {
+    "newEndpoint": false,
+    "newBean": false,
+    "newLiveConfiguration": false,
+    "liveTransportChanged": false,
+    "cloudOrProviderCalls": 0
+  },
+  "limits": [
+    "Dormant canonical SMS-v3 internal bridge only; selected account/vendor auth still unproved",
+    "No UNKNOWN promotion/resend or EMAIL/WhatsApp bridge",
+    "Full-suite after correction pending root serialization"
+  ]
+}
