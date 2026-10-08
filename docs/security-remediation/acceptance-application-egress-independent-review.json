@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-08T10:31:47.131483+00:00",
+  "verdict": "NO_BLOCKING_DEFECT_IDENTIFIED_FOR_DISABLED_PREPARATION_SCOPE",
+  "scope": "Read-only source/report review; no Terraform rerun, GCP read/apply, live network or workload test",
+  "sourceChecks": {
+    "deploy/gcp/application-egress/providers.tf": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "b784e094ba23fe987dfbac4da592a8648ea80c1b45edce7982ee8edaa501a4a4"
+    },
+    "deploy/gcp/application-egress/variables.tf": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "ffc71296e7a16a61bfbd54da47c17ef5b3647d674ca6fb97fc3ea996f87a2d29"
+    },
+    "deploy/gcp/application-egress/main.tf": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "a6cf91b52b8eb951172a38ea96dd090c385c88eb5eb3dc6e87a1b7ff7d15a6f5"
+    },
+    "deploy/gcp/application-egress/README.md": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "333e5fedccd2e9327af47075f34bedac196432e6a8566749f313f3974d34f77d"
+    },
+    "deploy/gcp/application-egress/.terraform.lock.hcl": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "4e7f2232898f290defe0384308a9405762c19707b0656e23ffdceae21e761c4f"
+    },
+    "deploy/gcp/application-egress/tests/egress.tftest.hcl": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "82f9e3e87b280e3f1aa2e1a9828d77177787f758c0ce0e1a1d81563abd3bf617"
+    }
+  },
+  "localProofSha256": "2445d03698230ab16d7c58158347ac7393ab95557cb4e64945691c090b4b6208",
+  "testLogSha256": "f09a0f30ac4751592701394f150a1daa4943608406519771d4a6f13ff20aa09c",
+  "mockTestSummaryVerified": {
+    "passed": 17,
+    "failed": 0
+  },
+  "validationReportedByLocalProof": {
+    "initBackendFalseReadonlyLock": true,
+    "fmtCheck": true,
+    "validate": true,
+    "mockTestsPassed": 17,
+    "mockTestsFailed": 0,
+    "log": "tmp/application-egress-test.log"
+  },
+  "checks": [
+    "Hardfixed custoking-dev/asia-south2 provider/data/resources; disabled count/for_each zero and no application workflow/state/revision wiring",
+    "Per-rule exact nonempty protected tag subset, narrow canonical single-family CIDR, TCP/UDP individual ports, bounded rule/tag/address/port inventories",
+    "Explicit allow1000 and dual-stack deny1100 only tagged resources; no unrestricted allow defaults",
+    "Existing exact network/subnet/router binding, PGA, Public NAT exact primary-range inclusion/VM endpoint/conditional-rule rejection and twice explicit instance-port prerequisite",
+    "Output is proposed revision binding only; no runtime attachment or all-traffic mutation",
+    "Primary Google NAT guidance supports all-traffic, VM endpoint and twice per-instance Public NAT reserve; docs retain route/aggregate capacity caveats"
+  ],
+  "limitations": [
+    "No actual effective firewall policy, route, tag, DNS or Cloud Run routing validation",
+    "Priority1000 allows outside this module or higher/hierarchical policies may override deny1100",
+    "CIDR/shared-IP/churn permits unrelated hosts on allowed address; no FQDN/DNS/TLS/SNI/URL/L7 or complete exfiltration guarantee",
+    "PGA/NAT metadata does not prove connectivity/aggregate headroom; arbitrary HTTPS image imports need owner-approved compatible boundary",
+    "Metadata/DNS platform paths and return traffic are special; dual-stack deny is not all-platform-path denial",
+    "Provider schema/init/validate success retained from local proof, not independently rerun in this review"
+  ],
+  "primarySources": [
+    "https://docs.cloud.google.com/nat/docs/nat-product-interactions",
+    "https://docs.cloud.google.com/run/docs/configuring/vpc-direct-vpc"
+  ],
+  "liveEnforcementProven": false,
+  "cutoverAuthorized": false,
+  "cloudMutation": false,
+  "sourceMutation": false,
+  "sourceCaptureBytesSha256": "175efc83a23509de7a4534f15df8720f20eab921b5308e40c22dba5c37deb118"
+}

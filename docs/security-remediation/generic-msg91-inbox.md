@@ -2,6 +2,8 @@
 
 ## Latest source follow-up — 2026-10-08
 
+[PR333 source CI/CodeQL](acceptance-provider-assertion-ci.json) and its [448-test platform dev release](acceptance-provider-assertion-dev-release.json) subsequently passed, with one changed platform runtime and six exact retained baseline revisions, all seven Ready at100%, report purpose still disabled/blank and provider logging/dry-run/live-block settings preserved. [Actual tags/public smoke and remaining contracts](remaining-implementation-followup.md) remain scoped separately from vendor delivery.
+
 The new V18 path stores an exact-UNKNOWN report claim as a separate `UNVERIFIED_OPERATOR_ASSERTION`, capped at sixteen per event and bound to the server-verified reporter. It cannot establish a lost response, replace the original provider ID, modify a delivery result or permit resend. The earlier ACCEPTED-only reconciliation described below remains the authoritative result path. A dormant SMS v3 decoder accepts a bounded documented sample only with explicit profile/time-offset and existing accepted request/destination binding; it does not authenticate a callback or enable a route. [Detailed architecture, tests and remaining contract work](remaining-implementation-followup.md) retain the distinction between asserted evidence and vendor acceptance. CI/dev acceptance for this new source must be recorded independently; earlier proofs retain their dates.
 
 This source follow-up does not enable MSG91, send a message, or establish live provider delivery acceptance. The existing `MSG91_DRY_RUN=false` startup and send rejection remain in place. Logging and MSG91 dry-run retain their existing processing contract.

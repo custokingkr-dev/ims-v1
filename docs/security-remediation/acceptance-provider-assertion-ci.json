@@ -1,0 +1,838 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-08T10:27:39.392492+00:00",
+  "sourceHead": "85dee5201bd0f132d8e59802298f5d946f39f8e2",
+  "baseHead": "d87d441f7fa145ea8c7e5e82592437f16e96fd49",
+  "syntheticMerge": "7fe386878f4d39c377132c9563055de133a7e5b4",
+  "mergeParents": [
+    "d87d441f7fa145ea8c7e5e82592437f16e96fd49",
+    "85dee5201bd0f132d8e59802298f5d946f39f8e2"
+  ],
+  "pullRequestUrl": "https://github.com/custokingkr-dev/ims-v1/pull/333",
+  "mergeable": true,
+  "mergeableState": "clean",
+  "runs": {
+    "37762887391": {
+      "id": 37762887391,
+      "head_sha": "85dee5201bd0f132d8e59802298f5d946f39f8e2",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37762887391",
+      "created_at": "2026-10-08T10:21:04Z",
+      "updated_at": "2026-10-08T10:26:45Z"
+    },
+    "37762886918": {
+      "id": 37762886918,
+      "head_sha": "85dee5201bd0f132d8e59802298f5d946f39f8e2",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37762886918",
+      "created_at": "2026-10-08T10:21:04Z",
+      "updated_at": "2026-10-08T10:24:52Z"
+    }
+  },
+  "jobs": {
+    "37762887391": [
+      {
+        "id": 113263365308,
+        "name": "duplicate-class-drift",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:06Z",
+        "completed_at": "2026-10-08T10:21:13Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Check guarded classes have not diverged",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263365519,
+        "name": "promotion-source-policy",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:07Z",
+        "completed_at": "2026-10-08T10:21:09Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Require dev as the source of main promotions",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263365558,
+        "name": "windows-security-helper-validation",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:07Z",
+        "completed_at": "2026-10-08T10:22:46Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify PowerShell 5 helper serialization and native exit handling",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify optimized restore-verifier deadlines and historical coverage on Windows",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify immutable runtime patch cycles and release binding on Windows",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify Scheduler create and update command arguments",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263365567,
+        "name": "detect / detect",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:06Z",
+        "completed_at": "2026-10-08T10:21:17Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Detect affected services",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263365628,
+        "name": "dev-edge-terraform-validation",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:06Z",
+        "completed_at": "2026-10-08T10:21:23Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Validate dev edge and mock-provider acceptance",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Validate persistent dashboard state without a web deployment",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Validate independent dev erasure journal and least-privilege scope",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263365717,
+        "name": "privacy-technical-controls",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:06Z",
+        "completed_at": "2026-10-08T10:22:30Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Audit current, branch, history and release export boundaries",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run synthetic export and verified-deletion drill",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263365790,
+        "name": "secret-scan",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:07Z",
+        "completed_at": "2026-10-08T10:21:17Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263365865,
+        "name": "static-architecture-audits",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:06Z",
+        "completed_at": "2026-10-08T10:26:39Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify generated OpenAPI clients are current",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test browser contract generation and canonical routing",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Audit offline service boundaries",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify financial and workflow contract bindings",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify bounded signed transport probe controls",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test immutable GitHub governance check verification",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test offline GCP governance audits",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify digest-bound image User and database catalog evidence rejection",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test deployment security admission and isolated native release fixtures",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify guarded dev journal acceptance and PostgreSQL rehearsal under optimization",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Install isolated restore-verifier test dependency",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify restore-target rejection, historical coverage and real PostgreSQL TLS under optimization",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Test OpenAPI CI routing invariants",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Verify immutable runtime patch-cycle identities and workflow binding",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263442382,
+        "name": "service-test (platform-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:19Z",
+        "completed_at": "2026-10-08T10:23:25Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Install Node dependencies",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run Maven tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run gateway tests",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run frontend tests and build",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Remove broken Google Chrome apt source",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Install Playwright Chromium",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Run authenticated frontend browser tests",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263442623,
+        "name": "docker-build (platform-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:19Z",
+        "completed_at": "2026-10-08T10:23:29Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Set image reference",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Resolve the security patch epoch",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Build image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Trivy HIGH/CRITICAL gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Trivy HIGH/CRITICAL gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Build image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263444091,
+        "name": "maven-wrapper-validation (${{ matrix.os }})",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-08T10:21:17Z",
+        "completed_at": "2026-10-08T10:21:17Z",
+        "steps": []
+      },
+      {
+        "id": 113265383205,
+        "name": "summary",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:26:41Z",
+        "completed_at": "2026-10-08T10:26:44Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Write summary",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Enforce required job results",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ],
+    "37762886918": [
+      {
+        "id": 113263363461,
+        "name": "analyze (java-kotlin)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:06Z",
+        "completed_at": "2026-10-08T10:24:51Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Initialize CodeQL",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Analyze",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Analyze",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Initialize CodeQL",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      },
+      {
+        "id": 113263363688,
+        "name": "analyze (javascript-typescript)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-08T10:21:07Z",
+        "completed_at": "2026-10-08T10:22:38Z",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Initialize CodeQL",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Analyze",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Analyze",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Initialize CodeQL",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  },
+  "logs": {
+    "linuxStatic": {
+      "jobId": 113263365865,
+      "rawLogSha256": "48c47b5972075a070205c12f04de02e00bb0fa43fba6e92216c2f9cf8895333c",
+      "unitSummaries": [
+        {
+          "stepCommand": "python3 -m unittest scripts.tests.test_verify_github_governance_checks",
+          "reported": 7,
+          "seconds": 0.142
+        },
+        {
+          "stepCommand": "python3 -m unittest scripts.tests.test_export_gcp_asset_drift scripts.tests.test_audit_gcp_observability scripts.tests.test_validate_gcp_governance_audit_enablement",
+          "reported": 12,
+          "seconds": 0.508
+        },
+        {
+          "stepCommand": "python3 -m unittest scripts.tests.dev_image_config_user_proof_test scripts.tests.dev_db_security_collator_test",
+          "reported": 9,
+          "seconds": 0.286
+        },
+        {
+          "stepCommand": "python3 -m unittest scripts.tests.security_target_renderer_test scripts.tests.runtime_role_native_progress_test scripts.tests.service_migration_job_test scripts.tests.runtime_secret_matrix_test scripts.tests.migration_release_trigger_test scripts.tests.service_authorization_machine_proof_test scripts.tests.principal_carrier_release_order_test scripts.tests.direct_release_profile_test scripts.tests.full_release_routing_test scripts.tests.deployment_readiness_audit_test scripts.tests.runtime_secre",
+          "reported": 113,
+          "seconds": 195.553
+        },
+        {
+          "stepCommand": "python3 -O -m unittest scripts.tests.dev_precommit_journal_acceptance_test scripts.tests.dev_precommit_journal_acceptance_postgres_test scripts.tests.dev_photo_erasure_acceptance_test scripts.tests.dev_photo_erasure_acceptance_postgres_test",
+          "reported": 31,
+          "seconds": 4.405
+        },
+        {
+          "stepCommand": "python3 -O -m unittest scripts.tests.dev_restore_target_verifier_test scripts.tests.dev_restore_target_verifier_postgres_test scripts.tests.dev_erasure_coverage_test",
+          "reported": 42,
+          "seconds": 37.433
+        },
+        {
+          "stepCommand": "python3 -m unittest scripts.tests.test_openapi_ci_gate",
+          "reported": 4,
+          "seconds": 2.778
+        },
+        {
+          "stepCommand": "python3 -O -m unittest scripts.tests.image_source_patch_epoch_test scripts.tests.test_build_release_patch_epoch_binding",
+          "reported": 18,
+          "seconds": 69.893
+        }
+      ],
+      "finalMavenAggregate": null
+    },
+    "windows": {
+      "jobId": 113263365558,
+      "rawLogSha256": "93410dd1e8c5cb3075f55f0143f8e3e4bc19d1836eb0747f717effd0dc28ea55",
+      "unitSummaries": [
+        {
+          "stepCommand": "python -m unittest scripts.tests.signed_probe_serialization_test scripts.tests.pubsub_native_progress_test scripts.tests.dev_erasure_journal_infrastructure_test",
+          "reported": 7,
+          "seconds": 8.327
+        },
+        {
+          "stepCommand": "python -O -m unittest scripts.tests.dev_restore_target_verifier_test scripts.tests.dev_erasure_coverage_test",
+          "reported": 26,
+          "seconds": 1.083
+        },
+        {
+          "stepCommand": "python -O -m unittest scripts.tests.image_source_patch_epoch_test scripts.tests.test_build_release_patch_epoch_binding",
+          "reported": 18,
+          "seconds": 51.189
+        }
+      ],
+      "finalMavenAggregate": null
+    },
+    "platform": {
+      "jobId": 113263442382,
+      "rawLogSha256": "7f36490d8084fc6e2bd4952149f509f94d7d91e76866012e3bdaa36df18b4506",
+      "unitSummaries": [],
+      "finalMavenAggregate": {
+        "reported": 448,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "codeQL": {
+    "ref": "refs/pull/333/merge",
+    "toolName": "CodeQL",
+    "actualUploads": [
+      {
+        "id": 1914951591,
+        "commit_sha": "7fe386878f4d39c377132c9563055de133a7e5b4",
+        "ref": "refs/pull/333/merge",
+        "category": "/language:java-kotlin",
+        "created_at": "2026-10-08T10:24:44Z",
+        "error": "",
+        "results_count": 0,
+        "rules_count": 120
+      },
+      {
+        "id": 1914939712,
+        "commit_sha": "7fe386878f4d39c377132c9563055de133a7e5b4",
+        "ref": "refs/pull/333/merge",
+        "category": "/language:javascript-typescript",
+        "created_at": "2026-10-08T10:22:29Z",
+        "error": "",
+        "results_count": 0,
+        "rules_count": 103
+      }
+    ],
+    "scopedOpenAlerts": 0
+  },
+  "scope": "Exact source CI only, no deployment/live provider/restore proof. Overlapping test suites not summed. Maven wrapper path-ineligible skipped.",
+  "decision": "MERGE_READY",
+  "sourceCaptureBytesSha256": "758b1db94502fd40c96eae3dc5685def6f855129ba24536e06149a65b513a085",
+  "subsequentActualMerge": {
+    "sourceSha": "c3fea43b44242a8e0df5ea3a4bc266e416b31c40",
+    "mergedAtUtc": "2026-10-08T10:28:29Z",
+    "ciHeadDifferentFromSquashMerge": true,
+    "devReleaseAcceptanceRequiresSeparateProof": true,
+    "devReleaseProof": "acceptance-provider-assertion-dev-release.json"
+  }
+}

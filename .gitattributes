@@ -18,3 +18,10 @@ docs/security-remediation/acceptance-provider-restore-restore-review.json text e
 docs/security-remediation/acceptance-provider-restore-platform-local.json text eol=lf
 docs/security-remediation/acceptance-provider-restore-coverage-local.json text eol=lf
 docs/security-remediation/acceptance-provider-restore-followup-local.json text eol=lf
+docs/security-remediation/acceptance-application-egress-local.json text eol=lf
+docs/security-remediation/acceptance-application-egress-independent-review.json text eol=lf
+docs/security-remediation/acceptance-provider-assertion-ci.json text eol=lf
+docs/security-remediation/acceptance-provider-assertion-dev-release.json text eol=lf
+docs/security-remediation/acceptance-provider-assertion-image-protection.json text eol=lf
+docs/security-remediation/acceptance-provider-assertion-public-smoke.json text eol=lf
+docs/security-remediation/acceptance-provider-assertion-completion.json text eol=lf
