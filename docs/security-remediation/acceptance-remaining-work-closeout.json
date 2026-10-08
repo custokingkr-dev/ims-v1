@@ -229,6 +229,10 @@
     {
       "file": "acceptance-runtime-patch-cycle-obsolete-revision-preflight.json",
       "capturedBytesSha256": "946b5c706e14c1fc91731ccc96bf6ae97a47fc7e3437789013aa0cf9b8220326"
+    },
+    {
+      "file": "acceptance-evidence-secret-scan-false-positive.json",
+      "capturedBytesSha256": "44ad6ce8d130bcf9c6e5c1b4b73026c6b801a3ede497df924f11209cbe4b551d"
     }
   ],
   "helperPreparation": {
@@ -332,5 +336,13 @@
       "Vendor0.7 patch declaration and frozen four0.6/scanner disagreement remain carefully distinguished; no reachability/blanket fix claim"
     ],
     "limits": "Offline internal evidence consistency, not independent live revalidation; historical flags and frozen proof bytes unchanged"
+  },
+  "publicationSecretGateFollowup": {
+    "initialRunId": 37751343325,
+    "initialResult": "FAIL_ONE_CHECKSUM_FALSE_POSITIVE",
+    "classificationProof": "acceptance-evidence-secret-scan-false-positive.json",
+    "exactHistoricalFingerprint": "8bc25bb598d3d8a3cabd19b833dbb972f720e652:docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json:generic-api-key:175",
+    "correctedHeadCiRequired": true,
+    "noBroadSuppression": true
   }
 }

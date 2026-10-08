@@ -37,4 +37,4 @@ The [nine concrete owner/action rows](acceptance-owner-actions.md) remain open. 
 
 Local snapshot custody is a separate open finding: one unclassified image remains reachable in three local Codex snapshot refs. The inspected pushed branch/release scope was separately clear. Privately classify it and authorize exact cleanup while preserving unrelated user work; removing refs does not prove physical byte purge. [Exact scope and custody fix plan](acceptance-repository-local-history-scope.json).
 
-[Final evidence index and release-bound checks](acceptance-remaining-work-closeout.json) preserve these scopes. Completion of PR 328/329/330 does not mark the whole security plan complete.
+[Final evidence index and release-bound checks](acceptance-remaining-work-closeout.json) preserve these scopes. The initial publication secret gate flagged the synthetic photo object-name checksum; its [verified classification and exact historical fingerprint](acceptance-evidence-secret-scan-false-positive.json) are saved, with corrected-head CI required and no broad scan-rule suppression. Completion of PR 328/329/330 does not mark the whole security plan complete.

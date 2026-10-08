@@ -20,3 +20,8 @@ f185f3e923b73d01b5b32b87a15482667b591e42:tools/live-dashboard/server.test.mjs:ge
 # Suppress only these two exact historical findings, preserving all scan rules.
 898274fedead3aa2b826da688d2af69ed943bd6c:docs/security-remediation/acceptance-report-verifier-release-tests.json:generic-api-key:156
 898274fedead3aa2b826da688d2af69ed943bd6c:docs/security-remediation/acceptance-report-verifier-ci.json:generic-api-key:279
+
+# Verified frozen photo-evidence false positive: keySha256 is the SHA256 checksum
+# of the owned synthetic GCS object name. Preserve the original captured bytes;
+# exclude only this historical commit/file/rule/line, not future findings.
+8bc25bb598d3d8a3cabd19b833dbb972f720e652:docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json:generic-api-key:175
