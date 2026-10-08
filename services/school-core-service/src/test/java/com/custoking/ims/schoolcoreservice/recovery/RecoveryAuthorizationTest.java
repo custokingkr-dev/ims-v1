@@ -43,4 +43,25 @@ class RecoveryAuthorizationTest {
         assertThatThrownBy(()->StudentErasureRecoveryMain.requireCredentialPermissions(privateFile,java.nio.file.attribute.PosixFilePermissions.fromString("rwxr-xr-x"))).isInstanceOf(IllegalStateException.class);
     }
     @Test void duplicateJsonAndUnsupportedProtectedPolicyEnvironmentRefused(){assertThatThrownBy(()->RecoveryAuthorization.parse("{\"x\":1,\"x\":2}".getBytes(),1024)).isInstanceOf(IllegalStateException.class);assertThatThrownBy(()->StudentErasureRecoveryMain.protectedRead(java.nio.file.Path.of("does-not-exist"),1024)).isInstanceOf(Exception.class);}
+    @Test void currentPhysicalEvidenceAgeAndFractionalThresholdsRefused()throws Exception {
+        var f=new RecoveryFixture(1,2,UUID.randomUUID());
+        f.approval.put("issuedAt",RecoveryFixture.NOW.minusSeconds(60).toString());
+        f.approval.put("targetProofCapturedAt",RecoveryFixture.NOW.minusSeconds(121).toString());
+        f.target.put("capturedAtUtc",f.approval.get("targetProofCapturedAt"));f.refresh();
+        assertThatThrownBy(f::authority).isInstanceOf(IllegalStateException.class);
+        var age=new RecoveryFixture(1,2,UUID.randomUUID());
+        age.approval.put("issuedAt",RecoveryFixture.NOW.minusSeconds(120).minusNanos(1).toString());
+        age.approval.put("targetProofCapturedAt",age.approval.get("issuedAt"));age.target.put("capturedAtUtc",age.approval.get("issuedAt"));age.refresh();
+        assertThatThrownBy(age::authority).isInstanceOf(IllegalStateException.class);
+        var validity=new RecoveryFixture(1,2,UUID.randomUUID());validity.approval.put("issuedAt",RecoveryFixture.NOW.toString());validity.approval.put("expiresAt",RecoveryFixture.NOW.plusSeconds(600).plusNanos(1).toString());validity.refresh();
+        assertThatThrownBy(validity::authority).isInstanceOf(IllegalStateException.class);
+    }
+    @Test void exactAgeAndValidityBoundariesAcceptedButFractionalFreezeRefused()throws Exception {
+        var f=new RecoveryFixture(1,2,UUID.randomUUID());
+        f.approval.put("issuedAt",RecoveryFixture.NOW.minusSeconds(120).toString());f.approval.put("targetProofCapturedAt",f.approval.get("issuedAt"));f.target.put("capturedAtUtc",f.approval.get("issuedAt"));f.approval.put("expiresAt",RecoveryFixture.NOW.plusSeconds(480).toString());f.refresh();f.authority();
+        for(boolean age:List.of(true,false)){
+            var other=new RecoveryFixture(1,2,UUID.randomUUID());other.freeze.put("issuedAt",(age?RecoveryFixture.NOW.minusSeconds(120).minusNanos(1):RecoveryFixture.NOW).toString());other.freeze.put("expiresAt",(age?RecoveryFixture.NOW.plusSeconds(300):RecoveryFixture.NOW.plusSeconds(600).plusNanos(1)).toString());other.refresh();
+            var authority=other.authority();assertThatThrownBy(()->authority.verifyFreeze(other.freezeBytes)).isInstanceOf(IllegalStateException.class);
+        }
+    }
 }

@@ -27,11 +27,18 @@ final class Msg91GenericSubmissionTransport {
             return Msg91SubmissionCodec.unknown(request,"PROVIDER_PREPARATION_INVALID");
         try {
             var json=Msg91WireJson.read(body);var payload=Msg91WireJson.read(request.payload());
-            String destination=payload.path("destination").asString("").replaceAll("[^0-9]","");
-            if(!json.path("CRQID").isString() || !NotificationSubmissionResult.correlationId(request.eventId()).equals(json.path("CRQID").asString())
+            // Match the persisted report bridge's canonical routing contract. Coercion,
+            // legacy aliases or passthrough cannot create an unreconcilable acceptance.
+            if(!payload.isObject() || !payload.path("destination").isString()
+                || payload.has("mobile") || payload.has("phone") || payload.has("to") || payload.has("recipientMobile")
+                || (payload.has("msg91Body") && !payload.path("msg91Body").isNull()))
+                return Msg91SubmissionCodec.unknown(request,"PROVIDER_PREPARATION_BINDING_INVALID");
+            String destination=payload.path("destination").asString();
+            if(!json.isObject() || !json.path("CRQID").isString() || !NotificationSubmissionResult.correlationId(request.eventId()).equals(json.path("CRQID").asString())
                 || !json.path("recipients").isArray() || json.path("recipients").size()!=1
+                || !json.path("recipients").path(0).isObject() || !json.path("recipients").path(0).path("mobiles").isString()
                 || !destination.matches("[0-9]{10,15}")
-                || !destination.equals(json.path("recipients").path(0).path("mobiles").asString("")))
+                || !destination.equals(json.path("recipients").path(0).path("mobiles").asString()))
                 return Msg91SubmissionCodec.unknown(request,"PROVIDER_PREPARATION_BINDING_INVALID");
         } catch(RuntimeException malformed) { return Msg91SubmissionCodec.unknown(request,"PROVIDER_PREPARATION_INVALID"); }
         if(!capacity.tryAcquire()) return Msg91SubmissionCodec.unknown(request,"PROVIDER_CAPACITY_UNAVAILABLE");

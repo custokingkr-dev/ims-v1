@@ -1,0 +1,1089 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:52:32.459292+00:00",
+  "sourceBase": "a5aef69b58b59f32f4c3862cd7aa0b60a14ec217",
+  "decision": "LOCAL_SOURCE_FIXED_RELEASE_ACCEPTANCE_PENDING",
+  "sourceFiles": [
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+      "normalizedLfSha256": "33acffd49cc2d93fe39d2ebf2fdf5b19395a6401b2f5e355dc89b0137a82ac76"
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+      "normalizedLfSha256": "ea408e201e9950f524e5678dc4743e35da4a956a1f228819710d60a12b322104"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "normalizedLfSha256": "21a11f7e4887464b96304a7f5fe1d4e72a989cdf0f334f30c415f9ae805eaca0"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorizationTest.java",
+      "normalizedLfSha256": "bc939586c42fdc26ec82615258449af8e2ba73f7ae757825d5178f0141b53c9b"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91GenericSubmissionTransport.java",
+      "normalizedLfSha256": "563c0b688b055144ae618a4270a34dd243ad13818c13d5256df6d12a499d8e43"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91GenericSubmissionTransportTest.java",
+      "normalizedLfSha256": "0eb60717db20945d396b7919c2a322f6ba6438f113fbf6389e02cd3a0b6c01e7"
+    }
+  ],
+  "copiedEvidence": [
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-provider-initial.json",
+      "copiedFrom": "tmp/provider-canonical-initial-proof.json",
+      "digestSha256": "04048eee72f8c7e3e61b4e14ae257671c0e4a838d5e52beb70135ab8517513cc",
+      "originalByteRepresentationPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-provider-local.json",
+      "copiedFrom": "tmp/provider-canonical-final-proof.json",
+      "digestSha256": "38b7d341038bc5f1d23b0476499963c68a6c7dc9d51dda02d49cac7874513323",
+      "originalByteRepresentationPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-recovery-local.json",
+      "copiedFrom": "tmp/recovery-epoch-freshness-final-local-proof.json",
+      "digestSha256": "8022b5f039d3d89ac8c2736211a0c76af8d3cad61a8b9dfe02caa7bd55defdab",
+      "originalByteRepresentationPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-platform-full.json",
+      "copiedFrom": "tmp/remaining-round-platform-service-full-proof.json",
+      "digestSha256": "48cddbfe3972474781a7d2430dc6eebdf942b3b8251163320a4a975a67d8efde",
+      "originalByteRepresentationPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-school-full.json",
+      "copiedFrom": "tmp/remaining-round-school-core-service-full-proof.json",
+      "digestSha256": "56e81980258f4dae75203269baf8af89c64553518a0b4c4b98c19cfd3b610c77",
+      "originalByteRepresentationPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-source-review.json",
+      "copiedFrom": "tmp/remaining-new-round-independent-source-review.json",
+      "digestSha256": "fbc9fcf853020c725e74501b174560291427b6bebaa4b14eedc0a621ac966648",
+      "originalByteRepresentationPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-owner-readback.json",
+      "copiedFrom": "tmp/remaining-owner-state-new-round-20261008.json",
+      "digestSha256": "3a4b9d7bd86b57c6e488ef58b02f8346cda84396a786d9ee0456ab09d8ddb2e9",
+      "originalByteRepresentationPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-owner-followup.json",
+      "copiedFrom": "tmp/remaining-owner-dashboard-followup-new-round.json",
+      "digestSha256": "a9eff19e369aad461eaaa047d361e51a3c89fd2eb6a19dde87ec943ff8fe3003",
+      "originalByteRepresentationPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-infra-review.json",
+      "copiedFrom": "tmp/remaining-infra-governance-new-round-review.json",
+      "digestSha256": "43ff05d0e5ab825b2891de0dd3bc9b71d8b4edd12051c94d7b29ad1b6493d418",
+      "originalByteRepresentationPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-native-research.json",
+      "copiedFrom": "tmp/native-advisory-applicability-a5aef.json",
+      "digestSha256": "3a3892d87ab73f09104e5e2692c6dc49914c81760cfaff3a0869043183ce36a4",
+      "originalByteRepresentationPreserved": true
+    }
+  ],
+  "historicalEvidence": [
+    {
+      "path": "docs/security-remediation/acceptance-application-egress-independent-review.json",
+      "rawSha256": "88961b523299dc66233395da0de3eec6116287a69eeb8dc44ad6f65071c22638",
+      "gitBlobSha1": "963750113ee79e0bca20bad5b8e4d79fafa88fbe"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-application-egress-local.json",
+      "rawSha256": "0727a889b36400f30abf4431199dec95ef21969e91954cd34fa511cca58d7fe5",
+      "gitBlobSha1": "6cb42dced99d7024dc0eedad06cf27df611898a8"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-bounded-dev-reads.json",
+      "rawSha256": "d564bd6cecf614a38b9b1ac7f862a07451d011447cb554d48b8bbd2b2ef6fd61",
+      "gitBlobSha1": "ce5838414cea14e276094e9225dbb218973dc1de"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-callback-body-ci.json",
+      "rawSha256": "2d15fafeddc6fd1e0ff58ab4abfa8781789508ea6dbd9467475b3cf6acdee924",
+      "gitBlobSha1": "23f143773c248ea4c0e187f53439da85a2af3d69"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-callback-body-completion.json",
+      "rawSha256": "c0e8c86d0b4c59382d3fe7002f64a3e1b53a28c087241cfb27253934324a3bab",
+      "gitBlobSha1": "fe69d9f08ba77182182b682d08fa7c9a83861baa"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-callback-body-dev-release.json",
+      "rawSha256": "5fef569f7cfd619c6e13625d842b05417018bb9098abaae1aff55caba828e3a1",
+      "gitBlobSha1": "245f6d3a014a0f8faaf6f1ce0a1ae0fa797d705a"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-callback-body-image-protection.json",
+      "rawSha256": "3d2eb80e20c05ceabdaf749dd2c46acb5feb325f646bd54fbdbc573669bf39ee",
+      "gitBlobSha1": "2b934130b0bdd80b6838863ef2c0ab3098a63f44"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-callback-body-local.json",
+      "rawSha256": "607b6863653940b253017dc3e89f8d0184bf88dac058f92aa18cbee0e1d2980d",
+      "gitBlobSha1": "93af0cb00316136461a77362e9b46cc6d615cc17"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-callback-body-primary-review.json",
+      "rawSha256": "11a085aeb7644865e423c5f372b390362721e916624daeb7589c90070d2e28b0",
+      "gitBlobSha1": "e2e5f92f94419ea6ff31599f9ca1e80fb240c687"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-callback-body-public-smoke.json",
+      "rawSha256": "0fea8d1d7b402da12615115757782a01a91e95c9e458e39e10dcd7e8781ae0b7",
+      "gitBlobSha1": "c4dc40b9b4d0baa532c8f84714addf9b12d0c39c"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-callback-body-static-audits.json",
+      "rawSha256": "12be84b6360bda68933ee129a5d2e44ef410c8a934241e8d000ef3c153d16e68",
+      "gitBlobSha1": "47b4b3444c0434289c7f3c183106cf544d59b005"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-capacity-preflight.json",
+      "rawSha256": "d1e4620ac470900ea0ef5ee5d9b7d5116dcefe09eed1257cc96f8239930e625b",
+      "gitBlobSha1": "9cac0036b23134323eabd1c59ad9532e7daf94b1"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-container-scan-freshness.json",
+      "rawSha256": "727567612e0948f356f09b5768fbaa5c2bf4e604adb1419fff505c2c6ec87ae6",
+      "gitBlobSha1": "45c314da8c622afff34f009b452ad5ed8dd083d5"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dashboard-auth-state.json",
+      "rawSha256": "d29e2474356df98c17157d6a23a4b36b565cee4665646a5ae73d9f48087143ee",
+      "gitBlobSha1": "90b5b00c462ccdcdf6196782c0e8e81f556d5475"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dashboard-config-readback.json",
+      "rawSha256": "d817f043c558469970d81f3fef80b0d4a698205650e311744332bf00d55a816a",
+      "gitBlobSha1": "502b8bfe80a1c834bdbef1c7debcddd27e6bf022"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dashboard-firestore.json",
+      "rawSha256": "814d605d75cb60a401ef12c21b526ce5a5c826c093f80dc6cfdaebcf494b2c49",
+      "gitBlobSha1": "d75edc7b631155b186f1821b48608325f869f741"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dashboard-provision.json",
+      "rawSha256": "2a14d8d53ed14ca609d344c54cfc3342e37ecbb1d28ff4fda216a943fd111e28",
+      "gitBlobSha1": "c7d768eb1ca213e2fda7bdebcd8f3106a8ef690e"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dashboard-state-adoption.json",
+      "rawSha256": "551ebacb7c87366e1e797512a1f4ad2fa623091930f5828be8fbb9352768b61c",
+      "gitBlobSha1": "e17c82bf70c8ef3a1d327b5d84137f9495e08503"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dashboard-ttl-recheck.json",
+      "rawSha256": "1d1bc2b46c61cdc0ff4f97f881dc371ef8fd178644f82a2fd12c33bf8bbb39b6",
+      "gitBlobSha1": "9993f48f4903344d7c5a8684a359f19637bb23a0"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dashboard-ttl.json",
+      "rawSha256": "e02829ba29de8a02de5374d36b8ea95038b09345d35f4aa0e9d80ae6fc96027d",
+      "gitBlobSha1": "c2eccc54d98e84db59300cbee99ec518002905c8"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dev-edge-owner-preparation.json",
+      "rawSha256": "bbda7b86755e1608d1a9b5d6cff2401abfa7176d2e7f6b897a9351f492cab22f",
+      "gitBlobSha1": "b94dff4b5fd25a66a5d9e29d7350a45174581532"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dev-erasure-journal-control.json",
+      "rawSha256": "0f86b0983b9aa0c09a14246b44f08759f2bcee4057f0fc49b2f4faa136c89a93",
+      "gitBlobSha1": "923d7070c4d5b5e9cbf40e021ba2a2afe728c9ed"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dev-erasure-journal-infrastructure.json",
+      "rawSha256": "10b81d727abe913db1c9f773442d4d482c6f256faef683dec994f08a310ba272",
+      "gitBlobSha1": "85c4a0fda15bb64eee5153ba94a3909b031d29c3"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dev-erasure-journal-runtime-permissions.json",
+      "rawSha256": "865505ae36b3e7aa29ec22d6d429e1f5dee031bc589cd6928aa34de88fd30531",
+      "gitBlobSha1": "cdb9501d6d5b29e0570502d0a6f860e7a5a78fbd"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dev-restore-target-verifier-local.json",
+      "rawSha256": "50f6074d0bf62e31d95068b7956d9ea690a455a602fdbd1becda810f95cd8be7",
+      "gitBlobSha1": "f1542fb450b3e7bd6030a896f70f620b08ccb53e"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dev-restore-verifier-source-api.json",
+      "rawSha256": "99ff8caa48e947cfdf681216763efec6e86849ad5cabc455f742343b1852b029",
+      "gitBlobSha1": "62fdf37ae37eb51fb35a2622dc5592033bff2195"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dual-control-recovery.json",
+      "rawSha256": "b817194e0cc8ec734979ed5b609c686316c23b6675f397878afb07a0c7ae0d17",
+      "gitBlobSha1": "89aa7024c6095bf0a83d746d3531aeabb1374edb"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-durability-ci-checkpoint.json",
+      "rawSha256": "e5f8abb6679ea10d27730193afec602efa4ca05473b1c9727cc2127075788019",
+      "gitBlobSha1": "def33cb8e7f8fbda26aa259f8012dfd2d5031332"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-durability-config-reconciliation.json",
+      "rawSha256": "e875fca751d70605bbbb31637176838575fea5fc949a1d343620aac339cbae74",
+      "gitBlobSha1": "e0c99fa16dfde394145b1b38af087b5e4a09ea7d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-durability-dev-release.json",
+      "rawSha256": "1782c0fa442f29361e75109bdeae7fb86d2401ef30986cff6a4ce0c76796eb4d",
+      "gitBlobSha1": "ad6efb987b2089e0f5a6492ec2f2823207ec1d8b"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-durability-image-protection.json",
+      "rawSha256": "95d80b51487bdae88e623321b383611e35bb8441a1ecbad5242797f4984878a2",
+      "gitBlobSha1": "f8cc441876bdc73510928beed020b8905c717e7f"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-durability-implementation-ci.json",
+      "rawSha256": "53dbde5ec1a93e3584344f866de4ac04a9791bd8b24e0487855d3a9504d169f0",
+      "gitBlobSha1": "221833578d9d62b09653199b39a2470c6671a4eb"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-durability-live-checkpoint.json",
+      "rawSha256": "9b2e60c8f47ab5cd889289f2a7f4e4ede2ba44b02b7b038e6f2713a8282db1d0",
+      "gitBlobSha1": "b9a13f283609e5b96f06542e5f4dab7aa384cc18"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-durability-local-tests.json",
+      "rawSha256": "de5f6a7d2025b47353203af5e9c8e025b3577633e09be28bf8de243585af896d",
+      "gitBlobSha1": "c18e4a9ed7643af48a00c88731b58d54de97cb79"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-durability-public-smoke.json",
+      "rawSha256": "788656fb8a86b807195e7e37db856721c2ac2f33d6134bc0b667f9b5156f1135",
+      "gitBlobSha1": "2cc09a43e9f49f9b044a255c2c2ade5ba25b42dd"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-durability-release-tests.json",
+      "rawSha256": "23c817ef5e4e4db567457da441cd04da412f48b5bba87b7fee8e18b137752fc1",
+      "gitBlobSha1": "a91d918171bfc9d8d248c81c26b52a80d73bb8e7"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-evidence-ci-checkpoint.json",
+      "rawSha256": "4108e7bd11a30f1c81d638c5c9ef18d91d0a057bd9b8d98f8237ccb13311d91a",
+      "gitBlobSha1": "80365b3f62c3b4b32a02c862c7ae4245cfc5fd64"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-evidence-postmerge-secret-scan.json",
+      "rawSha256": "d8026bec0e52522567f2f7a40a53d8d378795528c3ebb4b59a3546874261b17e",
+      "gitBlobSha1": "af82a5a4a2105adb164812303d8a50197c4bca63"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-evidence-secret-scan-false-positive.json",
+      "rawSha256": "dca9099a02129c1af4aab727573082ec10e10453163b0501bfb97e477d60d708",
+      "gitBlobSha1": "2bdf7bd0e938037d02135d6e43af67295e3f063f"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-ci.json",
+      "rawSha256": "0940d95e7ff5478b1cb54a4ec39ed49e8bc075a956f9d3f2a37294ec4b850816",
+      "gitBlobSha1": "00b962204fadb8d154820d756f17402416d13a44"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-completion.json",
+      "rawSha256": "70d7b29128ca098f7e9f3d9c9e06c9845ae7d81c5ecdd4d669d216d01fea95e6",
+      "gitBlobSha1": "7db5df037b4ce17fe71944eab616d4d0b8961e65"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-dev-release.json",
+      "rawSha256": "41559f620c4c2bb3fd91b2b2d6b1197da611f38120bec745bcb96acb3a1e34fc",
+      "gitBlobSha1": "6da26a7a44ac05d595b20c4a9d5808b74fa31ffe"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-governance-local.json",
+      "rawSha256": "88682383149d68f99e38cdbb53c072f89b8d93556d45602efccb805cc1074fd4",
+      "gitBlobSha1": "30caf5fe98f6c232059d873e281b341101bfcbc0"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-image-protection.json",
+      "rawSha256": "7a61b3db273855c51b68ec46a783ef853d70547673d0ea7bb8e526b949fb59bd",
+      "gitBlobSha1": "e49327c4d06f3234c0537664021b057950a64922"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-independent-reviews.json",
+      "rawSha256": "dd8d469b0314447ecdfff5d6e83d8e95e126da35fa427f7de1da22b6b0c1714c",
+      "gitBlobSha1": "b918bf413cbf728edaff3c1414d91a102dbf6dd6"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-local.json",
+      "rawSha256": "a299666abd5aef606c89abc9753b3bf732bf4f986b08015eb6582f652603d504",
+      "gitBlobSha1": "2636012aaa808a36497ec0f01776ee31ebed371d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-native-inventory.json",
+      "rawSha256": "cf3172ae11753588a63a7b54a3500f48fd1ae3c76ce29cfbfddc6f3d97f9a6b8",
+      "gitBlobSha1": "4339eb54e11bdf91c78d2822a4dbd7694bc19976"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-native-research.json",
+      "rawSha256": "0890b1c6ee28a28ab9708b0cfb4c858251d03aaadf532cdcb9b5927fcd0001f4",
+      "gitBlobSha1": "b49db4db0465f97e056973a0eb3cc4970c2d6e6d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-owner-followup.json",
+      "rawSha256": "29fc5c8ffa67076849b14e4332bc399355601ed32ca737ccca042674544bf798",
+      "gitBlobSha1": "0b8e62a1044a8e4c2f67eb94c31ddd5bf61de36d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-owner-readback.json",
+      "rawSha256": "8eef302813d89625d41d79b8cd9de8e7d52cfca6bc4f3cc28f24f820e6cd194d",
+      "gitBlobSha1": "f670b67cf5eb208a9565f70f0e661f52387ade53"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-portability-local.json",
+      "rawSha256": "a62a333f9110a346963657a67867d20ad0b926d95e46ebe8b981fa85469d1041",
+      "gitBlobSha1": "e40c97210bf21f3a0e502f332b0c8ecf6f68ddf3"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-provider-local.json",
+      "rawSha256": "6c2ed53fca814610f7421d7178b36986cb5d8ed942b478a44724b1bb627db68c",
+      "gitBlobSha1": "647e740d9a6c3a599da35d3a6262cf433728a6d9"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-public-smoke.json",
+      "rawSha256": "638731e7d2d7cb7cc867875fcc1d394b764081046a2731d588c75be04b088132",
+      "gitBlobSha1": "1eba5fca8e351bc77f2e76f0f587488a8803c681"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-recovery-local.json",
+      "rawSha256": "92d6d2aa821e3981fd2d3d1261049b98f3d7bf533be6b533b4bb948e142e1d33",
+      "gitBlobSha1": "8e77b91a881ce8432870ba0f9a67489d9de84341"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-release-tests.json",
+      "rawSha256": "7b95dd17b2bd9d1b277f4144a9e18cfc09fdbc8c9cc8ec7435d52c65eb214be8",
+      "gitBlobSha1": "79d3fb55cae4049c3749e54aa597b4c759ca6d07"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-verified-local.json",
+      "rawSha256": "aa690dd8f563c0c4ddee39eadc1acabe81575e055e664f614893c085c1eb36a7",
+      "gitBlobSha1": "12683ed6aad3dce6119b9e492bfa64ec71645dc3"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-final-dev-release.json",
+      "rawSha256": "3817a3a1a2dcf517df9268041de74a39928c88f9d0ac2635b28f1ff817683e4d",
+      "gitBlobSha1": "84b076feec2ad840f614e4d347e9fdfb01002df5"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-final-frontend.json",
+      "rawSha256": "4b87c052dd841980de9bf82b1856cfb9c7cd6cef21615fbbce86d6c2657bec26",
+      "gitBlobSha1": "ec84c2b9ddd825965c80d76f0493a80d6217218a"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-final-live-erasure.json",
+      "rawSha256": "410730c07e5f40b568f30b70d17493dee77ddead338b492fbc2104a712391fe1",
+      "gitBlobSha1": "3fc66aa5b4b536458817441c4f3700ef0eaea6da"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-final-live-sources.json",
+      "rawSha256": "ce2f0b62c74375c5ab1909c7608165ae230b9703ff9adcafc90e4a4589b03713",
+      "gitBlobSha1": "9444b45212693bc53942160772bc741109228cb1"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-final-temporary-jobs.json",
+      "rawSha256": "cc206673b4d10e9f4d0e547b2b44d1bd14e423261b8a706f85fd5ea34d644266",
+      "gitBlobSha1": "eb1c3754c29853198a264e90ee04813e803cf687"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-generic-report-reconciliation-local.json",
+      "rawSha256": "cf2080033520cc3bcd15a4bbfb93e561431a44fd685cc295ec11a4fc43db701a",
+      "gitBlobSha1": "dabefe553d0ae2756505e76782b8c72cb6c99503"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-http2-parser.json",
+      "rawSha256": "1ff94575b9d2a0c495c5306a43537095e5437b7b3bea07e9c864e82dbcb7b94e",
+      "gitBlobSha1": "828838e47e05407b67c46cbb9f45d109c0bf8c62"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-http2-transfer-encoding.json",
+      "rawSha256": "97d6b1e851cfbec7008f9e90febc1ca76192fd479ae818e43a2dd1b4524a05ba",
+      "gitBlobSha1": "ad88cd29d734726add8ec45763ec58d2fb879b08"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-identity-dashboard-cleanup.json",
+      "rawSha256": "274dcaa2192312c9a662c4832d2e58b544e6aa47d1eb2d63c7edae7df42dfc09",
+      "gitBlobSha1": "f0ee4cb679f3768f1de49a66ac3cefdc6a9f119f"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-identity-dashboard-sources.json",
+      "rawSha256": "0c715038eecbc744ee698c16144397b3d736f8d49ba08ddc60870cadb022ee79",
+      "gitBlobSha1": "f92b406cfa4ede2d7d7b8093dc62ecbf0ed06150"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-identity-sessions.json",
+      "rawSha256": "082c1f1943e4de231bd463bc6aebad9cc329a1f1c73ed7079917188d8dad407e",
+      "gitBlobSha1": "65f5454cf9e03263a8028719af3a6f17c0b80a39"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-implementation-ci.json",
+      "rawSha256": "a9577d3a448ea502e2c8dfcf592e3d5de40c78cef9e9f41fc2c31d094df522d5",
+      "gitBlobSha1": "7f06d78fb8d45b2adea11fa9877638944ce2f622"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-libpng-refresh-initial-failure.json",
+      "rawSha256": "a32f95691eadf181e6cd1926cf9e892853015592e7fedd8b0107b20bab57fae4",
+      "gitBlobSha1": "2026a4d66e410f87123dc0e95a066e12f3824df0"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-libpng-vendor-patch-research.json",
+      "rawSha256": "c5620cfdca8f726d7cb07e69d7716e7ea5d0f18b753fb5217554dee6e5c7f553",
+      "gitBlobSha1": "2eece68bcd027ac1e6014c8b5bab6773ac4373dc"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-live-durable-photo-erasure.json",
+      "rawSha256": "94db77961c6547c81f5ff80203a90e124a149da961505c712d56d008ee785b8d",
+      "gitBlobSha1": "9aa73d41bfaa00b3e179690bfbc1088a27dca25c"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-local-private-cleanup.json",
+      "rawSha256": "d199307fc0baf0eb4b792c45e6bae3de41e4de2720cbf22ff17a2477d44d8363",
+      "gitBlobSha1": "acd43a0554b472feb7bb0cc91ae7ca14d38a6129"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-lower-role.json",
+      "rawSha256": "3a801494359ebb751670790ae284b72fbbb5916ef7b1d27df81c631dc9b961f8",
+      "gitBlobSha1": "de40ddea547d48d40d6e39e2bdee44bd19eaeb21"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-managed-key-rotation.json",
+      "rawSha256": "3c9f6c63e605932e23126cf9b3f1a238fa076e17c2de54e4b443c03860a32414",
+      "gitBlobSha1": "625bb2d6debb2b9e1ee4549daaf2b3334d3dc5d4"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-memory-components.json",
+      "rawSha256": "8d8de00842de82161d57691a854175920e1ad3541734204345ed3937216e0246",
+      "gitBlobSha1": "88a921db2f79c67268f98f2ef98b4fe0aeb59d72"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-native-runtime-prerequisites.json",
+      "rawSha256": "a4dbf4e6e1db3663dbf05b848698f44f2343aaffbebfec806aca7385ac236b95",
+      "gitBlobSha1": "7026924884e8a7e2afb955a46f0eded418055171"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-object-authorization.json",
+      "rawSha256": "50aa2fac4ee2a4d66b9db3cfe6bf53cd4ba4cf8371f9fe610d500a01b071d97e",
+      "gitBlobSha1": "677732458a32f2411df083927a2d66f48a416e65"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-obsolete-revision-postrelease.json",
+      "rawSha256": "6037f3f81b01b64e6befc19876440c3366ebf29188815b4db6786fd55bd11cdf",
+      "gitBlobSha1": "b940e7b7864eb23b6b3ed88b5e1401d72d7f9dab"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-obsolete-revision-report-release.json",
+      "rawSha256": "13cd600ae196ee5898488d6ccabeaf1b2db6e75dc4e2b2887b830df0d324f7b2",
+      "gitBlobSha1": "3a6078cd91a5d202164f56df02649157a6b6d1b6"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-parallel-hardening-ci.json",
+      "rawSha256": "c5a17a176887130e9fc48f1dfc833fc89a68fd6a41938eb081904bc1064d65a2",
+      "gitBlobSha1": "6a2a283f947343e23afcf9ee8eb030e2f6150b08"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-parallel-hardening-completion.json",
+      "rawSha256": "075daea7ff9585e9b454320e3fb0b537378f4318b62bbe9a3e1cfa24622d3d73",
+      "gitBlobSha1": "c29027deebabb46419e8418c7cdd23a413f0ce2d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-parallel-hardening-dev-release.json",
+      "rawSha256": "641426feef65b55c162dcdc19dcda21592f5b167d868a98e39e6cca36f84ec47",
+      "gitBlobSha1": "e1e5450ceee4d32c639f678be9683093453b8fe6"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-parallel-hardening-governance-local.json",
+      "rawSha256": "dbb1aff9d4aaedf46ad0db526247411fb7cb0c4a9d557d38558a21f69affeec6",
+      "gitBlobSha1": "73e485bab12c97b6cc6b603f04b0742b14cd5fb9"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-parallel-hardening-image-protection.json",
+      "rawSha256": "8da5a9833ab5222386c46fec2467334520ebe1266ad0799ed373db265aa09879",
+      "gitBlobSha1": "3f941d29ea94c5e8fce033a8f843a3981b01dd07"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-parallel-hardening-local.json",
+      "rawSha256": "1868572999288c71ae1923b10df4452f712e5a7ca4b53d5508c4c6c1b176ca73",
+      "gitBlobSha1": "d71968e3bc74f905c8bc8d9d23c46ee0405df50d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-parallel-hardening-provider-local.json",
+      "rawSha256": "c2cc91eb144a5d749cdad42f549617ab5a3aa9fbcf470f4a768c2aeec0a17459",
+      "gitBlobSha1": "83d9d7af822ba974931dc6ffbe4ba14a84b52fc0"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-parallel-hardening-public-smoke.json",
+      "rawSha256": "5d3ab921a8519db46657b10dbd5a8f70ed9c7579635a43464521024152dd786c",
+      "gitBlobSha1": "89a88e7ba836f2c30f107c4ed37a37398914119c"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-parallel-hardening-replay-local.json",
+      "rawSha256": "eb3f2fdeb55dbf05fd24d67f6faa311e1737815a1d46d1ab2f1603d5241cd3c6",
+      "gitBlobSha1": "2f6e0dd8538ddb9c8c68ca1a2753155a3ccb7fcf"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-parallel-hardening-revision-preflight.json",
+      "rawSha256": "59116208dd02f4985f82ce6d9eabe86860c0cb133eac25ddca9556dc6f680e8d",
+      "gitBlobSha1": "a6f241e9f96f6e696dc08cb70e695e035a0849b6"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-passkeys.json",
+      "rawSha256": "eddc58e35166a0c0f99c836918e6eac945ea4e0366d0c80336380b5623603a7b",
+      "gitBlobSha1": "4251bc68576c810a75d84b30eab970b1fb098ca9"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-metadata-ci.json",
+      "rawSha256": "181cad9740fc34f615b6d06e6db4424c53e4f485d6a41286a044bae2eec3ada2",
+      "gitBlobSha1": "15e370d6e92c2f05979a97ca055f0f990b119bae"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-metadata-combined-dev-inventory.json",
+      "rawSha256": "7efb6ecdb371641fbff28141511162309b8990d20caaaefdc8d3d4e10f4e1edc",
+      "gitBlobSha1": "2b56c679bed617cbb4a1c5063d26f287ba5f7374"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-metadata-dev-release.json",
+      "rawSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+      "gitBlobSha1": "3cfc46c64150465e2b6297b535fc44190199b524"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-metadata-image-protection.json",
+      "rawSha256": "62789221f5be8d39e35bc4dfc0a8909f3152f4123392fd95b7bfd3bea0408af8",
+      "gitBlobSha1": "49d8b819fd354bc766bd7a851bf513d112936d7a"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json",
+      "rawSha256": "2c47e34d681bda491d73349d76c446319818d941928154ae569119cabb33f3b1",
+      "gitBlobSha1": "1dedd89506e72e9f8a6ee151b40a48e4de533d7c"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-metadata-local.json",
+      "rawSha256": "0891f1b87036a5241ccd50733b9af14f56572bedf526b2a41ae3992c0992afa1",
+      "gitBlobSha1": "661015000627a45a7e402e6aa8d894559a05858e"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-metadata-obsolete-revision-preflight.json",
+      "rawSha256": "b091a8710a1160605f397d66ca8eae4b241bce87bb4c46dbf2127c90c74d2cb1",
+      "gitBlobSha1": "1524fbdd83a7e16eda98a9d195ece97275a3b088"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-metadata-public-smoke.json",
+      "rawSha256": "7cee1138bcaab0d5261950e53f44fb90ab3b4bd1d88f76fc5277a27143296119",
+      "gitBlobSha1": "23ae6898877048ddaa2eb553a6b0bb3ac8c48921"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-metadata-release-inventory.json",
+      "rawSha256": "dfd649c0c8eb7a46ad71f4d429ea2c52e92718d74b7f3bc5dd1819057c47b0fc",
+      "gitBlobSha1": "df51ada1ec7fbf94693b7f6cbbd1ca999e8ab72c"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-metadata-release-tests.json",
+      "rawSha256": "bd750aca20782ee79e2eee60a9475035cdc13242eb7d9107a4dc7eada7c83e01",
+      "gitBlobSha1": "07f273e96e0f7f31066e6665f589c6859597e45d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-portrait-owner-readback.json",
+      "rawSha256": "27991077919653b73dbb653a5e89e632b77de7c8444476cd145517ccdeaf14f2",
+      "gitBlobSha1": "f7a14fde42646afecd3adace0261b5805aa42932"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-precommit-erasure-local.json",
+      "rawSha256": "bad3f1c17116b3f7439700ac8938521f92cf321c8ff47cea40313b2816f58eee",
+      "gitBlobSha1": "878d60c4da9421cfb412c688ebc0f7307e68c8f1"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-precommit-journal-dev.json",
+      "rawSha256": "be80769fc1781032d72ab61613dff6eed23994ab14231e3f33bda89740a8324b",
+      "gitBlobSha1": "0e6fbc242ae1ecae0919c904c07fc9ef437f0086"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-precommit-journal-downstream.json",
+      "rawSha256": "f81316bc9b786aae0ef0b6ec3344a32626f886b2e0451a16b84eae49cb63743c",
+      "gitBlobSha1": "096a017e91170e9a776239e3243eb09bbd804c96"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-privacy-synthetic.json",
+      "rawSha256": "998be67763393c7e21f7193acd60bbe03466681d03e4996d78da519724165da0",
+      "gitBlobSha1": "cc0e16cc5c514ae74c3032095b28f8adbdac5fd0"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-assertion-ci.json",
+      "rawSha256": "70ec76056532768e775cdcaceaa49f68321730116597d966dff89f32d1ac57fc",
+      "gitBlobSha1": "fa4dad3d21f9d65ff20d1d8a1428fadcbde7dc40"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-assertion-completion.json",
+      "rawSha256": "a84b3646b66bfd1eadf587dadbe6a52dccd60c7c0591cb923e579a76f4f9acfb",
+      "gitBlobSha1": "6085cd85a46de133d49596135fc3340f54bfa8e6"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-assertion-dev-release.json",
+      "rawSha256": "cff544bd1d447c2fceeffbb951f7c38ae6719ea976450b770542d1064f1a5b3b",
+      "gitBlobSha1": "ba804ff7bb69333b86237662b5f7623f8422298d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-assertion-image-protection.json",
+      "rawSha256": "20037a2efa2f21362c2adef58306f1be105ce39e2f848f58d8627ac91de5c834",
+      "gitBlobSha1": "1974d91b27e9ff40e1b304983a4bb2c1297fc021"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-assertion-public-smoke.json",
+      "rawSha256": "05f943bc53db2f996529e83955883c0422690de50d8c291b2286ef6096767c64",
+      "gitBlobSha1": "e76873005ce81e44d5c95eec4a9abaecb77cc85d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-restore-coverage-local.json",
+      "rawSha256": "db3092ceacf72317ad44a332012582aecb1b4667b84969748863053021f232ae",
+      "gitBlobSha1": "c289ef6c9906ee47e6750d966275266b130a7f57"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-restore-followup-local.json",
+      "rawSha256": "00a7cafe16fd975ed2dfbc4e8206d262ebe6d9e383407a366514d212ce56fc15",
+      "gitBlobSha1": "fef6d396caa5513762f3779b46def347a79b728d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-restore-owner-readback.json",
+      "rawSha256": "9f2c36039bed3448e6e31744b34bdfd14be4a64572bac1571c6cee3e7d1e13da",
+      "gitBlobSha1": "7b69c818e0df30e7d0903961a24d385fc523e45b"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-restore-platform-local.json",
+      "rawSha256": "30e4edc4235fab5fd380b0dfa593cf40c02986b97381bf8438ae2640a0b15724",
+      "gitBlobSha1": "bf95953605730a2261e96175541e5ffc7ca0a6c7"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-restore-provider-review.json",
+      "rawSha256": "383e8cab68fcf411e48012f6fb4f6addf6ab2eb9aecbd61f02bc8a1ad85286d3",
+      "gitBlobSha1": "45997741e2a1a843a5f3861c1b05d4f50fe7eaad"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-provider-restore-restore-review.json",
+      "rawSha256": "25ae4a0812dcbf255a73afef4589890749eda6c62a1464e6d9d695b89cfc7917",
+      "gitBlobSha1": "609badbf314e9725c76477da1e2dddd782fe0708"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-refresh-race.json",
+      "rawSha256": "df2f603e6d2519b28283c2ea1da5582dbb0b29c7f58ed2d157db0c3bb8b5a044",
+      "gitBlobSha1": "546ed75854e86769127c20a98cd7fb7802b3f00b"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-registry-retention.json",
+      "rawSha256": "eb41375fb917cf0713d2f03e6dcd143af30f9e9123d94c821c9c45a2b79623f8",
+      "gitBlobSha1": "b8c176faf9b7d49c2a9e88508b0745b873ebb317"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-registry-rollback-protection.json",
+      "rawSha256": "6206bf8da89dedce6ad8dcf45c3565909c801d1c3d9de47f300700a6c5857e56",
+      "gitBlobSha1": "dfced9ca7db4091a6d3c3fdef5d30401fa9e326f"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-dev-config.json",
+      "rawSha256": "42e15e57e310817b3131ad5429aa1efff319399c50fb06a96e3940c7045b39f2",
+      "gitBlobSha1": "3b5f0c227ed01cc376809dbca2b19b28e6ba99e6"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-dev-release.json",
+      "rawSha256": "ac41e8c9c357da59a2384a1d3a41691c33ae88bb69f1604f111c562936ccc0ad",
+      "gitBlobSha1": "dd8dc3d2076a89bbceaf681adb12bfc34b9a7529"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-image-protection.json",
+      "rawSha256": "2dd4312a83deef69b2d9fa19b49e32781d545f097c99f4697e4102a54e07eb2c",
+      "gitBlobSha1": "ab3fad92d3b3cb9d20f915462c1f473f11625170"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-implementation-ci.json",
+      "rawSha256": "5a1433a5a9ec030d2515768a45cf05db431ddf31a4cbedee34b9c67cc520427d",
+      "gitBlobSha1": "91aa70af75bbbf0219c00fd50c9e9ea65874f583"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-integration-local.json",
+      "rawSha256": "2cf123dbbbe41e4ae98530c3daf0c7b3b1b22894b864e9b7e0609750f18c30f4",
+      "gitBlobSha1": "bc591de04bf0e6d4fcd5ced5d33925e67d236473"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-local-tests.json",
+      "rawSha256": "6a1ff74706db1feb581771e879dbfabd168d0c3fd0742623a3b62dda525362b3",
+      "gitBlobSha1": "70ab7afec9732dcca30553e7fa71fb6ed3aa1c87"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-owner-predeploy-readback.json",
+      "rawSha256": "334e3d772cfd23b84d6f0cbeeeb681ec71f00a8e14a8ef763b12e5653959f676",
+      "gitBlobSha1": "d1fdcf6e7cc0026d0b80019e56618af026920579"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-owner-readback.json",
+      "rawSha256": "593fb69d7695b0059c4fa038168f742e25593b80017f5d60a24cecfa8d209025",
+      "gitBlobSha1": "06b11a0aeabe1c487d4f94544a2ea27ebafdef57"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-work-closeout.json",
+      "rawSha256": "6fd57e7a49d71ce2d13baced9d1e6e01ad21da1cafc95d2480232792349ceffb",
+      "gitBlobSha1": "b0b98640b100bf8b88adbd300a10af5a1bbc407f"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-report-verifier-ci.json",
+      "rawSha256": "65fd84630f53b46625f067a5faff259b5bec603d3f19e31cdc4458d0bc08622f",
+      "gitBlobSha1": "006388856227a1fd3333a74be26906aabd65fab0"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-report-verifier-dev-release.json",
+      "rawSha256": "b7e4231b96c3fee62aa7b7cb27b91d81d61315be46ff36927f6fd52b7607dd26",
+      "gitBlobSha1": "fb6620a00a9e1c62606563dfd8bafd72a592a8ee"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-report-verifier-image-protection.json",
+      "rawSha256": "56b329ccce7fd96f8155d209f43978668eabf5de2091ad55e41383ebaafef8cc",
+      "gitBlobSha1": "c7651550f40ef3be61a58c932c728f03fb8dead9"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-report-verifier-public-smoke.json",
+      "rawSha256": "48cce094449502c36f4e657c4d1e83f76c869ea70664053794afc7b88659785e",
+      "gitBlobSha1": "0079673bea31bf20d19ee4f8621c5997216ebf83"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-report-verifier-release-tests.json",
+      "rawSha256": "fec1bb7c6c25aa9b92db120a9985060322b0548ab7f84c478df77a52765c1c4b",
+      "gitBlobSha1": "70ad3d107421df859f5a1bf560b634ab6e5745e9"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-repository-browser-permissions.json",
+      "rawSha256": "bc6f9394eb663539242df13457f03f68153be83cf7c89f34aec750f5bd12c576",
+      "gitBlobSha1": "0b4bb482f794b451fac060effeea65582f054831"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-repository-local-history-scope.json",
+      "rawSha256": "92330ac0d98e3d0dca188ad61afd03ed03b8bb58655c3c8e949aa146081fa035",
+      "gitBlobSha1": "c2746f8ba499e6a96bda866f1a179f5c356c9067"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-repository-permissions.json",
+      "rawSha256": "227e2895d44b361bf22c0394248ca36ca064adf52f2c43c16fbd0382140a9378",
+      "gitBlobSha1": "691cfae1c28d4bdbe19f8192aab6e9926fc9db9e"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-revision-cleanup-resume-local.json",
+      "rawSha256": "3e4240846aff395a81ab5a8f00f9657f1f763f60ff200f4a01f7a9e7f7ad2d91",
+      "gitBlobSha1": "1ac67716797de5884cf12db959e9c8c7383c4a53"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-os-edge-config-baseline.json",
+      "rawSha256": "2facf44b0bbf872431078c403a34537ff7ede4a5ec2540377eec0c6ef095fac4",
+      "gitBlobSha1": "bcfffff0a912ff254eb45da6818b4d5a7a7172e5"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-os-owner-readback.json",
+      "rawSha256": "3323cfb96417ae40aaf2ad6fcb6506817ccfad3377aee9e8fad29f80fee07ab5",
+      "gitBlobSha1": "d162cc99717360c79e952c8c0cd036cf2e83cfee"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-os-patches-ci.json",
+      "rawSha256": "123c508e02528a772b7b25fe5ef812ec92b3e8162ee9e88d3d2f85bc6d0fd197",
+      "gitBlobSha1": "4fffe643125bf0ec574dfa6f0c5baccfb2bffbaa"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-os-patches-dev-release.json",
+      "rawSha256": "eb04a1abb34404d8f06e1ec4cc45375d281214a38d259c36a044718431966aa6",
+      "gitBlobSha1": "0ff1d2d0e82814fac75f80001aca668af81329d6"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-os-patches-image-protection.json",
+      "rawSha256": "629ed22cd51349c461e13df7eb94e9e4b9b7a993c18017146ac84b6209adcebd",
+      "gitBlobSha1": "1e4361cfc8327405c9a9dc40938a5c52658bd1ce"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-os-patches-public-smoke.json",
+      "rawSha256": "cf511b6b0577a02cb9ef9f0334146d4719353574b97f8ba701dce126dbbb7ee8",
+      "gitBlobSha1": "3e385d03c5313ac3e0b98cc78fed40d65b1f7e8d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-os-patches-release-inventory.json",
+      "rawSha256": "14b8bc8dacb1267d9891c8a6fb5a0d304da8a4f6f216c2cb4dfc52e1a4b057f5",
+      "gitBlobSha1": "41a75111b3f704101a0eb6e8cf04523a2e8ba9cf"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-os-patches-release-tests.json",
+      "rawSha256": "9f31c0f6c0309cca3aaf797db23024082f8dd2f53e15d4c485cc10764496ea03",
+      "gitBlobSha1": "05a70db74411653053e05af2ecd049987011e933"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-os-patches-source-scan.json",
+      "rawSha256": "5966d3add53a7f0ad4f26ee925608daba78d3f7459e02f087035f019bfbca2c4",
+      "gitBlobSha1": "6a62a3b8025a11f7554528dfef3df40bbcbc6d4a"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-os-upstream-fix-plan.json",
+      "rawSha256": "4b203cdbd210aaf1843838a8738524b6e7b636c361e9f0b4bef3ad14ad9a3a21",
+      "gitBlobSha1": "925367641c7ffc82f89aa9ff17313e1cb1c54f80"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-patch-cycle-ci.json",
+      "rawSha256": "cd02580b8e7c4342541908f496bdc8a8dd8aa3fc97bad3dd79df6a94a0dca8d0",
+      "gitBlobSha1": "3d542bbd2dfc87c4fb48277648f2064c60680a9e"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-patch-cycle-dev-release.json",
+      "rawSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f",
+      "gitBlobSha1": "fc3a3cf2bdb1b5788b819cb095afd74e16a4e2af"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-patch-cycle-image-protection.json",
+      "rawSha256": "af6b0f65b34691ee182f6210f50f7b52cbc06b2651f4edf91ec10b27e226f4a2",
+      "gitBlobSha1": "4d1a584dcdf51790cf0fae966aa0bfc03dbcd061"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-patch-cycle-obsolete-revision-preflight.json",
+      "rawSha256": "d7b98d28b3a9776f1c2b63dcf6044b05fe4c1cc9bbc522c5755ce4d70058215a",
+      "gitBlobSha1": "26863e27f3a5f123b7cc84887f2138634908054c"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-patch-cycle-owner-readback.json",
+      "rawSha256": "5e201d899c2a110eb0aa130b4c89e91521fd01b38e8c0e6bc8c260c559d68cea",
+      "gitBlobSha1": "4ae6957279fa92a8dc24062e75940ba02f4e1cde"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-patch-cycle-public-smoke.json",
+      "rawSha256": "76d7a122c787382dbafefd2302a1cacb3b88d8e9f85587a08e75f0aa19b1da70",
+      "gitBlobSha1": "daa903c22c4118ed7435a8d541c9633b0a8ee285"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-patch-cycle-release-inventory.json",
+      "rawSha256": "5d647b2b5972453199744248fd484231bcb35a877732e1f1fc515434fc894ca3",
+      "gitBlobSha1": "3479d6d5eb77cd1ed7e31d9ee6ed56c96de4e96b"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-patch-cycle-release-tests.json",
+      "rawSha256": "5a08739dc41a3767638f5c12e13537e5241fa132c4a34df079c04fcf3b0f33a3",
+      "gitBlobSha1": "8a69c648858a315a05b3d714ab57732c9ae381a7"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-runtime-secret-readback.json",
+      "rawSha256": "e67c397a3e2c3a66dab6eb53e128a3cd4425481d12c8268bd25e59014638f458",
+      "gitBlobSha1": "7c4da9c16f52d74a13667eae4af4cafe221f240e"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-scheduler-metric.json",
+      "rawSha256": "99453de28259eca59a89896513d64ae3e5145cd15b87f6c745b13f24d28ae4cc",
+      "gitBlobSha1": "96ef0d9a929ce3a0dfee240e1172bd9a908db343"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-student-photo-ownership-ci.json",
+      "rawSha256": "36eb9e52b3979f2baa982a42b382878a68353d2fa32b28fe4144d015c4c2a673",
+      "gitBlobSha1": "11f56762b8d0ca4e113ca6d62a1e6367fbd8f14f"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-student-photo-ownership-dev-release.json",
+      "rawSha256": "c0b11f4dabbebd90b2c93f8cf7a529290b1d249d1233f89c8516e67956828fde",
+      "gitBlobSha1": "a92f935a1b9d78d57e5112bd6537ae860da0e502"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-student-photo-ownership-image-protection.json",
+      "rawSha256": "eeced1e5a4afa16c9ffccb691c471fb125eb5e1d424dc46174868f29f90bf01b",
+      "gitBlobSha1": "52220947f896c6ae9f89c4acbf8a248fc5ea49e3"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-student-photo-ownership-local.json",
+      "rawSha256": "6fa4933eb5a5179b06999d468dd2667d7fdcfc91a019a91961e3991d21b47349",
+      "gitBlobSha1": "daf2c765a00b19d693ce89ce3f3990f1aa9696cb"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-student-photo-ownership-public-smoke.json",
+      "rawSha256": "b50462969604e8afc17f3369fc6f58edacdbc069634c5dc88df94bafa1d73b00",
+      "gitBlobSha1": "981aafaac1ce158450741814bdda04b2a63040aa"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-student-photo-ownership-release-tests.json",
+      "rawSha256": "51dc8d44b48cad1b6889a35c696cff27b640e648ec7df6de01fd335a298cde89",
+      "gitBlobSha1": "4acd6167d9378065236ff278f8109bf83da563f7"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-upstream-native-followup.json",
+      "rawSha256": "b026a4bc42253dc5f557a4172f844f9c87529848411e0113f3e858b2ebf3b0f5",
+      "gitBlobSha1": "655538d4bf25c9b58675b33bd690148e11c5deb3"
+    },
+    {
+      "path": "docs/security-remediation/browser-evidence.json",
+      "rawSha256": "3c4968a6b867786dfb85d8bb89a596aa4a00b7872bb41807aeb42fcbebb7e69e",
+      "gitBlobSha1": "54c78dffc0cfcf9fdfceb4d81c0dc67f0220262e"
+    },
+    {
+      "path": "docs/security-remediation/capacity-local-evidence.json",
+      "rawSha256": "427e79ffe76ed4596b64b751c49b8e0f5f8ffc032fed9412a009db6db3126c34",
+      "gitBlobSha1": "16e43b2d62c9c42bcaf313a05017fd287f0fd159"
+    },
+    {
+      "path": "docs/security-remediation/dev-final-capacity.json",
+      "rawSha256": "97e8f7259e221092b593db5a4aaa5e130e84248eb65e6c848cd0902502635cd1",
+      "gitBlobSha1": "b049a7adeec1d8ead70940f7dc74fd44daeb11cc"
+    },
+    {
+      "path": "docs/security-remediation/dev-final-runtime-role-catalog.json",
+      "rawSha256": "25e8fb2f49ffa2ddf8ad0cb1d6113d325af413e584f1ca36ef59ecf1a201ba38",
+      "gitBlobSha1": "b6442af74bd6cc46e10e30fc87a9c288f6ff821d"
+    },
+    {
+      "path": "docs/security-remediation/dev-final-scheduler-config.json",
+      "rawSha256": "e84526ab3e177186b4aadded25dfac150378d45163da53def0d3481d68c25bce",
+      "gitBlobSha1": "b7058d3f893a7b092c6ba8b8bd7323ce90652cf8"
+    },
+    {
+      "path": "docs/security-remediation/dev-final-scheduler-delivery.json",
+      "rawSha256": "05fde08c15cf995abff060728ca56d802acfc070fbc4c3f5901fadec9c209785",
+      "gitBlobSha1": "c5cb8532692db3b8715230bc1756074a1a11943f"
+    },
+    {
+      "path": "docs/security-remediation/dev-frontend-live-proof.json",
+      "rawSha256": "2e0ef7240a9d44beb5283ae1b53528122dbfbf0483ce3a9354b7f92259a5b7ec",
+      "gitBlobSha1": "f7f12a4209adb382758da82ce57c759d23296460"
+    },
+    {
+      "path": "docs/security-remediation/dev-image-config-user-proof.json",
+      "rawSha256": "62ebfad78466ad3cce7d6e05fdffc3eef528299b5b292855bfa347c71b243d28",
+      "gitBlobSha1": "2ef1eef70d5cd59b9df38a6d40f8ff53e94d88ec"
+    },
+    {
+      "path": "docs/security-remediation/dev-live-authorization-proof.json",
+      "rawSha256": "e86f1b58801978cd3929ee774b16190cf50b97ddf6e36cbb6fa3614f31a09ef0",
+      "gitBlobSha1": "35e9ab2a0a6dbd96ce13712cf25ad9b6968702a8"
+    },
+    {
+      "path": "docs/security-remediation/dev-obsolete-revision-dry-run.json",
+      "rawSha256": "a194d47dd15b1efd1b7dfcdc9d61f127ffb58ef31d6bfb50333492ea55dd8986",
+      "gitBlobSha1": "ed3e123e9200a032198c31fb71f498d5c71e0aed"
+    },
+    {
+      "path": "docs/security-remediation/dev-photo-cache-proof.json",
+      "rawSha256": "55516d07fc9c71f981a7163c33a8fef1236cafd03063d5fc5c187ed175caf14a",
+      "gitBlobSha1": "ce78e68544774a8ae8d4c1dccb938add66cac142"
+    },
+    {
+      "path": "docs/security-remediation/dev-pitr-20261006182803-abe03276.json",
+      "rawSha256": "9a2c78136f1886798b20c7d1e56866cd5f302ad18c21aaf7d89bf1ab997d18bf",
+      "gitBlobSha1": "cf6abbc196c34467507faf291f97deff0bc8886b"
+    },
+    {
+      "path": "docs/security-remediation/dev-pitr-20261007093317-75f819f7.json",
+      "rawSha256": "589f7aa075698fe1c91abded6ecb7517c78d4f389702c2c95e30d4cbbc330f35",
+      "gitBlobSha1": "907a71556fda80afc848c0e026dee2be739cf38f"
+    },
+    {
+      "path": "docs/security-remediation/dev-pitr-20261007095108-6f59ef96.json",
+      "rawSha256": "dd108a3b45cc0b5337a6b9ba47c3bc26be00e99ab352ef10322b85ba00bddfbb",
+      "gitBlobSha1": "56f1c5337619538defd5a49028d6cfc2efc63541"
+    },
+    {
+      "path": "docs/security-remediation/dev-pubsub-metadata-proof.json",
+      "rawSha256": "1572c077468bdee8056445ca5c2d2f725c6b007c859d48e2f526249cde6c2720",
+      "gitBlobSha1": "94ed37785f19213f0226c813a935df71f83d6185"
+    },
+    {
+      "path": "docs/security-remediation/dev-release-gates.json",
+      "rawSha256": "e79062a1beebe83f412657dbdd62ce2d3d85d53982229544fd980d6ff644be1f",
+      "gitBlobSha1": "498f5e4432ed98419a9a0d502de82f93be59deec"
+    },
+    {
+      "path": "docs/security-remediation/dev-runtime-role-proof.json",
+      "rawSha256": "799220ea711013d231d707f19f85831e4905ca1ad1d3c39441bfcaad708250cb",
+      "gitBlobSha1": "068803784993a3f0a0b47bf3bedb46880578ded9"
+    },
+    {
+      "path": "docs/security-remediation/dev-runtime-secret-revocation-proof.json",
+      "rawSha256": "fe270c7b925714d23acbfbfe95966cee0bf093feaed2789cd511ef5262c11d11",
+      "gitBlobSha1": "5a9816e1609d955e2034eb56881cef96b7815eee"
+    },
+    {
+      "path": "docs/security-remediation/dev-shared-role-retirement-proof.json",
+      "rawSha256": "6f249ca88f058f88f2cfa8c8fb5a96c0e67dcd66a375e5508238c625ad6d909f",
+      "gitBlobSha1": "9493d2ee2b09fd523b51847b308caf2b4b62c25b"
+    },
+    {
+      "path": "docs/security-remediation/dev-synthetic-pubsub-delivery-proof.json",
+      "rawSha256": "a6b1fd11fd0c83b3f7c92ebf5854ea4acb954f29bcd0595c54ef3b9be119c0d6",
+      "gitBlobSha1": "f007ecb2d988b9a40b957d5b4ea72ee10041a56d"
+    },
+    {
+      "path": "docs/security-remediation/dev-synthetic-pubsub-restart-proof.json",
+      "rawSha256": "e78a046b84b30ffa0c5ad2cf80f8793147100fa2b77ed83d83df9ca993b45223",
+      "gitBlobSha1": "bac6ce0ef4c628b18d4ce41f9ff4cd4b3fd2f09d"
+    },
+    {
+      "path": "docs/security-remediation/policy-http-lock-boundary-tests.json",
+      "rawSha256": "6fe055157351069c24ba68b92ce57213620347131ec6dbca8046587283049764",
+      "gitBlobSha1": "029ba0559461fbc1a1fbfdf17d2b3cb2bc90bb32"
+    }
+  ],
+  "historicalEvidenceCount": 186,
+  "providerInitialExpectedFailures": 4,
+  "providerFocusedFinal": {
+    "tests": 13,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "recoveryInitialExpectedFailures": 3,
+  "recoveryFocusedFinal": {
+    "unit": 14,
+    "realLocalPostgres": 9,
+    "tests": 23,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "fullLocal": {
+    "platform": {
+      "tests": 496,
+      "passed": 496,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "school": {
+      "tests": 979,
+      "passed": 978,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "skip": "CatalogOrderAssetStorageTest.rejectsSymbolicParentsAndEncodedTraversal; Windows symlink privileges"
+    }
+  },
+  "ordinarySchoolBootEntryPreserved": true,
+  "sourceCIPassed": false,
+  "devReleaseAccepted": false,
+  "wholeSecurityPlanComplete": false,
+  "openOwnerActionGroups": 9,
+  "additionalOpenFindings": 2,
+  "providerResearch": [
+    {
+      "url": "https://msg91.com/help/webhook-new/how-to-receive-sms-delivery-reports-via-webhook-new",
+      "fact": "Configurable SMS fields and optional custom headers; configured account authentication unproved."
+    },
+    {
+      "url": "https://msg91.com/help/webhook-new/how-to-receive-email-delivery-reports-via-webhook-new",
+      "fact": "Configurable EMAIL event fields and inconsistent requestId description/sample require an account-selected contract."
+    },
+    {
+      "url": "https://msg91.com/help/webhook-new/how-to-receive-whatsapp-delivery-reports-via-webhook-new",
+      "fact": "Request/sent events are distinct from outbound delivery/read reports."
+    },
+    {
+      "url": "https://msg91.com/help/webhook-new",
+      "fact": "Eight-second callback budget, retries and duplicate possibility require bounded idempotent handling."
+    },
+    {
+      "url": "https://msg91.com/help/webhooks/webhook-logs",
+      "fact": "Account logs can expose configured payload and headers; callback success is not recipient delivery."
+    }
+  ],
+  "scope": "Focused tests overlap full counts. New source CI and actual dev acceptance remain required. No live provider send, physical clone/full restore, hardware check, production change or irreversible cleanup."
+}

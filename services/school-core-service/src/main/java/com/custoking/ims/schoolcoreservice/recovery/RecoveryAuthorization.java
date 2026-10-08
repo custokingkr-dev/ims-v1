@@ -54,15 +54,15 @@ final class RecoveryAuthorization {
     }
     public void requireFresh(int remainingSeconds) {
         Instant now=clock.instant(), issued=time(approval,"issuedAt"), expires=time(approval,"expiresAt"), observed=time(approval,"targetProofCapturedAt");
-        require(!issued.isAfter(now) && !observed.isAfter(now) && Duration.between(issued,now).getSeconds()<=120 && Duration.between(observed,issued).getSeconds()>=0 && Duration.between(observed,issued).getSeconds()<=120);
-        require(expires.isAfter(now.plusSeconds(remainingSeconds)) && Duration.between(issued,expires).getSeconds()<=600);
+        require(!issued.isAfter(now) && !observed.isAfter(issued) && Duration.between(issued,now).compareTo(Duration.ofSeconds(120))<=0 && Duration.between(observed,now).compareTo(Duration.ofSeconds(120))<=0);
+        require(expires.isAfter(now.plusSeconds(remainingSeconds)) && Duration.between(issued,expires).compareTo(Duration.ofSeconds(600))<=0);
     }
     public void verifyFreeze(byte[] body) {
         JsonNode freeze=signed(body,freezeKey);
         fields(freeze,"schemaVersion","kind","project","clone","lineage","epoch","planSha256","issuedAt","expiresAt","admissions");
         require(version(freeze) && text(freeze,"kind").equals("recovery.freeze.operator-attestation.v1") && text(freeze,"project").equals("custoking-dev"));
         for(String k:List.of("clone","lineage","epoch","planSha256"))require(text(freeze,k).equals(text(approval,k)));
-        Instant now=clock.instant(),issued=time(freeze,"issuedAt"),expires=time(freeze,"expiresAt");require(!issued.isAfter(now) && Duration.between(issued,now).getSeconds()<=120 && expires.isAfter(now.plusSeconds(45)) && Duration.between(issued,expires).getSeconds()<=600);
+        Instant now=clock.instant(),issued=time(freeze,"issuedAt"),expires=time(freeze,"expiresAt");require(!issued.isAfter(now) && Duration.between(issued,now).compareTo(Duration.ofSeconds(120))<=0 && expires.isAfter(now.plusSeconds(45)) && Duration.between(issued,expires).compareTo(Duration.ofSeconds(600))<=0);
         JsonNode admissions=freeze.path("admissions");fields(admissions,ADMISSIONS.toArray(String[]::new));
         for(JsonNode admission:admissions){fields(admission,"writesPaused","deliveryPaused","inFlight");require(admission.path("writesPaused").isBoolean() && admission.path("writesPaused").asBoolean() && admission.path("deliveryPaused").isBoolean() && admission.path("deliveryPaused").asBoolean() && admission.path("inFlight").isIntegralNumber() && admission.path("inFlight").canConvertToLong() && admission.path("inFlight").asLong()==0);}
     }

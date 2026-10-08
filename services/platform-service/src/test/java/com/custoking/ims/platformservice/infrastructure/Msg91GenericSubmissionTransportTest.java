@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 class Msg91GenericSubmissionTransportTest {
     final NotificationDeliveryRequest request=new NotificationDeliveryRequest("one","fee-reminder.v1","SMS","GUARDIAN","one","{\"destination\":\"919999999999\"}");
@@ -68,6 +69,50 @@ class Msg91GenericSubmissionTransportTest {
             request.recipientType(),request.recipientId(),"{\"destination\":\"918888888888\",\"destination\":\"919999999999\"}");
         assertThat(transport.submit(ambiguousRequest,body(),"synthetic_auth_key").status()).isEqualTo(NotificationSubmissionResult.Status.UNKNOWN);
         assertThat(calls.get()).isZero();
+    }
+    @Test void noncanonicalPersistedDestinationsCannotBecomeAcceptedReservations() {
+        assertAll(java.util.stream.Stream.of(
+            "{\"destination\":919999999999}",
+            "{\"destination\":\"+919999999999\"}",
+            "{\"destination\":\"91 9999-999999\"}",
+            "{\"destination\":\"91x9999999999\"}")
+            .map(payload -> () -> assertRoutingRejected(payload,body())));
+    }
+    @Test void routingAliasesCannotEnterTheCanonicalSubmissionContract() {
+        assertAll(java.util.stream.Stream.of("mobile","phone","to","recipientMobile")
+            .flatMap(alias -> java.util.stream.Stream.of("null","\"919999999999\"","\"918888888888\"")
+                .map(value -> () -> assertRoutingRejected(
+                    "{\"destination\":\"919999999999\",\""+alias+"\":"+value+"}",body()))));
+    }
+    @Test void nonnullPassthroughCannotEnterTheCanonicalSubmissionContract() {
+        assertAll(java.util.stream.Stream.of("{}","false","\"ignored\"","[]")
+            .map(value -> () -> assertRoutingRejected(
+                "{\"destination\":\"919999999999\",\"msg91Body\":"+value+"}",body())));
+    }
+    @Test void wireRoutingRequiresAnExactStringRecipient() {
+        assertRoutingRejected(request.payload(),body().replace(
+            "\"mobiles\":\"919999999999\"","\"mobiles\":919999999999"));
+    }
+    @Test void canonicalBoundaryDestinationsAndNullPassthroughRemainAdmitted() {
+        for(String destination:new String[]{"9199999999","919999999999999"}) {
+            var canonical=new NotificationDeliveryRequest(request.eventId(),request.template(),request.channel(),
+                request.recipientType(),request.recipientId(),
+                "{\"destination\":\""+destination+"\",\"msg91Body\":null}");
+            var calls=new AtomicInteger();
+            var transport=new Msg91GenericSubmissionTransport(wire->{calls.incrementAndGet();return new Msg91BroadcastLiveProvider.Reply(200,accepted);});
+            var result=transport.submit(canonical,body().replace("919999999999",destination),"synthetic_auth_key");
+            assertThat(result.status()).isEqualTo(NotificationSubmissionResult.Status.ACCEPTED);
+            assertThat(result.binds(canonical)).isTrue();assertThat(calls.get()).isEqualTo(1);
+        }
+    }
+    private void assertRoutingRejected(String payload,String prepared) {
+        var canonical=new NotificationDeliveryRequest(request.eventId(),request.template(),request.channel(),
+            request.recipientType(),request.recipientId(),payload);
+        var calls=new AtomicInteger();
+        var transport=new Msg91GenericSubmissionTransport(wire->{calls.incrementAndGet();return new Msg91BroadcastLiveProvider.Reply(200,accepted);});
+        var result=transport.submit(canonical,prepared,"synthetic_auth_key");
+        assertAll(() -> assertThat(result.status()).isEqualTo(NotificationSubmissionResult.Status.UNKNOWN),
+            () -> assertThat(calls.get()).isZero());
     }
     @Test void realFakeHttpAcceptanceMalformedAndRejectionAreDecodedWithoutRetries() throws Exception {
         try(var fixture=new FakeHttp(0,200,accepted)) {
