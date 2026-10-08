@@ -9,3 +9,12 @@ docs/security-remediation/acceptance-runtime-os-patches-dev-release.json text eo
 docs/security-remediation/acceptance-portrait-metadata-dev-release.json text eol=lf
 docs/security-remediation/acceptance-runtime-patch-cycle-dev-release.json text eol=lf
 docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json -text whitespace=cr-at-eol
+# Keep new source/local capture hashes stable across Windows checkouts.
+docs/security-remediation/acceptance-native-runtime-prerequisites.json text eol=lf
+docs/security-remediation/acceptance-upstream-native-followup.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-owner-readback.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-provider-review.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-restore-review.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-platform-local.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-coverage-local.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-followup-local.json text eol=lf

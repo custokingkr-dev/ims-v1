@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "checkedAtUtc": "2026-10-08T09:48:09.016306+00:00",
+  "readOnly": true,
+  "noCloudMutation": true,
+  "ttl": {
+    "database": "ims-dashboard-dev",
+    "documentId": "expired-5d010f4bf88d45efb59105858cdf18aa69b1ae9c93dcd41b0c69924f5b4680ad",
+    "originalExpiry": "2026-10-06T09:47:58.010Z",
+    "priorGetStatus": 200,
+    "priorObservedAtUtc": "2026-10-07T13:24:20.896Z",
+    "databaseGetStatus": 200,
+    "documentGetStatus": 404,
+    "physicalAbsenceObserved": true,
+    "ttlDeletionAttributionProven": false,
+    "principal": "Current operator GET-only observation; not dashboard service-account IAM retest",
+    "documentContentLogged": false,
+    "activePolicyReadback": {
+      "readable": true,
+      "rawMetadataSha256": "584b3471d91b7baa116df45d3d3a0953470f8e83579fe2655c96934dde347a3f",
+      "field": "expiresAt",
+      "state": "ACTIVE"
+    }
+  },
+  "repository": {
+    "repository": "custokingkr-dev/ims-v1",
+    "apiSucceeded": true,
+    "permissions": {
+      "admin": false,
+      "maintain": false,
+      "push": true,
+      "triage": true,
+      "pull": true
+    },
+    "canAdministerProtection": false,
+    "devProtectionReadbackSucceeded": true,
+    "devProtected": false
+  },
+  "dashboardConfiguration": {
+    "dedicatedOAuthSecretMetadataReadable": false,
+    "secretValuesRead": false,
+    "unrelatedOAuthReuse": false,
+    "secretNotFound": true,
+    "dashboardServiceMetadataReadable": false,
+    "serviceNotFound": true,
+    "literalEnvironmentValuesNotRead": true
+  },
+  "evidenceWorktreeCommit": "d87d441f7fa145ea8c7e5e82592437f16e96fd49",
+  "dashboardDatabase": {
+    "readable": true,
+    "rawMetadataSha256": "8297d35a8cfc9825243a8a91759a6e0f5dbfe9754f618652d9d9bddaf8fe05dd",
+    "database": "ims-dashboard-dev",
+    "type": "FIRESTORE_NATIVE",
+    "region": "asia-south2",
+    "deletionProtection": "DELETE_PROTECTION_ENABLED"
+  },
+  "egressAvailability": {
+    "defaultSubnet": {
+      "readable": true,
+      "rawMetadataSha256": "879c8313f89f5e8f78a4863338c531aee3445e6f1a9edf4342448238f9cf6a16",
+      "privateGoogleAccess": false
+    },
+    "explicitEgressFirewallReadback": {
+      "readable": true,
+      "rawMetadataSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "ruleCount": 0,
+      "activeRuleCount": 0
+    },
+    "regionalRouters": {
+      "readable": true,
+      "rawMetadataSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "routerCount": 0,
+      "natConfigurationCount": 0
+    },
+    "serviceNetworkAnnotations": [
+      {
+        "service": "identity-service",
+        "readable": true,
+        "rawMetadataSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+        "vpcEgress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      },
+      {
+        "service": "school-core-service",
+        "readable": true,
+        "rawMetadataSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+        "vpcEgress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      },
+      {
+        "service": "operations-service",
+        "readable": true,
+        "rawMetadataSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+        "vpcEgress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      },
+      {
+        "service": "platform-service",
+        "readable": true,
+        "rawMetadataSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+        "vpcEgress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      },
+      {
+        "service": "billing-service",
+        "readable": true,
+        "rawMetadataSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+        "vpcEgress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    ],
+    "effectiveOrganizationPoliciesOrPacketPathProven": false,
+    "annotationsOnlyRefreshedAtUtc": "2026-10-08T09:51:55.296777+00:00",
+    "literalEnvironmentValuesExcludedFromNarrowReadback": true
+  },
+  "edgeAvailability": {
+    "cloudRunDomainMappings": {
+      "readable": true,
+      "rawMetadataSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "count": 0
+    },
+    "externalManagedForwardingRules": {
+      "readable": true,
+      "rawMetadataSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "count": 0
+    },
+    "sslCertificates": {
+      "readable": true,
+      "rawMetadataSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "count": 0
+    },
+    "ownedHostnameAndCostPolicyApproved": false,
+    "activeWafAndCutoverAcceptanceProven": false
+  },
+  "remainingDependencies": [
+    "Repository administrator for reviewed branch protection if admin remains false",
+    "Owned dev hostname and approved infrastructure budget before edge/WAF cutover",
+    "Dedicated dashboard OAuth registration/callback/identity allowlist and managed secret references before web deployment",
+    "Reviewed allowed outbound destinations and compatible actual network enforcement before egress acceptance",
+    "External selected vendor contracts/provider authorization, governed restore lineage and approved retention/RPO/RTO/SLO policies remain separate owner inputs"
+  ],
+  "ownerIndependentSourceGapsAvailable": [
+    {
+      "scope": "Egress preparation",
+      "action": "Parameterize reviewed network/subnet/tag settings and prepare disabled-by-default routing/NAT/firewall module plus controlled local validation",
+      "limitation": "Public HTTPS image imports are supported; a restrictive destination policy cannot be invented or applied without approved inventory and connectivity acceptance"
+    },
+    {
+      "scope": "Dashboard",
+      "action": "Existing shared-state source controls and TTL observations can be maintained; do not reuse unrelated OAuth or bypass web auth",
+      "limitation": "No web login acceptance without dedicated callback/client/allowlist configuration"
+    }
+  ],
+  "scope": "Fresh fixed-project GET/list metadata, existing marked synthetic TTL GET, no secret version access, no business rows, no provider traffic, no configuration/IAM/API/deploy/cleanup mutation."
+}

@@ -56,7 +56,7 @@ class GenericNotificationReportIntegrationTest {
         assertThat(owner.sql("SELECT NOT(rolsuper OR rolbypassrls OR rolinherit OR rolcreaterole OR rolcreatedb) FROM pg_roles WHERE rolname='ims_platform_rt'").query(Boolean.class).single()).isTrue();
     }
     @AfterAll static void stop(){if(pg!=null)pg.stop();}
-    @BeforeEach void clean(){owner.sql("TRUNCATE notification.generic_delivery_reports,notification.generic_delivery_results,notification.generic_submissions,notification.notification_delivery_attempts,notification.notification_inbox_events,reporting.student_projection_tombstones").update();}
+    @BeforeEach void clean(){owner.sql("TRUNCATE notification.generic_unknown_report_assertions,notification.generic_delivery_reports,notification.generic_delivery_results,notification.generic_submissions,notification.notification_delivery_attempts,notification.notification_inbox_events,reporting.student_projection_tombstones").update();}
     private void seed(String submission,String inbox) {
         owner.sql("INSERT INTO notification.generic_submissions(event_id,school_id,request_sha256,status,correlation_id,provider_request_id,submitted_at) VALUES(:event,10,:hash,:status,:correlation,:provider,now()-interval '1 minute')")
                 .param("event",EVENT).param("hash",REQUEST).param("status",submission).param("correlation",NotificationSubmissionResult.correlationId(EVENT))
@@ -71,6 +71,68 @@ class GenericNotificationReportIntegrationTest {
     private boolean apply(GenericNotificationReport report){return Boolean.TRUE.equals(tx.execute(t->reports.reconcile(report)));}
     private String delivery(){return owner.sql("SELECT delivery_status FROM notification.generic_delivery_results WHERE event_id=:event").param("event",EVENT).query(String.class).single();}
     private long evidenceCount(){return owner.sql("SELECT count(*) FROM notification.generic_delivery_reports").query(Long.class).single();}
+    private boolean assertion(GenericNotificationReport report) {
+        return Boolean.TRUE.equals(tx.execute(t->reports.recordUnknownAssertion(new com.custoking.ims.platformservice.application.GenericNotificationUnknownEvidence(report,"reports@synthetic.iam.gserviceaccount.com"))));
+    }
+    private long assertions(){return owner.sql("SELECT count(*) FROM notification.generic_unknown_report_assertions").query(Long.class).single();}
+    @Test void unknownAssertionsAreUnverifiedAppendOnlyAndNeverRecoverOrResend() {
+        seed("UNKNOWN","UNKNOWN");var first=report(GenericNotificationReport.Status.ACCEPTED,"b");
+        assertThat(assertion(first)).isTrue();assertThat(assertion(first)).isTrue();assertThat(assertions()).isEqualTo(1);
+        var conflict=new GenericNotificationReport(10,EVENT,REQUEST,first.correlationId(),"different-claim",first.status(),first.occurredAt(),"c".repeat(64));
+        assertThat(assertion(conflict)).isTrue();assertThat(assertions()).isEqualTo(2);
+        assertThat(owner.sql("SELECT DISTINCT assertion_kind FROM notification.generic_unknown_report_assertions").query(String.class).single()).isEqualTo("UNVERIFIED_OPERATOR_ASSERTION");
+        assertThat(owner.sql("SELECT status FROM notification.generic_submissions").query(String.class).single()).isEqualTo("UNKNOWN");
+        assertThat(owner.sql("SELECT provider_request_id FROM notification.generic_submissions").query(String.class).optional()).isEmpty();
+        assertThat(owner.sql("SELECT status FROM notification.notification_inbox_events").query(String.class).single()).isEqualTo("UNKNOWN");
+        assertThat(owner.sql("SELECT count(*) FROM notification.generic_delivery_results").query(Long.class).single()).isZero();
+        assertThat((Boolean)tx.execute(t->submissions.reserve(EVENT,10,REQUEST))).isFalse();
+        assertThatThrownBy(()->owner.sql("UPDATE notification.generic_unknown_report_assertions SET claimed_provider_request_id='rewritten'").update()).hasMessageContaining("append-only");
+        assertThatThrownBy(()->owner.sql("DELETE FROM notification.generic_unknown_report_assertions").update()).hasMessageContaining("append-only");
+    }
+    @Test void unknownAssertionErasureRejectsLateEvidenceAndPreservesQuarantine() {
+        seed("UNKNOWN","UNKNOWN");assertThat(assertion(report(GenericNotificationReport.Status.ACCEPTED,"b"))).isTrue();
+        owner.sql("INSERT INTO reporting.student_projection_tombstones(student_id,deleted_at) VALUES(301,now())").update();
+        assertThat(assertion(report(GenericNotificationReport.Status.ACCEPTED,"c"))).isFalse();assertThat(assertions()).isEqualTo(1);
+        assertThat(owner.sql("SELECT status FROM notification.notification_inbox_events").query(String.class).single()).isEqualTo("SUPPRESSED");
+        assertThat(owner.sql("SELECT status FROM notification.generic_submissions").query(String.class).single()).isEqualTo("UNKNOWN");
+    }
+    @Test void unknownAssertionsRequireExactBindingAndFreshTime() {
+        seed("UNKNOWN","UNKNOWN");var r=report(GenericNotificationReport.Status.ACCEPTED,"b");
+        for(var bad:List.of(new GenericNotificationReport(20,EVENT,REQUEST,r.correlationId(),PROVIDER,r.status(),r.occurredAt(),r.evidenceSha256()),
+            new GenericNotificationReport(10,EVENT,"d".repeat(64),r.correlationId(),PROVIDER,r.status(),r.occurredAt(),r.evidenceSha256()),
+            new GenericNotificationReport(10,EVENT,REQUEST,r.correlationId(),PROVIDER,r.status(),r.occurredAt().minusDays(1),r.evidenceSha256()),
+            new GenericNotificationReport(10,EVENT,REQUEST,r.correlationId(),PROVIDER,r.status(),r.occurredAt().plusDays(1),r.evidenceSha256()))) assertThat(assertion(bad)).isFalse();
+        assertThat(assertions()).isZero();
+        for(String state:List.of("ACCEPTED","SUBMITTING","REJECTED")){clean();seed(state,state);assertThat(assertion(r)).isFalse();}
+    }
+    @Test void unknownAssertionConcurrentDuplicateAndCapAreBounded() throws Exception {
+        seed("UNKNOWN","UNKNOWN");var same=report(GenericNotificationReport.Status.ACCEPTED,"b");
+        try(var pool=Executors.newFixedThreadPool(2)) {
+            var a=pool.submit(()->assertion(same));var b=pool.submit(()->assertion(same));
+            assertThat(a.get(10,TimeUnit.SECONDS)).isTrue();assertThat(b.get(10,TimeUnit.SECONDS)).isTrue();
+        }
+        assertThat(assertions()).isEqualTo(1);
+        for(int n=0;n<14;n++) {
+            var next=new GenericNotificationReport(10,EVENT,REQUEST,same.correlationId(),"claim-"+n,same.status(),same.occurredAt(),same.evidenceSha256());assertThat(assertion(next)).isTrue();
+        }
+        try(var pool=Executors.newFixedThreadPool(2)) {
+            var c=pool.submit(()->assertion(report(GenericNotificationReport.Status.ACCEPTED,"c")));
+            var d=pool.submit(()->assertion(report(GenericNotificationReport.Status.ACCEPTED,"d")));
+            assertThat(List.of(c.get(10,TimeUnit.SECONDS),d.get(10,TimeUnit.SECONDS))).containsExactlyInAnyOrder(true,false);
+        }
+        assertThat(assertion(same)).isTrue();assertThat(assertions()).isEqualTo(16);
+    }
+    @Test void unknownAssertionRuntimeAclRlsAndRollbackRemainBounded() {
+        seed("UNKNOWN","UNKNOWN");var r=report(GenericNotificationReport.Status.ACCEPTED,"b");
+        assertThatThrownBy(()->tx.executeWithoutResult(t->{reports.recordUnknownAssertion(new com.custoking.ims.platformservice.application.GenericNotificationUnknownEvidence(r,"reports@synthetic.iam.gserviceaccount.com"));throw new IllegalStateException("rollback");})).hasMessage("rollback");assertThat(assertions()).isZero();
+        assertThat(assertion(r)).isTrue();
+        assertThat(owner.sql("SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid='notification.generic_unknown_report_assertions'::regclass").query(Boolean.class).single()).isTrue();
+        for(String privilege:List.of("UPDATE","DELETE","TRUNCATE")) assertThat(owner.sql("SELECT has_table_privilege('ims_platform_rt','notification.generic_unknown_report_assertions',:privilege)").param("privilege",privilege).query(Boolean.class).single()).isFalse();
+        assertThat(owner.sql("SELECT has_column_privilege('ims_platform_rt','notification.generic_unknown_report_assertions','received_at','INSERT')").query(Boolean.class).single()).isFalse();
+        tx.executeWithoutResult(t->{app.sql("SELECT set_config('app.bypass_rls','off',true),set_config('app.current_school_id','20',true)").query().singleRow();assertThat(app.sql("SELECT count(*) FROM notification.generic_unknown_report_assertions").query(Long.class).single()).isZero();});
+        assertThatThrownBy(()->tx.executeWithoutResult(t->{app.sql("UPDATE notification.generic_unknown_report_assertions SET claimed_provider_request_id='rewritten'").update();})).isInstanceOf(org.springframework.dao.DataAccessException.class);
+        assertThatThrownBy(()->tx.executeWithoutResult(t->{app.sql("DELETE FROM notification.generic_unknown_report_assertions").update();})).isInstanceOf(org.springframework.dao.DataAccessException.class);
+    }
     @Test void repeatedAcceptedReportsNeverRewriteSubmissionOrMakeAnyReservationRetryable() {
         seed("ACCEPTED","ACCEPTED");var delivered=report(GenericNotificationReport.Status.DELIVERED,"b");
         assertThat(apply(delivered)).isTrue();assertThat(apply(delivered)).isTrue();assertThat(evidenceCount()).isEqualTo(1);assertThat(delivery()).isEqualTo("DELIVERED");

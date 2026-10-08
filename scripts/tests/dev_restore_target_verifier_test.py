@@ -25,13 +25,40 @@ def rows():
 
 class RestoreTargetTests(unittest.TestCase):
     def test_all_repository_bound_bodies_available(self):
-        self.assertEqual(7,v.verify_fences(rows()))
+        self.assertEqual(12,v.verify_fences(rows()))
 
     def test_disabled_changed_body_relation_event_and_payload_column_rejected(self):
         for index,value in ((2,'D'),(3,'different'),(4,'BEGIN RETURN NEW; END'),(5,'other'),(6,21),(7,['other'])):
             with self.subTest(index=index):
                 changed=rows();changed[1][index]=value
                 with self.assertRaises(ValueError):v.verify_fences(changed)
+
+    def test_each_new_delivery_fence_missing_disabled_or_changed_rejected(self):
+        for name in ('guard_generic_reserved_inbox','guard_generic_delivery_result',
+                     'guard_generic_delivery_report','suppress_generic_delivery_result','guard_generic_unknown_report_assertion'):
+            for change in ('missing','disabled','body','event'):
+                with self.subTest(name=name,change=change):
+                    data=rows();index=next(i for i,r in enumerate(data) if r[1]==name)
+                    if change=='missing':data.pop(index)
+                    elif change=='disabled':data[index][2]='D'
+                    elif change=='body':data[index][4]='BEGIN RETURN NEW; END'
+                    else:data[index][6]=21
+                    with self.assertRaises(ValueError):v.verify_fences(data)
+
+    def test_json_helper_body_signature_and_security_settings_rejected(self):
+        body=v.expected_body('reporting','safe_event_json','services/platform-service/src/main/resources/db/migration/reporting/V34__student_inbox_erasure.sql')
+        good=[body,'i',False,None,'25',3802,'plpgsql'];v.verify_helper([good])
+        for index,value in enumerate(['BEGIN RETURN NULL; END','v',True,['search_path=public'],'23',25,'sql']):
+            changed=list(good);changed[index]=value
+            with self.assertRaises(ValueError):v.verify_helper([changed])
+        with self.assertRaises(ValueError):v.verify_helper([good,good])
+
+    def test_each_selected_unknown_safety_flag_fails_closed(self):
+        v.verify_unknown_safety((True,)*6)
+        for index in range(6):
+            row=[True]*6;row[index]=False
+            with self.assertRaises(ValueError):v.verify_unknown_safety(row)
+        with self.assertRaises(ValueError):v.verify_unknown_safety((True,)*5)
 
     def test_missing_fence_rejected(self):
         with self.assertRaises(ValueError):v.verify_fences(rows()[1:])
@@ -50,7 +77,7 @@ class RestoreTargetTests(unittest.TestCase):
             self.assertFalse(proof['physicalCatalogConnectionVerified'])
 
     def test_changed_ca_after_connection_rejected(self):
-        with patch.object(v,'metadata'),patch.object(v,'validate_pair',side_effect=[('10.1.1.2','ca','a'*64),('10.1.1.2','other','b'*64)]),patch.object(v,'inspect_catalog',return_value=7):
+        with patch.object(v,'metadata'),patch.object(v,'validate_pair',side_effect=[('10.1.1.2','ca','a'*64),('10.1.1.2','other','b'*64)]),patch.object(v,'inspect_catalog',return_value=12):
             with self.assertRaises(ValueError):v.run(TARGET,True)
 
     def test_shared_public_or_wrong_identity_metadata_rejected(self):

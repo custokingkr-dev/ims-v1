@@ -1,5 +1,7 @@
 # Remaining security work and dev completion evidence — 2026-10-08
 
+The latest [2026-10-08 provider/restore implementation follow-up](remaining-implementation-followup.md) adds bounded unverified UNKNOWN evidence, a dormant documented SMS decoder, expanded selected restore fences and offline historical-intent reconciliation. It also saves [passive native prerequisite observations](acceptance-native-runtime-prerequisites.json) and [fresh primary advisory research](acceptance-upstream-native-followup.json). These are new source/local/dated findings; CI/dev acceptance is separate. The nine owner/action rows, full recovery, live provider contracts, residual advisory review and local custody remain open. Earlier release/evidence entries below are preserved.
+
 PR 328, PR 329 and PR 330 are merged into dev. The accepted PR 330 release binds the committed OS patch cycle to immutable image identities and installs the supported libpng security revision after its exact vendor changelog was observed. Implementation, test and actual deployment evidence is linked below. The complete security plan remains open: the nine owner-dependent action rows, upstream advisory follow-up and local snapshot custody require the completion evidence described in the saved plans. Silence does not supply configuration, governance, irreversible deletion approval or a risk exception. Production has not been changed.
 
 ## Completed changes and observed scope

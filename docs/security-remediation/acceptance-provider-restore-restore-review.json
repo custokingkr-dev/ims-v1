@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-08T10:14:15.970425+00:00",
+  "verdict": "NO_BLOCKING_DEFECT_IDENTIFIED_IN_REVIEWED_SCOPE",
+  "reviewType": "Read-only source and local report consistency; no test rerun/cloud",
+  "sourceChecks": {
+    "scripts/security/verify-dev-restore-target.py": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "b1fb95c2d08c00726f5d039e78251e8496800f6bac667c7ea8153d82bbeb3878"
+    },
+    "scripts/security/verify-dev-erasure-coverage.py": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "4aa6401e32ff79346132878576aa22b8e7a948276b64568d31514d5e8ef0abc5"
+    },
+    "scripts/tests/dev_restore_target_verifier_test.py": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "999386441fd08990f336682dd6643a6013c6632f8c259bdac6ff00ff3982c12f"
+    },
+    "scripts/tests/dev_restore_target_verifier_postgres_test.py": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "e6da8fa905e6dd223d0b2de008896743005a82b6ca6111249d59c06cac29b5ff"
+    },
+    "scripts/tests/dev_erasure_coverage_test.py": {
+      "reportedRawSha256Matches": true,
+      "normalizedLfSha256": "ee4a2ca134d48f4daf9fbc9ff5716911bda8b447fa7a2e0fadc5fe0c8910dba6"
+    }
+  },
+  "migrationSourceHashMatches": true,
+  "localReport": {
+    "path": "tmp\\restore-completeness-followup-local.json",
+    "sha256": "77ecdce1280d2686a4458a7085a6dd82e2d148e06d5840c656203b77b64ab83a",
+    "reportedTests": {
+      "reported": 42,
+      "passed": 42,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "tmp/restore-completeness-final-tests.log",
+      "optimizedPython": true,
+      "seconds": 46.074,
+      "logSha256": "f864c72d7c456dbb315518838b9c10ec92459c2bc3150ef6f63c5485bc4ec1a9"
+    },
+    "logShows42AndOK": true,
+    "logRawSha256Matches": true
+  },
+  "checks": [
+    "Bounded regular FD reader now closes earlier cap/growth/nonregular gap; local regular-file semantics, no remote filesystem whole deadline claimed",
+    "Java canonical identity SHA and UUIDv3 mapping match; independent literal JDK golden added",
+    "Strict field/type/epoch64/intent1000/positive signed-long generation and ID limits; duplicate intents/receipts rejected",
+    "12 selected function bodies plus relation/event shapes and exact immutable invoker safe_event_json helper checked",
+    "V18 append-only trigger31 plus selected FORCE RLS/policy presence and forbidden effective app_rt/ims_platform_rt privileges checked",
+    "Old-epoch/external-only preserved; global, physical, lineage, restorationReady and deliveryResume explicitly false",
+    "Final V18 effective all-column UPDATE and received_at INSERT checks close limited ACL omission; assertion-kind INSERT/DELETE/TRUNCATE remain checked"
+  ],
+  "concerns": [
+    "RLS enabled/FORCE/named policy presence is not full policy predicate equivalence or exclusion of all permissive policies",
+    "Selected local chains are not full Flyway/application/lineage/physical/coverage/freeze/replay proof",
+    "Original old20 replay generator remains prototype; new inventory output is not general incarnation-bound executor",
+    "Local report hashes are raw checkout bytes; normalized LF hashes separately recorded for portable provenance"
+  ],
+  "cloudCalls": 0,
+  "sourceMutation": false,
+  "priorReviewCheckedAtUtc": "2026-10-08T10:10:26.228670+00:00",
+  "humanDocumentationReview": {
+    "paths": [
+      "docs/security-remediation/remaining-implementation-followup.md",
+      "docs/security-remediation/dev-restore-target-verifier.md"
+    ],
+    "scopesAccurate": true,
+    "pendingCorrection": "remaining-implementation-followup.md still says41 optimized restore tests at review; root updating42",
+    "nativeScope": "Dated passive dependency observation explicitly excludes dynamic loading/nested natives/live reachability, no VEX or universal nonreachability",
+    "encoding": {
+      "docs/security-remediation/remaining-implementation-followup.md": {
+        "mojibakeMarkersFound": false
+      },
+      "docs/security-remediation/dev-restore-target-verifier.md": {
+        "mojibakeMarkersFound": false
+      }
+    }
+  }
+}

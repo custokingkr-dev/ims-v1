@@ -1,6 +1,7 @@
 package com.custoking.ims.platformservice.persistence;
 
 import com.custoking.ims.platformservice.application.GenericNotificationReport;
+import com.custoking.ims.platformservice.application.GenericNotificationUnknownEvidence;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -59,6 +60,39 @@ public class GenericNotificationReportRepository {
             UPDATE notification.generic_delivery_results SET delivery_status=:status,updated_at=now()
             WHERE event_id=:event AND school_id=:school
             """).param("status", next).param("event", report.eventId()).param("school", report.schoolId()).update();
+        return true;
+    }
+    public boolean recordUnknownAssertion(GenericNotificationUnknownEvidence evidence) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Evidence requires a transaction");
+        var report = evidence.assertion();
+        jdbc.sql("SELECT set_config('app.bypass_rls','off',true)").query(String.class).single();
+        jdbc.sql("SELECT set_config('app.current_school_id',:school,true)").param("school",Long.toString(report.schoolId())).query(String.class).single();
+        jdbc.sql("SELECT set_config('statement_timeout','5000',true)").query(String.class).single();
+        jdbc.sql("SELECT set_config('lock_timeout','2000',true)").query(String.class).single();
+        boolean eligible = jdbc.sql("""
+            SELECT s.submitted_at FROM notification.generic_submissions s
+            JOIN notification.notification_inbox_events i ON i.event_id=s.event_id
+            WHERE s.event_id=:event AND s.school_id=:school AND s.request_sha256=:request
+              AND s.correlation_id=:correlation AND s.status='UNKNOWN' AND s.provider_request_id IS NULL
+              AND i.status='UNKNOWN' AND :at>=s.submitted_at-interval '5 minutes' AND :at<=now()+interval '5 minutes'
+            FOR UPDATE OF i
+            """).param("event",report.eventId()).param("school",report.schoolId())
+            .param("request",report.requestSha256()).param("correlation",report.correlationId())
+            .param("at",report.occurredAt()).query(OffsetDateTime.class).optional().isPresent();
+        if (!eligible) return false;
+        boolean replay=jdbc.sql("SELECT EXISTS(SELECT 1 FROM notification.generic_unknown_report_assertions WHERE assertion_sha256=:hash)")
+            .param("hash",evidence.attestationSha256()).query(Boolean.class).single();
+        if (replay) return true;
+        int count=jdbc.sql("SELECT count(*) FROM notification.generic_unknown_report_assertions WHERE event_id=:event")
+            .param("event",report.eventId()).query(Integer.class).single();
+        if (count>=16) return false;
+        jdbc.sql("""
+            INSERT INTO notification.generic_unknown_report_assertions
+             (assertion_sha256,event_id,school_id,request_sha256,correlation_id,claimed_provider_request_id,evidence_sha256,asserted_at,reporter_service_account)
+            VALUES(:hash,:event,:school,:request,:correlation,:provider,:evidence,:at,:reporter) ON CONFLICT DO NOTHING
+            """).param("hash",evidence.attestationSha256()).param("event",report.eventId()).param("school",report.schoolId())
+            .param("request",report.requestSha256()).param("correlation",report.correlationId()).param("provider",report.providerRequestId())
+            .param("evidence",report.evidenceSha256()).param("at",report.occurredAt()).param("reporter",evidence.reporterServiceAccount()).update();
         return true;
     }
     static String merge(String previous, String next) {

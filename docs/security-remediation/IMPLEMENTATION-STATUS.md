@@ -1,5 +1,9 @@
 # Security implementation and verification ledger
 
+## Latest implementation follow-up — 2026-10-08
+
+[Provider/restore source and fix plan](remaining-implementation-followup.md) implements a separate append-only, tenant-bound UNKNOWN operator assertion with no state promotion/resend, dormant strict SMS v3 decoding, twelve selected restore guards plus their shared helper, and bounded offline historical/external-only intent reconciliation. [Passive five-image native observations](acceptance-native-runtime-prerequisites.json) and [fresh eleven-advisory primary research](acceptance-upstream-native-followup.json) refine the remaining upstream plan without dismissing findings. This checkpoint precedes its own mandatory CI/dev acceptance; the whole security plan remains open. The later evidence is scoped separately from all historical checkpoints below.
+
 The requested multi-agent work tracks 34 findings and 12 assurance tasks. This ledger separates implemented source, controlled tests and actual live acceptance. **PR 328, PR 329 and PR 330 are deployed to dev. Their independently verified releases, package inventories, public denials and actual one-photo erasure evidence are saved below. The initial full-refresh run passed its workflow but failed independent package acceptance; PR 330 corrects that cache defect and its subsequent release independently passed all-five package and seven-runtime acceptance. The security plan still has open owner-dependent implementation and acceptance criteria.** Production has not been changed.
 
 ## Accepted immutable patch-cycle release — 2026-10-08

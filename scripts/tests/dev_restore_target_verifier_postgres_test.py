@@ -52,6 +52,7 @@ class RestorePostgresTests(unittest.TestCase):
                     for path in paths:
                         cls.sql('BEGIN;SET LOCAL ROLE appuser;SET LOCAL search_path TO '+schema+',public;SET LOCAL app.bypass_rls=\'on\';\n'+path.read_text(encoding='utf-8')+'\nCOMMIT;')
                         cls.migrations+=1
+            cls.sql('CREATE ROLE ims_platform_rt NOLOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT;')
             cls.sql('CREATE ROLE ims_school_core_rt NOLOGIN NOSUPERUSER NOBYPASSRLS NOINHERIT;'
                     'GRANT USAGE ON SCHEMA student,tenant_school TO ims_school_core_rt;'
                     'GRANT SELECT,INSERT ON student.erasure_journal_receipts TO ims_school_core_rt;'
@@ -87,9 +88,43 @@ chown postgres:postgres server.key server.pem ca.pem
         with patch.dict(os.environ,{'IMS_RESTORE_VERIFY_PASSWORD':'controlled-local-only'}):
             return v._catalog('127.0.0.1',cert or self.ca,self.port)
 
+    def test_all_four_delivery_fences_disable_rejected_by_actual_catalog(self):
+        for trigger in ('guard_generic_reserved_inbox','guard_generic_delivery_result',
+                        'guard_generic_delivery_report','suppress_generic_delivery_result','guard_generic_unknown_report_assertion'):
+            table=v.TRIGGER_SHAPES[trigger][0]
+            try:
+                self.sql('ALTER TABLE notification.'+table+' DISABLE TRIGGER '+trigger+';')
+                with self.assertRaises(ValueError):self.catalog()
+            finally:self.sql('ALTER TABLE notification.'+table+' ENABLE TRIGGER '+trigger+';')
+            self.assertEqual(12,self.catalog())
+
+    def test_changed_shared_json_helper_rejected_then_restored(self):
+        path='services/platform-service/src/main/resources/db/migration/reporting/V34__student_inbox_erasure.sql'
+        try:
+            self.sql("CREATE OR REPLACE FUNCTION reporting.safe_event_json(value text) RETURNS jsonb LANGUAGE plpgsql IMMUTABLE AS $$BEGIN RETURN '{}'::jsonb; END$$;")
+            with self.assertRaises(ValueError):self.catalog()
+        finally:
+            self.sql('CREATE OR REPLACE FUNCTION reporting.safe_event_json(value text) RETURNS jsonb LANGUAGE plpgsql IMMUTABLE AS $$'+v.expected_body('reporting','safe_event_json',path)+'$$;')
+        self.assertEqual(12,self.catalog())
+
+    def test_unknown_assertion_force_and_runtime_dml_boundaries(self):
+        table='notification.generic_unknown_report_assertions'
+        for role in ('app_rt','ims_platform_rt'):
+            for action in ('force','delete','truncate','assertion_kind','received_at','column_update'):
+                try:
+                    if action=='force':self.sql('ALTER TABLE '+table+' NO FORCE ROW LEVEL SECURITY;')
+                    elif action in ('assertion_kind','received_at'):self.sql('GRANT INSERT('+action+') ON '+table+' TO '+role+';')
+                    elif action=='column_update':self.sql('GRANT UPDATE(evidence_sha256) ON '+table+' TO '+role+';')
+                    else:self.sql('GRANT '+action.upper()+' ON '+table+' TO '+role+';')
+                    with self.assertRaises(ValueError):self.catalog()
+                finally:
+                    self.sql('ALTER TABLE '+table+' FORCE ROW LEVEL SECURITY;')
+                    self.sql('REVOKE DELETE,TRUNCATE ON '+table+' FROM '+role+';REVOKE INSERT(assertion_kind,received_at),UPDATE(evidence_sha256) ON '+table+' FROM '+role+';')
+                self.assertEqual(12,self.catalog())
+
     def test_all_twelve_schema_sql_chains_and_correct_tls_ca(self):
         self.assertGreater(self.migrations,200)
-        self.assertEqual(7,self.catalog())
+        self.assertEqual(12,self.catalog())
 
     def test_wrong_unique_ca_connection_rejected(self):
         import psycopg
@@ -99,7 +134,7 @@ chown postgres:postgres server.key server.pem ca.pem
     def test_inherited_gss_requirement_cannot_bypass_exact_tls_anchor(self):
         import psycopg
         with patch.dict(os.environ,{'PGGSSENCMODE':'require'}):
-            self.assertEqual(7,self.catalog())
+            self.assertEqual(12,self.catalog())
             with self.assertRaises(psycopg.OperationalError) as caught:self.catalog(self.wrong)
             self.assertIn('certificate verify failed',str(caught.exception).lower())
 
@@ -155,7 +190,7 @@ chown postgres:postgres server.key server.pem ca.pem
                  "GRANT USAGE ON SCHEMA restore_shadow TO ims_restore_verify;"
                  "GRANT SELECT ON restore_shadow.pg_roles TO ims_restore_verify;"
                  "ALTER ROLE ims_restore_verify SET search_path=restore_shadow,public;")
-        try:self.assertEqual(7,self.catalog())
+        try:self.assertEqual(12,self.catalog())
         finally:self.sql('ALTER ROLE ims_restore_verify RESET search_path;DROP SCHEMA restore_shadow CASCADE;')
 
     def test_runtime_privileged_role_attributes_rejected(self):
