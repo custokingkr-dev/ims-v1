@@ -1,0 +1,2623 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T15:17:33.262275+00:00",
+  "priorSourceCheckpoint": "caaf9c7ef045dbc475e945d15b1afdde022b16c3",
+  "originalRawProof": "tmp/governance-process-tree-portable-handle-final-proof.json",
+  "originalRawDigestSha256": "381c476c8bdef4204697587ca4c558c29165433ab1a01cc5d3c967fa3a2378bf",
+  "captureNormalization": "New wrapper contains parsed original capture; original raw bytes remain unchanged.",
+  "finalPortableCapture": {
+    "schemaVersion": 1,
+    "capturedAtUtc": "2026-10-08T15:14:39.444623+00:00",
+    "status": "PASS_PORTABLE_FOCUSED_SOURCE_FROZEN",
+    "change": "Test-only reentrant sleep guard; nested POSIX subprocess.wait sleeps use saved real_sleep. Clock crosses deadline only after real child and owned readers finish. Production deadline assertion unchanged. Test observation waits at most1s and only within existing4s whole-fixture deadline on exact opened child handle, still requiring WAIT_OBJECT_0.",
+    "sources": [
+      {
+        "path": "scripts/verify-github-governance-checks.py",
+        "rawSha256": "fb4fd371a726f54d1b8b352c75d299c33a033fbe4cf98d226d6738b4655576a2",
+        "normalizedLfSha256": "32c06ae9b392427786749a62c726792e42d4b66a9238fcd1cf7c3d564d9bc454"
+      },
+      {
+        "path": "scripts/tests/test_verify_github_governance_checks.py",
+        "rawSha256": "fd6be150087222d2011fe9d261b841dfc668a53b0ce3a27833836c2128526591",
+        "normalizedLfSha256": "2e632d28909d46eee94130b97b27456f6bb954a1b9a7644caf095afadf63c7c3"
+      }
+    ],
+    "finalObservations": [
+      {
+        "platform": "Windows",
+        "reported": 21,
+        "passed": 21,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "optimized": true,
+        "log": "tmp/governance-process-tree-portable-owned-signal-windows-tests.log",
+        "rawLogSha256": "44f6befcdbf97137712b22c4b02a3f20184b0c113a0b7e9e9060d9981ccc0764"
+      },
+      {
+        "platform": "Linux local Docker",
+        "reported": 21,
+        "passed": 21,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "optimized": true,
+        "log": "tmp/governance-process-tree-portable-owned-signal-linux-tests.log",
+        "rawLogSha256": "d8963b25c747ecd68e3d98a0283fe09b81051f58ca3ebbf35d41c4772bdb17a5"
+      }
+    ],
+    "countsNotAdded": true,
+    "linuxEnvironment": {
+      "alreadyPresentImageId": "sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f",
+      "python": "3.12",
+      "network": "none",
+      "pull": "never",
+      "readOnly": true,
+      "capabilities": "none",
+      "memoryMiB": 256,
+      "pidsLimit": 64,
+      "fixtureFilesCopied": 3,
+      "originalWorkspaceMounted": false
+    },
+    "preservedInitialLinuxCiFailure": {
+      "runId": 37798111179,
+      "sourceSha": "caaf9c7ef045dbc475e945d15b1afdde022b16c3",
+      "log": "tmp/pr338-initial-static-architecture-failed.log",
+      "rawLogSha256": "ee5e8fbc404e3cec6a828c2a26d49ea16da091534de667e588fc9bce270f14d4",
+      "failure": "Recursive mocked sleep via POSIX Popen.wait; deadline regression failed"
+    },
+    "preservedFirstWindowsAttempt": {
+      "log": "tmp/governance-process-tree-portable-windows-tests.log",
+      "rawLogSha256": "1e4d52744bae6d951ab47b62662dc0596d6901a466473b35339723eae3a3afeb",
+      "reported": 21,
+      "failures": 1,
+      "errors": 0,
+      "scope": "Corrected deadline case passed; existing descendant stop assertion observed WaitForSingleObject258. Same-source second whole run passed; cause not established."
+    },
+    "preservedPrior21Proof": {
+      "path": "tmp/governance-process-tree-deadline-final-proof.json",
+      "rawSha256": "e3ae6824dc882d9045cb29a394f657343eaf846b4e6459a68e530d10513de471"
+    },
+    "pyCompile": "PASS",
+    "diffWhitespace": "PASS",
+    "productionHelperEdited": false,
+    "cloudGithubProviderCalls": 0,
+    "gitMutations": 0,
+    "limitations": [
+      "Local Linux/Windows observations do not substitute corrected-head actual CI",
+      "OS process creation is not absolutely interruptible; cleanup allowance remains separate",
+      "One preexisting Windows descendant-observation failure preserved; cause unresolved, not a claim of deterministic race-free test execution"
+    ],
+    "previousPortableProof": {
+      "path": "tmp\\governance-process-tree-portable-final-proof.json",
+      "rawSha256": "892b9d785dfcb96a38ba220133dcdae1adb1681458db52cc914cfae637b9a9c7",
+      "scope": "Prior reentrancy correction capture preserved unchanged"
+    }
+  },
+  "preservedInitialWorkflowFailure": {
+    "capturedAtUtc": "2026-10-08T15:11:04.449504+00:00",
+    "pullRequest": 338,
+    "sourceHead": "caaf9c7ef045dbc475e945d15b1afdde022b16c3",
+    "baseHead": "fb59aaf7509937515b99ef32d3d3a7ebe3307f6f",
+    "syntheticMerge": "95659ec68bae33ef1b3e347b37539cd2a7f7776f",
+    "mergeParents": [
+      "fb59aaf7509937515b99ef32d3d3a7ebe3307f6f",
+      "caaf9c7ef045dbc475e945d15b1afdde022b16c3"
+    ],
+    "mergeTree": "e33a1b46fc318a45b78fe32577a0ff5a7b6014ed",
+    "headBranch": "security/remaining-execution-boundaries",
+    "decision": "NOT_MERGE_READY",
+    "runs": {
+      "ci": {
+        "id": 37798111179,
+        "head_sha": "caaf9c7ef045dbc475e945d15b1afdde022b16c3",
+        "event": "pull_request",
+        "path": ".github/workflows/ci-pr.yml",
+        "status": "in_progress",
+        "conclusion": null,
+        "run_attempt": 1,
+        "created_at": "2026-10-08T15:07:18Z",
+        "updated_at": "2026-10-08T15:07:40Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179"
+      },
+      "ql": {
+        "id": 37798110794,
+        "head_sha": "caaf9c7ef045dbc475e945d15b1afdde022b16c3",
+        "event": "pull_request",
+        "path": ".github/workflows/codeql-analysis.yml",
+        "status": "in_progress",
+        "conclusion": null,
+        "run_attempt": 1,
+        "created_at": "2026-10-08T15:07:18Z",
+        "updated_at": "2026-10-08T15:07:23Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798110794"
+      }
+    },
+    "jobs": {
+      "ciJobs": [
+        {
+          "id": 113382788285,
+          "name": "duplicate-class-drift",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:22Z",
+          "completed_at": "2026-10-08T15:07:32Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:24Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:24Z",
+              "completed_at": "2026-10-08T15:07:29Z"
+            },
+            {
+              "name": "Check guarded classes have not diverged",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:29Z",
+              "completed_at": "2026-10-08T15:07:29Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-08T15:07:29Z",
+              "completed_at": "2026-10-08T15:07:29Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-08T15:07:29Z",
+              "completed_at": "2026-10-08T15:07:29Z"
+            }
+          ]
+        },
+        {
+          "id": 113382788471,
+          "name": "privacy-technical-controls",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:22Z",
+          "completed_at": "2026-10-08T15:09:06Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:24Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:24Z",
+              "completed_at": "2026-10-08T15:07:27Z"
+            },
+            {
+              "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:27Z",
+              "completed_at": "2026-10-08T15:07:31Z"
+            },
+            {
+              "name": "Audit current, branch, history and release export boundaries",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-08T15:07:31Z",
+              "completed_at": "2026-10-08T15:07:44Z"
+            },
+            {
+              "name": "Run synthetic export and verified-deletion drill",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-08T15:07:44Z",
+              "completed_at": "2026-10-08T15:09:02Z"
+            },
+            {
+              "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-10-08T15:09:02Z",
+              "completed_at": "2026-10-08T15:09:04Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-10-08T15:09:04Z",
+              "completed_at": "2026-10-08T15:09:04Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-10-08T15:09:04Z",
+              "completed_at": "2026-10-08T15:09:04Z"
+            }
+          ]
+        },
+        {
+          "id": 113382788621,
+          "name": "windows-security-helper-validation",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:25Z",
+          "completed_at": "2026-10-08T15:08:48Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:26Z",
+              "completed_at": "2026-10-08T15:07:27Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:27Z",
+              "completed_at": "2026-10-08T15:07:38Z"
+            },
+            {
+              "name": "Verify PowerShell 5 helper serialization and native exit handling",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:38Z",
+              "completed_at": "2026-10-08T15:07:46Z"
+            },
+            {
+              "name": "Verify optimized restore-verifier deadlines and historical coverage on Windows",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-08T15:07:46Z",
+              "completed_at": "2026-10-08T15:07:49Z"
+            },
+            {
+              "name": "Verify immutable runtime patch cycles and release binding on Windows",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-08T15:07:49Z",
+              "completed_at": "2026-10-08T15:08:43Z"
+            },
+            {
+              "name": "Verify Scheduler create and update command arguments",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-08T15:08:43Z",
+              "completed_at": "2026-10-08T15:08:43Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-10-08T15:08:44Z",
+              "completed_at": "2026-10-08T15:08:46Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-08T15:08:46Z",
+              "completed_at": "2026-10-08T15:08:46Z"
+            }
+          ]
+        },
+        {
+          "id": 113382788780,
+          "name": "dev-edge-terraform-validation",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:22Z",
+          "completed_at": "2026-10-08T15:07:44Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:24Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:24Z",
+              "completed_at": "2026-10-08T15:07:27Z"
+            },
+            {
+              "name": "Run hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:27Z",
+              "completed_at": "2026-10-08T15:07:28Z"
+            },
+            {
+              "name": "Validate dev edge and mock-provider acceptance",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-08T15:07:28Z",
+              "completed_at": "2026-10-08T15:07:32Z"
+            },
+            {
+              "name": "Validate persistent dashboard state without a web deployment",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-08T15:07:32Z",
+              "completed_at": "2026-10-08T15:07:36Z"
+            },
+            {
+              "name": "Validate independent dev erasure journal and least-privilege scope",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-08T15:07:36Z",
+              "completed_at": "2026-10-08T15:07:38Z"
+            },
+            {
+              "name": "Validate disabled dev egress preparation and explicit destination boundaries",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-08T15:07:38Z",
+              "completed_at": "2026-10-08T15:07:42Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-08T15:07:42Z",
+              "completed_at": "2026-10-08T15:07:42Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-08T15:07:42Z",
+              "completed_at": "2026-10-08T15:07:42Z"
+            }
+          ]
+        },
+        {
+          "id": 113382788932,
+          "name": "detect / detect",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:22Z",
+          "completed_at": "2026-10-08T15:07:36Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:24Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:24Z",
+              "completed_at": "2026-10-08T15:07:27Z"
+            },
+            {
+              "name": "Detect affected services",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:27Z",
+              "completed_at": "2026-10-08T15:07:32Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-08T15:07:32Z",
+              "completed_at": "2026-10-08T15:07:32Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-08T15:07:32Z",
+              "completed_at": "2026-10-08T15:07:32Z"
+            }
+          ]
+        },
+        {
+          "id": 113382788938,
+          "name": "secret-scan",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:22Z",
+          "completed_at": "2026-10-08T15:07:32Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:24Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:24Z",
+              "completed_at": "2026-10-08T15:07:27Z"
+            },
+            {
+              "name": "Run gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:27Z",
+              "completed_at": "2026-10-08T15:07:30Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-08T15:07:30Z",
+              "completed_at": "2026-10-08T15:07:30Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-08T15:07:30Z",
+              "completed_at": "2026-10-08T15:07:30Z"
+            }
+          ]
+        },
+        {
+          "id": 113382788997,
+          "name": "static-architecture-audits",
+          "status": "completed",
+          "conclusion": "failure",
+          "started_at": "2026-10-08T15:07:22Z",
+          "completed_at": "2026-10-08T15:07:37Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:24Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:24Z",
+              "completed_at": "2026-10-08T15:07:27Z"
+            },
+            {
+              "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:27Z",
+              "completed_at": "2026-10-08T15:07:28Z"
+            },
+            {
+              "name": "Verify generated OpenAPI clients are current",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-08T15:07:28Z",
+              "completed_at": "2026-10-08T15:07:28Z"
+            },
+            {
+              "name": "Test browser contract generation and canonical routing",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-08T15:07:28Z",
+              "completed_at": "2026-10-08T15:07:28Z"
+            },
+            {
+              "name": "Audit offline service boundaries",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-08T15:07:28Z",
+              "completed_at": "2026-10-08T15:07:31Z"
+            },
+            {
+              "name": "Verify financial and workflow contract bindings",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-08T15:07:31Z",
+              "completed_at": "2026-10-08T15:07:31Z"
+            },
+            {
+              "name": "Verify bounded signed transport probe controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-10-08T15:07:31Z",
+              "completed_at": "2026-10-08T15:07:31Z"
+            },
+            {
+              "name": "Test immutable GitHub governance check verification",
+              "status": "completed",
+              "conclusion": "failure",
+              "number": 9,
+              "started_at": "2026-10-08T15:07:31Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Test offline GCP governance audits",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Verify digest-bound image User and database catalog evidence rejection",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Test deployment security admission and isolated native release fixtures",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 12,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Verify guarded dev journal acceptance and PostgreSQL rehearsal under optimization",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 13,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Install isolated restore-verifier test dependency",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 14,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Verify restore-target rejection, historical coverage and real PostgreSQL TLS under optimization",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 15,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Test OpenAPI CI routing invariants",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 16,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Verify immutable runtime patch-cycle identities and workflow binding",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 17,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 33,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 34,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 35,
+              "started_at": "2026-10-08T15:07:33Z",
+              "completed_at": "2026-10-08T15:07:33Z"
+            }
+          ]
+        },
+        {
+          "id": 113382789033,
+          "name": "promotion-source-policy",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:22Z",
+          "completed_at": "2026-10-08T15:07:25Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:23Z"
+            },
+            {
+              "name": "Require dev as the source of main promotions",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:23Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:23Z"
+            }
+          ]
+        },
+        {
+          "id": 113382917815,
+          "name": "service-test (platform-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:38Z",
+          "completed_at": "2026-10-08T15:09:44Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:39Z",
+              "completed_at": "2026-10-08T15:07:40Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:40Z",
+              "completed_at": "2026-10-08T15:07:42Z"
+            },
+            {
+              "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:42Z",
+              "completed_at": "2026-10-08T15:07:44Z"
+            },
+            {
+              "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 4,
+              "started_at": "2026-10-08T15:07:44Z",
+              "completed_at": "2026-10-08T15:07:44Z"
+            },
+            {
+              "name": "Install Node dependencies",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-10-08T15:07:44Z",
+              "completed_at": "2026-10-08T15:07:44Z"
+            },
+            {
+              "name": "Run Maven tests",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-08T15:07:44Z",
+              "completed_at": "2026-10-08T15:09:42Z"
+            },
+            {
+              "name": "Run gateway tests",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 7,
+              "started_at": "2026-10-08T15:09:42Z",
+              "completed_at": "2026-10-08T15:09:42Z"
+            },
+            {
+              "name": "Run frontend tests and build",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 8,
+              "started_at": "2026-10-08T15:09:42Z",
+              "completed_at": "2026-10-08T15:09:42Z"
+            },
+            {
+              "name": "Remove broken Google Chrome apt source",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 9,
+              "started_at": "2026-10-08T15:09:42Z",
+              "completed_at": "2026-10-08T15:09:42Z"
+            },
+            {
+              "name": "Install Playwright Chromium",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 10,
+              "started_at": "2026-10-08T15:09:42Z",
+              "completed_at": "2026-10-08T15:09:42Z"
+            },
+            {
+              "name": "Run authenticated frontend browser tests",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 11,
+              "started_at": "2026-10-08T15:09:42Z",
+              "completed_at": "2026-10-08T15:09:42Z"
+            },
+            {
+              "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 21,
+              "started_at": "2026-10-08T15:09:42Z",
+              "completed_at": "2026-10-08T15:09:42Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 22,
+              "started_at": "2026-10-08T15:09:42Z",
+              "completed_at": "2026-10-08T15:09:42Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 23,
+              "started_at": "2026-10-08T15:09:42Z",
+              "completed_at": "2026-10-08T15:09:42Z"
+            }
+          ]
+        },
+        {
+          "id": 113382917899,
+          "name": "docker-build (school-core-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:38Z",
+          "completed_at": "2026-10-08T15:09:32Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:39Z",
+              "completed_at": "2026-10-08T15:07:41Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:41Z",
+              "completed_at": "2026-10-08T15:07:43Z"
+            },
+            {
+              "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:43Z",
+              "completed_at": "2026-10-08T15:07:47Z"
+            },
+            {
+              "name": "Set image reference",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-08T15:07:47Z",
+              "completed_at": "2026-10-08T15:07:47Z"
+            },
+            {
+              "name": "Resolve the security patch epoch",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-08T15:07:47Z",
+              "completed_at": "2026-10-08T15:07:47Z"
+            },
+            {
+              "name": "Build image",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-08T15:07:47Z",
+              "completed_at": "2026-10-08T15:08:50Z"
+            },
+            {
+              "name": "Trivy HIGH/CRITICAL gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-08T15:08:50Z",
+              "completed_at": "2026-10-08T15:09:23Z"
+            },
+            {
+              "name": "Post Trivy HIGH/CRITICAL gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-10-08T15:09:23Z",
+              "completed_at": "2026-10-08T15:09:23Z"
+            },
+            {
+              "name": "Post Build image",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-10-08T15:09:23Z",
+              "completed_at": "2026-10-08T15:09:24Z"
+            },
+            {
+              "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-08T15:09:24Z",
+              "completed_at": "2026-10-08T15:09:29Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-08T15:09:29Z",
+              "completed_at": "2026-10-08T15:09:29Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-08T15:09:29Z",
+              "completed_at": "2026-10-08T15:09:29Z"
+            }
+          ]
+        },
+        {
+          "id": 113382918049,
+          "name": "service-test (school-core-service)",
+          "status": "in_progress",
+          "conclusion": null,
+          "started_at": "2026-10-08T15:07:38Z",
+          "completed_at": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:39Z",
+              "completed_at": "2026-10-08T15:07:40Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:40Z",
+              "completed_at": "2026-10-08T15:07:42Z"
+            },
+            {
+              "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:42Z",
+              "completed_at": "2026-10-08T15:07:44Z"
+            },
+            {
+              "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 4,
+              "started_at": "2026-10-08T15:07:44Z",
+              "completed_at": "2026-10-08T15:07:44Z"
+            },
+            {
+              "name": "Install Node dependencies",
+              "status": "completed",
+              "conclusion": "skipped",
+              "number": 5,
+              "started_at": "2026-10-08T15:07:44Z",
+              "completed_at": "2026-10-08T15:07:44Z"
+            },
+            {
+              "name": "Run Maven tests",
+              "status": "in_progress",
+              "conclusion": null,
+              "number": 6,
+              "started_at": "2026-10-08T15:07:44Z",
+              "completed_at": null
+            },
+            {
+              "name": "Run gateway tests",
+              "status": "pending",
+              "conclusion": null,
+              "number": 7,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Run frontend tests and build",
+              "status": "pending",
+              "conclusion": null,
+              "number": 8,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Remove broken Google Chrome apt source",
+              "status": "pending",
+              "conclusion": null,
+              "number": 9,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Install Playwright Chromium",
+              "status": "pending",
+              "conclusion": null,
+              "number": 10,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Run authenticated frontend browser tests",
+              "status": "pending",
+              "conclusion": null,
+              "number": 11,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "status": "pending",
+              "conclusion": null,
+              "number": 21,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "pending",
+              "conclusion": null,
+              "number": 22,
+              "started_at": null,
+              "completed_at": null
+            }
+          ]
+        },
+        {
+          "id": 113382918050,
+          "name": "docker-build (platform-service)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:38Z",
+          "completed_at": "2026-10-08T15:09:11Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:39Z",
+              "completed_at": "2026-10-08T15:07:41Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:41Z",
+              "completed_at": "2026-10-08T15:07:43Z"
+            },
+            {
+              "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:43Z",
+              "completed_at": "2026-10-08T15:07:47Z"
+            },
+            {
+              "name": "Set image reference",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-08T15:07:47Z",
+              "completed_at": "2026-10-08T15:07:47Z"
+            },
+            {
+              "name": "Resolve the security patch epoch",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-10-08T15:07:47Z",
+              "completed_at": "2026-10-08T15:07:47Z"
+            },
+            {
+              "name": "Build image",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-08T15:07:47Z",
+              "completed_at": "2026-10-08T15:08:29Z"
+            },
+            {
+              "name": "Trivy HIGH/CRITICAL gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-08T15:08:29Z",
+              "completed_at": "2026-10-08T15:09:03Z"
+            },
+            {
+              "name": "Post Trivy HIGH/CRITICAL gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-10-08T15:09:03Z",
+              "completed_at": "2026-10-08T15:09:03Z"
+            },
+            {
+              "name": "Post Build image",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-10-08T15:09:03Z",
+              "completed_at": "2026-10-08T15:09:04Z"
+            },
+            {
+              "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-10-08T15:09:04Z",
+              "completed_at": "2026-10-08T15:09:09Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-10-08T15:09:09Z",
+              "completed_at": "2026-10-08T15:09:09Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-10-08T15:09:09Z",
+              "completed_at": "2026-10-08T15:09:09Z"
+            }
+          ]
+        },
+        {
+          "id": 113382920355,
+          "name": "maven-wrapper-validation (${{ matrix.os }})",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-10-08T15:07:36Z",
+          "completed_at": "2026-10-08T15:07:36Z",
+          "steps": []
+        }
+      ],
+      "qlJobs": [
+        {
+          "id": 113382787335,
+          "name": "analyze (javascript-typescript)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-10-08T15:07:22Z",
+          "completed_at": "2026-10-08T15:08:56Z",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:24Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:24Z",
+              "completed_at": "2026-10-08T15:07:28Z"
+            },
+            {
+              "name": "Initialize CodeQL",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:28Z",
+              "completed_at": "2026-10-08T15:07:47Z"
+            },
+            {
+              "name": "Analyze",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-10-08T15:07:47Z",
+              "completed_at": "2026-10-08T15:08:51Z"
+            },
+            {
+              "name": "Post Analyze",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-10-08T15:08:51Z",
+              "completed_at": "2026-10-08T15:08:51Z"
+            },
+            {
+              "name": "Post Initialize CodeQL",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-10-08T15:08:51Z",
+              "completed_at": "2026-10-08T15:08:53Z"
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-10-08T15:08:53Z",
+              "completed_at": "2026-10-08T15:08:53Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-10-08T15:08:53Z",
+              "completed_at": "2026-10-08T15:08:53Z"
+            }
+          ]
+        },
+        {
+          "id": 113382787663,
+          "name": "analyze (java-kotlin)",
+          "status": "in_progress",
+          "conclusion": null,
+          "started_at": "2026-10-08T15:07:22Z",
+          "completed_at": null,
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-10-08T15:07:23Z",
+              "completed_at": "2026-10-08T15:07:25Z"
+            },
+            {
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-10-08T15:07:25Z",
+              "completed_at": "2026-10-08T15:07:29Z"
+            },
+            {
+              "name": "Initialize CodeQL",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-10-08T15:07:29Z",
+              "completed_at": "2026-10-08T15:07:52Z"
+            },
+            {
+              "name": "Analyze",
+              "status": "in_progress",
+              "conclusion": null,
+              "number": 4,
+              "started_at": "2026-10-08T15:07:52Z",
+              "completed_at": null
+            },
+            {
+              "name": "Post Analyze",
+              "status": "pending",
+              "conclusion": null,
+              "number": 6,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Post Initialize CodeQL",
+              "status": "pending",
+              "conclusion": null,
+              "number": 7,
+              "started_at": null,
+              "completed_at": null
+            },
+            {
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "status": "pending",
+              "conclusion": null,
+              "number": 8,
+              "started_at": null,
+              "completed_at": null
+            }
+          ]
+        }
+      ]
+    },
+    "actualFailure": {
+      "jobId": 113382788997,
+      "job": "static-architecture-audits",
+      "step": "Test immutable GitHub governance check verification",
+      "case": "test_completion_during_last_sleep_cannot_return_success_after_deadline",
+      "reported": 21,
+      "failures": 1,
+      "errorCategory": "RecursionError in regression mock; assertion expected read deadline",
+      "rawLogPath": "tmp/pr338-initial-static-architecture-failed.log",
+      "rawLogSha256": "ee5e8fbc404e3cec6a828c2a26d49ea16da091534de667e588fc9bce270f14d4",
+      "scope": "Actual PR338 Linux workflow failure, not prior local or hypothetical source failure."
+    },
+    "manifest": {
+      "path": "tmp/execution-boundary-stage-proof.json",
+      "rawSha256": "dcb199a902fc467692d383846399eca3e25b5eacad32a555f44998b1d1ffed5c"
+    },
+    "cloudCalls": 0,
+    "cloudMutations": 0,
+    "sourceWrites": 0,
+    "method": "GET-only native gh.exe; reviewed bounded process tree helper, 35-second call and300-second whole budget.",
+    "curationNote": "Initial local collector setup incorrectly passed a positional ReadBudget argument and stopped before any GH call/file creation; corrected constructor, no CI/runtime failure inferred."
+  },
+  "initialCompletedWorkflowObservation": [
+    {
+      "conclusion": "failure",
+      "createdAt": "2026-10-08T15:07:18Z",
+      "headSha": "caaf9c7ef045dbc475e945d15b1afdde022b16c3",
+      "jobs": [
+        {
+          "completedAt": "2026-10-08T15:07:32Z",
+          "conclusion": "success",
+          "databaseId": 113382788285,
+          "name": "duplicate-class-drift",
+          "startedAt": "2026-10-08T15:07:22Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:24Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:29Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:29Z",
+              "conclusion": "success",
+              "name": "Check guarded classes have not diverged",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:29Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:29Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 6,
+              "startedAt": "2026-10-08T15:07:29Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:29Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 7,
+              "startedAt": "2026-10-08T15:07:29Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382788285"
+        },
+        {
+          "completedAt": "2026-10-08T15:09:06Z",
+          "conclusion": "success",
+          "databaseId": 113382788471,
+          "name": "privacy-technical-controls",
+          "startedAt": "2026-10-08T15:07:22Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:24Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:27Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:31Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:44Z",
+              "conclusion": "success",
+              "name": "Audit current, branch, history and release export boundaries",
+              "number": 4,
+              "startedAt": "2026-10-08T15:07:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:02Z",
+              "conclusion": "success",
+              "name": "Run synthetic export and verified-deletion drill",
+              "number": 5,
+              "startedAt": "2026-10-08T15:07:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:04Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "number": 9,
+              "startedAt": "2026-10-08T15:09:02Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:04Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 10,
+              "startedAt": "2026-10-08T15:09:04Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:04Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 11,
+              "startedAt": "2026-10-08T15:09:04Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382788471"
+        },
+        {
+          "completedAt": "2026-10-08T15:08:48Z",
+          "conclusion": "success",
+          "databaseId": 113382788621,
+          "name": "windows-security-helper-validation",
+          "startedAt": "2026-10-08T15:07:25Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:27Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:26Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:38Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:46Z",
+              "conclusion": "success",
+              "name": "Verify PowerShell 5 helper serialization and native exit handling",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:49Z",
+              "conclusion": "success",
+              "name": "Verify optimized restore-verifier deadlines and historical coverage on Windows",
+              "number": 4,
+              "startedAt": "2026-10-08T15:07:46Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:43Z",
+              "conclusion": "success",
+              "name": "Verify immutable runtime patch cycles and release binding on Windows",
+              "number": 5,
+              "startedAt": "2026-10-08T15:07:49Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:43Z",
+              "conclusion": "success",
+              "name": "Verify Scheduler create and update command arguments",
+              "number": 6,
+              "startedAt": "2026-10-08T15:08:43Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:46Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 12,
+              "startedAt": "2026-10-08T15:08:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:46Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 13,
+              "startedAt": "2026-10-08T15:08:46Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382788621"
+        },
+        {
+          "completedAt": "2026-10-08T15:07:44Z",
+          "conclusion": "success",
+          "databaseId": 113382788780,
+          "name": "dev-edge-terraform-validation",
+          "startedAt": "2026-10-08T15:07:22Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:24Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:27Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:28Z",
+              "conclusion": "success",
+              "name": "Run hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:32Z",
+              "conclusion": "success",
+              "name": "Validate dev edge and mock-provider acceptance",
+              "number": 4,
+              "startedAt": "2026-10-08T15:07:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:36Z",
+              "conclusion": "success",
+              "name": "Validate persistent dashboard state without a web deployment",
+              "number": 5,
+              "startedAt": "2026-10-08T15:07:32Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:38Z",
+              "conclusion": "success",
+              "name": "Validate independent dev erasure journal and least-privilege scope",
+              "number": 6,
+              "startedAt": "2026-10-08T15:07:36Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:42Z",
+              "conclusion": "success",
+              "name": "Validate disabled dev egress preparation and explicit destination boundaries",
+              "number": 7,
+              "startedAt": "2026-10-08T15:07:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:42Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 14,
+              "startedAt": "2026-10-08T15:07:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:42Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 15,
+              "startedAt": "2026-10-08T15:07:42Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382788780"
+        },
+        {
+          "completedAt": "2026-10-08T15:07:36Z",
+          "conclusion": "success",
+          "databaseId": 113382788932,
+          "name": "detect / detect",
+          "startedAt": "2026-10-08T15:07:22Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:24Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:27Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:32Z",
+              "conclusion": "success",
+              "name": "Detect affected services",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:32Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 6,
+              "startedAt": "2026-10-08T15:07:32Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:32Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 7,
+              "startedAt": "2026-10-08T15:07:32Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382788932"
+        },
+        {
+          "completedAt": "2026-10-08T15:07:32Z",
+          "conclusion": "success",
+          "databaseId": 113382788938,
+          "name": "secret-scan",
+          "startedAt": "2026-10-08T15:07:22Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:24Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:27Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:30Z",
+              "conclusion": "success",
+              "name": "Run gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:30Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 6,
+              "startedAt": "2026-10-08T15:07:30Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:30Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 7,
+              "startedAt": "2026-10-08T15:07:30Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382788938"
+        },
+        {
+          "completedAt": "2026-10-08T15:07:37Z",
+          "conclusion": "failure",
+          "databaseId": 113382788997,
+          "name": "static-architecture-audits",
+          "startedAt": "2026-10-08T15:07:22Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:24Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:27Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:28Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:28Z",
+              "conclusion": "success",
+              "name": "Verify generated OpenAPI clients are current",
+              "number": 4,
+              "startedAt": "2026-10-08T15:07:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:28Z",
+              "conclusion": "success",
+              "name": "Test browser contract generation and canonical routing",
+              "number": 5,
+              "startedAt": "2026-10-08T15:07:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:31Z",
+              "conclusion": "success",
+              "name": "Audit offline service boundaries",
+              "number": 6,
+              "startedAt": "2026-10-08T15:07:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:31Z",
+              "conclusion": "success",
+              "name": "Verify financial and workflow contract bindings",
+              "number": 7,
+              "startedAt": "2026-10-08T15:07:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:31Z",
+              "conclusion": "success",
+              "name": "Verify bounded signed transport probe controls",
+              "number": 8,
+              "startedAt": "2026-10-08T15:07:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "failure",
+              "name": "Test immutable GitHub governance check verification",
+              "number": 9,
+              "startedAt": "2026-10-08T15:07:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "skipped",
+              "name": "Test offline GCP governance audits",
+              "number": 10,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "skipped",
+              "name": "Verify digest-bound image User and database catalog evidence rejection",
+              "number": 11,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "skipped",
+              "name": "Test deployment security admission and isolated native release fixtures",
+              "number": 12,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "skipped",
+              "name": "Verify guarded dev journal acceptance and PostgreSQL rehearsal under optimization",
+              "number": 13,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "skipped",
+              "name": "Install isolated restore-verifier test dependency",
+              "number": 14,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "skipped",
+              "name": "Verify restore-target rejection, historical coverage and real PostgreSQL TLS under optimization",
+              "number": 15,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "skipped",
+              "name": "Test OpenAPI CI routing invariants",
+              "number": 16,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "skipped",
+              "name": "Verify immutable runtime patch-cycle identities and workflow binding",
+              "number": 17,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "skipped",
+              "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "number": 33,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 34,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:33Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 35,
+              "startedAt": "2026-10-08T15:07:33Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382788997"
+        },
+        {
+          "completedAt": "2026-10-08T15:07:25Z",
+          "conclusion": "success",
+          "databaseId": 113382789033,
+          "name": "promotion-source-policy",
+          "startedAt": "2026-10-08T15:07:22Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:23Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:23Z",
+              "conclusion": "success",
+              "name": "Require dev as the source of main promotions",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:23Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382789033"
+        },
+        {
+          "completedAt": "2026-10-08T15:09:44Z",
+          "conclusion": "success",
+          "databaseId": 113382917815,
+          "name": "service-test (platform-service)",
+          "startedAt": "2026-10-08T15:07:38Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:40Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:42Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:40Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:44Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:44Z",
+              "conclusion": "skipped",
+              "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "number": 4,
+              "startedAt": "2026-10-08T15:07:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:44Z",
+              "conclusion": "skipped",
+              "name": "Install Node dependencies",
+              "number": 5,
+              "startedAt": "2026-10-08T15:07:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:42Z",
+              "conclusion": "success",
+              "name": "Run Maven tests",
+              "number": 6,
+              "startedAt": "2026-10-08T15:07:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:42Z",
+              "conclusion": "skipped",
+              "name": "Run gateway tests",
+              "number": 7,
+              "startedAt": "2026-10-08T15:09:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:42Z",
+              "conclusion": "skipped",
+              "name": "Run frontend tests and build",
+              "number": 8,
+              "startedAt": "2026-10-08T15:09:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:42Z",
+              "conclusion": "skipped",
+              "name": "Remove broken Google Chrome apt source",
+              "number": 9,
+              "startedAt": "2026-10-08T15:09:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:42Z",
+              "conclusion": "skipped",
+              "name": "Install Playwright Chromium",
+              "number": 10,
+              "startedAt": "2026-10-08T15:09:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:42Z",
+              "conclusion": "skipped",
+              "name": "Run authenticated frontend browser tests",
+              "number": 11,
+              "startedAt": "2026-10-08T15:09:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:42Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "number": 21,
+              "startedAt": "2026-10-08T15:09:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:42Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 22,
+              "startedAt": "2026-10-08T15:09:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:42Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 23,
+              "startedAt": "2026-10-08T15:09:42Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382917815"
+        },
+        {
+          "completedAt": "2026-10-08T15:09:32Z",
+          "conclusion": "success",
+          "databaseId": 113382917899,
+          "name": "docker-build (school-core-service)",
+          "startedAt": "2026-10-08T15:07:38Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:41Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:43Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:47Z",
+              "conclusion": "success",
+              "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:43Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:47Z",
+              "conclusion": "success",
+              "name": "Set image reference",
+              "number": 4,
+              "startedAt": "2026-10-08T15:07:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:47Z",
+              "conclusion": "success",
+              "name": "Resolve the security patch epoch",
+              "number": 5,
+              "startedAt": "2026-10-08T15:07:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:50Z",
+              "conclusion": "success",
+              "name": "Build image",
+              "number": 6,
+              "startedAt": "2026-10-08T15:07:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:23Z",
+              "conclusion": "success",
+              "name": "Trivy HIGH/CRITICAL gate",
+              "number": 7,
+              "startedAt": "2026-10-08T15:08:50Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:23Z",
+              "conclusion": "success",
+              "name": "Post Trivy HIGH/CRITICAL gate",
+              "number": 11,
+              "startedAt": "2026-10-08T15:09:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:24Z",
+              "conclusion": "success",
+              "name": "Post Build image",
+              "number": 12,
+              "startedAt": "2026-10-08T15:09:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:29Z",
+              "conclusion": "success",
+              "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+              "number": 13,
+              "startedAt": "2026-10-08T15:09:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:29Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 14,
+              "startedAt": "2026-10-08T15:09:29Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:29Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 15,
+              "startedAt": "2026-10-08T15:09:29Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382917899"
+        },
+        {
+          "completedAt": "2026-10-08T15:12:46Z",
+          "conclusion": "success",
+          "databaseId": 113382918049,
+          "name": "service-test (school-core-service)",
+          "startedAt": "2026-10-08T15:07:38Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:40Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:42Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:40Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:44Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:44Z",
+              "conclusion": "skipped",
+              "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "number": 4,
+              "startedAt": "2026-10-08T15:07:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:44Z",
+              "conclusion": "skipped",
+              "name": "Install Node dependencies",
+              "number": 5,
+              "startedAt": "2026-10-08T15:07:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:41Z",
+              "conclusion": "success",
+              "name": "Run Maven tests",
+              "number": 6,
+              "startedAt": "2026-10-08T15:07:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:41Z",
+              "conclusion": "skipped",
+              "name": "Run gateway tests",
+              "number": 7,
+              "startedAt": "2026-10-08T15:12:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:41Z",
+              "conclusion": "skipped",
+              "name": "Run frontend tests and build",
+              "number": 8,
+              "startedAt": "2026-10-08T15:12:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:41Z",
+              "conclusion": "skipped",
+              "name": "Remove broken Google Chrome apt source",
+              "number": 9,
+              "startedAt": "2026-10-08T15:12:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:41Z",
+              "conclusion": "skipped",
+              "name": "Install Playwright Chromium",
+              "number": 10,
+              "startedAt": "2026-10-08T15:12:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:41Z",
+              "conclusion": "skipped",
+              "name": "Run authenticated frontend browser tests",
+              "number": 11,
+              "startedAt": "2026-10-08T15:12:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:41Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "number": 21,
+              "startedAt": "2026-10-08T15:12:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:42Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 22,
+              "startedAt": "2026-10-08T15:12:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:42Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 23,
+              "startedAt": "2026-10-08T15:12:42Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382918049"
+        },
+        {
+          "completedAt": "2026-10-08T15:09:11Z",
+          "conclusion": "success",
+          "databaseId": 113382918050,
+          "name": "docker-build (platform-service)",
+          "startedAt": "2026-10-08T15:07:38Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:41Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:43Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:47Z",
+              "conclusion": "success",
+              "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:43Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:47Z",
+              "conclusion": "success",
+              "name": "Set image reference",
+              "number": 4,
+              "startedAt": "2026-10-08T15:07:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:47Z",
+              "conclusion": "success",
+              "name": "Resolve the security patch epoch",
+              "number": 5,
+              "startedAt": "2026-10-08T15:07:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:29Z",
+              "conclusion": "success",
+              "name": "Build image",
+              "number": 6,
+              "startedAt": "2026-10-08T15:07:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:03Z",
+              "conclusion": "success",
+              "name": "Trivy HIGH/CRITICAL gate",
+              "number": 7,
+              "startedAt": "2026-10-08T15:08:29Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:03Z",
+              "conclusion": "success",
+              "name": "Post Trivy HIGH/CRITICAL gate",
+              "number": 11,
+              "startedAt": "2026-10-08T15:09:03Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:04Z",
+              "conclusion": "success",
+              "name": "Post Build image",
+              "number": 12,
+              "startedAt": "2026-10-08T15:09:03Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:09Z",
+              "conclusion": "success",
+              "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+              "number": 13,
+              "startedAt": "2026-10-08T15:09:04Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:09Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 14,
+              "startedAt": "2026-10-08T15:09:09Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:09:09Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 15,
+              "startedAt": "2026-10-08T15:09:09Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382918050"
+        },
+        {
+          "completedAt": "2026-10-08T15:07:36Z",
+          "conclusion": "skipped",
+          "databaseId": 113382920355,
+          "name": "maven-wrapper-validation (${{ matrix.os }})",
+          "startedAt": "2026-10-08T15:07:36Z",
+          "status": "completed",
+          "steps": [],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113382920355"
+        },
+        {
+          "completedAt": "2026-10-08T15:12:51Z",
+          "conclusion": "failure",
+          "databaseId": 113385380354,
+          "name": "summary",
+          "startedAt": "2026-10-08T15:12:49Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:12:49Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:12:49Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:50Z",
+              "conclusion": "success",
+              "name": "Write summary",
+              "number": 2,
+              "startedAt": "2026-10-08T15:12:50Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:50Z",
+              "conclusion": "failure",
+              "name": "Enforce required job results",
+              "number": 3,
+              "startedAt": "2026-10-08T15:12:50Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:12:50Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 4,
+              "startedAt": "2026-10-08T15:12:50Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179/job/113385380354"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-10-08T15:12:53Z",
+      "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798111179"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-10-08T15:07:18Z",
+      "headSha": "caaf9c7ef045dbc475e945d15b1afdde022b16c3",
+      "jobs": [
+        {
+          "completedAt": "2026-10-08T15:08:56Z",
+          "conclusion": "success",
+          "databaseId": 113382787335,
+          "name": "analyze (javascript-typescript)",
+          "startedAt": "2026-10-08T15:07:22Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:24Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:28Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:47Z",
+              "conclusion": "success",
+              "name": "Initialize CodeQL",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:51Z",
+              "conclusion": "success",
+              "name": "Analyze",
+              "number": 4,
+              "startedAt": "2026-10-08T15:07:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:51Z",
+              "conclusion": "success",
+              "name": "Post Analyze",
+              "number": 6,
+              "startedAt": "2026-10-08T15:08:51Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:53Z",
+              "conclusion": "success",
+              "name": "Post Initialize CodeQL",
+              "number": 7,
+              "startedAt": "2026-10-08T15:08:51Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:53Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 8,
+              "startedAt": "2026-10-08T15:08:53Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:08:53Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 9,
+              "startedAt": "2026-10-08T15:08:53Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798110794/job/113382787335"
+        },
+        {
+          "completedAt": "2026-10-08T15:11:49Z",
+          "conclusion": "success",
+          "databaseId": 113382787663,
+          "name": "analyze (java-kotlin)",
+          "startedAt": "2026-10-08T15:07:22Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T15:07:25Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T15:07:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:29Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T15:07:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:07:52Z",
+              "conclusion": "success",
+              "name": "Initialize CodeQL",
+              "number": 3,
+              "startedAt": "2026-10-08T15:07:29Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:11:43Z",
+              "conclusion": "success",
+              "name": "Analyze",
+              "number": 4,
+              "startedAt": "2026-10-08T15:07:52Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:11:44Z",
+              "conclusion": "success",
+              "name": "Post Analyze",
+              "number": 6,
+              "startedAt": "2026-10-08T15:11:43Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:11:45Z",
+              "conclusion": "success",
+              "name": "Post Initialize CodeQL",
+              "number": 7,
+              "startedAt": "2026-10-08T15:11:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:11:45Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 8,
+              "startedAt": "2026-10-08T15:11:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T15:11:45Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 9,
+              "startedAt": "2026-10-08T15:11:45Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798110794/job/113382787663"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-10-08T15:11:52Z",
+      "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37798110794"
+    }
+  ],
+  "scope": "Test-only portability and process-exit observation correction. Production governance helper and all Java source are unchanged from the first source checkpoint. Corrected-head CI is still required."
+}

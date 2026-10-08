@@ -365,7 +365,7 @@ class GitHubGovernanceChecksTest(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "native executable"):
                     module.native_executable(str(other))
 
-    def assert_owned_process_stopped(self, pid):
+    def assert_owned_process_stopped(self, pid, deadline):
         if os.name == "nt":
             import ctypes
             from ctypes import wintypes
@@ -377,7 +377,9 @@ class GitHubGovernanceChecksTest(unittest.TestCase):
             api.CloseHandle.argtypes = [wintypes.HANDLE]
             handle = api.OpenProcess(0x00100000, False, pid)
             if handle:
-                try: self.assertEqual(0, api.WaitForSingleObject(handle, 0))
+                try:
+                    remaining_ms = max(0, int((deadline - time.monotonic()) * 1000))
+                    self.assertEqual(0, api.WaitForSingleObject(handle, min(1000, remaining_ms)))
                 finally: api.CloseHandle(handle)
             else:
                 self.assertEqual(87, ctypes.get_last_error())  # Exact owned process already gone.
@@ -400,7 +402,7 @@ class GitHubGovernanceChecksTest(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "read deadline"):
                     module.capture_process([sys.executable, "-c", parent, child, str(marker)], module.ReadBudget())
             self.assertTrue(marker.exists(), "The actual descendant must exist, not merely a parent timeout")
-            self.assert_owned_process_stopped(int(marker.read_text()))
+            self.assert_owned_process_stopped(int(marker.read_text()), started + 4)
             self.assertLess(time.monotonic() - started, 4)
             self.assertFalse(any(t.ident not in before and t.name.startswith("governance-owned-") for t in threading.enumerate()))
 
@@ -467,23 +469,32 @@ class GitHubGovernanceChecksTest(unittest.TestCase):
         module = self.module
         real_popen = subprocess.Popen
         real_monotonic = time.monotonic
+        real_sleep = time.sleep
         processes = []
         clock_offset = [0.0]
         advanced = [False]
+        finishing = [False]
         def create(*args, **kwargs):
             process = real_popen(*args, **kwargs)
             processes.append(process)
             return process
         def finish_during_sleep(seconds):
-            # Actual owned child and pipe readers finish between loop iterations.
-            processes[0].wait(timeout=3)
-            for thread in threading.enumerate():
-                if thread.name.startswith("governance-owned-"):
-                    thread.join(timeout=3)
-                    self.assertFalse(thread.is_alive())
-            if not advanced[0]:
-                clock_offset[0] = module.API_CALL_SECONDS + 1
-                advanced[0] = True
+            # POSIX Popen.wait uses time.sleep too: nested waits must use the real sleep.
+            if finishing[0]:
+                return real_sleep(seconds)
+            finishing[0] = True
+            try:
+                # Actual owned child and pipe readers finish between loop iterations.
+                processes[0].wait(timeout=3)
+                for thread in threading.enumerate():
+                    if thread.name.startswith("governance-owned-"):
+                        thread.join(timeout=3)
+                        self.assertFalse(thread.is_alive())
+                if not advanced[0]:
+                    clock_offset[0] = module.API_CALL_SECONDS + 1
+                    advanced[0] = True
+            finally:
+                finishing[0] = False
         with patch.object(module.subprocess, "Popen", side_effect=create), \
                 patch.object(module.time, "monotonic", side_effect=lambda: real_monotonic()+clock_offset[0]), \
                 patch.object(module.time, "sleep", side_effect=finish_during_sleep):

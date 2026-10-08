@@ -54,3 +54,5 @@ docs/security-remediation/acceptance-execution-boundary-owner-followup.json text
 docs/security-remediation/acceptance-execution-boundary-native-research.json text eol=lf
 docs/security-remediation/acceptance-execution-boundary-independent-reviews.json text eol=lf
 docs/security-remediation/acceptance-execution-boundary-local.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-portability-local.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-verified-local.json text eol=lf
