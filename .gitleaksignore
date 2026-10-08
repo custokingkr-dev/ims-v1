@@ -29,3 +29,9 @@ f185f3e923b73d01b5b32b87a15482667b591e42:tools/live-dashboard/server.test.mjs:ge
 # PR331 squash merge reidentified the same unchanged, source-verified synthetic
 # object-name checksum. Exclude only this observed merge commit/file/rule/line.
 34c2bf35d8be0239ad3d65c50b74faea164bc2c7:docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json:generic-api-key:175
+
+# Verified PR337 evidence false positive: this one historical field is the SHA256
+# of the retained platform Actions job log, independently recomputed from bytes.
+# Current copied evidence uses digestSha256 and records its explicit field-name
+# normalization; the original capture is preserved. No rule or path is excluded.
+260c0f4d18531d2015e43c3c0eb6ebe6f0c6e3f0:docs/security-remediation/acceptance-callback-body-completion.json:generic-api-key:1305
