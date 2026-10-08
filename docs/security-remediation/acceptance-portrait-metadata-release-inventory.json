@@ -1,0 +1,189 @@
+{
+  "capturedAtUtc": "2026-10-08T06:56:00.196687+00:00",
+  "releaseRunId": 37739036093,
+  "sourceSha": "6f562c4296471263ee2f31d061c19b8d76981ef6",
+  "imagesManifestSha256": "31fa97eb6a788d68be2dd13d0192ade56386478da9117d60cd74aa4627e57129",
+  "scanManifestSha256": "6d3b4f9375c64581234d9dc09a58aea1f169328b4cbce38619a53a2978d7bd69",
+  "scope": "Only newly built/scanned school image; unchanged six not freshly scanned",
+  "service": {
+    "service": "school-core-service",
+    "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:2bfd38844d48ef1ce1792ec9a9598a813a7d38c8f74542a56065a340150ff2e1",
+    "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0",
+    "scanRunId": 37739036093,
+    "scanUtc": "2026-10-08T06:51:46.1231244Z",
+    "highCriticalGate": "success",
+    "sarifScan": "success",
+    "sarifSha256": "455bb5413d3574f7913c91487cb87a141664e0b7da3037f4d3684852fd7cf72c",
+    "resultCount": 17,
+    "severityCounts": {
+      "medium": 13,
+      "low": 4
+    },
+    "packageGroups": [
+      {
+        "package": "libc-bin",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 2,
+        "vulnerabilities": [
+          "CVE-2026-18374",
+          "CVE-2026-89092"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libc6",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 2,
+        "vulnerabilities": [
+          "CVE-2026-18374",
+          "CVE-2026-89092"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libexpat1",
+        "installedVersion": "2.6.1-2ubuntu0.6",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 1,
+        "vulnerabilities": [
+          "CVE-2025-66382"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libpcre2-8-0",
+        "installedVersion": "10.42-4ubuntu2.1",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 2,
+        "vulnerabilities": [
+          "CVE-2026-86145",
+          "CVE-2026-89161"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libpng16-16t64",
+        "installedVersion": "1.6.43-5ubuntu0.7",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 1,
+        "vulnerabilities": [
+          "CVE-2026-46675"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libsystemd0",
+        "installedVersion": "255.4-1ubuntu8.17",
+        "fixedVersionReported": "",
+        "severity": "low",
+        "resultCount": 1,
+        "vulnerabilities": [
+          "CVE-2026-40228"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libudev1",
+        "installedVersion": "255.4-1ubuntu8.17",
+        "fixedVersionReported": "",
+        "severity": "low",
+        "resultCount": 1,
+        "vulnerabilities": [
+          "CVE-2026-40228"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "locales",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 2,
+        "vulnerabilities": [
+          "CVE-2026-18374",
+          "CVE-2026-89092"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "login",
+        "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+        "fixedVersionReported": "",
+        "severity": "low",
+        "resultCount": 1,
+        "vulnerabilities": [
+          "CVE-2024-56433"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "passwd",
+        "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+        "fixedVersionReported": "",
+        "severity": "low",
+        "resultCount": 1,
+        "vulnerabilities": [
+          "CVE-2024-56433"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "tar",
+        "installedVersion": "1.35+dfsg-3ubuntu0.4",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 2,
+        "vulnerabilities": [
+          "CVE-2026-18477",
+          "CVE-2026-18508"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "zlib1g",
+        "installedVersion": "1:1.3.dfsg-3.1ubuntu2.2",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 1,
+        "vulnerabilities": [
+          "CVE-2026-85091"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      }
+    ],
+    "independentReadyProofOwnedByRoot": true,
+    "readyBinding": {
+      "proofPath": "docs/security-remediation/acceptance-portrait-metadata-dev-release.json",
+      "proofSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+      "checkedAtUtc": "2026-10-08T06:55:19.766849+00:00",
+      "revision": "custoking-school-core-service-dev-00075-lhj",
+      "ready": true,
+      "trafficPercent": 100,
+      "exactRuntimeRefMatches": true,
+      "changedFromBaseline": true
+    }
+  },
+  "stressOrExploitProof": false,
+  "comparisonWithPreviousSchoolScan": {
+    "previousReleaseRunId": 37682050893,
+    "sameResultCount": true,
+    "libpngPreviousVersion": "1.6.43-5ubuntu0.6",
+    "libpngNewVersion": "1.6.43-5ubuntu0.7",
+    "otherGroupVersionChanges": [
+      {
+        "package": "libpng16-16t64",
+        "newVersion": "1.6.43-5ubuntu0.7",
+        "oldVersions": [
+          "1.6.43-5ubuntu0.6"
+        ]
+      }
+    ]
+  }
+}

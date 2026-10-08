@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "baselineSourceSha": "62777c1889609a7ca3518098f134759f40c19e1a",
+  "baselineRunId": 37666279301,
+  "baselineProofSha256": "dbdcb62921d6f461f1c4afa951a1fc77b2923b72c6c3ae5c204003d9faae1cfa",
+  "capturedAtUtc": "2026-10-07T20:23:49.852772+00:00",
+  "readOnly": true,
+  "services": [
+    {
+      "service": "frontend",
+      "revision": "custoking-frontend-dev-muy1s1uk",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+      "selectedExplicitEnvironment": {
+        "API_UPSTREAM": "https://custoking-api-gateway-dev-1087017280590.asia-south2.run.app"
+      },
+      "observedAtUtc": "2026-10-07T20:23:47.021969+00:00"
+    },
+    {
+      "service": "api-gateway",
+      "revision": "custoking-api-gateway-dev-muygd9m7",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:00b0b78c64e86e96ee4a3156c4c194283947cab42d4ac126de90ec47a987f42b",
+      "selectedExplicitEnvironment": {
+        "GATEWAY_CORS_ALLOWED_ORIGINS": "https://custoking-frontend-dev-1087017280590.asia-south2.run.app,https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "FRONTEND_UPSTREAM": "https://custoking-frontend-dev-1087017280590.asia-south2.run.app"
+      },
+      "observedAtUtc": "2026-10-07T20:23:49.852772+00:00"
+    }
+  ],
+  "renderedManifestEvidence": false,
+  "scope": "Exact approved PR326 Ready/runtime baseline and selected explicit Cloud Run revision environment only; no Docker ENV inference or full configuration export."
+}

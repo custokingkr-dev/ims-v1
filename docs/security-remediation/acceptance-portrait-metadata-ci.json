@@ -1,0 +1,152 @@
+{
+  "capturedAtUtc": "2026-10-08T06:36:35.576092+00:00",
+  "pullRequest": 329,
+  "sourceHead": "92463913f68e9e1d9d84d37aa891fe2f0a7eb200",
+  "scope": "Source-only CI and PR merge-ref CodeQL; no dev deployment or stress/exploit proof",
+  "ci": {
+    "runId": 37738011415,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37738011415",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "dev-edge-terraform-validation",
+        "databaseId": 113181894472,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "windows-security-helper-validation",
+        "databaseId": 113181894715,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "privacy-technical-controls",
+        "databaseId": 113181894719,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "promotion-source-policy",
+        "databaseId": 113181894723,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "static-architecture-audits",
+        "databaseId": 113181894758,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "secret-scan",
+        "databaseId": 113181894763,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "duplicate-class-drift",
+        "databaseId": 113181894764,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "detect / detect",
+        "databaseId": 113181894968,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "docker-build (school-core-service)",
+        "databaseId": 113181968769,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (school-core-service)",
+        "databaseId": 113181968950,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "maven-wrapper-validation (${{ matrix.os }})",
+        "databaseId": 113181970001,
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "summary",
+        "databaseId": 113183366467,
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "schoolTests": {
+    "jobId": 113181968950,
+    "reported": 956,
+    "passed": 956,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "logSha256": "0c26d718f9ca6c4676b371deed0e03776f159829737d3b710a658978cbb37b48"
+  },
+  "schoolDocker": {
+    "jobId": 113181968769,
+    "conclusion": "success",
+    "logSha256": "63b17d1d18e3764e1950be80731e38eaf191928ccc350bf315aaf9db45ce62a4",
+    "highCriticalSteps": [
+      {
+        "name": "Trivy HIGH/CRITICAL gate",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Trivy HIGH/CRITICAL gate",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "codeql": {
+    "runId": 37738011138,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37738011138",
+    "conclusion": "success",
+    "languageJobs": [
+      {
+        "name": "analyze (java-kotlin)",
+        "conclusion": "success",
+        "analyzeSuccess": true
+      },
+      {
+        "name": "analyze (javascript-typescript)",
+        "conclusion": "success",
+        "analyzeSuccess": true
+      }
+    ],
+    "scopeRef": "refs/pull/329/merge",
+    "scopeMergeCommit": "4b342dac8ea9a44236edc51adb69d7146eb933e7",
+    "actualAnalyses": [
+      {
+        "id": 1913775203,
+        "category": "/language:java-kotlin",
+        "ref": "refs/pull/329/merge",
+        "commit_sha": "4b342dac8ea9a44236edc51adb69d7146eb933e7",
+        "created_at": "2026-10-08T06:33:58Z",
+        "results_count": 0,
+        "error": ""
+      },
+      {
+        "id": 1913765548,
+        "category": "/language:javascript-typescript",
+        "ref": "refs/pull/329/merge",
+        "commit_sha": "4b342dac8ea9a44236edc51adb69d7146eb933e7",
+        "created_at": "2026-10-08T06:31:44Z",
+        "results_count": 0,
+        "error": ""
+      }
+    ],
+    "openScopedCodeqlAlertCount": 0
+  },
+  "otherServiceSuitesNotRun": true,
+  "deployed": false
+}

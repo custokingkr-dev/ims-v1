@@ -1,0 +1,347 @@
+{
+  "capturedAtUtc": "2026-10-08T06:56:00.196687+00:00",
+  "scope": "Seven exact current runtime bindings: newly scanned PR329 school plus six unchanged PR328 images with their original scan dates; all seven independently match the successful Ready proof. No fresh-all-seven scan or native applicability claim.",
+  "latestReleaseSourceSha": "6f562c4296471263ee2f31d061c19b8d76981ef6",
+  "services": [
+    {
+      "service": "school-core-service",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:2bfd38844d48ef1ce1792ec9a9598a813a7d38c8f74542a56065a340150ff2e1",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0",
+      "scanRunId": 37739036093,
+      "scanUtc": "2026-10-08T06:51:46.1231244Z",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "sarifSha256": "455bb5413d3574f7913c91487cb87a141664e0b7da3037f4d3684852fd7cf72c",
+      "resultCount": 17,
+      "severityCounts": {
+        "medium": 13,
+        "low": 4
+      },
+      "packageGroups": [
+        {
+          "package": "libc-bin",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "fixedVersionReported": "",
+          "severity": "medium",
+          "resultCount": 2,
+          "vulnerabilities": [
+            "CVE-2026-18374",
+            "CVE-2026-89092"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "libc6",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "fixedVersionReported": "",
+          "severity": "medium",
+          "resultCount": 2,
+          "vulnerabilities": [
+            "CVE-2026-18374",
+            "CVE-2026-89092"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "libexpat1",
+          "installedVersion": "2.6.1-2ubuntu0.6",
+          "fixedVersionReported": "",
+          "severity": "medium",
+          "resultCount": 1,
+          "vulnerabilities": [
+            "CVE-2025-66382"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "libpcre2-8-0",
+          "installedVersion": "10.42-4ubuntu2.1",
+          "fixedVersionReported": "",
+          "severity": "medium",
+          "resultCount": 2,
+          "vulnerabilities": [
+            "CVE-2026-86145",
+            "CVE-2026-89161"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "libpng16-16t64",
+          "installedVersion": "1.6.43-5ubuntu0.7",
+          "fixedVersionReported": "",
+          "severity": "medium",
+          "resultCount": 1,
+          "vulnerabilities": [
+            "CVE-2026-46675"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "libsystemd0",
+          "installedVersion": "255.4-1ubuntu8.17",
+          "fixedVersionReported": "",
+          "severity": "low",
+          "resultCount": 1,
+          "vulnerabilities": [
+            "CVE-2026-40228"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "libudev1",
+          "installedVersion": "255.4-1ubuntu8.17",
+          "fixedVersionReported": "",
+          "severity": "low",
+          "resultCount": 1,
+          "vulnerabilities": [
+            "CVE-2026-40228"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "locales",
+          "installedVersion": "2.39-0ubuntu8.9",
+          "fixedVersionReported": "",
+          "severity": "medium",
+          "resultCount": 2,
+          "vulnerabilities": [
+            "CVE-2026-18374",
+            "CVE-2026-89092"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "login",
+          "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+          "fixedVersionReported": "",
+          "severity": "low",
+          "resultCount": 1,
+          "vulnerabilities": [
+            "CVE-2024-56433"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "passwd",
+          "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+          "fixedVersionReported": "",
+          "severity": "low",
+          "resultCount": 1,
+          "vulnerabilities": [
+            "CVE-2024-56433"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "tar",
+          "installedVersion": "1.35+dfsg-3ubuntu0.4",
+          "fixedVersionReported": "",
+          "severity": "medium",
+          "resultCount": 2,
+          "vulnerabilities": [
+            "CVE-2026-18477",
+            "CVE-2026-18508"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        },
+        {
+          "package": "zlib1g",
+          "installedVersion": "1:1.3.dfsg-3.1ubuntu2.2",
+          "fixedVersionReported": "",
+          "severity": "medium",
+          "resultCount": 1,
+          "vulnerabilities": [
+            "CVE-2026-85091"
+          ],
+          "fixStatus": "NO_FIXED_VERSION_REPORTED"
+        }
+      ],
+      "independentReadyProofOwnedByRoot": true,
+      "readyBinding": {
+        "proofPath": "docs/security-remediation/acceptance-portrait-metadata-dev-release.json",
+        "proofSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+        "checkedAtUtc": "2026-10-08T06:55:19.766849+00:00",
+        "revision": "custoking-school-core-service-dev-00075-lhj",
+        "ready": true,
+        "trafficPercent": 100,
+        "exactRuntimeRefMatches": true,
+        "changedFromBaseline": true
+      }
+    },
+    {
+      "service": "api-gateway",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:3483c3672500be6d60d0df05d5de9de0f9f625a05614e18a883c77aba0ff2c27",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:ed4806fbc3ce286dda379219374eda34fb092190bcf8a2dac71c706ff120f095",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "sarifSha256": "9916010ed2e48d4f45ad862148ece95c812701dc36cc7accf968506d5bd1387e",
+      "resultCount": 0,
+      "severityCounts": {},
+      "runtimeReadyIndependentlyVerified": true,
+      "scanRunId": 37682050893,
+      "scanUtc": "2026-10-07T20:51:40.1697636Z",
+      "newRuntimeScanPerformedInPr329": false,
+      "inventoryFrozenFromPr328": true,
+      "readyBinding": {
+        "proofPath": "docs/security-remediation/acceptance-portrait-metadata-dev-release.json",
+        "proofSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+        "checkedAtUtc": "2026-10-08T06:55:19.766849+00:00",
+        "revision": "custoking-api-gateway-dev-00035-qfs",
+        "ready": true,
+        "trafficPercent": 100,
+        "exactRuntimeRefMatches": true,
+        "changedFromBaseline": false
+      }
+    },
+    {
+      "service": "billing-service",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a1bb5b12f7415bdf761c91217878fce063aa9742f36dc6cccf82b59d05b4db4a",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:9c12e9001a08c52ce3e316bfc3629dc871ca9c1aae7653f48f4ceec30c198823",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "sarifSha256": "31467072a5a8a2b76e94fa125511a42529eff2e9ffd7cf92e14b254fcae8f46b",
+      "resultCount": 17,
+      "severityCounts": {
+        "medium": 13,
+        "low": 4
+      },
+      "runtimeReadyIndependentlyVerified": true,
+      "scanRunId": 37682050893,
+      "scanUtc": "2026-10-07T20:51:40.1697636Z",
+      "newRuntimeScanPerformedInPr329": false,
+      "inventoryFrozenFromPr328": true,
+      "readyBinding": {
+        "proofPath": "docs/security-remediation/acceptance-portrait-metadata-dev-release.json",
+        "proofSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+        "checkedAtUtc": "2026-10-08T06:55:19.766849+00:00",
+        "revision": "custoking-billing-service-dev-00029-fbg",
+        "ready": true,
+        "trafficPercent": 100,
+        "exactRuntimeRefMatches": true,
+        "changedFromBaseline": false
+      }
+    },
+    {
+      "service": "frontend",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:091557eaa755345265a7156d94cf133f3b4c2e88089d35039601dcfba01b46dd",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:cb3246a0d246759182c3c91670f6e3e11d48c06f528f6d25f298a9507dd0e515",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "sarifSha256": "445d8e3d6c29adb6ad91e1e5a8396f65f1e082ff5d83ea9408df4923a1a05eb2",
+      "resultCount": 0,
+      "severityCounts": {},
+      "runtimeReadyIndependentlyVerified": true,
+      "scanRunId": 37682050893,
+      "scanUtc": "2026-10-07T20:51:40.1697636Z",
+      "newRuntimeScanPerformedInPr329": false,
+      "inventoryFrozenFromPr328": true,
+      "readyBinding": {
+        "proofPath": "docs/security-remediation/acceptance-portrait-metadata-dev-release.json",
+        "proofSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+        "checkedAtUtc": "2026-10-08T06:55:19.766849+00:00",
+        "revision": "custoking-frontend-dev-00056-6ps",
+        "ready": true,
+        "trafficPercent": 100,
+        "exactRuntimeRefMatches": true,
+        "changedFromBaseline": false
+      }
+    },
+    {
+      "service": "identity-service",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:2639eedcca5fd4fd1b6c872c684d5e7e908cf53f93594732637c15b0350fd1a7",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:3c48d4f5f30d7796d7d387db922ddd2aba9ddc7765a4d517f6ef8a0d80b2d7c4",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "sarifSha256": "c86fcdb22189162db36bcbf23307381ec1333213b930b76ec3fe06b86c8f0477",
+      "resultCount": 17,
+      "severityCounts": {
+        "medium": 13,
+        "low": 4
+      },
+      "runtimeReadyIndependentlyVerified": true,
+      "scanRunId": 37682050893,
+      "scanUtc": "2026-10-07T20:51:40.1697636Z",
+      "newRuntimeScanPerformedInPr329": false,
+      "inventoryFrozenFromPr328": true,
+      "readyBinding": {
+        "proofPath": "docs/security-remediation/acceptance-portrait-metadata-dev-release.json",
+        "proofSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+        "checkedAtUtc": "2026-10-08T06:55:19.766849+00:00",
+        "revision": "custoking-identity-service-dev-00033-swj",
+        "ready": true,
+        "trafficPercent": 100,
+        "exactRuntimeRefMatches": true,
+        "changedFromBaseline": false
+      }
+    },
+    {
+      "service": "operations-service",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:28ba8125f3de0dc61ce8411db5e13a57346172ba3444fb27a95f482041c03dc9",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:2976fdda74c09b7c595d159ac4fa667fc11517b4b7737dafad0b8eec6e8820ef",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "sarifSha256": "19530e9a13a0469d246d633c2f86bd172f95db546f1f7fded57faaf017616e2f",
+      "resultCount": 17,
+      "severityCounts": {
+        "medium": 13,
+        "low": 4
+      },
+      "runtimeReadyIndependentlyVerified": true,
+      "scanRunId": 37682050893,
+      "scanUtc": "2026-10-07T20:51:40.1697636Z",
+      "newRuntimeScanPerformedInPr329": false,
+      "inventoryFrozenFromPr328": true,
+      "readyBinding": {
+        "proofPath": "docs/security-remediation/acceptance-portrait-metadata-dev-release.json",
+        "proofSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+        "checkedAtUtc": "2026-10-08T06:55:19.766849+00:00",
+        "revision": "custoking-operations-service-dev-00030-fdt",
+        "ready": true,
+        "trafficPercent": 100,
+        "exactRuntimeRefMatches": true,
+        "changedFromBaseline": false
+      }
+    },
+    {
+      "service": "platform-service",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:6bc552c125abc7bd8f49a53138fe9f5337f602fa2f584b91d5e15d50f163e252",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:e3e8528189dadafd5b336af53b88860d0cb5a4ff5c2a7cd3d08004313d59f597",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "sarifSha256": "6944fd7c1e25767b872fc778a91319434ab7db485e3e5c4fc773aa0055ce33cd",
+      "resultCount": 17,
+      "severityCounts": {
+        "medium": 13,
+        "low": 4
+      },
+      "runtimeReadyIndependentlyVerified": true,
+      "scanRunId": 37682050893,
+      "scanUtc": "2026-10-07T20:51:40.1697636Z",
+      "newRuntimeScanPerformedInPr329": false,
+      "inventoryFrozenFromPr328": true,
+      "readyBinding": {
+        "proofPath": "docs/security-remediation/acceptance-portrait-metadata-dev-release.json",
+        "proofSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+        "checkedAtUtc": "2026-10-08T06:55:19.766849+00:00",
+        "revision": "custoking-platform-service-dev-00033-kvx",
+        "ready": true,
+        "trafficPercent": 100,
+        "exactRuntimeRefMatches": true,
+        "changedFromBaseline": false
+      }
+    }
+  ],
+  "combinedResultCount": 85,
+  "newSchoolResultCount": 17,
+  "unchangedSixFrozenResultCount": 68,
+  "datedPr328SourceScanResultCount": 85,
+  "allSevenFreshlyScanned": false,
+  "frozenSixPackageGroupsReference": "acceptance-runtime-os-patches-release-inventory.json#/scannerSnapshot/packageGroups",
+  "dashboardSourceOnlyReference": "acceptance-runtime-os-patches-source-scan.json (PR328 fresh eight-source scan, zero dashboard results; dashboard is not part of either deployed seven-service inventory)",
+  "stressOrExploitProof": false,
+  "allSevenRuntimeRefsMatchIndependentReadyReadback": true,
+  "readyProofSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+  "project": "custoking-dev",
+  "runId": 37739036093,
+  "productionChanged": false
+}

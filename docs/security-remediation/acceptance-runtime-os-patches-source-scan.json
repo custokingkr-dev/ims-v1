@@ -1,0 +1,972 @@
+{
+  "capturedAtUtc": "2026-10-07T20:35:11.131701+00:00",
+  "sourceSha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+  "runId": 37682100431,
+  "openAlertCount": 299,
+  "severityCounts": {
+    "medium": 269,
+    "low": 30
+  },
+  "currentSourceAlertCount": 85,
+  "historicalOtherCommitAlertCount": 214,
+  "currentCategoryCounts": {
+    "school-core-service": 17,
+    "operations-service": 17,
+    "platform-service": 17,
+    "billing-service": 17,
+    "identity-service": 17
+  },
+  "historicalCommitCounts": {
+    "d517504935460973621538cbc413b839d0813df6": 214
+  },
+  "currentAnalyses": [
+    {
+      "id": 1911363292,
+      "category": "billing-service",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:33:52Z",
+      "results_count": 17,
+      "error": ""
+    },
+    {
+      "id": 1911355660,
+      "category": "school-core-service",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:32:44Z",
+      "results_count": 17,
+      "error": ""
+    },
+    {
+      "id": 1911349270,
+      "category": "platform-service",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:31:46Z",
+      "results_count": 17,
+      "error": ""
+    },
+    {
+      "id": 1911347911,
+      "category": "identity-service",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:31:34Z",
+      "results_count": 17,
+      "error": ""
+    },
+    {
+      "id": 1911346009,
+      "category": "operations-service",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:31:16Z",
+      "results_count": 17,
+      "error": ""
+    },
+    {
+      "id": 1911332370,
+      "category": "dashboard",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:29:06Z",
+      "results_count": 0,
+      "error": ""
+    },
+    {
+      "id": 1911328209,
+      "category": "api-gateway",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:28:27Z",
+      "results_count": 0,
+      "error": ""
+    },
+    {
+      "id": 1911327752,
+      "category": "frontend",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:28:22Z",
+      "results_count": 0,
+      "error": ""
+    }
+  ],
+  "analysesCount": 59,
+  "deployedRuntimeApplicabilityVerified": false,
+  "analysesDeletedOrAlertsDismissed": false,
+  "currentWithReportedFixedVersion": 0,
+  "currentWithoutReportedFixedVersion": 85,
+  "historicalCategoryCounts": {
+    ".github/workflows/security-scan.yml:scan/context:services/identity-service/image:custoking-identity-service/name:identity-service": 44,
+    ".github/workflows/security-scan.yml:scan/context:services/operations-service/image:custoking-operations-service/name:operations-service": 41,
+    ".github/workflows/security-scan.yml:scan/context:services/billing-service/image:custoking-billing-service/name:billing-service": 41,
+    ".github/workflows/security-scan.yml:scan/context:services/platform-service/image:custoking-platform-service/name:platform-service": 41,
+    ".github/workflows/security-scan.yml:scan/context:services/school-core-service/image:custoking-school-core-service/name:school-core-service": 47
+  },
+  "patchExecutionLogProof": [
+    {
+      "service": "billing-service",
+      "jobId": 113000480660,
+      "conclusion": "success",
+      "logSha256": "263b61c7d15ce6327a80a3e12ae4384da1761da49478018beccee97e394af163",
+      "patchNonceRuntimeOutputObserved": true,
+      "matchingExecutionLines": 1
+    },
+    {
+      "service": "operations-service",
+      "jobId": 113000480917,
+      "conclusion": "success",
+      "logSha256": "8bcc70cbbbdfc84b8646301aa0e677947789a51d24605d411c3683a1910dadd7",
+      "patchNonceRuntimeOutputObserved": true,
+      "matchingExecutionLines": 1
+    },
+    {
+      "service": "api-gateway",
+      "jobId": 113000480974,
+      "conclusion": "success",
+      "logSha256": "09a123df8d57d02bda255d8d3b96d412c5470b06dccc4e0d4c16517a0137296f",
+      "patchNonceRuntimeOutputObserved": true,
+      "matchingExecutionLines": 1
+    },
+    {
+      "service": "frontend",
+      "jobId": 113000480998,
+      "conclusion": "success",
+      "logSha256": "a1bb13a5ffed383bb0f52faa5876de002b1718b49b57c3d07aae3299f2b67af8",
+      "patchNonceRuntimeOutputObserved": true,
+      "matchingExecutionLines": 1
+    },
+    {
+      "service": "identity-service",
+      "jobId": 113000481020,
+      "conclusion": "success",
+      "logSha256": "7f0a2cd53cbd19b1407a1a187c041c6c9a3fb93b1024d1f05554981d66344f8b",
+      "patchNonceRuntimeOutputObserved": true,
+      "matchingExecutionLines": 1
+    },
+    {
+      "service": "dashboard",
+      "jobId": 113000481055,
+      "conclusion": "success",
+      "logSha256": "7719cb5e95b1e9b0cb862a1eea202aea6bce5153701e448e4fc84e14f7aec08c",
+      "patchNonceRuntimeOutputObserved": true,
+      "matchingExecutionLines": 1
+    },
+    {
+      "service": "school-core-service",
+      "jobId": 113000481083,
+      "conclusion": "success",
+      "logSha256": "829fd05e07639053f16a016214e814ebd21e1c8f54a4a89b43cbb43d7a042c26",
+      "patchNonceRuntimeOutputObserved": true,
+      "matchingExecutionLines": 1
+    },
+    {
+      "service": "platform-service",
+      "jobId": 113000481199,
+      "conclusion": "success",
+      "logSha256": "4c61520d5a6e0b3b83cb429e9620a7cf43d40a375d5d219e1551baea0a254010",
+      "patchNonceRuntimeOutputObserved": true,
+      "matchingExecutionLines": 1
+    }
+  ],
+  "patchFreshnessVerified": true,
+  "baselineComparison": {
+    "currentSourceAlertsBefore": 649,
+    "currentSourceAlertsAfter": 85,
+    "reduction": 564,
+    "fixedVersionReportedBefore": 564,
+    "fixedVersionReportedAfter": 0,
+    "noFixedVersionReportedBefore": 85,
+    "noFixedVersionReportedAfter": 85,
+    "historicalAlertsBefore": 154,
+    "historicalAlertsAfter": 214,
+    "historicalLatestCommitUnchanged": true,
+    "historicalCountChangeNotInterpretedAsNewCurrentFindings": true
+  },
+  "residualCveComparison": {
+    "sameUniqueCvesAsBaselineNoFixedVersionGroups": true,
+    "uniqueCveCount": 11,
+    "cves": [
+      "CVE-2024-56433",
+      "CVE-2025-66382",
+      "CVE-2026-18374",
+      "CVE-2026-18477",
+      "CVE-2026-18508",
+      "CVE-2026-40228",
+      "CVE-2026-46675",
+      "CVE-2026-85091",
+      "CVE-2026-86145",
+      "CVE-2026-89092",
+      "CVE-2026-89161"
+    ]
+  },
+  "workflow": {
+    "status": "completed",
+    "conclusion": "success",
+    "headSha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37682100431",
+    "jobs": [
+      {
+        "name": "scan (billing-service, ., services/billing-service/Dockerfile, custoking-billing-service)",
+        "databaseId": 113000480660,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "scan (operations-service, ., services/operations-service/Dockerfile, custoking-operations-service)",
+        "databaseId": 113000480917,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "scan (api-gateway, services/api-gateway, services/api-gateway/Dockerfile, custoking-api-gateway)",
+        "databaseId": 113000480974,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "scan (frontend, frontend, frontend/Dockerfile, custoking-frontend)",
+        "databaseId": 113000480998,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "scan (identity-service, ., services/identity-service/Dockerfile, custoking-identity-service)",
+        "databaseId": 113000481020,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "scan (dashboard, tools/live-dashboard, tools/live-dashboard/Dockerfile, custoking-dashboard)",
+        "databaseId": 113000481055,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "scan (school-core-service, ., services/school-core-service/Dockerfile, custoking-school-core-serv...",
+        "databaseId": 113000481083,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "scan (platform-service, ., services/platform-service/Dockerfile, custoking-platform-service)",
+        "databaseId": 113000481199,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Remove superseded Trivy analysis categories",
+        "databaseId": 113003499561,
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ]
+  },
+  "postmergeCodeql": {
+    "runId": 37682050472,
+    "analyses": [
+      {
+        "id": 1911344172,
+        "category": "/language:java-kotlin",
+        "ref": "refs/heads/dev",
+        "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+        "created_at": "2026-10-07T20:30:59Z",
+        "results_count": 0,
+        "error": ""
+      },
+      {
+        "id": 1911324291,
+        "category": "/language:javascript-typescript",
+        "ref": "refs/heads/dev",
+        "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+        "created_at": "2026-10-07T20:27:49Z",
+        "results_count": 0,
+        "error": ""
+      }
+    ]
+  },
+  "residualUpstreamResearch": {
+    "path": "tmp/runtime-os-upstream-research.json",
+    "sha256NormalizedLf": "553d4b9ed62dd156653d64105d9ca4b95f9b4310064c371fbb78308cb9a51c3d",
+    "scope": "All 11 fresh residual CVEs match researched baseline; upstream status/prerequisites are not proof of non-exploitability",
+    "items": [
+      {
+        "cve": "CVE-2026-18374",
+        "packages": [
+          "libc6",
+          "libc-bin",
+          "locales"
+        ],
+        "primaryUrl": "https://ubuntu.com/security/CVE-2026-18374",
+        "vendorNobleStatusObserved": "Vulnerable, fix deferred",
+        "prerequisite": "Attacker-controlled fopen mode including effectively empty ccs extension can trigger heap overflow.",
+        "nextStep": "Check native call paths and reject untrusted mode strings; monitor supported distro fix. No source path or runtime reachability absence proved."
+      },
+      {
+        "cve": "CVE-2026-89092",
+        "packages": [
+          "libc6",
+          "libc-bin",
+          "locales"
+        ],
+        "primaryUrl": "https://ubuntu.com/security/CVE-2026-89092",
+        "vendorNobleStatusObserved": "Vulnerable",
+        "prerequisite": "Enabled nscd using malicious DNS with unusually large responses can overflow its thread stack.",
+        "nextStep": "Independently inspect exact image packages/process startup and DNS path; monitor distro backport. Do not infer daemon execution from libc package presence."
+      },
+      {
+        "cve": "CVE-2025-66382",
+        "packages": [
+          "libexpat1"
+        ],
+        "primaryUrl": "https://ubuntu.com/security/CVE-2025-66382",
+        "vendorNobleStatusObserved": "Vulnerable, fix deferred",
+        "prerequisite": "Crafted roughly2MiB XML input causes excessive processing in native expat.",
+        "nextStep": "Identify any native XML consumers and enforce existing parser/input/resource limits; monitor distro fix. Java XML controls do not attest all native consumers."
+      },
+      {
+        "cve": "CVE-2026-86145",
+        "packages": [
+          "libpcre2-8-0"
+        ],
+        "primaryUrl": "https://ubuntu.com/security/CVE-2026-86145",
+        "vendorNobleStatusObserved": "Vulnerable",
+        "upstreamCvss3": 8.2,
+        "prerequisite": "Recursive DFA workspace reuse needs attacker-controlled expression or recursive pattern with small heap limit.",
+        "nextStep": "Inspect native PCRE2 DFA consumers and prevent untrusted expressions; retain risk and monitor supported distro backport despite upstream10.48 fix."
+      },
+      {
+        "cve": "CVE-2026-89161",
+        "packages": [
+          "libpcre2-8-0"
+        ],
+        "primaryUrl": "https://ubuntu.com/security/CVE-2026-89161",
+        "vendorNobleStatusObserved": "Vulnerable",
+        "upstreamCvss3": 7.4,
+        "prerequisite": "Native PCRE2 JIT mishandles a previously copied subject supplied as context.",
+        "nextStep": "Review exact native JIT consumers and context ownership; monitor distro backport. Upstream10.48 does not establish a compatible Noble package fix."
+      },
+      {
+        "cve": "CVE-2026-46675",
+        "packages": [
+          "libpng16-16t64"
+        ],
+        "primaryUrl": "https://ubuntu.com/security/CVE-2026-46675",
+        "upstreamUrl": "https://github.com/pnggroup/libpng/security/advisories/GHSA-qvg3-h654-xq3j",
+        "vendorNobleStatusObserved": "libpng1.6 Needs evaluation in dated detail page; current list labels vulnerable. Do not confuse different source package libpng Not in release with installed libpng1.6.",
+        "prerequisite": "Native sequential reader calls png_read_end after metadata without starting image rows, after incomplete compressed text/profile handling.",
+        "nextStep": "Inspect exact native consumers and image normalization path; monitor distro fix for upstream1.6.59. Keep crafted-image residual open until image-bound reachability is verified."
+      },
+      {
+        "cve": "CVE-2026-40228",
+        "packages": [
+          "libsystemd0",
+          "libudev1"
+        ],
+        "primaryUrl": "https://ubuntu.com/security/CVE-2026-40228",
+        "vendorNobleStatusObserved": "Vulnerable, fix deferred",
+        "prerequisite": "Running journald with ForwardToWall=yes relays ANSI sequences from emergency log messages to terminals.",
+        "nextStep": "Inspect daemon/startup/config/terminal exposure in exact image; shared library presence alone is not daemon execution. Monitor distro fix."
+      },
+      {
+        "cve": "CVE-2024-56433",
+        "packages": [
+          "login",
+          "passwd"
+        ],
+        "primaryUrl": "https://ubuntu.com/security/CVE-2024-56433",
+        "vendorNobleStatusObserved": "Vulnerable, fix deferred",
+        "prerequisite": "Local subordinate ID ranges collide with administrator-assigned network users, permitting mapped identity access.",
+        "nextStep": "Inspect subuid/subgid/newuidmap and network identity/mount exposure on exact runtime; prohibit conflicting allocations, monitor vendor guidance. Existing nonroot User alone does not attest complete absence."
+      },
+      {
+        "cve": "CVE-2026-18477",
+        "packages": [
+          "tar"
+        ],
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18477.json",
+        "vendorNobleStatusObserved": "Canonical OSV affected Noble range contains1.35+dfsg-3ubuntu0.4 with no fixed event in observed record.",
+        "prerequisite": "Incremental restore plus attacker write access to backup directory and restore system enables rename race and escape.",
+        "nextStep": "Keep untrusted archives out of runtime tar restore and isolate governed restoration. Fresh extraction directory alone does not mitigate; monitor supported distro fix."
+      },
+      {
+        "cve": "CVE-2026-18508",
+        "packages": [
+          "tar"
+        ],
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18508.json",
+        "vendorNobleStatusObserved": "Canonical OSV affected Noble range contains1.35+dfsg-3ubuntu0.4 with no fixed event in observed record.",
+        "prerequisite": "one-top-level archive extraction permits escaping hardlinks, amplified by a preexisting symbolic link.",
+        "nextStep": "Do not rely on one-top-level as an untrusted archive sandbox; inspect any exact runtime extractor and retain isolation/monitoring until distro fix."
+      },
+      {
+        "cve": "CVE-2026-85091",
+        "packages": [
+          "zlib1g"
+        ],
+        "primaryUrl": "https://ubuntu.com/security/CVE-2026-85091",
+        "vendorNobleStatusObserved": "Vulnerable, fix deferred; vendor documents ambiguous affected versions and an ineffective proposed upstream patch.",
+        "upstreamCvss3": 7.4,
+        "prerequisite": "Nonblocking native gzwrite stall followed by formatted gzip output with stale buffer state can overflow.",
+        "nextStep": "Inspect native gzip output consumers; preserve residual and vendor severity distinction. Avoid unsupported cherry-picked patch or changing distro solely to hide scanner result."
+      }
+    ],
+    "severityCaution": "Ubuntu/Trivy vendor priority and upstream CVSS differ. A zero HIGH/CRITICAL vendor gate does not mean every advisory has a low upstream score. Do not dismiss based on package presence or absent fixedVersion alone.",
+    "commonFixPlan": [
+      "Compare fresh nonce-refreshed eight-component SARIF and all seven exact release image SARIF against the dated baseline.",
+      "For remaining issues, prove native API/package/process reachability against immutable images and maintain approved mitigations; no blanket NOT_AFFECTED classification.",
+      "Monitor Canonical/Alpine and dependency advisories; install available supported fixes through CI, fresh image gates, dev rollout and acceptance.",
+      "Keep historical-category alerts separate and preserve original evidence; no broad scanner ignore, dismissal or analysis deletion."
+    ]
+  },
+  "cachedGitHubAlertMessagePackageGroups": [
+    {
+      "package": "libc-bin",
+      "installedVersion": "2.39-0ubuntu8.8",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "platform-service": 2,
+        "school-core-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ]
+    },
+    {
+      "package": "libc6",
+      "installedVersion": "2.39-0ubuntu8.8",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "platform-service": 2,
+        "school-core-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ]
+    },
+    {
+      "package": "libexpat1",
+      "installedVersion": "2.6.1-2ubuntu0.4",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 5,
+      "categoryCounts": {
+        "identity-service": 1,
+        "operations-service": 1,
+        "billing-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2025-66382"
+      ]
+    },
+    {
+      "package": "libpcre2-8-0",
+      "installedVersion": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 10,
+      "categoryCounts": {
+        "operations-service": 2,
+        "identity-service": 2,
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-86145",
+        "CVE-2026-89161"
+      ]
+    },
+    {
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.6",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 5,
+      "categoryCounts": {
+        "school-core-service": 1,
+        "operations-service": 1,
+        "platform-service": 1,
+        "billing-service": 1,
+        "identity-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-46675"
+      ]
+    },
+    {
+      "package": "libsystemd0",
+      "installedVersion": "255.4-1ubuntu8.17",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 5,
+      "categoryCounts": {
+        "identity-service": 1,
+        "operations-service": 1,
+        "billing-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-40228"
+      ]
+    },
+    {
+      "package": "libudev1",
+      "installedVersion": "255.4-1ubuntu8.17",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 5,
+      "categoryCounts": {
+        "identity-service": 1,
+        "operations-service": 1,
+        "billing-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-40228"
+      ]
+    },
+    {
+      "package": "locales",
+      "installedVersion": "2.39-0ubuntu8.8",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "platform-service": 2,
+        "school-core-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ]
+    },
+    {
+      "package": "login",
+      "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 5,
+      "categoryCounts": {
+        "identity-service": 1,
+        "operations-service": 1,
+        "billing-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2024-56433"
+      ]
+    },
+    {
+      "package": "passwd",
+      "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 5,
+      "categoryCounts": {
+        "identity-service": 1,
+        "operations-service": 1,
+        "billing-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2024-56433"
+      ]
+    },
+    {
+      "package": "tar",
+      "installedVersion": "1.35+dfsg-3ubuntu0.4",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 10,
+      "categoryCounts": {
+        "school-core-service": 2,
+        "identity-service": 2,
+        "billing-service": 2,
+        "operations-service": 2,
+        "platform-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18477",
+        "CVE-2026-18508"
+      ]
+    },
+    {
+      "package": "zlib1g",
+      "installedVersion": "1:1.3.dfsg-3.1ubuntu2.1",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "alertCount": 5,
+      "categoryCounts": {
+        "identity-service": 1,
+        "billing-service": 1,
+        "operations-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-85091"
+      ]
+    }
+  ],
+  "cachedGitHubAlertMessageVersionIsNotAuthoritative": true,
+  "currentScannerPackageGroups": [
+    {
+      "package": "libc-bin",
+      "installedVersion": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ]
+    },
+    {
+      "package": "libc6",
+      "installedVersion": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ]
+    },
+    {
+      "package": "libexpat1",
+      "installedVersion": "2.6.1-2ubuntu0.6",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2025-66382"
+      ]
+    },
+    {
+      "package": "libpcre2-8-0",
+      "installedVersion": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-86145",
+        "CVE-2026-89161"
+      ]
+    },
+    {
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.6",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-46675"
+      ]
+    },
+    {
+      "package": "libsystemd0",
+      "installedVersion": "255.4-1ubuntu8.17",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-40228"
+      ]
+    },
+    {
+      "package": "libudev1",
+      "installedVersion": "255.4-1ubuntu8.17",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-40228"
+      ]
+    },
+    {
+      "package": "locales",
+      "installedVersion": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ]
+    },
+    {
+      "package": "login",
+      "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2024-56433"
+      ]
+    },
+    {
+      "package": "passwd",
+      "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2024-56433"
+      ]
+    },
+    {
+      "package": "tar",
+      "installedVersion": "1.35+dfsg-3ubuntu0.4",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18477",
+        "CVE-2026-18508"
+      ]
+    },
+    {
+      "package": "zlib1g",
+      "installedVersion": "1:1.3.dfsg-3.1ubuntu2.2",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-85091"
+      ]
+    }
+  ],
+  "currentSarifAnalysisProof": [
+    {
+      "id": 1911363292,
+      "category": "billing-service",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:33:52Z",
+      "results_count": 17,
+      "error": "",
+      "sarifSha256": "c6afda724508c58787cb4b8f41b6bb88763a22b0daa176df48a75263dfc787c8",
+      "actualResultCount": 17
+    },
+    {
+      "id": 1911355660,
+      "category": "school-core-service",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:32:44Z",
+      "results_count": 17,
+      "error": "",
+      "sarifSha256": "ca2ebb4b0543526cf5a17802f362c858da9fbef9f61d9058c5e9bc217dbaf58e",
+      "actualResultCount": 17
+    },
+    {
+      "id": 1911349270,
+      "category": "platform-service",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:31:46Z",
+      "results_count": 17,
+      "error": "",
+      "sarifSha256": "6c9c847b4d16a8d89410585ca309039e5091b8a56f083dc682d29570c7af9a05",
+      "actualResultCount": 17
+    },
+    {
+      "id": 1911347911,
+      "category": "identity-service",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:31:34Z",
+      "results_count": 17,
+      "error": "",
+      "sarifSha256": "9642592e6863d27c0e1e884a76b2d8b90efec21e4db908ab38020442c0386ac7",
+      "actualResultCount": 17
+    },
+    {
+      "id": 1911346009,
+      "category": "operations-service",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:31:16Z",
+      "results_count": 17,
+      "error": "",
+      "sarifSha256": "26b903be95500f988ada836fe9523e3fac574985129fd8ef18611c06c88ba20f",
+      "actualResultCount": 17
+    },
+    {
+      "id": 1911332370,
+      "category": "dashboard",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:29:06Z",
+      "results_count": 0,
+      "error": "",
+      "sarifSha256": "f9fd0b63abbdf9f2e239bd65eba4e61ac98933e9f91dc045dd7f619ebcbde1fc",
+      "actualResultCount": 0
+    },
+    {
+      "id": 1911328209,
+      "category": "api-gateway",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:28:27Z",
+      "results_count": 0,
+      "error": "",
+      "sarifSha256": "75177e8403b6c7e51ba293e65cb211934d21d88fdf1c9e850cec7b9980c15068",
+      "actualResultCount": 0
+    },
+    {
+      "id": 1911327752,
+      "category": "frontend",
+      "ref": "refs/heads/dev",
+      "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+      "created_at": "2026-10-07T20:28:22Z",
+      "results_count": 0,
+      "error": "",
+      "sarifSha256": "8dbdf55451b94801f68d43bbdd3fa7873b8f502179a6b8022a8e7da15e77b53d",
+      "actualResultCount": 0
+    }
+  ],
+  "packageVersionSourceOfTruth": "Exact eight current-source analysis SARIF result message fields, not cached GitHub alert instance messages",
+  "historicalAlertRepresentation": {
+    "baselineLegacyCount": 154,
+    "currentLegacyCount": 214,
+    "sixtyCandidatesWithFixedBaselineStableInstanceAndOpenLegacyInstance": 60,
+    "evidencePath": "tmp/pr328-legacy-alert-comparison.json",
+    "baselineIndividualAlertIdsCaptured": false,
+    "explanation": "After stable findings become fixed, GitHub returns older still-open legacy-category instances as most_recent_instance for 60 alerts. No new current-source findings are inferred from this representation shift."
+  },
+  "scope": "Fresh eight-component source-built images; exact deployed-release image inventory is separately required. Authoritative installed versions come from exact-source SARIF, not cached GitHub alert messages.",
+  "productionChanged": false
+}

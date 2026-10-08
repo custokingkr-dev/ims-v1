@@ -1,0 +1,348 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T08:35:49.613007+00:00",
+  "project": "custoking-dev",
+  "latestAcceptedSourceSha": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+  "latestAcceptedReleaseRunId": 37746479841,
+  "completedPr328Pr329Pr330DevAcceptance": true,
+  "securityPlanComplete": false,
+  "productionChanged": false,
+  "allPossibleAttacksEliminated": false,
+  "allBusinessFeaturesIndividuallyExercised": false,
+  "releaseProofSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f",
+  "securityPatchEpoch": "2026-10-08",
+  "libpngPackageVersion": "1.6.43-5ubuntu0.7",
+  "reviewedObsoleteRevisionInventory": {
+    "file": "dev-obsolete-revision-dry-run.json",
+    "candidateCount": 198,
+    "capturedWindowsCrLfBytesSha256": "a194d47dd15b1efd1b7dfcdc9d61f127ffb58ef31d6bfb50333492ea55dd8986",
+    "repositoryLfBlobSha256": "08d9f66c4a2d671e4128b344424723e389e7278fbf7c80e892176be974670767",
+    "lineEndingRepresentationsHaveIdenticalJsonPayload": true,
+    "explicitIrreversibleDeletionApprovalReceived": false,
+    "revisionsDeleted": 0,
+    "scope": "The helper requires the exact bytes SHA of its selected inventory. Recording line-ending representations does not substitute an approval or authorize another inventory."
+  },
+  "currentImageScannerFindingCount": 85,
+  "sourceBaselineFindingReduction": {
+    "before": 649,
+    "after": 85,
+    "removed": 564,
+    "scope": "Dated PR328 scan comparison, not the newer release delta"
+  },
+  "scope": "Completed PR328/329/330 source, actual scoped CI/dev/image/public/photo evidence; nine open owner groups and separate upstream/local custody work. Earlier failed/historical checkpoints retain their dates. This index does not authorize irreversible deletion, provider traffic, restore resume or production.",
+  "openOwnerActions": [
+    {
+      "id": "edge",
+      "owner": "Cloud/domain owner",
+      "dependency": "Owned dev hostname and edge-cost approval",
+      "completionEvidence": "Apply the reviewed HTTPS/WAF module and accept real routing, login/upload/passkey origins and old-URL bypass denial.",
+      "status": "OPEN"
+    },
+    {
+      "id": "repository",
+      "owner": "Repository administrator",
+      "dependency": "Administrator access and exact enforcement policy",
+      "completionEvidence": "Apply and independently read back required checks, branch/environment protection and bypass settings.",
+      "status": "OPEN"
+    },
+    {
+      "id": "dashboard",
+      "owner": "Dashboard/cloud owner",
+      "dependency": "Dedicated OAuth client/callback, allowed identities and managed secret",
+      "completionEvidence": "Deploy real OAuth and test allowed/denied login, shared-session replay/logout/expiry. Exact expired-document absence is now observed; TTL attribution remains separate.",
+      "status": "OPEN"
+    },
+    {
+      "id": "provider",
+      "owner": "Messaging/application/operations owners",
+      "dependency": "Account-selected submission/report contracts, templates, approved recipients and secret configuration",
+      "completionEvidence": "Implement authenticated bounded raw normalization and UNKNOWN lost-response attestation; accept actual correlated provider/delivery and incident recipient receipt before live admission.",
+      "status": "OPEN"
+    },
+    {
+      "id": "hardware",
+      "owner": "Security administrators",
+      "dependency": "Supported physical device/browser matrix",
+      "completionEvidence": "Exercise physical passkeys/security keys with required user verification, registration/assertion/replay/recovery.",
+      "status": "OPEN"
+    },
+    {
+      "id": "retention_restore",
+      "owner": "Data/privacy/database owners",
+      "dependency": "Approved retention, RPO/RTO, lineage and isolated targets",
+      "completionEvidence": "Finish governed freeze/drain, complete historical/old-epoch/external intent coverage, physical clone/lineage proof, all source/platform/object/provider fences and controlled epoch/cutover/resume. Prove physical provider/object/backup expiry separately.",
+      "status": "OPEN"
+    },
+    {
+      "id": "capacity_cleanup",
+      "owner": "Operations owner",
+      "dependency": "Representative workload/SLO/window and separate explicit exact-inventory deletion approval",
+      "completionEvidence": "Measure real capacity/reserve/overlap/drain; after exact approval revalidate and delete only the reviewed 198 set under a release freeze with independent final absence.",
+      "status": "OPEN"
+    },
+    {
+      "id": "http2",
+      "owner": "Ingress/cloud owner",
+      "dependency": "Provider investigation and owned-edge cutover",
+      "completionEvidence": "Preserve the observed reset-code anomaly, investigate its parser path and rerun bounded controls on the intended edge.",
+      "status": "OPEN"
+    },
+    {
+      "id": "egress_files",
+      "owner": "Cloud/application owners",
+      "dependency": "Compatible required outbound destinations and supported viewer matrix",
+      "completionEvidence": "Enforce intended egress policy and accept controlled DNS/redirect plus valid dependencies and supported file viewers.",
+      "status": "OPEN"
+    }
+  ],
+  "additionalOpenFindings": [
+    {
+      "id": "upstream",
+      "plan": "acceptance-runtime-os-upstream-fix-plan.json",
+      "status": "OPEN",
+      "criteria": "Supported vendor fix uptake and exact native/API exposure review for residual advisories; preserve scanner/backport disagreement and retained historical categories without blanket suppression."
+    },
+    {
+      "id": "local_snapshot_custody",
+      "plan": "acceptance-repository-local-history-scope.json",
+      "status": "OPEN",
+      "criteria": "Private owner classification and exact custody/removal policy preserving unrelated work; ref removal does not prove physical byte purge."
+    }
+  ],
+  "evidence": [
+    {
+      "file": "acceptance-runtime-os-edge-config-baseline.json",
+      "capturedBytesSha256": "c7c26a593c2ee777134719272540f5150798a1d352351fc348eb586ed5ad3947"
+    },
+    {
+      "file": "acceptance-runtime-os-owner-readback.json",
+      "capturedBytesSha256": "4315c89bc4afa42694cd505609f703d802e16e10a88fb8830880fc67568338f8"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-ci.json",
+      "capturedBytesSha256": "cf35ba5a5f532195895294ddbf47654305b5211b547bc6bc553d777cbff257e3"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-dev-release.json",
+      "capturedBytesSha256": "eb04a1abb34404d8f06e1ec4cc45375d281214a38d259c36a044718431966aa6"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-image-protection.json",
+      "capturedBytesSha256": "df58a360eecf1f2d7f249619248cb429be8c018cbc1980786d67f11f6e1e9f39"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-public-smoke.json",
+      "capturedBytesSha256": "ea4f53ad8f6fe360625097c11637688025ae9d9c2e26785e964cbaaf0ed09c7a"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-release-inventory.json",
+      "capturedBytesSha256": "2f17ca7f4660dc5ecd381b9781b1afce3e41c3ca38d80276925c04fbce9b2095"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-release-tests.json",
+      "capturedBytesSha256": "5e20733678befcf18b1eabb26985238cbc4ce71577ca80fa98ec3b7ef3353481"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-source-scan.json",
+      "capturedBytesSha256": "075b7b48afa1f163865ca22e0a9fcd0f7303caaaa48e71155f6cef53acca2799"
+    },
+    {
+      "file": "acceptance-runtime-os-upstream-fix-plan.json",
+      "capturedBytesSha256": "208e1baa7f5e26bf31d4796f033aed63e75afd6d105d47367ec2f0fa6dd3e265"
+    },
+    {
+      "file": "acceptance-portrait-metadata-ci.json",
+      "capturedBytesSha256": "a18ad0cc2191da7358789c45bd63977edbfe09408ecc2ea65352548637574400"
+    },
+    {
+      "file": "acceptance-portrait-metadata-combined-dev-inventory.json",
+      "capturedBytesSha256": "8373848df3ac0e6b99d46972e656b4a4a9473245ba10265094492a5194295857"
+    },
+    {
+      "file": "acceptance-portrait-metadata-dev-release.json",
+      "capturedBytesSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc"
+    },
+    {
+      "file": "acceptance-portrait-metadata-image-protection.json",
+      "capturedBytesSha256": "65d4eb961bc1741bfc7f79c62dd1df2abc4d3e9731e9712cb1f99675a3e01872"
+    },
+    {
+      "file": "acceptance-portrait-metadata-live-photo-erasure.json",
+      "capturedBytesSha256": "2c47e34d681bda491d73349d76c446319818d941928154ae569119cabb33f3b1"
+    },
+    {
+      "file": "acceptance-portrait-metadata-obsolete-revision-preflight.json",
+      "capturedBytesSha256": "2fc78a7a36eed6828b79c986f52c259707f58da908d8a4b16a97b96eef3ad814"
+    },
+    {
+      "file": "acceptance-portrait-metadata-public-smoke.json",
+      "capturedBytesSha256": "2e61b756de09a947db135d3dac8fa028eabd4fd69bebc8030acf971a5bb0e867"
+    },
+    {
+      "file": "acceptance-portrait-metadata-release-inventory.json",
+      "capturedBytesSha256": "73f0a32a8986adf30270e62d252e131d11050df5d0a3bd036a5715a22df048ad"
+    },
+    {
+      "file": "acceptance-portrait-metadata-release-tests.json",
+      "capturedBytesSha256": "cc0f5fe6f630261679f533a794bde559106ac27feace3838d0d213d0e4ea3663"
+    },
+    {
+      "file": "acceptance-portrait-owner-readback.json",
+      "capturedBytesSha256": "597b2db9ece74217dcad5f6bbf194ea1cff285904ef0557bf84895c626bffe0d"
+    },
+    {
+      "file": "acceptance-libpng-vendor-patch-research.json",
+      "capturedBytesSha256": "723198bc457533b98afabaf71f979da017e563827f230b7ce1429835ab4bc8f6"
+    },
+    {
+      "file": "acceptance-libpng-refresh-initial-failure.json",
+      "capturedBytesSha256": "e0e5a62ce12e9a055a1e817a1947fc69760ab9711983c4af2b861c8269565cb5"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-ci.json",
+      "capturedBytesSha256": "34266eb3a804162e78d0f923eb9bff0cfd9ad3bacb1c9b19202435776f55fcb3"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-dev-release.json",
+      "capturedBytesSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-image-protection.json",
+      "capturedBytesSha256": "ef77ac2ea0aaf6444e6b2054988f84b5aad1e4b0310134b99e165dfd073b9031"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-public-smoke.json",
+      "capturedBytesSha256": "cd939560f2cca6ff19d69df700c0a89826a481f03669e5b0a90b3681213a4228"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-release-inventory.json",
+      "capturedBytesSha256": "83e8464bf86f8ba66ec5745d99ef55aef5edbf7d260c11520ecf3e1b955b0ce6"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-release-tests.json",
+      "capturedBytesSha256": "034bc62c39e9d6b0a28a483faf33b064b9c8b400661a874fa69b81ec52421853"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-owner-readback.json",
+      "capturedBytesSha256": "b6535c913d5f85e371a8b2af9fdc185286fdf998516b04d2ef84cdcc59468e6b"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-obsolete-revision-preflight.json",
+      "capturedBytesSha256": "946b5c706e14c1fc91731ccc96bf6ae97a47fc7e3437789013aa0cf9b8220326"
+    },
+    {
+      "file": "acceptance-evidence-secret-scan-false-positive.json",
+      "capturedBytesSha256": "44ad6ce8d130bcf9c6e5c1b4b73026c6b801a3ede497df924f11209cbe4b551d"
+    }
+  ],
+  "helperPreparation": {
+    "capturedAtUtc": "2026-10-08T07:56:56.926658+00:00",
+    "offlineChecksPassed": 35,
+    "checks": [
+      "verify-runtime-patch-cycle-dev-release.py parser",
+      "protect-runtime-patch-cycle-dev-images.py parser",
+      "run-runtime-patch-cycle-public-smoke.py parser",
+      "expanded reviewed base parser",
+      "unset tuple denied before metadata/cloud",
+      "boolean run denied before metadata/cloud",
+      "invalid pinned source denied before metadata/cloud",
+      "wrong source denied before metadata/cloud",
+      "failed historical same-source run denied before metadata/cloud",
+      "valid seven fresh scans/five explicit package inventories/five absent jobs with UTF8LF captured output",
+      "pending exact run denied before cloud",
+      "GH source mismatch denied before cloud",
+      "manifest stale patch epoch denied before cloud",
+      "cached verdict denied before cloud",
+      "row cache provenance denied before cloud",
+      "failed exact gate denied before cloud",
+      "noncanonical image ref denied before cloud",
+      "SARIF source digest mismatch denied before cloud",
+      "SARIF missing libpng inventory denied before cloud",
+      "old libpng0.6 denied before cloud",
+      "contradictory libpng versions denied before cloud",
+      "wrong dedicated role denied",
+      "real provider enablement denied",
+      "actual configured journal generation drift denied",
+      "CORS drift denied",
+      "older Java manifest-matched retained runtime denied by explicit advance guard",
+      "owner job permission error cannot prove absence",
+      "unset protection tuple denied before process",
+      "unset smoke tuple denied before process",
+      "fourteen unique create-only source-and-run-qualified tags",
+      "pending protection proof denied",
+      "cached protection scan denied",
+      "old protection package denied",
+      "missing protection package denied",
+      "invented absent inventory denied"
+    ],
+    "pinStatus": {
+      "verifierSource": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+      "verifierRun": 37746479841,
+      "protectionSource": null,
+      "protectionRun": null,
+      "protectionProofSha256": null,
+      "smokeSource": null,
+      "smokeRun": null,
+      "smokeProofSha256": null
+    },
+    "cloudCalls": 0,
+    "cloudMutations": 0,
+    "acceptanceDocsWritten": 0,
+    "baselineRawSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+    "helperSha256": {
+      "verify-runtime-patch-cycle-dev-release.py": "c06218c7f1a221007b6905f279935b2c190d2ddc6bc840dabd483761947e31c4",
+      "protect-runtime-patch-cycle-dev-images.py": "88122ebc565331c587011d9d9c3e0a950f77a3671cc21407987162565f4f2361",
+      "run-runtime-patch-cycle-public-smoke.py": "fef5d7b08163ceac6eac8b0c8801121437726f1552f39ab2401986989efa46fe"
+    },
+    "scope": "Mock transport and explicitly owned local metadata fixtures only; no actual release, package inventory or live acceptance conclusion."
+  },
+  "earlierEvidenceConsistencyReview": {
+    "schemaVersion": 1,
+    "checkedAtUtc": "2026-10-08T07:49:13.163866+00:00",
+    "readOnly": true,
+    "cloudCalls": 0,
+    "filesReviewed": [
+      "acceptance-libpng-vendor-patch-research.json",
+      "acceptance-portrait-metadata-ci.json",
+      "acceptance-portrait-metadata-combined-dev-inventory.json",
+      "acceptance-portrait-metadata-dev-release.json",
+      "acceptance-portrait-metadata-image-protection.json",
+      "acceptance-portrait-metadata-live-photo-erasure.json",
+      "acceptance-portrait-metadata-local.json",
+      "acceptance-portrait-metadata-obsolete-revision-preflight.json",
+      "acceptance-portrait-metadata-public-smoke.json",
+      "acceptance-portrait-metadata-release-inventory.json",
+      "acceptance-portrait-metadata-release-tests.json",
+      "acceptance-portrait-owner-readback.json",
+      "acceptance-runtime-os-edge-config-baseline.json",
+      "acceptance-runtime-os-owner-readback.json",
+      "acceptance-runtime-os-patches-ci.json",
+      "acceptance-runtime-os-patches-dev-release.json",
+      "acceptance-runtime-os-patches-image-protection.json",
+      "acceptance-runtime-os-patches-public-smoke.json",
+      "acceptance-runtime-os-patches-release-inventory.json",
+      "acceptance-runtime-os-patches-release-tests.json",
+      "acceptance-runtime-os-patches-source-scan.json",
+      "acceptance-runtime-os-upstream-fix-plan.json"
+    ],
+    "materialContradictions": [],
+    "checksPassed": [
+      "Raw EB04 PR328 and B875 PR329 baseline proof hashes match bytes exactly",
+      "Seven-service release source/run/Ready scopes match each dated release",
+      "PR329 six unchanged exact PR328 runtime/revision bindings preserved; school changed only",
+      "649?85 source findings/564 reduction; separate85 release binding; mixed17 new school+68 frozen six explicitly dated, not fresh-all7",
+      "Historical source-only deployed=false flags preserved; later release evidence is separate",
+      "Fresh402 proof15 browserchecks, exact generation/DONE, first tombstone0?1 with4outbox attempts,8job absence/privatecleanup consistent",
+      "Vendor0.7 patch declaration and frozen four0.6/scanner disagreement remain carefully distinguished; no reachability/blanket fix claim"
+    ],
+    "limits": "Offline internal evidence consistency, not independent live revalidation; historical flags and frozen proof bytes unchanged"
+  },
+  "publicationSecretGateFollowup": {
+    "initialRunId": 37751343325,
+    "initialResult": "FAIL_ONE_CHECKSUM_FALSE_POSITIVE",
+    "classificationProof": "acceptance-evidence-secret-scan-false-positive.json",
+    "exactHistoricalFingerprint": "8bc25bb598d3d8a3cabd19b833dbb972f720e652:docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json:generic-api-key:175",
+    "correctedHeadCiRequired": true,
+    "noBroadSuppression": true
+  }
+}

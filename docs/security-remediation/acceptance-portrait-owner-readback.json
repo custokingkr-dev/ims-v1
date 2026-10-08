@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "checkedAtUtc": "2026-10-08T06:45:27.082434+00:00",
+  "readOnly": true,
+  "noCloudMutation": true,
+  "ttl": {
+    "database": "ims-dashboard-dev",
+    "documentId": "expired-5d010f4bf88d45efb59105858cdf18aa69b1ae9c93dcd41b0c69924f5b4680ad",
+    "originalExpiry": "2026-10-06T09:47:58.010Z",
+    "priorGetStatus": 200,
+    "priorObservedAtUtc": "2026-10-07T13:24:20.896Z",
+    "databaseGetStatus": 200,
+    "documentGetStatus": 200,
+    "physicalAbsenceObserved": false,
+    "ttlDeletionAttributionProven": false,
+    "principal": "Current operator GET-only observation; not dashboard service-account IAM retest",
+    "documentContentLogged": false,
+    "observedExpiry": "2026-10-06T09:47:58.010Z"
+  },
+  "repository": {
+    "repository": "custokingkr-dev/ims-v1",
+    "apiSucceeded": true,
+    "permissions": {
+      "admin": false,
+      "maintain": false,
+      "push": true,
+      "triage": true,
+      "pull": true
+    },
+    "canAdministerProtection": false,
+    "devProtectionReadbackSucceeded": true,
+    "devProtected": false
+  },
+  "dashboardConfiguration": {
+    "dedicatedOAuthSecretMetadataReadable": false,
+    "secretValuesRead": false,
+    "unrelatedOAuthReuse": false,
+    "secretNotFound": true,
+    "dashboardServiceMetadataReadable": false,
+    "serviceNotFound": true
+  },
+  "evidenceWorktreeCommit": "6f562c4296471263ee2f31d061c19b8d76981ef6",
+  "sourceEvidenceFileSha256": "ab3e9a0ecb38becdfd6ac234ab5ef8925c271e940450dd0adb345f3b5f96bc5c",
+  "scope": "Fresh independent GET-only owner configuration and exact synthetic TTL fixture readback after PR329 source merge; not release rollout or dashboard-SA acceptance. No document listing/create/delete, secret-value access, IAM or configuration change."
+}

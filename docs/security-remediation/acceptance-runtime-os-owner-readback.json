@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "checkedAtUtc": "2026-10-07T20:32:31.998877+00:00",
+  "readOnly": true,
+  "noCloudMutation": true,
+  "ttl": {
+    "database": "ims-dashboard-dev",
+    "documentId": "expired-5d010f4bf88d45efb59105858cdf18aa69b1ae9c93dcd41b0c69924f5b4680ad",
+    "originalExpiry": "2026-10-06T09:47:58.010Z",
+    "priorGetStatus": 200,
+    "priorObservedAtUtc": "2026-10-07T13:24:20.896Z",
+    "databaseGetStatus": 200,
+    "documentGetStatus": 200,
+    "physicalAbsenceObserved": false,
+    "ttlDeletionAttributionProven": false,
+    "principal": "Current operator GET-only observation; not dashboard service-account IAM retest",
+    "documentContentLogged": false,
+    "observedExpiry": "2026-10-06T09:47:58.010Z"
+  },
+  "repository": {
+    "repository": "custokingkr-dev/ims-v1",
+    "apiSucceeded": true,
+    "permissions": {
+      "admin": false,
+      "maintain": false,
+      "push": true,
+      "triage": true,
+      "pull": true
+    },
+    "canAdministerProtection": false,
+    "devProtectionReadbackSucceeded": true,
+    "devProtected": false
+  },
+  "dashboardConfiguration": {
+    "dedicatedOAuthSecretMetadataReadable": false,
+    "secretValuesRead": false,
+    "unrelatedOAuthReuse": false,
+    "secretNotFound": true,
+    "dashboardServiceMetadataReadable": false,
+    "serviceNotFound": true
+  },
+  "evidenceWorktreeCommit": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c"
+}
