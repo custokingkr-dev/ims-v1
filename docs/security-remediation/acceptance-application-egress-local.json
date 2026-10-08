@@ -1,0 +1,46 @@
+{
+  "capturedAt": "2026-10-08T10:29:47.885724+00:00",
+  "scope": "disabled dev-only source preparation; no cloud reads/apply or revision changes",
+  "frozenFiles": {
+    "deploy/gcp/application-egress/providers.tf": "b784e094ba23fe987dfbac4da592a8648ea80c1b45edce7982ee8edaa501a4a4",
+    "deploy/gcp/application-egress/variables.tf": "8ce82b9735348b93403e9fe58550da28bd6f0e1714ce11e53d54d05af8850f90",
+    "deploy/gcp/application-egress/main.tf": "7d7c8fb812780cb3f4872c0634a007f6917d4173d5e95d0cc2c2c1155d1b94d9",
+    "deploy/gcp/application-egress/README.md": "9521f83daa1ffbb8b629d4568ed24b3ec231e656850953b01cc9a196785de103",
+    "deploy/gcp/application-egress/.terraform.lock.hcl": "4e7f2232898f290defe0384308a9405762c19707b0656e23ffdceae21e761c4f",
+    "deploy/gcp/application-egress/tests/egress.tftest.hcl": "3170466677ae29bb339b0ca1dbb1dd29c1621c776609a3e86da054aba3be5824"
+  },
+  "provider": "hashicorp/google 7.39.0",
+  "lockPlatformsVerified": [
+    "linux_amd64",
+    "windows_amd64"
+  ],
+  "validation": {
+    "initBackendFalseReadonlyLock": true,
+    "fmtCheck": true,
+    "validate": true,
+    "mockTestsPassed": 17,
+    "mockTestsFailed": 0,
+    "log": "tmp/application-egress-test.log",
+    "logCapturedBytesSha256": "f09a0f30ac4751592701394f150a1daa4943608406519771d4a6f13ff20aa09c"
+  },
+  "liveEnforcementProven": false,
+  "ownerDestinationApprovalSupplied": false,
+  "cutoverAuthorized": false,
+  "hashAlgorithm": "SHA256 of dated local checkout bytes; normalized LF Git source hashes supplied separately",
+  "normalizedLfSourceHashes": {
+    "deploy/gcp/application-egress/providers.tf": "b784e094ba23fe987dfbac4da592a8648ea80c1b45edce7982ee8edaa501a4a4",
+    "deploy/gcp/application-egress/variables.tf": "ffc71296e7a16a61bfbd54da47c17ef5b3647d674ca6fb97fc3ea996f87a2d29",
+    "deploy/gcp/application-egress/main.tf": "a6cf91b52b8eb951172a38ea96dd090c385c88eb5eb3dc6e87a1b7ff7d15a6f5",
+    "deploy/gcp/application-egress/README.md": "333e5fedccd2e9327af47075f34bedac196432e6a8566749f313f3974d34f77d",
+    "deploy/gcp/application-egress/.terraform.lock.hcl": "4e7f2232898f290defe0384308a9405762c19707b0656e23ffdceae21e761c4f",
+    "deploy/gcp/application-egress/tests/egress.tftest.hcl": "82f9e3e87b280e3f1aa2e1a9828d77177787f758c0ce0e1a1d81563abd3bf617"
+  },
+  "sourceCaptureBytesSha256": "2445d03698230ab16d7c58158347ac7393ab95557cb4e64945691c090b4b6208",
+  "independentReview": "acceptance-application-egress-independent-review.json",
+  "ciValidationAdded": {
+    "workflow": ".github/workflows/ci-pr.yml",
+    "job": "dev-edge-terraform-validation",
+    "step": "Validate disabled dev egress preparation and explicit destination boundaries",
+    "executionPending": true
+  }
+}

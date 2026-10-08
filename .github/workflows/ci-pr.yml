@@ -185,6 +185,12 @@ jobs:
           terraform -chdir=deploy/gcp/erasure-journal fmt -check -recursive
           terraform -chdir=deploy/gcp/erasure-journal validate -no-color
           terraform -chdir=deploy/gcp/erasure-journal test -no-color
+      - name: Validate disabled dev egress preparation and explicit destination boundaries
+        run: |
+          terraform -chdir=deploy/gcp/application-egress init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=deploy/gcp/application-egress fmt -check -recursive
+          terraform -chdir=deploy/gcp/application-egress validate -no-color
+          terraform -chdir=deploy/gcp/application-egress test -no-color
 
   windows-security-helper-validation:
     name: windows-security-helper-validation
