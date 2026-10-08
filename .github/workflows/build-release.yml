@@ -272,6 +272,14 @@ jobs:
             BuildArgs = [string]$env:BUILD_ARGS
           }
           $metadata = ./scripts/resolve-image-source-id.ps1 @sourceArguments | ConvertFrom-Json
+          $securityPatchEpoch = [string]$metadata.securityPatchEpoch
+          if ($securityPatchEpoch -ne "") {
+            $parsedEpoch = [datetime]::MinValue
+            if ($securityPatchEpoch -cnotmatch "\A[0-9]{4}-[0-9]{2}-[0-9]{2}(?:-r[1-9][0-9]{0,5})?\z" -or
+                -not [datetime]::TryParseExact($securityPatchEpoch.Substring(0, 10), "yyyy-MM-dd", [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEpoch)) {
+              throw "Image source metadata contains an invalid security patch epoch."
+            }
+          }
           $registry = "$env:GCP_REGION-docker.pkg.dev/$env:ARTIFACT_REGISTRY_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
           $sourceRef = "$registry/${{ matrix.image }}:$($metadata.sourceTag)"
           $shaRef = "$registry/${{ matrix.image }}:sha-${{ needs.resolve-target.outputs.commit_sha }}"
@@ -280,8 +288,13 @@ jobs:
           $global:LASTEXITCODE = 0
           $digest = if ($null -eq $digestOutput) { "" } else { ([string]$digestOutput).Trim() }
           $exists = $describeExitCode -eq 0 -and $digest -match "^sha256:[0-9a-f]{64}$"
+          # Old selected commits may reuse existing images, but cannot build new bytes without a committed epoch.
+          if (-not $exists -and $securityPatchEpoch -eq "") {
+            throw "Fresh image builds require a validated security patch epoch from the selected commit."
+          }
 
           "source_id=$($metadata.sourceId)" >> $env:GITHUB_OUTPUT
+          "security_patch_epoch=$securityPatchEpoch" >> $env:GITHUB_OUTPUT
           "source_tag=$($metadata.sourceTag)" >> $env:GITHUB_OUTPUT
           "source_ref=$sourceRef" >> $env:GITHUB_OUTPUT
           "sha_ref=$shaRef" >> $env:GITHUB_OUTPUT
@@ -317,12 +330,7 @@ jobs:
             }
           }
 
-      # The security-patch layer in each Dockerfile is keyed on this value. Without it the layer is
-      # served from the build cache and newly published fixes are never installed; see the comment
-      # in frontend/Dockerfile. Dating it by the day keeps every other layer cached.
-      - name: Resolve the security patch epoch
-        run: echo "SECURITY_PATCH_EPOCH=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
-
+      # The selected commit's epoch keys the patch layer and source image ID while preserving other stage caches.
       - name: Build and push image
         id: build
         if: ${{ steps.source.outputs.should_build == 'true' }}
@@ -336,7 +344,7 @@ jobs:
             ${{ steps.source.outputs.sha_ref }}
           build-args: |
             ${{ matrix.build_args }}
-            SECURITY_PATCH_EPOCH=${{ env.SECURITY_PATCH_EPOCH }}
+            SECURITY_PATCH_EPOCH=${{ steps.source.outputs.security_patch_epoch }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: mode=max
@@ -497,6 +505,14 @@ jobs:
               BuildArgs = [string]$entry.build_args
             }
             $metadata = ./scripts/resolve-image-source-id.ps1 @sourceArguments | ConvertFrom-Json
+            $securityPatchEpoch = [string]$metadata.securityPatchEpoch
+            if ($securityPatchEpoch -ne "") {
+              $parsedEpoch = [datetime]::MinValue
+              if ($securityPatchEpoch -cnotmatch "\A[0-9]{4}-[0-9]{2}-[0-9]{2}(?:-r[1-9][0-9]{0,5})?\z" -or
+                  -not [datetime]::TryParseExact($securityPatchEpoch.Substring(0, 10), "yyyy-MM-dd", [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEpoch)) {
+                throw "Image source metadata contains an invalid security patch epoch."
+              }
+            }
             $resolvedTag = if ($targetEnv -eq "prod") {
               "dev-approved-$($metadata.sourceTag)"
             } else {
@@ -598,6 +614,7 @@ jobs:
               context = [string]$entry.context
               sourceId = [string]$metadata.sourceId
               sourceTag = [string]$metadata.sourceTag
+              securityPatchEpoch = if ($securityPatchEpoch -eq "") { $null } else { $securityPatchEpoch }
               resolvedTag = $resolvedTag
               digest = $digest
               immutableRef = $immutableRef
