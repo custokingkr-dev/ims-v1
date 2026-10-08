@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-08T10:03:37.995489+00:00",
+  "scope": "Independent read-only source security review, no new test execution or live provider verification",
+  "verdict": "NO_BLOCKING_DEFECT_IDENTIFIED_IN_REVIEWED_SCOPE",
+  "sourceHashes": {
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/NotificationReportAuthority.java": "6c4028f52b92f8c31c37ee0edd70fe8ea3e5c4c961b0f284c49849bc4b015b22",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/GenericNotificationUnknownEvidence.java": "25777e93b102e1af8221eb0dfa0a7a6a984515dfdf92c7470494fe487833e156",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/GenericNotificationReportService.java": "a27297e3096e533eacbd014c7ec07e54b9e4ca62059355342fadba8b76a5eb48",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/GenericNotificationReportRepository.java": "3e51875f70c323146e6ab5888671548c3c09ec592462e8b5713a4e9a04c11f3b",
+    "services/platform-service/src/main/resources/db/migration/notification/V18__generic_unknown_report_assertions.sql": "085e40238f2a2ef17e41121430eb02f5d27c52da86c8acea3f559cd91f1c2fa7",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodec.java": "9f2d40b24d08d9e9c6d929eec19210bd8189bb4a8f7cf1e70b417aaa3685d5b3",
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportController.java": "eae9187548717b392b6b7cdca00e6dce2159023a18925651f27c8fe9197fb24d",
+    "services/platform-service/src/test/java/com/custoking/ims/platformservice/persistence/GenericNotificationReportIntegrationTest.java": "f2124979bd5d4852b4ef9e53592fa26edc2b7bbc9ec03279f4181ed2fdff05dc",
+    "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodecTest.java": "0f15f0483c7b5633c095bdd791832ac771b582b793924a385cf4adc9d974316a"
+  },
+  "hashAlgorithm": "SHA256 normalized LF",
+  "checks": [
+    "Disabled default existing strict nine-field internal route; signed OIDC allowlist plus distinct dedicated token; forwarded user context rejected before bounded body processing",
+    "UNKNOWN assertion requires verified reporter, ACCEPTED claim only and exact event/school/request/correlation UNKNOWN reservation with null provider ID",
+    "UNKNOWN append performs no submission/inbox transition, no delivered result, no retry/resend or recovery authority",
+    "Inbox FOR UPDATE serializes replay/cap16 with erasure suppression; SQL trigger independently enforces exact state/time binding and append-only evidence",
+    "V18 FORCE RLS and bounded immutable operator attestation; current tests cover concurrency, cap, erasure, rollback and runtime denial",
+    "Dormant non-Spring SMS codec checks strict exact JSON types/fields/duplicate/trailing/8192-byte limit, explicit account/sender/timezone, destination hash/request/correlation, selected statuses and calendar timestamp",
+    "Official MSG91 v3 example matches 12 string fields; statuses1/2 delivered/failed and CRQID alphanumeric up to52 supported; no vendor idempotency or callback authentication inferred"
+  ],
+  "limitations": [
+    "No actual selected-account callback authentication/schema acceptance or live provider evidence",
+    "Codec returns candidate only; official example does not specify timezone, profile remains explicitly selected",
+    "UNKNOWN evidence is unverified operator assertion; conflict claims remain quarantined and no provider receipt promoted",
+    "Parent-reported448 platform and21 focused passing results not independently rerun in this review"
+  ],
+  "primarySources": [
+    "https://msg91.com/help/webhooks/how-can-i-get-the-delivery-reports-on-my-webhook-url"
+  ],
+  "cloudMutation": false,
+  "sourceMutation": false
+}

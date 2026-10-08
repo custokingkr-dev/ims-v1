@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 1,
+  "researchedAtUtc": "2026-10-08T09:58:56.911773+00:00",
+  "primarySource": "Canonical Ubuntu Security Notices OSV records",
+  "advisoriesReviewed": 11,
+  "items": [
+    {
+      "cve": "CVE-2026-18374",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18374.json",
+      "primaryRecordSha256": "266f7775f5044d3c371c270d728ac87b132a483c3183377b4ab230933ee66d6a",
+      "primaryPublished": "2026-08-27T20:17:00Z",
+      "primaryModified": "2026-09-10T14:24:53Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "glibc",
+          "purl": "pkg:deb/ubuntu/glibc@2.39-0ubuntu8.9?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "Attacker-controlled fopen mode including effectively empty ccs extension can trigger heap overflow.",
+      "remainingPlan": "Check native call paths and reject untrusted mode strings; monitor supported distro fix. No source path or runtime reachability absence proved.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    },
+    {
+      "cve": "CVE-2026-89092",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89092.json",
+      "primaryRecordSha256": "78d5eb9ef5bca6506ede47f2aaec134ec24bd5a6a87803ebd0ac44d960fd5e87",
+      "primaryPublished": "2026-09-11T02:18:00Z",
+      "primaryModified": "2026-09-24T21:44:17Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "glibc",
+          "purl": "pkg:deb/ubuntu/glibc@2.39-0ubuntu8.9?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "Enabled nscd using malicious DNS with unusually large responses can overflow its thread stack.",
+      "remainingPlan": "Independently inspect exact image packages/process startup and DNS path; monitor distro backport. Do not infer daemon execution from libc package presence.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    },
+    {
+      "cve": "CVE-2025-66382",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2025/UBUNTU-CVE-2025-66382.json",
+      "primaryRecordSha256": "92f1ac85795591f12df81e84ebed48cb900d74fc4d44a16a6d3ecdc08755761b",
+      "primaryPublished": "2025-11-28T07:15:00Z",
+      "primaryModified": "2026-10-06T03:00:10Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "expat",
+          "purl": "pkg:deb/ubuntu/expat@2.6.1-2ubuntu0.6?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "Crafted roughly2MiB XML input causes excessive processing in native expat.",
+      "remainingPlan": "Identify any native XML consumers and enforce existing parser/input/resource limits; monitor distro fix. Java XML controls do not attest all native consumers.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    },
+    {
+      "cve": "CVE-2026-86145",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-86145.json",
+      "primaryRecordSha256": "6f83029127bc847e99dacbf0801d2200f0b7c8568bc861c502b8c6af468317ec",
+      "primaryPublished": "2026-09-05T06:17:00Z",
+      "primaryModified": "2026-09-25T09:45:12Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "pcre2",
+          "purl": "pkg:deb/ubuntu/pcre2@10.42-4ubuntu2.1?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "Recursive DFA workspace reuse needs attacker-controlled expression or recursive pattern with small heap limit.",
+      "remainingPlan": "Inspect native PCRE2 DFA consumers and prevent untrusted expressions; retain risk and monitor supported distro backport despite upstream10.48 fix.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    },
+    {
+      "cve": "CVE-2026-89161",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89161.json",
+      "primaryRecordSha256": "c870fa610a177f7a78c16b9a6c9269dae976d4dda3618dcbb6ffc2136e73b384",
+      "primaryPublished": "2026-09-11T04:18:00Z",
+      "primaryModified": "2026-09-25T09:45:14Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "pcre2",
+          "purl": "pkg:deb/ubuntu/pcre2@10.42-4ubuntu2.1?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "Native PCRE2 JIT mishandles a previously copied subject supplied as context.",
+      "remainingPlan": "Review exact native JIT consumers and context ownership; monitor distro backport. Upstream10.48 does not establish a compatible Noble package fix.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    },
+    {
+      "cve": "CVE-2026-46675",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-46675.json",
+      "primaryRecordSha256": "44e1fb944766413eeb0fce8493a9111e5662976910fc3728772fa69b5c1fe27e",
+      "primaryPublished": "2026-09-29T00:00:00Z",
+      "primaryModified": "2026-10-06T03:05:17Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "libpng1.6",
+          "purl": "pkg:deb/ubuntu/libpng1.6@1.6.43-5ubuntu0.6?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "Native sequential reader calls png_read_end after metadata without starting image rows, after incomplete compressed text/profile handling.",
+      "remainingPlan": "Inspect exact native consumers and image normalization path; monitor distro fix for upstream1.6.59. Keep crafted-image residual open until image-bound reachability is verified.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    },
+    {
+      "cve": "CVE-2026-40228",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-40228.json",
+      "primaryRecordSha256": "c2843d55d3c9ce648a33ecd6ddc6e124e2c2cd0eb8bafa7c6cff9d5568fe7731",
+      "primaryPublished": "2026-04-10T16:16:00Z",
+      "primaryModified": "2026-09-08T12:29:59Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "systemd",
+          "purl": "pkg:deb/ubuntu/systemd@255.4-1ubuntu8.17?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "Running journald with ForwardToWall=yes relays ANSI sequences from emergency log messages to terminals.",
+      "remainingPlan": "Inspect daemon/startup/config/terminal exposure in exact image; shared library presence alone is not daemon execution. Monitor distro fix.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    },
+    {
+      "cve": "CVE-2024-56433",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2024/UBUNTU-CVE-2024-56433.json",
+      "primaryRecordSha256": "9531e0ef0ae581506770dc3c37f39039299aa625d9ab0f463d0d3bd46200eed9",
+      "primaryPublished": "2024-12-26T09:15:00Z",
+      "primaryModified": "2026-05-20T15:14:40Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "shadow",
+          "purl": "pkg:deb/ubuntu/shadow@1:4.13+dfsg1-4ubuntu3.2?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "Local subordinate ID ranges collide with administrator-assigned network users, permitting mapped identity access.",
+      "remainingPlan": "Inspect subuid/subgid/newuidmap and network identity/mount exposure on exact runtime; prohibit conflicting allocations, monitor vendor guidance. Existing nonroot User alone does not attest complete absence.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    },
+    {
+      "cve": "CVE-2026-18477",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18477.json",
+      "primaryRecordSha256": "e012e2739e37cd8f47141505eadfd3faba156d9b6b2e7c96afd32b8704dd75ea",
+      "primaryPublished": "2026-08-03T17:16:00Z",
+      "primaryModified": "2026-08-25T17:36:09Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "tar",
+          "purl": "pkg:deb/ubuntu/tar@1.35+dfsg-3ubuntu0.4?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "Incremental restore plus attacker write access to backup directory and restore system enables rename race and escape.",
+      "remainingPlan": "Keep untrusted archives out of runtime tar restore and isolate governed restoration. Fresh extraction directory alone does not mitigate; monitor supported distro fix.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    },
+    {
+      "cve": "CVE-2026-18508",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18508.json",
+      "primaryRecordSha256": "0f24a43aaf9baa1b7e8d73f59a19c291d790e9e75a938a60088371c99c5c91f6",
+      "primaryPublished": "2026-08-03T16:16:00Z",
+      "primaryModified": "2026-08-25T17:36:09Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "tar",
+          "purl": "pkg:deb/ubuntu/tar@1.35+dfsg-3ubuntu0.4?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "one-top-level archive extraction permits escaping hardlinks, amplified by a preexisting symbolic link.",
+      "remainingPlan": "Do not rely on one-top-level as an untrusted archive sandbox; inspect any exact runtime extractor and retain isolation/monitoring until distro fix.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    },
+    {
+      "cve": "CVE-2026-85091",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-85091.json",
+      "primaryRecordSha256": "ed4b5722d62c108a7337c33893ab2305e94262812b952b32d5437ed5711e39fd",
+      "primaryPublished": "2026-09-03T13:06:00Z",
+      "primaryModified": "2026-09-16T11:43:10Z",
+      "nobleSourceRanges": [
+        {
+          "sourcePackage": "zlib",
+          "purl": "pkg:deb/ubuntu/zlib@1:1.3.dfsg-3.1ubuntu2.2?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisiteFromSavedPlan": "Nonblocking native gzwrite stall followed by formatted gzip output with stale buffer state can overflow.",
+      "remainingPlan": "Inspect native gzip output consumers; preserve residual and vendor severity distinction. Avoid unsupported cherry-picked patch or changing distro solely to hide scanner result.",
+      "installedRuntimeImagesEvidence": "acceptance-native-runtime-prerequisites.json",
+      "exposureConclusion": "REVIEW_REMAINS_OPEN",
+      "fixedRangeEventIsNotAnInstalledPackageOrReachabilityAttestation": true
+    }
+  ],
+  "nativeInventory": "acceptance-native-runtime-prerequisites.json",
+  "nativeInventorySha256": "a4dbf4e6e1db3663dbf05b848698f44f2343aaffbebfec806aca7385ac236b95",
+  "scannerFindingsSuppressed": false,
+  "historicalAlertsDismissed": false,
+  "unsupportedPatchesApplied": false,
+  "vendorBackportDisagreementPreserved": true,
+  "productionChanged": false,
+  "scope": "Fresh primary advisory range readback plus exact immutable-image prerequisites. Supported libpng patch provenance remains separately pinned; no blanket risk exception, absent-path claim or VEX verdict."
+}

@@ -57,6 +57,12 @@ FENCES = (
  ('reporting', 'student_inbox_erasure', 'erase_student_inbox_payloads', 'services/platform-service/src/main/resources/db/migration/reporting/V34__student_inbox_erasure.sql'),
  ('notification', 'notification_inbox_erasure', 'redact_deleted_student_event', 'services/platform-service/src/main/resources/db/migration/notification/V14__student_inbox_erasure.sql'),
  ('notification', 'guard_generic_final_receipt', 'guard_generic_final_receipt', 'services/platform-service/src/main/resources/db/migration/notification/V16__generic_submission_receipts.sql'),
+ ('notification', 'guard_generic_reserved_inbox', 'guard_generic_reserved_inbox', 'services/platform-service/src/main/resources/db/migration/notification/V16__generic_submission_receipts.sql'),
+ ('notification', 'guard_generic_delivery_result', 'guard_generic_delivery_result', 'services/platform-service/src/main/resources/db/migration/notification/V17__generic_delivery_reconciliation.sql'),
+ ('notification', 'guard_generic_delivery_report', 'guard_generic_delivery_report', 'services/platform-service/src/main/resources/db/migration/notification/V17__generic_delivery_reconciliation.sql'),
+ ('notification', 'guard_generic_unknown_report_assertion', 'guard_generic_unknown_report_assertion', 'services/platform-service/src/main/resources/db/migration/notification/V18__generic_unknown_report_assertions.sql'),
+ ('notification', 'suppress_generic_delivery_result', 'suppress_generic_delivery_result', 'services/platform-service/src/main/resources/db/migration/notification/V17__generic_delivery_reconciliation.sql'),
+
 )
 TRIGGER_SHAPES = {
  'student_immutable_erasure_incarnation': ('students',23,[]),
@@ -66,6 +72,11 @@ TRIGGER_SHAPES = {
  'student_inbox_erasure': ('student_projection_tombstones',21,[]),
  'notification_inbox_erasure': ('notification_inbox_events',23,['payload']),
  'guard_generic_final_receipt': ('generic_submissions',19,[]),
+ 'guard_generic_reserved_inbox': ('notification_inbox_events',19,[]),
+ 'guard_generic_delivery_result': ('generic_delivery_results',23,[]),
+ 'guard_generic_delivery_report': ('generic_delivery_reports',31,[]),
+ 'guard_generic_unknown_report_assertion': ('generic_unknown_report_assertions',31,[]),
+ 'suppress_generic_delivery_result': ('notification_inbox_events',17,[]),
 }
 SQL = """SELECT n.nspname,t.tgname,t.tgenabled,p.proname,left(p.prosrc,32769),c.relname,t.tgtype,
  ARRAY(SELECT a.attname FROM unnest(t.tgattr::smallint[]) v
@@ -75,10 +86,18 @@ SQL = """SELECT n.nspname,t.tgname,t.tgenabled,p.proname,left(p.prosrc,32769),c.
  WHERE NOT t.tgisinternal AND n.nspname IN ('student','reporting','notification')
  AND t.tgname IN ('student_immutable_erasure_incarnation','reporting_inbox_erasure',
  'fee_fact_erasure','payment_fact_erasure','student_inbox_erasure',
- 'notification_inbox_erasure','guard_generic_final_receipt')
+ 'notification_inbox_erasure','guard_generic_final_receipt','guard_generic_reserved_inbox',
+ 'guard_generic_delivery_result','guard_generic_delivery_report','suppress_generic_delivery_result',
+ 'guard_generic_unknown_report_assertion')
  AND p.pronamespace=n.oid AND NOT p.prosecdef AND p.proconfig IS NULL
  AND NOT t.tgisinternal AND t.tgqual IS NULL
- ORDER BY n.nspname,t.tgname LIMIT 8"""
+ ORDER BY n.nspname,t.tgname LIMIT 13"""
+HELPER_SQL = """SELECT left(p.prosrc,32769),p.provolatile,p.prosecdef,p.proconfig,
+ p.proargtypes::text,p.prorettype,l.lanname
+ FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+ JOIN pg_language l ON l.oid=p.prolang
+ WHERE n.nspname='reporting' AND p.proname='safe_event_json' LIMIT 2"""
+
 SAFETY_SQL = """WITH relations AS (
  SELECT n.nspname||'.'||c.relname AS name,c.oid FROM pg_class c
  JOIN pg_namespace n ON n.oid=c.relnamespace
@@ -102,6 +121,28 @@ SAFETY_SQL = """WITH relations AS (
  NOT has_table_privilege('ims_school_core_rt',(SELECT oid FROM relations WHERE name='student.erasure_journal_receipts'),'TRUNCATE'),
  NOT has_table_privilege('ims_school_core_rt',(SELECT oid FROM relations WHERE name='tenant_school.photo_cleanup_outbox'),'DELETE'),
  NOT has_table_privilege('ims_school_core_rt',(SELECT oid FROM relations WHERE name='tenant_school.photo_cleanup_outbox'),'TRUNCATE')"""
+
+UNKNOWN_SAFETY_SQL = """SELECT
+ (SELECT count(*)=1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+ WHERE n.nspname='notification' AND c.relname='generic_unknown_report_assertions'
+ AND c.relrowsecurity AND c.relforcerowsecurity
+ AND EXISTS(SELECT 1 FROM pg_policy p WHERE p.polrelid=c.oid AND p.polname='tenant_isolation')),
+ (SELECT count(*)=2 AND bool_and(NOT has_any_column_privilege(r.oid,c.oid,'UPDATE'))
+ FROM pg_roles r WHERE r.rolname IN ('app_rt','ims_platform_rt')),
+ (SELECT count(*)=2 AND bool_and(NOT has_table_privilege(r.oid,c.oid,'DELETE'))
+ FROM pg_roles r WHERE r.rolname IN ('app_rt','ims_platform_rt')),
+ (SELECT count(*)=2 AND bool_and(NOT has_table_privilege(r.oid,c.oid,'TRUNCATE'))
+ FROM pg_roles r WHERE r.rolname IN ('app_rt','ims_platform_rt')),
+ (SELECT count(*)=2 AND bool_and(NOT has_column_privilege(r.oid,c.oid,'assertion_kind','INSERT'))
+ FROM pg_roles r WHERE r.rolname IN ('app_rt','ims_platform_rt')),
+ (SELECT count(*)=2 AND bool_and(NOT has_column_privilege(r.oid,c.oid,'received_at','INSERT'))
+ FROM pg_roles r WHERE r.rolname IN ('app_rt','ims_platform_rt'))
+ FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+ WHERE n.nspname='notification' AND c.relname='generic_unknown_report_assertions'"""
+
+def verify_unknown_safety(row):
+    if row is None or len(row)!=6 or any(x is not True for x in row):
+        reject('UNKNOWN_ASSERTION_ACL_OR_RLS_REJECTED')
 
 def verify_safety(row):
     if row is None or len(row) != 8 or any(value is not True for value in row):
@@ -251,6 +292,12 @@ def verify_fences(rows):
             reject('FENCE_MISSING_DISABLED_OR_CHANGED')
     return len(FENCES)
 
+def verify_helper(rows):
+    body=expected_body('reporting','safe_event_json',
+        'services/platform-service/src/main/resources/db/migration/reporting/V34__student_inbox_erasure.sql')
+    if len(rows)!=1 or tuple(rows[0][1:])!=('i',False,None,'25',3802,'plpgsql') or rows[0][0].replace('\r\n','\n').strip()!=body:
+        reject('ERASURE_HELPER_MISSING_OR_CHANGED')
+
 def _catalog(host, cert, port=5432):
     import psycopg
     password = os.environ.get('IMS_RESTORE_VERIFY_PASSWORD')
@@ -273,8 +320,12 @@ def _catalog(host, cert, port=5432):
                     cursor.execute(SQL)
                     rows = cursor.fetchmany(1025)
                     count = verify_fences(rows)
+                    cursor.execute(HELPER_SQL)
+                    verify_helper(cursor.fetchmany(3))
                     cursor.execute(SAFETY_SQL)
                     verify_safety(cursor.fetchone())
+                    cursor.execute(UNKNOWN_SAFETY_SQL)
+                    verify_unknown_safety(cursor.fetchone())
                 finally:
                     cursor.execute('ROLLBACK')
         return count

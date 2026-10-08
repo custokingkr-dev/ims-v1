@@ -16,6 +16,16 @@ function Read-RequiredFile {
     Get-Content -Raw $Path
 }
 
+# Ignore formatting whitespace while preserving quoted Java literals (notably "Bearer ").
+function Normalize-JavaContract {
+    param([string]$Text)
+    [regex]::Replace($Text, '"(?:\\.|[^"\\])*"|\s+', {
+        param($match)
+        if ($match.Value.StartsWith('"')) { return $match.Value }
+        return ''
+    })
+}
+
 $violations = New-Object System.Collections.Generic.List[string]
 $gateway = Read-RequiredFile $GatewayTemplate
 $compose = Read-RequiredFile $ComposeFile
@@ -173,6 +183,68 @@ foreach ($file in $controllerFiles) {
         if ($guardInvocationCount -ne $mappedMethodCount) {
             $violations.Add("Every mapped endpoint must invoke the centralized scoped authorization guard: $relative")
         }
+    }
+
+    # One exact factored report authority, never a controller-name exemption. Verify the
+    # complete fail-closed helper and its production OIDC/purpose binding, then prove that
+    # the only mapped method verifies before accepting/processing the asynchronous body.
+    if ($normalizedRelative -eq "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportController.java") {
+        $hasApprovedCentralizedScopedGuard = $true
+        $reportSource = ($source -replace '(?s)/\*.*?\*/','') -replace '(?m)^\s*//[^\r\n]*',''
+        $compact = Normalize-JavaContract $reportSource
+        $authorityPath = Join-Path $ServicesRoot "platform-service/src/main/java/com/custoking/ims/platformservice/application/NotificationReportAuthority.java"
+        $authority = Normalize-JavaContract (((Read-RequiredFile $authorityPath) -replace '(?s)/\*.*?\*/','') -replace '(?m)^\s*//[^\r\n]*','')
+        $authorityFragments = @(
+            'this.identities=identities;this.enabled=enabled;this.token=value(token);this.sharedToken=value(sharedToken);this.providerToken=value(providerToken);this.callers=accounts(callers);this.forbidden=accounts(forbidden);',
+            'public VerifiedReporter verify(String authorization, String supplied) { if(!enabled) throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Notification report reconciliation is unavailable"); int length=token.getBytes(StandardCharsets.UTF_8).length; if(length<32 || length>512 || token.isBlank() || equal(token,sharedToken) || equal(token,providerToken) || callers.isEmpty() || !Collections.disjoint(callers,forbidden) || !equal(token,supplied)) deny(); String principal=authorization!=null && authorization.startsWith("Bearer ") ? identities.verifiedEmail(authorization.substring(7)).orElse(null):null; if(principal==null || !callers.contains(principal.toLowerCase(Locale.ROOT))) deny(); return new VerifiedReporter(principal.toLowerCase(Locale.ROOT)); }',
+            'private VerifiedReporter(String principal) { this.principal=principal; }',
+            'private static void deny() { throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Invalid notification report authority"); }',
+            'private static boolean equal(String expected,String supplied) { return supplied!=null && MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),supplied.getBytes(StandardCharsets.UTF_8)); }',
+            'private static String value(String value) { return value==null?"":value; }',
+            'private static Set<String> accounts(String input) { return Arrays.stream(value(input).split(",")).map(String::trim).filter(v->!v.isEmpty()).map(v->v.toLowerCase(Locale.ROOT)).collect(java.util.stream.Collectors.toUnmodifiableSet()); }'
+        )
+        foreach ($fragment in $authorityFragments) {
+            if (-not $authority.Contains((Normalize-JavaContract $fragment))) {
+                $hasApprovedCentralizedScopedGuard=$false
+                $violations.Add("Factored report authority fail-closed contract drifted: $relative")
+            }
+        }
+        foreach ($fragment in @(
+            'private final com.custoking.ims.platformservice.application.NotificationReportAuthority authority;',
+            'this.authority=new com.custoking.ims.platformservice.application.NotificationReportAuthority(identities,enabled,reportToken,sharedToken,providerToken,callers,forbiddenCallers);',
+            '@RequestMapping("/api/v1/internal/notifications/reports")', '@PostMapping(value="/reconcile",consumes="application/json")',
+            'GoogleIdentityTokenVerifier identities', '${notification.report-reconciliation.enabled:false}',
+            '${notification.report-reconciliation.token:}', '${notification.status.token:}', '${notification.msg91.auth-key:}',
+            'NOTIFICATION_REPORT_CALLER_SERVICE_ACCOUNTS', 'USER_CONTEXT_CALLER_SERVICE_ACCOUNTS', 'NOTIFICATION_DELIVERY_CALLER_SERVICE_ACCOUNTS',
+            'service.reconcile(report,reporter);'
+        )) {
+            if (-not $compact.Contains((Normalize-JavaContract $fragment))) {
+                $hasApprovedCentralizedScopedGuard=$false
+                $violations.Add("Factored report controller binding drifted: $relative")
+            }
+        }
+        if ([regex]::Matches($reportSource,'@(GetMapping|PostMapping|PutMapping|PatchMapping|DeleteMapping)').Count -ne 1 -or
+            [regex]::Matches($reportSource,'@RequestMapping').Count -ne 1 -or
+             $reportSource -notmatch 'HttpServletRequest request,HttpServletResponse response\) throws java\.io\.IOException\s*\{\s*var reporter=authority\.verify\(authorization,token\);' -or
+            [regex]::Matches($reportSource,'authority\.verify\(authorization,token\)').Count -ne 1 -or
+            $reportSource.IndexOf('authority.verify(authorization,token)') -ge $reportSource.IndexOf('BODY.receive(request,response,body->')) {
+            $hasApprovedCentralizedScopedGuard=$false
+            $violations.Add("Factored report authority must guard the sole route before body processing: $relative")
+        }
+        $reportFilter=Read-RequiredFile (Join-Path $ServicesRoot "platform-service/src/main/java/com/custoking/ims/platformservice/security/MachineCallerFilter.java")
+        $oidc=Read-RequiredFile (Join-Path $ServicesRoot "platform-service/src/main/java/com/custoking/ims/platformservice/security/GoogleIdentityTokenVerifier.java")
+        $reportFilter=($reportFilter -replace '(?s)/\*.*?\*/','') -replace '(?m)^\s*//[^\r\n]*',''
+        $oidc=($oidc -replace '(?s)/\*.*?\*/','') -replace '(?m)^\s*//[^\r\n]*',''
+        $oidcCompact=Normalize-JavaContract $oidc
+        $verifiedEmailContract='public Optional<String> verifiedEmail(String idToken) { if (audiences.isEmpty()) { return Optional.empty(); } try { var payload = tokenVerifier.verify(idToken).getPayload(); if (!CallerIdentity.audienceAllowed(payload.getAudience(), audiences)) { return Optional.empty(); } if (!Boolean.TRUE.equals(payload.get("email_verified"))) { return Optional.empty(); } return Optional.ofNullable((String) payload.get("email")); } catch (TokenVerifier.VerificationException e) { log.debug("oidc.token-invalid reason={}", e.getMessage()); return Optional.empty(); } }'
+        if (-not $oidcCompact.Contains((Normalize-JavaContract $verifiedEmailContract))) { $hasApprovedCentralizedScopedGuard=$false; $violations.Add("Factored report OIDC verification contract drifted: $relative") }
+        foreach ($fragment in @('if(path.equals("/api/v1/internal/notifications/reports/reconcile")) return "NOTIFICATION_REPORT_CALLER_SERVICE_ACCOUNTS";','GOOGLE.verify(token)','SERVICE_OIDC_AUDIENCES','email_verified','https://accounts.google.com')) {
+            if (-not $reportFilter.Contains($fragment)) { $hasApprovedCentralizedScopedGuard=$false; $violations.Add("Factored report dedicated signed purpose drifted: $relative") }
+        }
+        foreach ($fragment in @('TokenVerifier.newBuilder().setIssuer(GOOGLE_ISSUER).build()','https://accounts.google.com','if (audiences.isEmpty())','tokenVerifier.verify(idToken).getPayload()','if (!CallerIdentity.audienceAllowed(payload.getAudience(), audiences))','if (!Boolean.TRUE.equals(payload.get("email_verified")))','return Optional.empty();')) {
+            if (-not $oidc.Contains($fragment)) { $hasApprovedCentralizedScopedGuard=$false; $violations.Add("Factored report OIDC verification contract drifted: $relative") }
+        }
+        if ($gateway.Contains('/api/v1/internal/notifications/reports')) { $hasApprovedCentralizedScopedGuard=$false; $violations.Add("Factored report route must not be gateway-exposed: $relative") }
     }
 
     if ($source -match "StringUtils\.hasText\((readToken|serviceToken|statusToken|ingestToken|introspectionToken)\)\s*&&\s*!\1\.equals\(token\)") {

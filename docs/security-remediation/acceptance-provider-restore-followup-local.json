@@ -1,0 +1,302 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T10:19:39.614950+00:00",
+  "project": "custoking-dev",
+  "sourceBaselineCommit": "d87d441f7fa145ea8c7e5e82592437f16e96fd49",
+  "scope": "New provider/restore source and local tests; dated native/owner GET-only evidence. CI/dev release pending separately.",
+  "sourceFileHashes": [
+    {
+      "path": ".github/workflows/ci-pr.yml",
+      "normalizedLfSha256": "7c482130edb2ae442db15fefaaada11e0fa03c63b52c2e8096a9c046a79813b2"
+    },
+    {
+      "path": "scripts/audit-service-authorization-boundaries.ps1",
+      "normalizedLfSha256": "abf59612f884fcc57aa2980725b015ef31a44d7f381af7168aa50c62badc35d0"
+    },
+    {
+      "path": "scripts/security/verify-dev-erasure-coverage.py",
+      "normalizedLfSha256": "4aa6401e32ff79346132878576aa22b8e7a948276b64568d31514d5e8ef0abc5"
+    },
+    {
+      "path": "scripts/security/verify-dev-restore-target.py",
+      "normalizedLfSha256": "b1fb95c2d08c00726f5d039e78251e8496800f6bac667c7ea8153d82bbeb3878"
+    },
+    {
+      "path": "scripts/tests/dev_erasure_coverage_test.py",
+      "normalizedLfSha256": "ee4a2ca134d48f4daf9fbc9ff5716911bda8b447fa7a2e0fadc5fe0c8910dba6"
+    },
+    {
+      "path": "scripts/tests/dev_restore_target_verifier_postgres_test.py",
+      "normalizedLfSha256": "e6da8fa905e6dd223d0b2de008896743005a82b6ca6111249d59c06cac29b5ff"
+    },
+    {
+      "path": "scripts/tests/dev_restore_target_verifier_test.py",
+      "normalizedLfSha256": "999386441fd08990f336682dd6643a6013c6632f8c259bdac6ff00ff3982c12f"
+    },
+    {
+      "path": "scripts/tests/service_authorization_machine_proof_test.py",
+      "normalizedLfSha256": "2e3bb760c7b449fbe781b71c3764b467f0fb2c63d239effd1b576fa3a5977974"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportController.java",
+      "normalizedLfSha256": "eae9187548717b392b6b7cdca00e6dce2159023a18925651f27c8fe9197fb24d"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/GenericNotificationReportService.java",
+      "normalizedLfSha256": "a27297e3096e533eacbd014c7ec07e54b9e4ca62059355342fadba8b76a5eb48"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/GenericNotificationUnknownEvidence.java",
+      "normalizedLfSha256": "25777e93b102e1af8221eb0dfa0a7a6a984515dfdf92c7470494fe487833e156"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/NotificationReportAuthority.java",
+      "normalizedLfSha256": "6c4028f52b92f8c31c37ee0edd70fe8ea3e5c4c961b0f284c49849bc4b015b22"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodec.java",
+      "normalizedLfSha256": "9f2d40b24d08d9e9c6d929eec19210bd8189bb4a8f7cf1e70b417aaa3685d5b3"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/GenericNotificationReportRepository.java",
+      "normalizedLfSha256": "3e51875f70c323146e6ab5888671548c3c09ec592462e8b5713a4e9a04c11f3b"
+    },
+    {
+      "path": "services/platform-service/src/main/resources/db/migration/notification/V18__generic_unknown_report_assertions.sql",
+      "normalizedLfSha256": "085e40238f2a2ef17e41121430eb02f5d27c52da86c8acea3f559cd91f1c2fa7"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportHttpIntegrationTest.java",
+      "normalizedLfSha256": "ec5e689014690a2ba798f1a333dd30502f9bbdfdabc19ba09d4277e30ab8fa77"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/application/GenericNotificationReportServiceTest.java",
+      "normalizedLfSha256": "4e63e506eb638e4b03be714f49181a0d6e2a9cc7a3237ca1d3bdf6d813e2c9b1"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodecTest.java",
+      "normalizedLfSha256": "0f15f0483c7b5633c095bdd791832ac771b582b793924a385cf4adc9d974316a"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/persistence/GenericNotificationReportIntegrationTest.java",
+      "normalizedLfSha256": "f2124979bd5d4852b4ef9e53592fa26edc2b7bbc9ec03279f4181ed2fdff05dc"
+    }
+  ],
+  "evidence": [
+    {
+      "file": "acceptance-provider-restore-owner-readback.json",
+      "capturedBytesSha256": "9f2c36039bed3448e6e31744b34bdfd14be4a64572bac1571c6cee3e7d1e13da",
+      "sourceCaptureBytesSha256": "49f84f6dfc6440ddc72b07049cff2e8a7ed92f43270ce06d21ff79c1c35aef35"
+    },
+    {
+      "file": "acceptance-provider-restore-provider-review.json",
+      "capturedBytesSha256": "383e8cab68fcf411e48012f6fb4f6addf6ab2eb9aecbd61f02bc8a1ad85286d3",
+      "sourceCaptureBytesSha256": "f9287d9d0fca346f42fa24c93f74dd04e2fdd9f0c479b21a0fde11ebcfa7896f"
+    },
+    {
+      "file": "acceptance-provider-restore-restore-review.json",
+      "capturedBytesSha256": "25ae4a0812dcbf255a73afef4589890749eda6c62a1464e6d9d695b89cfc7917",
+      "sourceCaptureBytesSha256": "608ba7248c90bf62de394fb076b80775849584038dda52c0ab49958f962f6aca"
+    },
+    {
+      "file": "acceptance-provider-restore-platform-local.json",
+      "capturedBytesSha256": "30e4edc4235fab5fd380b0dfa593cf40c02986b97381bf8438ae2640a0b15724",
+      "sourceCaptureBytesSha256": "8027be0e202a62fb817db1071fbdf12c07c0e34d428f87300aaf4cee28e7d074"
+    },
+    {
+      "file": "acceptance-provider-restore-coverage-local.json",
+      "capturedBytesSha256": "db3092ceacf72317ad44a332012582aecb1b4667b84969748863053021f232ae",
+      "sourceCaptureBytesSha256": "77ecdce1280d2686a4458a7085a6dd82e2d148e06d5840c656203b77b64ab83a"
+    },
+    {
+      "file": "acceptance-native-runtime-prerequisites.json",
+      "capturedBytesSha256": "a4dbf4e6e1db3663dbf05b848698f44f2343aaffbebfec806aca7385ac236b95"
+    },
+    {
+      "file": "acceptance-upstream-native-followup.json",
+      "capturedBytesSha256": "b026a4bc42253dc5f557a4172f844f9c87529848411e0113f3e858b2ebf3b0f5"
+    }
+  ],
+  "frozenHistoricalGitEvidenceVerified": [
+    {
+      "file": "acceptance-runtime-os-edge-config-baseline.json",
+      "gitBlobSha256": "c7c26a593c2ee777134719272540f5150798a1d352351fc348eb586ed5ad3947"
+    },
+    {
+      "file": "acceptance-runtime-os-owner-readback.json",
+      "gitBlobSha256": "4315c89bc4afa42694cd505609f703d802e16e10a88fb8830880fc67568338f8"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-ci.json",
+      "gitBlobSha256": "cf35ba5a5f532195895294ddbf47654305b5211b547bc6bc553d777cbff257e3"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-dev-release.json",
+      "gitBlobSha256": "eb04a1abb34404d8f06e1ec4cc45375d281214a38d259c36a044718431966aa6"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-image-protection.json",
+      "gitBlobSha256": "df58a360eecf1f2d7f249619248cb429be8c018cbc1980786d67f11f6e1e9f39"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-public-smoke.json",
+      "gitBlobSha256": "ea4f53ad8f6fe360625097c11637688025ae9d9c2e26785e964cbaaf0ed09c7a"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-release-inventory.json",
+      "gitBlobSha256": "2f17ca7f4660dc5ecd381b9781b1afce3e41c3ca38d80276925c04fbce9b2095"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-release-tests.json",
+      "gitBlobSha256": "5e20733678befcf18b1eabb26985238cbc4ce71577ca80fa98ec3b7ef3353481"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-source-scan.json",
+      "gitBlobSha256": "075b7b48afa1f163865ca22e0a9fcd0f7303caaaa48e71155f6cef53acca2799"
+    },
+    {
+      "file": "acceptance-runtime-os-upstream-fix-plan.json",
+      "gitBlobSha256": "208e1baa7f5e26bf31d4796f033aed63e75afd6d105d47367ec2f0fa6dd3e265"
+    },
+    {
+      "file": "acceptance-portrait-metadata-ci.json",
+      "gitBlobSha256": "a18ad0cc2191da7358789c45bd63977edbfe09408ecc2ea65352548637574400"
+    },
+    {
+      "file": "acceptance-portrait-metadata-combined-dev-inventory.json",
+      "gitBlobSha256": "8373848df3ac0e6b99d46972e656b4a4a9473245ba10265094492a5194295857"
+    },
+    {
+      "file": "acceptance-portrait-metadata-dev-release.json",
+      "gitBlobSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc"
+    },
+    {
+      "file": "acceptance-portrait-metadata-image-protection.json",
+      "gitBlobSha256": "65d4eb961bc1741bfc7f79c62dd1df2abc4d3e9731e9712cb1f99675a3e01872"
+    },
+    {
+      "file": "acceptance-portrait-metadata-live-photo-erasure.json",
+      "gitBlobSha256": "2c47e34d681bda491d73349d76c446319818d941928154ae569119cabb33f3b1"
+    },
+    {
+      "file": "acceptance-portrait-metadata-obsolete-revision-preflight.json",
+      "gitBlobSha256": "2fc78a7a36eed6828b79c986f52c259707f58da908d8a4b16a97b96eef3ad814"
+    },
+    {
+      "file": "acceptance-portrait-metadata-public-smoke.json",
+      "gitBlobSha256": "2e61b756de09a947db135d3dac8fa028eabd4fd69bebc8030acf971a5bb0e867"
+    },
+    {
+      "file": "acceptance-portrait-metadata-release-inventory.json",
+      "gitBlobSha256": "73f0a32a8986adf30270e62d252e131d11050df5d0a3bd036a5715a22df048ad"
+    },
+    {
+      "file": "acceptance-portrait-metadata-release-tests.json",
+      "gitBlobSha256": "cc0f5fe6f630261679f533a794bde559106ac27feace3838d0d213d0e4ea3663"
+    },
+    {
+      "file": "acceptance-portrait-owner-readback.json",
+      "gitBlobSha256": "597b2db9ece74217dcad5f6bbf194ea1cff285904ef0557bf84895c626bffe0d"
+    },
+    {
+      "file": "acceptance-libpng-vendor-patch-research.json",
+      "gitBlobSha256": "723198bc457533b98afabaf71f979da017e563827f230b7ce1429835ab4bc8f6"
+    },
+    {
+      "file": "acceptance-libpng-refresh-initial-failure.json",
+      "gitBlobSha256": "e0e5a62ce12e9a055a1e817a1947fc69760ab9711983c4af2b861c8269565cb5"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-ci.json",
+      "gitBlobSha256": "34266eb3a804162e78d0f923eb9bff0cfd9ad3bacb1c9b19202435776f55fcb3"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-dev-release.json",
+      "gitBlobSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-image-protection.json",
+      "gitBlobSha256": "ef77ac2ea0aaf6444e6b2054988f84b5aad1e4b0310134b99e165dfd073b9031"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-public-smoke.json",
+      "gitBlobSha256": "cd939560f2cca6ff19d69df700c0a89826a481f03669e5b0a90b3681213a4228"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-release-inventory.json",
+      "gitBlobSha256": "83e8464bf86f8ba66ec5745d99ef55aef5edbf7d260c11520ecf3e1b955b0ce6"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-release-tests.json",
+      "gitBlobSha256": "034bc62c39e9d6b0a28a483faf33b064b9c8b400661a874fa69b81ec52421853"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-owner-readback.json",
+      "gitBlobSha256": "b6535c913d5f85e371a8b2af9fdc185286fdf998516b04d2ef84cdcc59468e6b"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-obsolete-revision-preflight.json",
+      "gitBlobSha256": "946b5c706e14c1fc91731ccc96bf6ae97a47fc7e3437789013aa0cf9b8220326"
+    },
+    {
+      "file": "acceptance-evidence-secret-scan-false-positive.json",
+      "gitBlobSha256": "44ad6ce8d130bcf9c6e5c1b4b73026c6b801a3ede497df924f11209cbe4b551d"
+    },
+    {
+      "file": "acceptance-evidence-postmerge-secret-scan.json",
+      "gitBlobSha256": "44c97845174a3d9352a17b6935c72d02eb380b291d4c25014072fb68dac79e49"
+    }
+  ],
+  "ciComplete": false,
+  "devDeploymentAccepted": false,
+  "productionChanged": false,
+  "securityPlanComplete": false,
+  "providerLiveAdmission": false,
+  "vendorLostResponseAttestationProven": false,
+  "globalHistoricalCoverageProven": false,
+  "physicalCloneSourceLineageApproved": false,
+  "restorationReady": false,
+  "deliveryResume": false,
+  "irreversibleRevisionDeletionApproved": false,
+  "revisionsDeleted": 0,
+  "completionPlan": "remaining-implementation-followup.md",
+  "ownerActions": "acceptance-owner-actions.md",
+  "additionalRootStaticAudits": [
+    {
+      "script": "audit-service-package-shape.ps1",
+      "passed": true,
+      "normalizedLfSha256": "ce49ffc105e1338d86da55a7939b3e3678293a3bc81d000825ae3276a7a448b5"
+    },
+    {
+      "script": "audit-service-schema-defaults.ps1",
+      "passed": true,
+      "normalizedLfSha256": "ebcee5c9fc007024b59082f618823d55f0aafc2ad345433b65029c0878f77f78"
+    },
+    {
+      "script": "audit-service-datasource-pool.ps1",
+      "passed": true,
+      "normalizedLfSha256": "1aeeef63ec6967cbd2dec2fc9882c6cf63083de882cc4b7b97ec80582dc961fc"
+    },
+    {
+      "script": "audit-microservice-test-catalog.ps1",
+      "passed": true,
+      "normalizedLfSha256": "8cf6f77498f1cbdf9f5f6ce498de593eaf2aba0d84979d4a2768d0d81b9eb23d"
+    },
+    {
+      "script": "audit-security-governance-controls.ps1",
+      "passed": true,
+      "normalizedLfSha256": "bd16e90594347192735fae3590f2cdb722b510482e03176110b0b794a2d091cc"
+    },
+    {
+      "script": "audit-runtime-schema-dependency-baseline.ps1",
+      "passed": true,
+      "normalizedLfSha256": "00745616d55cdca8811a46975ea4abf1a124c748e42bc348fe541c013930739e"
+    }
+  ],
+  "limits": [
+    "Focused platform tests overlap full448 and are not additive",
+    "Restore42 selected local checks are not live Cloud SQL recovery",
+    "Passive native inventory retains exact PR330 runtime/date scope",
+    "No provider message, physical hardware or cleanup mutation"
+  ]
+}

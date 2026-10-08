@@ -1,0 +1,553 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T09:51:11.819988+00:00",
+  "acceptedSourceSha": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+  "acceptedReleaseRunId": 37746479841,
+  "acceptedReleaseProofSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f",
+  "rawFixedInventoryCaptureSha256": "236a2662da5c3b44d94eaf8fee566888ae49664ac6c2434bb29e0248a63ec697",
+  "services": [
+    {
+      "service": "billing-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "imageConfigDigest": "sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "readyRevisionInDatedBaseline": "custoking-billing-service-dev-00031-f9f",
+      "user": "appuser",
+      "entrypoint": [
+        "sh",
+        "-c",
+        "exec java $JAVA_OPTS -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -jar /app/app.jar"
+      ],
+      "javaOptsBlankInImage": true,
+      "javaToolOptionsPresentInImage": false,
+      "packages": [
+        {
+          "package": "libc-bin",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "libc6:amd64",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "libexpat1:amd64",
+          "version": "2.6.1-2ubuntu0.6",
+          "status": "installed"
+        },
+        {
+          "package": "libpcre2-8-0:amd64",
+          "version": "10.42-4ubuntu2.1",
+          "status": "installed"
+        },
+        {
+          "package": "libpng16-16t64:amd64",
+          "version": "1.6.43-5ubuntu0.7",
+          "status": "installed"
+        },
+        {
+          "package": "libsystemd0:amd64",
+          "version": "255.4-1ubuntu8.17",
+          "status": "installed"
+        },
+        {
+          "package": "libudev1:amd64",
+          "version": "255.4-1ubuntu8.17",
+          "status": "installed"
+        },
+        {
+          "package": "locales",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "login",
+          "version": "1:4.13+dfsg1-4ubuntu3.2",
+          "status": "installed"
+        },
+        {
+          "package": "nscd",
+          "version": "",
+          "status": "not-installed"
+        },
+        {
+          "package": "passwd",
+          "version": "1:4.13+dfsg1-4ubuntu3.2",
+          "status": "installed"
+        },
+        {
+          "package": "tar",
+          "version": "1.35+dfsg-3ubuntu0.4",
+          "status": "installed"
+        },
+        {
+          "package": "zlib1g:amd64",
+          "version": "1:1.3.dfsg-3.1ubuntu2.2",
+          "status": "installed"
+        }
+      ],
+      "selectedDaemonAndMappingBinaries": {
+        "/usr/sbin/nscd": "ABSENT",
+        "/usr/lib/systemd/systemd-journald": "ABSENT",
+        "/lib/systemd/systemd-journald": "ABSENT",
+        "/usr/bin/newuidmap": "ABSENT",
+        "/usr/bin/newgidmap": "ABSENT"
+      },
+      "subordinateIdConfigLineCounts": {
+        "/etc/subuid": "1",
+        "/etc/subgid": "1"
+      },
+      "selectedJdkDynamicDependencies": [
+        "libawt.so",
+        "libc.so.6",
+        "libdl.so.2",
+        "libfreetype.so",
+        "libjava.so",
+        "libjvm.so",
+        "libm.so.6",
+        "libnet.so",
+        "libpthread.so.0",
+        "librt.so.1"
+      ],
+      "inventoryOutputSha256": "812accdfa3857f4b5f80a4fbc787f28e85c931467c67d5ac66268a50af66d7db"
+    },
+    {
+      "service": "identity-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "imageConfigDigest": "sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "readyRevisionInDatedBaseline": "custoking-identity-service-dev-00035-vgl",
+      "user": "appuser",
+      "entrypoint": [
+        "sh",
+        "-c",
+        "exec java $JAVA_OPTS -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -jar /app/app.jar"
+      ],
+      "javaOptsBlankInImage": true,
+      "javaToolOptionsPresentInImage": false,
+      "packages": [
+        {
+          "package": "libc-bin",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "libc6:amd64",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "libexpat1:amd64",
+          "version": "2.6.1-2ubuntu0.6",
+          "status": "installed"
+        },
+        {
+          "package": "libpcre2-8-0:amd64",
+          "version": "10.42-4ubuntu2.1",
+          "status": "installed"
+        },
+        {
+          "package": "libpng16-16t64:amd64",
+          "version": "1.6.43-5ubuntu0.7",
+          "status": "installed"
+        },
+        {
+          "package": "libsystemd0:amd64",
+          "version": "255.4-1ubuntu8.17",
+          "status": "installed"
+        },
+        {
+          "package": "libudev1:amd64",
+          "version": "255.4-1ubuntu8.17",
+          "status": "installed"
+        },
+        {
+          "package": "locales",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "login",
+          "version": "1:4.13+dfsg1-4ubuntu3.2",
+          "status": "installed"
+        },
+        {
+          "package": "nscd",
+          "version": "",
+          "status": "not-installed"
+        },
+        {
+          "package": "passwd",
+          "version": "1:4.13+dfsg1-4ubuntu3.2",
+          "status": "installed"
+        },
+        {
+          "package": "tar",
+          "version": "1.35+dfsg-3ubuntu0.4",
+          "status": "installed"
+        },
+        {
+          "package": "zlib1g:amd64",
+          "version": "1:1.3.dfsg-3.1ubuntu2.2",
+          "status": "installed"
+        }
+      ],
+      "selectedDaemonAndMappingBinaries": {
+        "/usr/sbin/nscd": "ABSENT",
+        "/usr/lib/systemd/systemd-journald": "ABSENT",
+        "/lib/systemd/systemd-journald": "ABSENT",
+        "/usr/bin/newuidmap": "ABSENT",
+        "/usr/bin/newgidmap": "ABSENT"
+      },
+      "subordinateIdConfigLineCounts": {
+        "/etc/subuid": "1",
+        "/etc/subgid": "1"
+      },
+      "selectedJdkDynamicDependencies": [
+        "libawt.so",
+        "libc.so.6",
+        "libdl.so.2",
+        "libfreetype.so",
+        "libjava.so",
+        "libjvm.so",
+        "libm.so.6",
+        "libnet.so",
+        "libpthread.so.0",
+        "librt.so.1"
+      ],
+      "inventoryOutputSha256": "ac5ccadd3c4840d7da6956961b3898346a71d27b82d1460646c9548ee99a2947"
+    },
+    {
+      "service": "operations-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "imageConfigDigest": "sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "readyRevisionInDatedBaseline": "custoking-operations-service-dev-00032-jbn",
+      "user": "appuser",
+      "entrypoint": [
+        "sh",
+        "-c",
+        "exec java $JAVA_OPTS -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -jar /app/app.jar"
+      ],
+      "javaOptsBlankInImage": true,
+      "javaToolOptionsPresentInImage": false,
+      "packages": [
+        {
+          "package": "libc-bin",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "libc6:amd64",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "libexpat1:amd64",
+          "version": "2.6.1-2ubuntu0.6",
+          "status": "installed"
+        },
+        {
+          "package": "libpcre2-8-0:amd64",
+          "version": "10.42-4ubuntu2.1",
+          "status": "installed"
+        },
+        {
+          "package": "libpng16-16t64:amd64",
+          "version": "1.6.43-5ubuntu0.7",
+          "status": "installed"
+        },
+        {
+          "package": "libsystemd0:amd64",
+          "version": "255.4-1ubuntu8.17",
+          "status": "installed"
+        },
+        {
+          "package": "libudev1:amd64",
+          "version": "255.4-1ubuntu8.17",
+          "status": "installed"
+        },
+        {
+          "package": "locales",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "login",
+          "version": "1:4.13+dfsg1-4ubuntu3.2",
+          "status": "installed"
+        },
+        {
+          "package": "nscd",
+          "version": "",
+          "status": "not-installed"
+        },
+        {
+          "package": "passwd",
+          "version": "1:4.13+dfsg1-4ubuntu3.2",
+          "status": "installed"
+        },
+        {
+          "package": "tar",
+          "version": "1.35+dfsg-3ubuntu0.4",
+          "status": "installed"
+        },
+        {
+          "package": "zlib1g:amd64",
+          "version": "1:1.3.dfsg-3.1ubuntu2.2",
+          "status": "installed"
+        }
+      ],
+      "selectedDaemonAndMappingBinaries": {
+        "/usr/sbin/nscd": "ABSENT",
+        "/usr/lib/systemd/systemd-journald": "ABSENT",
+        "/lib/systemd/systemd-journald": "ABSENT",
+        "/usr/bin/newuidmap": "ABSENT",
+        "/usr/bin/newgidmap": "ABSENT"
+      },
+      "subordinateIdConfigLineCounts": {
+        "/etc/subuid": "1",
+        "/etc/subgid": "1"
+      },
+      "selectedJdkDynamicDependencies": [
+        "libawt.so",
+        "libc.so.6",
+        "libdl.so.2",
+        "libfreetype.so",
+        "libjava.so",
+        "libjvm.so",
+        "libm.so.6",
+        "libnet.so",
+        "libpthread.so.0",
+        "librt.so.1"
+      ],
+      "inventoryOutputSha256": "1508f566d817aefe48cf76c68ab1508460a110849a7a8e88c88aaa0ead307ac5"
+    },
+    {
+      "service": "platform-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:68ea61aaf05a30ac5f42842f675c79cdca1ee921c1ddb1e251c0b786dda54c20",
+      "imageConfigDigest": "sha256:68ea61aaf05a30ac5f42842f675c79cdca1ee921c1ddb1e251c0b786dda54c20",
+      "readyRevisionInDatedBaseline": "custoking-platform-service-dev-00035-5xc",
+      "user": "appuser",
+      "entrypoint": [
+        "sh",
+        "-c",
+        "exec java $JAVA_OPTS -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -jar /app/app.jar"
+      ],
+      "javaOptsBlankInImage": true,
+      "javaToolOptionsPresentInImage": false,
+      "packages": [
+        {
+          "package": "libc-bin",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "libc6:amd64",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "libexpat1:amd64",
+          "version": "2.6.1-2ubuntu0.6",
+          "status": "installed"
+        },
+        {
+          "package": "libpcre2-8-0:amd64",
+          "version": "10.42-4ubuntu2.1",
+          "status": "installed"
+        },
+        {
+          "package": "libpng16-16t64:amd64",
+          "version": "1.6.43-5ubuntu0.7",
+          "status": "installed"
+        },
+        {
+          "package": "libsystemd0:amd64",
+          "version": "255.4-1ubuntu8.17",
+          "status": "installed"
+        },
+        {
+          "package": "libudev1:amd64",
+          "version": "255.4-1ubuntu8.17",
+          "status": "installed"
+        },
+        {
+          "package": "locales",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "login",
+          "version": "1:4.13+dfsg1-4ubuntu3.2",
+          "status": "installed"
+        },
+        {
+          "package": "nscd",
+          "version": "",
+          "status": "not-installed"
+        },
+        {
+          "package": "passwd",
+          "version": "1:4.13+dfsg1-4ubuntu3.2",
+          "status": "installed"
+        },
+        {
+          "package": "tar",
+          "version": "1.35+dfsg-3ubuntu0.4",
+          "status": "installed"
+        },
+        {
+          "package": "zlib1g:amd64",
+          "version": "1:1.3.dfsg-3.1ubuntu2.2",
+          "status": "installed"
+        }
+      ],
+      "selectedDaemonAndMappingBinaries": {
+        "/usr/sbin/nscd": "ABSENT",
+        "/usr/lib/systemd/systemd-journald": "ABSENT",
+        "/lib/systemd/systemd-journald": "ABSENT",
+        "/usr/bin/newuidmap": "ABSENT",
+        "/usr/bin/newgidmap": "ABSENT"
+      },
+      "subordinateIdConfigLineCounts": {
+        "/etc/subuid": "1",
+        "/etc/subgid": "1"
+      },
+      "selectedJdkDynamicDependencies": [
+        "libawt.so",
+        "libc.so.6",
+        "libdl.so.2",
+        "libfreetype.so",
+        "libjava.so",
+        "libjvm.so",
+        "libm.so.6",
+        "libnet.so",
+        "libpthread.so.0",
+        "librt.so.1"
+      ],
+      "inventoryOutputSha256": "0917779c8fceed0d316fa86f9d26beb3fd2866b99ec97e7cf04164695826cea2"
+    },
+    {
+      "service": "school-core-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0",
+      "imageConfigDigest": "sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0",
+      "readyRevisionInDatedBaseline": "custoking-school-core-service-dev-00076-8mr",
+      "user": "appuser",
+      "entrypoint": [
+        "sh",
+        "-c",
+        "exec java $JAVA_OPTS -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+ExitOnOutOfMemoryError -jar /app/app.jar"
+      ],
+      "javaOptsBlankInImage": true,
+      "javaToolOptionsPresentInImage": false,
+      "packages": [
+        {
+          "package": "libc-bin",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "libc6:amd64",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "libexpat1:amd64",
+          "version": "2.6.1-2ubuntu0.6",
+          "status": "installed"
+        },
+        {
+          "package": "libpcre2-8-0:amd64",
+          "version": "10.42-4ubuntu2.1",
+          "status": "installed"
+        },
+        {
+          "package": "libpng16-16t64:amd64",
+          "version": "1.6.43-5ubuntu0.7",
+          "status": "installed"
+        },
+        {
+          "package": "libsystemd0:amd64",
+          "version": "255.4-1ubuntu8.17",
+          "status": "installed"
+        },
+        {
+          "package": "libudev1:amd64",
+          "version": "255.4-1ubuntu8.17",
+          "status": "installed"
+        },
+        {
+          "package": "locales",
+          "version": "2.39-0ubuntu8.9",
+          "status": "installed"
+        },
+        {
+          "package": "login",
+          "version": "1:4.13+dfsg1-4ubuntu3.2",
+          "status": "installed"
+        },
+        {
+          "package": "nscd",
+          "version": "",
+          "status": "not-installed"
+        },
+        {
+          "package": "passwd",
+          "version": "1:4.13+dfsg1-4ubuntu3.2",
+          "status": "installed"
+        },
+        {
+          "package": "tar",
+          "version": "1.35+dfsg-3ubuntu0.4",
+          "status": "installed"
+        },
+        {
+          "package": "zlib1g:amd64",
+          "version": "1:1.3.dfsg-3.1ubuntu2.2",
+          "status": "installed"
+        }
+      ],
+      "selectedDaemonAndMappingBinaries": {
+        "/usr/sbin/nscd": "ABSENT",
+        "/usr/lib/systemd/systemd-journald": "ABSENT",
+        "/lib/systemd/systemd-journald": "ABSENT",
+        "/usr/bin/newuidmap": "ABSENT",
+        "/usr/bin/newgidmap": "ABSENT"
+      },
+      "subordinateIdConfigLineCounts": {
+        "/etc/subuid": "1",
+        "/etc/subgid": "1"
+      },
+      "selectedJdkDynamicDependencies": [
+        "libawt.so",
+        "libc.so.6",
+        "libdl.so.2",
+        "libfreetype.so",
+        "libjava.so",
+        "libjvm.so",
+        "libm.so.6",
+        "libnet.so",
+        "libpthread.so.0",
+        "librt.so.1"
+      ],
+      "inventoryOutputSha256": "e764ce95a5bfa8c8368e12fcd25630eb146fa11f6c3a8b065c22c518c151b32e"
+    }
+  ],
+  "localInspectionNetwork": "none",
+  "localInspectionRootFsReadOnly": true,
+  "applicationStarted": false,
+  "cloudMutations": 0,
+  "productionChanged": false,
+  "liveCloudProcessesInspected": false,
+  "liveLoadedNativeLibrariesInspected": false,
+  "jarNestedNativeEntriesVerified": false,
+  "allNativeApplicationPathsExercised": false,
+  "vexNotAffectedIssued": false,
+  "findings": [
+    "All five exact immutable Java runtimes contain observed libpng16-16t64 1.6.43-5ubuntu0.7.",
+    "Named nscd/journald/newuidmap/newgidmap binary paths are absent in all five images. nscd is explicitly not-installed in dpkg metadata; shared systemd libraries remain installed.",
+    "Subuid/subgid each have one line: absence or absence of collisions is not established.",
+    "Selected JDK library link traces use bundled libfreetype and system libc. Their traces do not list system libpng/expat/PCRE2; dlopen, other dependency paths and live native reachability are not established.",
+    "The empty attempted jar-native section is not accepted as an absence proof: nested jars/tool availability were not verified."
+  ],
+  "scope": "Dated accepted PR330 runtime inventory only, from fixed passive commands in isolated local containers. No native exploit, stress, universal reachability or later-platform-release inference."
+}

@@ -27,7 +27,7 @@ class GenericNotificationReportHttpIntegrationTest {
     static volatile CountDownLatch bodyReceivers;
     @BeforeAll static void start() throws Exception {
         service=mock(GenericNotificationReportService.class);
-        doAnswer(call->{seen.add(call.getArgument(0));return null;}).when(service).reconcile(any());
+        doAnswer(call->{seen.add(call.getArgument(0));return null;}).when(service).reconcile(any(),any());
         var controller=new GenericNotificationReportController(service,id->Optional.of("reports@synthetic.iam.gserviceaccount.com"),true,
                 TOKEN,"s".repeat(40),"p".repeat(40),"reports@synthetic.iam.gserviceaccount.com","gateway@synthetic.iam.gserviceaccount.com");
         temporary=Files.createTempDirectory("ims-report-tomcat-");tomcat=new Tomcat();tomcat.setBaseDir(temporary.toString());tomcat.setPort(0);
@@ -73,7 +73,7 @@ class GenericNotificationReportHttpIntegrationTest {
         try(Socket oversized=chunked(" ".repeat(8193))) {
             var line=new BufferedReader(new InputStreamReader(oversized.getInputStream(),StandardCharsets.US_ASCII)).readLine();assertThat(line).contains("413");
         }
-        assertThat(seen).isEmpty();verify(service,times(1)).reconcile(any());
+        assertThat(seen).isEmpty();verify(service,times(1)).reconcile(any(),any());
     }
     @Test void trickledChunkTimesOutBeforeParseAndLateBodyCannotContaminateFollowingRequest() throws Exception {
         long started=System.nanoTime();
@@ -86,14 +86,14 @@ class GenericNotificationReportHttpIntegrationTest {
         }
         assertThat(seen).isEmpty();verifyNoInteractions(service);
         var fresh=post(body("following-request"));assertThat(fresh.statusCode()).isEqualTo(202);
-        assertThat(seen.poll(1,TimeUnit.SECONDS).eventId()).isEqualTo("following-request");assertThat(seen).isEmpty();verify(service,times(1)).reconcile(any());
+        assertThat(seen.poll(1,TimeUnit.SECONDS).eventId()).isEqualTo("following-request");assertThat(seen).isEmpty();verify(service,times(1)).reconcile(any(),any());
     }
     @Test void persistenceFailureIsSanitizedAndNextRequestCanUseTheSameContainer() throws Exception {
-        doThrow(new IllegalStateException("private synthetic binding must not be reflected")).when(service).reconcile(any());
+        doThrow(new IllegalStateException("private synthetic binding must not be reflected")).when(service).reconcile(any(),any());
         try {
             var failure=post(body("failed-request"));assertThat(failure.statusCode()).isEqualTo(503);
             assertThat(failure.body()).doesNotContain("private","failed-request","5762846");
-        } finally {doAnswer(call->{seen.add(call.getArgument(0));return null;}).when(service).reconcile(any());}
+        } finally {doAnswer(call->{seen.add(call.getArgument(0));return null;}).when(service).reconcile(any(),any());}
         assertThat(post(body("healthy-after-failure")).statusCode()).isEqualTo(202);
         assertThat(seen.poll(1,TimeUnit.SECONDS).eventId()).isEqualTo("healthy-after-failure");
     }
@@ -108,6 +108,6 @@ class GenericNotificationReportHttpIntegrationTest {
             status=post(body("after-disconnect")).statusCode();if(status!=202)Thread.sleep(100);
         }
         assertThat(status).isEqualTo(202);assertThat(seen.poll(1,TimeUnit.SECONDS).eventId()).isEqualTo("after-disconnect");
-        assertThat(seen).isEmpty();verify(service,times(1)).reconcile(any());
+        assertThat(seen).isEmpty();verify(service,times(1)).reconcile(any(),any());
     }
 }
