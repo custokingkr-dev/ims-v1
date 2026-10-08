@@ -25,6 +25,17 @@ class MigrationReleaseTriggerTest(unittest.TestCase):
                 self.assertGreaterEqual(len(evidence['service_matrix']['include']),7)
                 self.assertFalse(evidence['deployment_reconciliation_required'])
 
+    def test_committed_runtime_patch_epoch_selects_all_tests_and_images(self):
+        expected={'identity-service','platform-service','operations-service','billing-service','school-core-service','api-gateway','frontend'}
+        for environment in ['dev','prod']:
+            with self.subTest(environment=environment):
+                evidence=self.resolve('deploy/runtime-patch-epoch.txt',environment)
+                self.assertTrue(evidence['has_service_changes'])
+                self.assertEqual(expected,{row['name'] for row in evidence['service_matrix']['include']})
+                self.assertEqual(expected,{row['name'] for row in evidence['docker_matrix']['include']})
+                self.assertFalse(evidence['deployment_reconciliation_required'])
+                self.assertFalse(evidence['deployment_config_changed'])
+
     def test_migration_iam_change_requires_pre_release_reconciliation(self):
         evidence=self.resolve('infra/terraform/cicd/migration_jobs.tf')
         self.assertTrue(evidence['deployment_reconciliation_required'])

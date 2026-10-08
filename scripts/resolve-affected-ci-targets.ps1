@@ -54,6 +54,7 @@ $changedFiles = if ($null -ne $ChangedFilesOverride) {
 }
 
 $allServiceTriggers = @(
+  "deploy/runtime-patch-epoch.txt",
   "docker-compose.yml",
   "deploy/skaffold.yaml",
   "Tiltfile"

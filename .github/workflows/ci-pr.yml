@@ -130,6 +130,8 @@ jobs:
           scripts.tests.dev_restore_target_verifier_postgres_test
       - name: Test OpenAPI CI routing invariants
         run: python3 -m unittest scripts.tests.test_openapi_ci_gate
+      - name: Verify immutable runtime patch-cycle identities and workflow binding
+        run: python3 -O -m unittest scripts.tests.image_source_patch_epoch_test scripts.tests.test_build_release_patch_epoch_binding
 
   privacy-technical-controls:
     name: privacy-technical-controls
@@ -193,6 +195,8 @@ jobs:
         run: python -m unittest scripts.tests.signed_probe_serialization_test scripts.tests.pubsub_native_progress_test scripts.tests.dev_erasure_journal_infrastructure_test
       - name: Verify optimized restore-verifier subprocess deadlines on Windows
         run: python -O -m unittest scripts.tests.dev_restore_target_verifier_test
+      - name: Verify immutable runtime patch cycles and release binding on Windows
+        run: python -O -m unittest scripts.tests.image_source_patch_epoch_test scripts.tests.test_build_release_patch_epoch_binding
       - name: Verify Scheduler create and update command arguments
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tests/configure-async-relay-scheduler-test.ps1
 
