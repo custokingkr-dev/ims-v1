@@ -34,4 +34,11 @@ class Msg91SmsV3ReportCodecTest {
         var uncertain=new GenericNotificationReport(accepted.schoolId(),accepted.eventId(),accepted.requestSha256(),accepted.correlationId(),accepted.providerRequestId(),GenericNotificationReport.Status.DELIVERED,accepted.occurredAt(),accepted.evidenceSha256());
         assertThatThrownBy(()->new Msg91SmsV3ReportCodec.AcceptedBinding(uncertain,"a".repeat(64))).isInstanceOf(IllegalArgumentException.class);
     }
+    @Test void onlyStrictUtf8AndSupportedUtf8BomAreAccepted() throws Exception {
+        assertThat(codec.candidate(("\uFEFF"+body()).getBytes(StandardCharsets.UTF_8),profile,binding()).status()).isEqualTo(GenericNotificationReport.Status.DELIVERED);
+        for(var charset:List.of(StandardCharsets.UTF_16,StandardCharsets.UTF_16LE,StandardCharsets.UTF_16BE))
+            assertThatThrownBy(()->codec.candidate(body().getBytes(charset),profile,binding())).hasMessage("Unrecognized SMS-v3 report; no status authority");
+        byte[] malformed=body().getBytes(StandardCharsets.UTF_8);malformed[1]=(byte)0xff;
+        assertThatThrownBy(()->codec.candidate(malformed,profile,binding())).hasMessage("Unrecognized SMS-v3 report; no status authority");
+    }
 }

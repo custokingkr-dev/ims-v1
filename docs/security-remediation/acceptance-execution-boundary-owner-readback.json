@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T14:10:16.616229+00:00",
+  "project": "custoking-dev",
+  "readOnly": true,
+  "secretValuesRead": false,
+  "literalEnvironmentValuesRead": false,
+  "cloudMutations": 0,
+  "productionAccessed": false,
+  "records": [
+    {
+      "scope": "repository-permissions",
+      "capturedAtUtc": "2026-10-08T14:10:17.271827+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "2c1b5b6d0901c960898a081951db4336d703271b91b37abe589073d6f780f4fd",
+      "readable": true,
+      "metadata": {
+        "permissions": {
+          "admin": false,
+          "maintain": false,
+          "push": true,
+          "triage": true,
+          "pull": true
+        },
+        "defaultBranch": "main"
+      }
+    },
+    {
+      "scope": "dev-branch",
+      "capturedAtUtc": "2026-10-08T14:10:17.857783+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "e8584d87ea1d4fc2393da68f219ebf6dca1fcd2ad9066b17f788baa532e107d9",
+      "readable": true,
+      "metadata": {
+        "protected": false,
+        "commitSha": "fb59aaf7509937515b99ef32d3d3a7ebe3307f6f"
+      }
+    },
+    {
+      "scope": "dev-classic-protection",
+      "capturedAtUtc": "2026-10-08T14:10:18.440095+00:00",
+      "exitCode": 1,
+      "evidenceDigestSha256": "75c603659be44328a1f22ab62601fcc15ab614458ee7c15edcc683798d9877a9",
+      "readable": false,
+      "errorCategory": "NOT_FOUND",
+      "apiDisabledObserved": false
+    },
+    {
+      "scope": "dev-environment",
+      "capturedAtUtc": "2026-10-08T14:10:19.029510+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "34c205454e186a621c418f1bac0e4711253b5308411deb37a6f30f09d94c1f88",
+      "readable": true,
+      "metadata": {
+        "name": "dev",
+        "protectionRuleTypes": [
+          "branch_policy"
+        ],
+        "deploymentBranchPolicy": {
+          "protected_branches": false,
+          "custom_branch_policies": true
+        }
+      }
+    },
+    {
+      "scope": "dedicated-dashboard-oauth-secret",
+      "capturedAtUtc": "2026-10-08T14:10:20.893600+00:00",
+      "exitCode": 1,
+      "evidenceDigestSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "readable": false,
+      "errorCategory": "NOT_FOUND",
+      "apiDisabledObserved": false
+    },
+    {
+      "scope": "dedicated-dashboard-service",
+      "capturedAtUtc": "2026-10-08T14:10:22.509763+00:00",
+      "exitCode": 1,
+      "evidenceDigestSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "readable": false,
+      "errorCategory": "CLI_ERROR",
+      "apiDisabledObserved": false
+    },
+    {
+      "scope": "dashboard-security-database",
+      "capturedAtUtc": "2026-10-08T14:10:23.802960+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "5f3bd7d6730eb259a1ddd52c9a6e132904593e0ceb74921d495f784f1979e548",
+      "readable": true,
+      "metadata": {
+        "deleteProtectionState": "DELETE_PROTECTION_ENABLED",
+        "locationId": "asia-south2",
+        "name": "projects/custoking-dev/databases/ims-dashboard-dev",
+        "type": "FIRESTORE_NATIVE"
+      }
+    },
+    {
+      "scope": "dashboard-expiry-policy",
+      "capturedAtUtc": "2026-10-08T14:10:25.181598+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "eda66747214625565cd8ca92fe26cb2df90fb1817c545638a2108ed4ea0127c3",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 1,
+        "saturated": false,
+        "exactExpiresAtStates": [
+          "ACTIVE"
+        ]
+      }
+    },
+    {
+      "scope": "known-default-subnet",
+      "capturedAtUtc": "2026-10-08T14:10:27.353137+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "fdb47ceeec1271b720fb3eed922e485f96afd933a7e8bb537c258d0551de80bf",
+      "readable": true,
+      "metadata": {
+        "name": "default",
+        "privateGoogleAccess": false
+      }
+    },
+    {
+      "scope": "known-network-egress-rules",
+      "capturedAtUtc": "2026-10-08T14:10:29.180293+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false,
+        "activeCount": 0
+      }
+    },
+    {
+      "scope": "known-regional-routers",
+      "capturedAtUtc": "2026-10-08T14:10:31.292299+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false,
+        "natCount": 0
+      }
+    },
+    {
+      "scope": "known-java-network-identity-service",
+      "capturedAtUtc": "2026-10-08T14:10:32.942339+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+      "readable": true,
+      "metadata": {
+        "egress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    },
+    {
+      "scope": "known-java-network-school-core-service",
+      "capturedAtUtc": "2026-10-08T14:10:34.639734+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+      "readable": true,
+      "metadata": {
+        "egress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    },
+    {
+      "scope": "known-java-network-operations-service",
+      "capturedAtUtc": "2026-10-08T14:10:36.141693+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+      "readable": true,
+      "metadata": {
+        "egress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    },
+    {
+      "scope": "known-java-network-platform-service",
+      "capturedAtUtc": "2026-10-08T14:10:37.683622+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+      "readable": true,
+      "metadata": {
+        "egress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    },
+    {
+      "scope": "known-java-network-billing-service",
+      "capturedAtUtc": "2026-10-08T14:10:39.495708+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+      "readable": true,
+      "metadata": {
+        "egress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    },
+    {
+      "scope": "known-regional-domain-mappings",
+      "capturedAtUtc": "2026-10-08T14:10:41.862583+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false
+      }
+    },
+    {
+      "scope": "known-edge-global-forwarding",
+      "capturedAtUtc": "2026-10-08T14:10:43.732343+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false
+      }
+    },
+    {
+      "scope": "known-edge-ssl-certificates",
+      "capturedAtUtc": "2026-10-08T14:10:45.686791+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false
+      }
+    },
+    {
+      "scope": "cloud-dns-api-availability",
+      "capturedAtUtc": "2026-10-08T14:10:48.311563+00:00",
+      "exitCode": 1,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": false,
+      "errorCategory": "API_DISABLED",
+      "apiDisabledObserved": true
+    },
+    {
+      "scope": "source-database-metadata",
+      "capturedAtUtc": "2026-10-08T14:10:49.727369+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "49d7208d3f1eccd98f59db23ddf301b3ec1d731776d870f6de46e42c787d35ca",
+      "readable": true,
+      "metadata": {
+        "name": "custoking-db-dev",
+        "region": "asia-south2",
+        "state": "RUNNABLE"
+      }
+    },
+    {
+      "scope": "known-isolated-restore-namespace",
+      "capturedAtUtc": "2026-10-08T14:10:51.181398+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false,
+        "instances": [],
+        "otherNamespacesNotInventoried": true
+      }
+    }
+  ],
+  "completedAtUtc": "2026-10-08T14:10:51.181398+00:00",
+  "claims": {
+    "ownerPolicyInvented": false,
+    "edgeOrEgressAcceptanceProven": false,
+    "restoreLineageOrRtoProven": false,
+    "dashboardOAuthSelectionProven": false
+  }
+}

@@ -30,7 +30,12 @@ final class Msg91SmsV3ReportCodec {
     GenericNotificationReport candidate(byte[] bytes,Profile profile,AcceptedBinding binding) {
         if(bytes==null || bytes.length==0 || bytes.length>8192 || profile==null || binding==null) throw invalid();
         try {
-            var node=JSON.readTree(bytes);
+            String utf8=StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                .decode(java.nio.ByteBuffer.wrap(bytes)).toString();
+            if(utf8.startsWith("\uFEFF")) utf8=utf8.substring(1); // Preserve the supported UTF-8 BOM.
+            var node=JSON.readTree(utf8);
             if(!node.isObject() || node.size()!=FIELDS.size() || node.properties().stream().anyMatch(f->!FIELDS.contains(f.getKey()) || !f.getValue().isString() || f.getValue().asString().length()>256)) throw invalid();
             var original=binding.accepted();
             String number=node.path("number").asString();
@@ -43,7 +48,7 @@ final class Msg91SmsV3ReportCodec {
             else throw invalid();
             var timestamp=LocalDateTime.parse(node.path("date").asString(),DATE).atOffset(profile.providerDateOffset());
             return new GenericNotificationReport(original.schoolId(),original.eventId(),original.requestSha256(),original.correlationId(),original.providerRequestId(),status,timestamp,sha(bytes));
-        } catch(RuntimeException malformed){throw invalid();}
+        } catch(RuntimeException | java.nio.charset.CharacterCodingException malformed){throw invalid();}
     }
     private static String sha(byte[] value){try{return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value));}catch(java.security.NoSuchAlgorithmException impossible){throw new IllegalStateException("SHA-256 unavailable");}}
     private static IllegalArgumentException invalid(){return new IllegalArgumentException("Unrecognized SMS-v3 report; no status authority");}

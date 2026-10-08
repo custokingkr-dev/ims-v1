@@ -1,0 +1,315 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T15:17:33.293406+00:00",
+  "status": "FINAL_FROZEN_LOCAL_SOURCE_AND_PACKAGE_VERIFIED_CORRECTED_CI_REQUIRED",
+  "priorSourceCheckpoint": "caaf9c7ef045dbc475e945d15b1afdde022b16c3",
+  "sourceFiles": [
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodec.java",
+      "normalizedLfSha256": "80c302c63ad364dd7a6bd0550d22e4e2b3d0137fdc38e0a79fe3a5c0dfd74f26"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridge.java",
+      "normalizedLfSha256": "5699ff062d27504a811984ab07fb012634cfdc6b8a2634f76c97f8ef852fd4e9"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/GenericAcceptedReportBindingRepository.java",
+      "normalizedLfSha256": "c611893ed3f3033963190d53b6610a472b7068ed18e5bc2d1f8c1c7349384db8"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodecTest.java",
+      "normalizedLfSha256": "2e61c281cb4ab26fd55a79c8e98c40ab610e023e0e8f7a0bd717be6e9464368f"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridgeTest.java",
+      "normalizedLfSha256": "bd622184f3b650c8ac91515568fbc338295e0f6667fd544266828cb15c4214bc"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridgePostgresTest.java",
+      "normalizedLfSha256": "bc6f558951b74116640a7d6ca34678d966caf4d3b7c75559a2defd65cd846ce6"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/persistence/GenericAcceptedReportBindingIntegrationTest.java",
+      "normalizedLfSha256": "6295571be821983d5e228fd2d5959dd58d34e77b6fdec0c266bbff095fa4eefb"
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+      "rawSha256": "807e7db09a5a1f7c12210fa04f017f53b851cac58b121e906ad66ac2785f4812",
+      "normalizedLfSha256": "40a55dd8a16ba896f68c7fce8fbc4e55c1232aa4df37edc7558a869b87de8821",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+      "rawSha256": "8fbf381b812ea3c07fbd303990b3f61da133aa6a88aa88c8ef8b3c942baaecf6",
+      "normalizedLfSha256": "2113c095683da7b4fd08d8dbfff97690ce64510a0468cf83e2a0a4df2dd3ebed",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+      "rawSha256": "61dc632caef52bb2cfecf574a602c3411b15245bdab4358a9ddec32396dc9072",
+      "normalizedLfSha256": "869a3223d5945d5d8a1cccfd7c207f1080b9f4c5f28481fbe3d3b2455fe8b41f",
+      "unchangedFrom19Checkpoint": false
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "rawSha256": "94cabf34d7c7db98cf5ee062acdd96fc40210adb81dfc26f4d612dd7c17db6e3",
+      "normalizedLfSha256": "d85bc3c70b71bc9500231c8b49777277a7b572078df5048c864c1e404e345a1e",
+      "unchangedFrom19Checkpoint": false
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorizationTest.java",
+      "rawSha256": "af4bc90c9428f32afdc886296935b2d8ccb5f3b1cc7a746e9c63da9e01766492",
+      "normalizedLfSha256": "fa04fd1ea1abf01c683cf37f1f11ff68b1b9351a3a4ecad6a3a1b9bb5d1dc1f0",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryFixture.java",
+      "rawSha256": "0d6b9f9aec51c92e766dc25563cb5054aea1e06d24535c3ea33d64dea9be9e18",
+      "normalizedLfSha256": "dfe30a85a46a8b2932ab6a9b32738b485fc7d11938672b384964519411edeb67",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "scripts/verify-github-governance-checks.py",
+      "rawSha256": "fb4fd371a726f54d1b8b352c75d299c33a033fbe4cf98d226d6738b4655576a2",
+      "normalizedLfSha256": "32c06ae9b392427786749a62c726792e42d4b66a9238fcd1cf7c3d564d9bc454"
+    },
+    {
+      "path": "scripts/tests/test_verify_github_governance_checks.py",
+      "rawSha256": "fd6be150087222d2011fe9d261b841dfc668a53b0ce3a27833836c2128526591",
+      "normalizedLfSha256": "2e632d28909d46eee94130b97b27456f6bb954a1b9a7644caf095afadf63c7c3"
+    }
+  ],
+  "portableEvidence": {
+    "path": "docs/security-remediation/acceptance-execution-boundary-portability-local.json",
+    "digestSha256": "a62a333f9110a346963657a67867d20ad0b926d95e46ebe8b981fa85469d1041"
+  },
+  "finalPlatformFullSuite": {
+    "schemaVersion": 1,
+    "service": "platform-service",
+    "startedAtUtc": "2026-10-08T14:46:03.967208+00:00",
+    "completedAtUtc": "2026-10-08T14:48:25.485085+00:00",
+    "exitCode": 0,
+    "seconds": 141.516,
+    "summary": {
+      "reported": 491,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "focusedProof": "tmp/provider-sms-routing-final-local-proof.json",
+    "focusedProofDigestSha256": "0f717940b77a27086b9aed6860914e4f797fbd326badc46804272b1e9dd39540",
+    "sourceHashesVerifiedBeforeAndAfter": true,
+    "logName": "tmp/execution-boundary-platform-service-full-tests.log",
+    "digestSha256": "d4643bc6611e48aca1696ec10b5ca17490851e0386ece6a1c419e8ac793b7942",
+    "cloudCalls": 0,
+    "overlap": "Focused tests overlap this full suite; counts are not additive."
+  },
+  "finalSchoolFullSuiteAndPackage": {
+    "schemaVersion": 1,
+    "service": "school-core-service",
+    "startedAtUtc": "2026-10-08T14:59:42.078484+00:00",
+    "completedAtUtc": "2026-10-08T15:06:04.206460+00:00",
+    "exitCode": 0,
+    "seconds": 382.125,
+    "summary": {
+      "reported": 976,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "passedTests": 975,
+    "skippedTests": [
+      {
+        "class": "com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorageTest",
+        "test": "rejectsSymbolicParentsAndEncodedTraversal",
+        "reason": "org.opentest4j.TestAbortedException: Assumption failed: OS symlink privilege unavailable\n\tat org.junit.jupiter.api.Assumptions.throwAssumptionFailed(Assumptions.java:340)\n\tat org.junit.jupiter.api.Assumptions.assumeTrue(Assumptions.java:127)\n\tat com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorageTest.rejectsSymbolicParentsAndEncodedTraversal(CatalogOrderAssetStorageTest.java:102)\n"
+      }
+    ],
+    "knownWindowsPrivilegeSkip": true,
+    "linuxCiMustRunAllTestsWithoutSkips": true,
+    "focusedProof": "tmp/recovery-temp-guard-final-proof.json",
+    "focusedProofDigestSha256": "92d6d2aa821e3981fd2d3d1261049b98f3d7bf533be6b533b4bb948e142e1d33",
+    "sourceHashesVerifiedBeforeAndAfter": true,
+    "logName": "tmp/execution-boundary-school-final-package.log",
+    "digestSha256": "df3e3f1189c547070547e4b7e0d9de9acced782febf37b29f49e221a44e05fe9",
+    "packaging": {
+      "jar": "services/school-core-service/target/custoking-school-core-service-0.1.0-SNAPSHOT.jar",
+      "digestSha256": "6dce2b23310495c1d039a325b39f6105febd3b9bc7641c944ba594581e873062",
+      "manifest": {
+        "Manifest-Version": "1.0",
+        "Created-By": "Maven JAR Plugin 3.5.1",
+        "Java-Version": "25",
+        "Build-Jdk-Spec": "25",
+        "Implementation-Title": "custoking-school-core-service",
+        "Implementation-Version": "0.1.0-SNAPSHOT",
+        "Main-Class": "org.springframework.boot.loader.launch.JarLauncher",
+        "Start-Class": "com.custoking.ims.schoolcoreservice.SchoolCoreServiceApplication",
+        "Spring-Boot-Version": "4.1.1",
+        "Spring-Boot-Classes": "BOOT-INF/classes/",
+        "Spring-Boot-Lib": "BOOT-INF/lib/",
+        "Spring-Boot-Classpath-Index": "BOOT-INF/classpath.idx",
+        "Spring-Boot-Layers-Index": "BOOT-INF/layers.idx"
+      },
+      "ordinaryStartClassPreserved": true,
+      "explicitRecoveryClassIncluded": true,
+      "jarExecuted": false
+    },
+    "cloudCalls": 0,
+    "overlap": "Focused suite overlaps this full suite; counts are not additive."
+  },
+  "governanceFinalObservations": [
+    {
+      "platform": "Windows",
+      "reported": 21,
+      "passed": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "optimized": true,
+      "log": "tmp/governance-process-tree-portable-owned-signal-windows-tests.log",
+      "rawLogSha256": "44f6befcdbf97137712b22c4b02a3f20184b0c113a0b7e9e9060d9981ccc0764"
+    },
+    {
+      "platform": "Linux local Docker",
+      "reported": 21,
+      "passed": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "optimized": true,
+      "log": "tmp/governance-process-tree-portable-owned-signal-linux-tests.log",
+      "rawLogSha256": "d8963b25c747ecd68e3d98a0283fe09b81051f58ca3ebbf35d41c4772bdb17a5"
+    }
+  ],
+  "earlierSourceCheckpointFilesUnchangedBeforeThisCuration": [
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodec.java",
+      "digestSha256": "80c302c63ad364dd7a6bd0550d22e4e2b3d0137fdc38e0a79fe3a5c0dfd74f26"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridge.java",
+      "digestSha256": "5699ff062d27504a811984ab07fb012634cfdc6b8a2634f76c97f8ef852fd4e9"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/GenericAcceptedReportBindingRepository.java",
+      "digestSha256": "c611893ed3f3033963190d53b6610a472b7068ed18e5bc2d1f8c1c7349384db8"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodecTest.java",
+      "digestSha256": "2e61c281cb4ab26fd55a79c8e98c40ab610e023e0e8f7a0bd717be6e9464368f"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridgeTest.java",
+      "digestSha256": "bd622184f3b650c8ac91515568fbc338295e0f6667fd544266828cb15c4214bc"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridgePostgresTest.java",
+      "digestSha256": "bc6f558951b74116640a7d6ca34678d966caf4d3b7c75559a2defd65cd846ce6"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/persistence/GenericAcceptedReportBindingIntegrationTest.java",
+      "digestSha256": "6295571be821983d5e228fd2d5959dd58d34e77b6fdec0c266bbff095fa4eefb"
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+      "digestSha256": "40a55dd8a16ba896f68c7fce8fbc4e55c1232aa4df37edc7558a869b87de8821"
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+      "digestSha256": "2113c095683da7b4fd08d8dbfff97690ce64510a0468cf83e2a0a4df2dd3ebed"
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+      "digestSha256": "869a3223d5945d5d8a1cccfd7c207f1080b9f4c5f28481fbe3d3b2455fe8b41f"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "digestSha256": "d85bc3c70b71bc9500231c8b49777277a7b572078df5048c864c1e404e345a1e"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorizationTest.java",
+      "digestSha256": "fa04fd1ea1abf01c683cf37f1f11ff68b1b9351a3a4ecad6a3a1b9bb5d1dc1f0"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryFixture.java",
+      "digestSha256": "dfe30a85a46a8b2932ab6a9b32738b485fc7d11938672b384964519411edeb67"
+    },
+    {
+      "path": "scripts/verify-github-governance-checks.py",
+      "digestSha256": "32c06ae9b392427786749a62c726792e42d4b66a9238fcd1cf7c3d564d9bc454"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-provider-local.json",
+      "digestSha256": "6c2ed53fca814610f7421d7178b36986cb5d8ed942b478a44724b1bb627db68c"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-recovery-local.json",
+      "digestSha256": "92d6d2aa821e3981fd2d3d1261049b98f3d7bf533be6b533b4bb948e142e1d33"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-governance-local.json",
+      "digestSha256": "88682383149d68f99e38cdbb53c072f89b8d93556d45602efccb805cc1074fd4"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-owner-readback.json",
+      "digestSha256": "8eef302813d89625d41d79b8cd9de8e7d52cfca6bc4f3cc28f24f820e6cd194d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-owner-followup.json",
+      "digestSha256": "29fc5c8ffa67076849b14e4332bc399355601ed32ca737ccca042674544bf798"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-native-research.json",
+      "digestSha256": "0890b1c6ee28a28ab9708b0cfb4c858251d03aaadf532cdcb9b5927fcd0001f4"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-independent-reviews.json",
+      "digestSha256": "dd8d469b0314447ecdfff5d6e83d8e95e126da35fa427f7de1da22b6b0c1714c"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-local.json",
+      "digestSha256": "a299666abd5aef606c89abc9753b3bf732bf4f986b08015eb6582f652603d504"
+    },
+    {
+      "path": "docs/security-remediation/execution-boundaries-2026-10-08.md",
+      "digestSha256": "4fb5a4bbfe49153907eab6aeeb10a87fe531d6378f4bdda2616ea0598967b3f9"
+    },
+    {
+      "path": "docs/security-remediation/IMPLEMENTATION-STATUS.md",
+      "digestSha256": "0e87b2356cc49af8060b647a3cb62ceb910a91b1da195618586a00be23debe72"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-actions.md",
+      "digestSha256": "79af77b243006eb76fba66b25aefcc968725b01ef9606b274ade132a7738fd39"
+    },
+    {
+      "path": ".gitattributes",
+      "digestSha256": "a334ff8e2a86b66092d5497eb938a7bf5106c3585c2d38dda9f5dae249431326"
+    }
+  ],
+  "historical169ProofsAnd14ProtectedFiles": "acceptance-execution-boundary-local.json#historicalProofIntegrity",
+  "datedInitialCapturePreserved": true,
+  "counting": "Focused suites overlap full suites. The same21 helper tests observed on two operating systems are not42 distinct tests.",
+  "wholeSecurityPlanComplete": false,
+  "requiredOpenWorkstreams": [
+    "edge",
+    "repository",
+    "dashboard",
+    "provider",
+    "hardware",
+    "retention_restore",
+    "capacity_cleanup",
+    "http2",
+    "egress_files"
+  ],
+  "additionalOpenFindings": [
+    "native_advisory_applicability",
+    "local_snapshot_custody"
+  ],
+  "exactCorrectedHeadCiAndDevAcceptancePending": true,
+  "productionChanged": false,
+  "providerCalls": 0,
+  "liveRecoveryExecuted": false,
+  "obsoleteRevisionsDeleted": 0,
+  "localRefsDeleted": 0
+}

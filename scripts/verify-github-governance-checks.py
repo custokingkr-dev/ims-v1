@@ -8,14 +8,20 @@ without GitHub credentials or repository-administrator access.
 from __future__ import annotations
 
 import argparse
+import contextvars
 import datetime as dt
 import json
 import os
 import pathlib
 import re
+import shutil
+import signal
 import subprocess
 import sys
+import threading
+import time
 from typing import Any
+from urllib.parse import quote
 
 
 DEFAULT_REQUIRED_CHECKS = (
@@ -25,37 +31,279 @@ DEFAULT_REQUIRED_CHECKS = (
 )
 DEFAULT_BRANCHES = ("main", "dev")
 FULL_SHA = re.compile(r"^[0-9a-fA-F]{40}$")
+API_CALL_SECONDS = 35
+API_RUN_SECONDS = 300
+API_STDOUT_BYTES = 2 * 1024 * 1024
+API_STDERR_BYTES = 64 * 1024
+API_RUN_BYTES = 16 * 1024 * 1024
+API_CLEANUP_SECONDS = 3
+GET_ARGUMENTS = [
+    "api", "--method", "GET",
+    "-H", "Accept: application/vnd.github+json",
+    "-H", "X-GitHub-Api-Version: 2022-11-28",
+]
+
+
+class ReadBudget:
+    def __init__(self) -> None:
+        self.deadline = time.monotonic() + API_RUN_SECONDS
+        self.bytes_read = 0
+        self.lock = threading.Lock()
+
+    def consume(self, size: int) -> bool:
+        with self.lock:
+            self.bytes_read += size
+            return self.bytes_read <= API_RUN_BYTES
+
+
+LIVE_BUDGET: contextvars.ContextVar[ReadBudget | None] = contextvars.ContextVar("github_read_budget", default=None)
+
+
+def native_executable(gh: str) -> str:
+    resolved = shutil.which(gh)
+    if not resolved:
+        raise RuntimeError("GitHub CLI executable is unavailable")
+    executable = pathlib.Path(resolved).resolve(strict=True)
+    # Windows may implicitly dispatch batch files through CMD even with shell=False.
+    if executable.suffix.lower() in (".cmd", ".bat") or (os.name == "nt" and executable.name.lower() != "gh.exe"):
+        raise RuntimeError("GitHub CLI must be a native executable; shell wrappers are rejected")
+    return str(executable)
+
+
+class WindowsJob:
+    """Unnamed, non-inheritable job; associate a suspended child before it runs.
+
+    Uses documented Win32 job/Toolhelp APIs. No breakaway flags or global PID kills.
+    """
+    def __init__(self) -> None:
+        import ctypes as c
+        from ctypes import wintypes as w
+        self.c = c
+        self.kernel = c.WinDLL("kernel32", use_last_error=True)
+        signatures = {
+            "CreateJobObjectW": ([w.LPVOID, w.LPCWSTR], w.HANDLE),
+            "SetInformationJobObject": ([w.HANDLE, c.c_int, w.LPVOID, w.DWORD], w.BOOL),
+            "AssignProcessToJobObject": ([w.HANDLE, w.HANDLE], w.BOOL),
+            "TerminateJobObject": ([w.HANDLE, w.UINT], w.BOOL),
+            "QueryInformationJobObject": ([w.HANDLE, c.c_int, w.LPVOID, w.DWORD, w.LPVOID], w.BOOL),
+            "CreateToolhelp32Snapshot": ([w.DWORD, w.DWORD], w.HANDLE),
+            "Thread32First": ([w.HANDLE, w.LPVOID], w.BOOL),
+            "Thread32Next": ([w.HANDLE, w.LPVOID], w.BOOL),
+            "OpenThread": ([w.DWORD, w.BOOL, w.DWORD], w.HANDLE),
+            "GetProcessIdOfThread": ([w.HANDLE], w.DWORD),
+            "ResumeThread": ([w.HANDLE], w.DWORD),
+            "CloseHandle": ([w.HANDLE], w.BOOL),
+        }
+        for name, (arguments, result) in signatures.items():
+            function = getattr(self.kernel, name)
+            function.argtypes = arguments
+            function.restype = result
+
+        class Basic(c.Structure):
+            _fields_ = [("process_time", c.c_longlong), ("job_time", c.c_longlong),
+                        ("flags", w.DWORD), ("min_ws", c.c_size_t), ("max_ws", c.c_size_t),
+                        ("process_limit", w.DWORD), ("affinity", c.c_size_t),
+                        ("priority", w.DWORD), ("scheduling", w.DWORD)]
+        class Limits(c.Structure):
+            _fields_ = [("basic", Basic), ("io", c.c_ulonglong * 6),
+                        ("process_memory", c.c_size_t), ("job_memory", c.c_size_t),
+                        ("peak_process_memory", c.c_size_t), ("peak_job_memory", c.c_size_t)]
+        self.handle = self.kernel.CreateJobObjectW(None, None)
+        if not self.handle:
+            raise RuntimeError("Owned process job creation failed")
+        limits = Limits()
+        limits.basic.flags = 0x2000  # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE; no breakaway.
+        if not self.kernel.SetInformationJobObject(self.handle, 9, c.byref(limits), c.sizeof(limits)):
+            self.kernel.CloseHandle(self.handle)
+            self.handle = None
+            raise RuntimeError("Owned process job limits failed")
+
+    def assign_and_resume(self, process: subprocess.Popen[bytes], deadline: float) -> None:
+        c = self.c
+        from ctypes import wintypes as w
+        if not self.kernel.AssignProcessToJobObject(self.handle, int(process._handle)):
+            raise RuntimeError("Owned suspended process job assignment failed")
+        class ThreadEntry(c.Structure):
+            _fields_ = [("size", w.DWORD), ("usage", w.DWORD), ("thread", w.DWORD),
+                        ("owner", w.DWORD), ("priority", w.LONG), ("delta", w.LONG), ("flags", w.DWORD)]
+        snapshot = self.kernel.CreateToolhelp32Snapshot(4, 0)  # Read-only thread metadata.
+        if snapshot == c.c_void_p(-1).value:
+            raise RuntimeError("Owned suspended thread discovery failed")
+        thread_ids = []
+        try:
+            entry = ThreadEntry()
+            entry.size = c.sizeof(entry)
+            available = self.kernel.Thread32First(snapshot, c.byref(entry))
+            while available:
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("Owned suspended thread discovery deadline exceeded")
+                if entry.owner == process.pid:
+                    thread_ids.append(entry.thread)
+                entry.size = c.sizeof(entry)
+                available = self.kernel.Thread32Next(snapshot, c.byref(entry))
+            if c.get_last_error() != 18:  # ERROR_NO_MORE_FILES; reject partial metadata.
+                raise RuntimeError("Owned suspended thread discovery incomplete")
+        finally:
+            self.kernel.CloseHandle(snapshot)
+        if len(thread_ids) != 1:
+            raise RuntimeError("Owned suspended primary thread is ambiguous")
+        thread = self.kernel.OpenThread(0x0002 | 0x0800, False, thread_ids[0])
+        if not thread:
+            raise RuntimeError("Owned suspended primary thread cannot be opened")
+        try:
+            if self.kernel.GetProcessIdOfThread(thread) != process.pid or self.kernel.ResumeThread(thread) != 1:
+                raise RuntimeError("Owned suspended primary thread cannot be resumed")
+        finally:
+            self.kernel.CloseHandle(thread)
+
+    def terminate_and_close(self, deadline: float) -> None:
+        c = self.c
+        from ctypes import wintypes as w
+        class Accounting(c.Structure):
+            _fields_ = [("times", c.c_longlong * 4), ("faults", w.DWORD),
+                        ("total", w.DWORD), ("active", w.DWORD), ("terminated", w.DWORD)]
+        try:
+            if not self.kernel.TerminateJobObject(self.handle, 1):
+                raise RuntimeError("Owned process tree termination failed")
+            while True:
+                accounting = Accounting()
+                if not self.kernel.QueryInformationJobObject(self.handle, 1, c.byref(accounting), c.sizeof(accounting), None):
+                    raise RuntimeError("Owned process tree completion cannot be read")
+                if accounting.active == 0:
+                    return
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("Owned process tree cleanup deadline exceeded")
+                time.sleep(0.01)
+        finally:
+            self.kernel.CloseHandle(self.handle)  # Also kills on exceptional termination paths.
+            self.handle = None
+
+
+def capture_process(command: list[str], budget: ReadBudget) -> subprocess.CompletedProcess[str]:
+    # The OS process-creation operation itself may not be interruptible. The read deadline
+    # applies immediately before and after it; cleanup has a separate bounded allowance.
+    deadline = min(budget.deadline, time.monotonic() + API_CALL_SECONDS)
+    if time.monotonic() >= deadline:
+        raise RuntimeError("GitHub read budget exhausted")
+    process = None
+    job = None
+    threads: list[threading.Thread] = []
+    started_threads: list[threading.Thread] = []
+    buffers = [bytearray(), bytearray()]
+    failed = threading.Event()
+
+    def read_pipe(index: int, stream: Any, limit: int) -> None:
+        try:
+            while True:
+                chunk = stream.read1(8192)
+                if not chunk:
+                    return
+                if len(buffers[index]) + len(chunk) > limit or not budget.consume(len(chunk)):
+                    failed.set()
+                    return
+                buffers[index].extend(chunk)
+        except OSError:
+            failed.set()
+        finally:
+            stream.close()
+
+    try:
+        options: dict[str, Any] = {"start_new_session": True}
+        if os.name == "nt":
+            job = WindowsJob()
+            options = {"creationflags": 0x00000004 | subprocess.CREATE_NO_WINDOW}  # CREATE_SUSPENDED.
+        process = subprocess.Popen(command, shell=False, stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env={**os.environ, "GH_PROMPT_DISABLED": "1"}, **options)
+        if job:
+            job.assign_and_resume(process, deadline)
+        threads = [
+            threading.Thread(target=read_pipe, args=(0, process.stdout, API_STDOUT_BYTES),
+                             name="governance-owned-stdout", daemon=True),
+            threading.Thread(target=read_pipe, args=(1, process.stderr, API_STDERR_BYTES),
+                             name="governance-owned-stderr", daemon=True),
+        ]
+        for thread in threads:
+            started_threads.append(thread)
+            thread.start()
+        while process.poll() is None or any(thread.is_alive() for thread in threads):
+            if failed.is_set():
+                raise RuntimeError("GitHub CLI response exceeds output budget or cannot be read")
+            if time.monotonic() >= deadline:
+                raise RuntimeError("GitHub CLI read deadline exceeded")
+            time.sleep(0.01)
+        if failed.is_set():
+            raise RuntimeError("GitHub CLI response exceeds output budget or cannot be read")
+        if time.monotonic() >= deadline:
+            raise RuntimeError("GitHub CLI read deadline exceeded")
+        try:
+            return subprocess.CompletedProcess(command, process.returncode,
+                buffers[0].decode("utf-8"), buffers[1].decode("utf-8"))
+        except UnicodeDecodeError as error:
+            raise RuntimeError("GitHub CLI response is not UTF-8") from error
+    finally:
+        cleanup_deadline = time.monotonic() + API_CLEANUP_SECONDS
+        cleanup_error = None
+        try:
+            if job:
+                job.terminate_and_close(cleanup_deadline)
+            elif process:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)  # Only the newly owned session/group.
+                except ProcessLookupError:
+                    pass
+        except (OSError, RuntimeError) as error:
+            cleanup_error = error
+        finally:
+            if process:
+                # Assignment failure leaves a suspended, never-executed child outside the job.
+                if process.poll() is None:
+                    process.kill()
+                try:
+                    process.wait(timeout=max(0.01, cleanup_deadline - time.monotonic()))
+                except subprocess.TimeoutExpired:
+                    cleanup_error = RuntimeError("Owned direct process cleanup deadline exceeded")
+                for thread in started_threads:
+                    if thread.ident is not None:
+                        thread.join(timeout=max(0, cleanup_deadline - time.monotonic()))
+                for thread, stream in zip(threads, (process.stdout, process.stderr)):
+                    if thread.ident is None:
+                        stream.close()
+                if not threads:
+                    process.stdout.close()
+                    process.stderr.close()
+                if any(thread.is_alive() for thread in started_threads):
+                    cleanup_error = RuntimeError("Owned pipe reader cleanup deadline exceeded")
+        if cleanup_error:
+            raise cleanup_error
 
 
 def execute(command: list[str]) -> subprocess.CompletedProcess[str]:
-    invocation: str | list[str] = subprocess.list2cmdline(command) if os.name == "nt" else command
-    return subprocess.run(
-        invocation,
-        shell=os.name == "nt",
-        capture_output=True,
-        text=True,
-        timeout=120,
-        check=False,
-    )
+    if len(command) != 9 or command[1:8] != GET_ARGUMENTS or not command[-1].startswith("repos/"):
+        raise RuntimeError("Only fixed read-only GitHub API commands are permitted")
+    budget = LIVE_BUDGET.get() or ReadBudget()
+    if time.monotonic() >= budget.deadline:
+        raise RuntimeError("GitHub read budget exhausted")
+    return capture_process([native_executable(command[0]), *command[1:]], budget)
 
 
 def gh_json(gh: str, endpoint: str, *, allow_not_found: bool = False) -> Any:
     completed = execute([
         gh,
-        "api",
-        "-H", "Accept: application/vnd.github+json",
-        "-H", "X-GitHub-Api-Version: 2022-11-28",
+        *GET_ARGUMENTS,
         endpoint,
     ])
     if completed.returncode != 0:
         detail = (completed.stderr or completed.stdout).strip()
         if allow_not_found and re.search(r"(?:HTTP\s+404|status\s*code\s*404)", detail, re.IGNORECASE):
             return None
-        raise RuntimeError(f"Read-only GitHub API request failed for {endpoint}: {detail}")
+        status = re.search(r"(?:HTTP\s+|status\s*code\s*)(\d{3})", detail, re.IGNORECASE)
+        suffix = f" (HTTP {status.group(1)})" if status else ""
+        raise RuntimeError(f"Read-only GitHub API request failed{suffix}")
     try:
         return json.loads(completed.stdout)
     except json.JSONDecodeError as error:
-        raise RuntimeError(f"GitHub API returned invalid JSON for {endpoint}: {error}") from error
+        raise RuntimeError("GitHub API returned invalid JSON") from error
 
 
 MAX_API_PAGES = 50
@@ -95,11 +343,21 @@ def paged_rulesets(repository: str, gh: str) -> list[dict[str, Any]]:
 
 
 def live_evidence(repository: str, commit: str, branches: list[str], gh: str) -> dict[str, Any]:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+", repository) or not FULL_SHA.fullmatch(commit):
+        raise RuntimeError("Repository and immutable commit metadata are invalid")
+    token = LIVE_BUDGET.set(ReadBudget())
+    try:
+        return read_live_evidence(repository, commit, branches, gh)
+    finally:
+        LIVE_BUDGET.reset(token)
+
+
+def read_live_evidence(repository: str, commit: str, branches: list[str], gh: str) -> dict[str, Any]:
     repository_metadata = gh_json(gh, f"repos/{repository}")
     protections = {
         branch: gh_json(
             gh,
-            f"repos/{repository}/branches/{branch}/protection",
+            f"repos/{repository}/branches/{quote(branch, safe='')}/protection",
             allow_not_found=True,
         )
         for branch in branches
