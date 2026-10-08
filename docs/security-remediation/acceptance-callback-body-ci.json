@@ -1,0 +1,1736 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-08T12:44:21.337247+00:00",
+  "pullRequest": 336,
+  "pullRequestUrl": "https://github.com/custokingkr-dev/ims-v1/pull/336",
+  "sourceHead": "f9b97352ae799a83d3c41aa2524fe6e558331976",
+  "baseHead": "900dcbbf62a7d0d57faef220853e82f427db864e",
+  "syntheticMerge": "0e7c41dcde9b7657a6c71cc95587dbd9e225e130",
+  "mergeParents": [
+    "900dcbbf62a7d0d57faef220853e82f427db864e",
+    "f9b97352ae799a83d3c41aa2524fe6e558331976"
+  ],
+  "mergeable": true,
+  "mergeableState": "clean",
+  "runs": {
+    "37778438948": {
+      "attempt": 1,
+      "conclusion": "success",
+      "createdAt": "2026-10-08T12:39:30Z",
+      "headSha": "f9b97352ae799a83d3c41aa2524fe6e558331976",
+      "jobs": [
+        {
+          "completedAt": "2026-10-08T12:39:41Z",
+          "conclusion": "success",
+          "databaseId": 113315147685,
+          "name": "duplicate-class-drift",
+          "startedAt": "2026-10-08T12:39:33Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:35Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:38Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:35Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:38Z",
+              "conclusion": "success",
+              "name": "Check guarded classes have not diverged",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:38Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 6,
+              "startedAt": "2026-10-08T12:39:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:38Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 7,
+              "startedAt": "2026-10-08T12:39:38Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315147685"
+        },
+        {
+          "completedAt": "2026-10-08T12:39:53Z",
+          "conclusion": "success",
+          "databaseId": 113315148107,
+          "name": "dev-edge-terraform-validation",
+          "startedAt": "2026-10-08T12:39:33Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:34Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:37Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:38Z",
+              "conclusion": "success",
+              "name": "Run hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:41Z",
+              "conclusion": "success",
+              "name": "Validate dev edge and mock-provider acceptance",
+              "number": 4,
+              "startedAt": "2026-10-08T12:39:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:45Z",
+              "conclusion": "success",
+              "name": "Validate persistent dashboard state without a web deployment",
+              "number": 5,
+              "startedAt": "2026-10-08T12:39:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:48Z",
+              "conclusion": "success",
+              "name": "Validate independent dev erasure journal and least-privilege scope",
+              "number": 6,
+              "startedAt": "2026-10-08T12:39:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:51Z",
+              "conclusion": "success",
+              "name": "Validate disabled dev egress preparation and explicit destination boundaries",
+              "number": 7,
+              "startedAt": "2026-10-08T12:39:48Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:51Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 14,
+              "startedAt": "2026-10-08T12:39:51Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:52Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 15,
+              "startedAt": "2026-10-08T12:39:51Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315148107"
+        },
+        {
+          "completedAt": "2026-10-08T12:39:46Z",
+          "conclusion": "success",
+          "databaseId": 113315148113,
+          "name": "secret-scan",
+          "startedAt": "2026-10-08T12:39:33Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:35Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:39Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:35Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:43Z",
+              "conclusion": "success",
+              "name": "Run gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:43Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 6,
+              "startedAt": "2026-10-08T12:39:43Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:43Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 7,
+              "startedAt": "2026-10-08T12:39:43Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315148113"
+        },
+        {
+          "completedAt": "2026-10-08T12:43:27Z",
+          "conclusion": "success",
+          "databaseId": 113315148253,
+          "name": "static-architecture-audits",
+          "startedAt": "2026-10-08T12:39:33Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:34Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:37Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:37Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:37Z",
+              "conclusion": "success",
+              "name": "Verify generated OpenAPI clients are current",
+              "number": 4,
+              "startedAt": "2026-10-08T12:39:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:37Z",
+              "conclusion": "success",
+              "name": "Test browser contract generation and canonical routing",
+              "number": 5,
+              "startedAt": "2026-10-08T12:39:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:40Z",
+              "conclusion": "success",
+              "name": "Audit offline service boundaries",
+              "number": 6,
+              "startedAt": "2026-10-08T12:39:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:41Z",
+              "conclusion": "success",
+              "name": "Verify financial and workflow contract bindings",
+              "number": 7,
+              "startedAt": "2026-10-08T12:39:40Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:41Z",
+              "conclusion": "success",
+              "name": "Verify bounded signed transport probe controls",
+              "number": 8,
+              "startedAt": "2026-10-08T12:39:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:41Z",
+              "conclusion": "success",
+              "name": "Test immutable GitHub governance check verification",
+              "number": 9,
+              "startedAt": "2026-10-08T12:39:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:41Z",
+              "conclusion": "success",
+              "name": "Test offline GCP governance audits",
+              "number": 10,
+              "startedAt": "2026-10-08T12:39:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:42Z",
+              "conclusion": "success",
+              "name": "Verify digest-bound image User and database catalog evidence rejection",
+              "number": 11,
+              "startedAt": "2026-10-08T12:39:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:57Z",
+              "conclusion": "success",
+              "name": "Test deployment security admission and isolated native release fixtures",
+              "number": 12,
+              "startedAt": "2026-10-08T12:39:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:42:02Z",
+              "conclusion": "success",
+              "name": "Verify guarded dev journal acceptance and PostgreSQL rehearsal under optimization",
+              "number": 13,
+              "startedAt": "2026-10-08T12:41:57Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:42:03Z",
+              "conclusion": "success",
+              "name": "Install isolated restore-verifier test dependency",
+              "number": 14,
+              "startedAt": "2026-10-08T12:42:02Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:42:35Z",
+              "conclusion": "success",
+              "name": "Verify restore-target rejection, historical coverage and real PostgreSQL TLS under optimization",
+              "number": 15,
+              "startedAt": "2026-10-08T12:42:03Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:42:36Z",
+              "conclusion": "success",
+              "name": "Test OpenAPI CI routing invariants",
+              "number": 16,
+              "startedAt": "2026-10-08T12:42:35Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:24Z",
+              "conclusion": "success",
+              "name": "Verify immutable runtime patch-cycle identities and workflow binding",
+              "number": 17,
+              "startedAt": "2026-10-08T12:42:36Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:24Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "number": 33,
+              "startedAt": "2026-10-08T12:43:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:25Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 34,
+              "startedAt": "2026-10-08T12:43:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:25Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 35,
+              "startedAt": "2026-10-08T12:43:25Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315148253"
+        },
+        {
+          "completedAt": "2026-10-08T12:41:20Z",
+          "conclusion": "success",
+          "databaseId": 113315148259,
+          "name": "privacy-technical-controls",
+          "startedAt": "2026-10-08T12:39:33Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:35Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:38Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:35Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:41Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:55Z",
+              "conclusion": "success",
+              "name": "Audit current, branch, history and release export boundaries",
+              "number": 4,
+              "startedAt": "2026-10-08T12:39:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:16Z",
+              "conclusion": "success",
+              "name": "Run synthetic export and verified-deletion drill",
+              "number": 5,
+              "startedAt": "2026-10-08T12:39:55Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:17Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "number": 9,
+              "startedAt": "2026-10-08T12:41:16Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:17Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 10,
+              "startedAt": "2026-10-08T12:41:17Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:17Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 11,
+              "startedAt": "2026-10-08T12:41:17Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315148259"
+        },
+        {
+          "completedAt": "2026-10-08T12:41:10Z",
+          "conclusion": "success",
+          "databaseId": 113315148305,
+          "name": "windows-security-helper-validation",
+          "startedAt": "2026-10-08T12:39:49Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:51Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:50Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:59Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:51Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:40:07Z",
+              "conclusion": "success",
+              "name": "Verify PowerShell 5 helper serialization and native exit handling",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:59Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:40:09Z",
+              "conclusion": "success",
+              "name": "Verify optimized restore-verifier deadlines and historical coverage on Windows",
+              "number": 4,
+              "startedAt": "2026-10-08T12:40:07Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:05Z",
+              "conclusion": "success",
+              "name": "Verify immutable runtime patch cycles and release binding on Windows",
+              "number": 5,
+              "startedAt": "2026-10-08T12:40:09Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:06Z",
+              "conclusion": "success",
+              "name": "Verify Scheduler create and update command arguments",
+              "number": 6,
+              "startedAt": "2026-10-08T12:41:05Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:08Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 12,
+              "startedAt": "2026-10-08T12:41:06Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:08Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 13,
+              "startedAt": "2026-10-08T12:41:08Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315148305"
+        },
+        {
+          "completedAt": "2026-10-08T12:39:41Z",
+          "conclusion": "success",
+          "databaseId": 113315148342,
+          "name": "detect / detect",
+          "startedAt": "2026-10-08T12:39:33Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:34Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:37Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:39Z",
+              "conclusion": "success",
+              "name": "Detect affected services",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:40Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 6,
+              "startedAt": "2026-10-08T12:39:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:40Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 7,
+              "startedAt": "2026-10-08T12:39:40Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315148342"
+        },
+        {
+          "completedAt": "2026-10-08T12:39:37Z",
+          "conclusion": "success",
+          "databaseId": 113315148371,
+          "name": "promotion-source-policy",
+          "startedAt": "2026-10-08T12:39:33Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:34Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:34Z",
+              "conclusion": "success",
+              "name": "Require dev as the source of main promotions",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:34Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:34Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315148371"
+        },
+        {
+          "completedAt": "2026-10-08T12:41:53Z",
+          "conclusion": "success",
+          "databaseId": 113315219993,
+          "name": "service-test (platform-service)",
+          "startedAt": "2026-10-08T12:39:44Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:46Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:48Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:46Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:53Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:48Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:53Z",
+              "conclusion": "skipped",
+              "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+              "number": 4,
+              "startedAt": "2026-10-08T12:39:53Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:53Z",
+              "conclusion": "skipped",
+              "name": "Install Node dependencies",
+              "number": 5,
+              "startedAt": "2026-10-08T12:39:53Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:49Z",
+              "conclusion": "success",
+              "name": "Run Maven tests",
+              "number": 6,
+              "startedAt": "2026-10-08T12:39:53Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:49Z",
+              "conclusion": "skipped",
+              "name": "Run gateway tests",
+              "number": 7,
+              "startedAt": "2026-10-08T12:41:49Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:49Z",
+              "conclusion": "skipped",
+              "name": "Run frontend tests and build",
+              "number": 8,
+              "startedAt": "2026-10-08T12:41:49Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:49Z",
+              "conclusion": "skipped",
+              "name": "Remove broken Google Chrome apt source",
+              "number": 9,
+              "startedAt": "2026-10-08T12:41:49Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:49Z",
+              "conclusion": "skipped",
+              "name": "Install Playwright Chromium",
+              "number": 10,
+              "startedAt": "2026-10-08T12:41:49Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:49Z",
+              "conclusion": "skipped",
+              "name": "Run authenticated frontend browser tests",
+              "number": 11,
+              "startedAt": "2026-10-08T12:41:49Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:49Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+              "number": 21,
+              "startedAt": "2026-10-08T12:41:49Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:49Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 22,
+              "startedAt": "2026-10-08T12:41:49Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:49Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 23,
+              "startedAt": "2026-10-08T12:41:49Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315219993"
+        },
+        {
+          "completedAt": "2026-10-08T12:41:23Z",
+          "conclusion": "success",
+          "databaseId": 113315220033,
+          "name": "docker-build (platform-service)",
+          "startedAt": "2026-10-08T12:39:43Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:46Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:44Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:49Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:46Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:57Z",
+              "conclusion": "success",
+              "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:49Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:57Z",
+              "conclusion": "success",
+              "name": "Set image reference",
+              "number": 4,
+              "startedAt": "2026-10-08T12:39:57Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:57Z",
+              "conclusion": "success",
+              "name": "Resolve the security patch epoch",
+              "number": 5,
+              "startedAt": "2026-10-08T12:39:57Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:40:42Z",
+              "conclusion": "success",
+              "name": "Build image",
+              "number": 6,
+              "startedAt": "2026-10-08T12:39:57Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:15Z",
+              "conclusion": "success",
+              "name": "Trivy HIGH/CRITICAL gate",
+              "number": 7,
+              "startedAt": "2026-10-08T12:40:42Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:15Z",
+              "conclusion": "success",
+              "name": "Post Trivy HIGH/CRITICAL gate",
+              "number": 11,
+              "startedAt": "2026-10-08T12:41:15Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:16Z",
+              "conclusion": "success",
+              "name": "Post Build image",
+              "number": 12,
+              "startedAt": "2026-10-08T12:41:15Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:21Z",
+              "conclusion": "success",
+              "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+              "number": 13,
+              "startedAt": "2026-10-08T12:41:16Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:21Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 14,
+              "startedAt": "2026-10-08T12:41:21Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:41:21Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 15,
+              "startedAt": "2026-10-08T12:41:21Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315220033"
+        },
+        {
+          "completedAt": "2026-10-08T12:39:41Z",
+          "conclusion": "skipped",
+          "databaseId": 113315222471,
+          "name": "maven-wrapper-validation (${{ matrix.os }})",
+          "startedAt": "2026-10-08T12:39:42Z",
+          "status": "completed",
+          "steps": [],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113315222471"
+        },
+        {
+          "completedAt": "2026-10-08T12:43:34Z",
+          "conclusion": "success",
+          "databaseId": 113316742884,
+          "name": "summary",
+          "startedAt": "2026-10-08T12:43:29Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:43:31Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:43:30Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:31Z",
+              "conclusion": "success",
+              "name": "Write summary",
+              "number": 2,
+              "startedAt": "2026-10-08T12:43:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:31Z",
+              "conclusion": "success",
+              "name": "Enforce required job results",
+              "number": 3,
+              "startedAt": "2026-10-08T12:43:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:31Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 4,
+              "startedAt": "2026-10-08T12:43:31Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948/job/113316742884"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-10-08T12:43:35Z",
+      "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438948"
+    },
+    "37778438239": {
+      "attempt": 1,
+      "conclusion": "success",
+      "createdAt": "2026-10-08T12:39:30Z",
+      "headSha": "f9b97352ae799a83d3c41aa2524fe6e558331976",
+      "jobs": [
+        {
+          "completedAt": "2026-10-08T12:43:28Z",
+          "conclusion": "success",
+          "databaseId": 113315144657,
+          "name": "analyze (java-kotlin)",
+          "startedAt": "2026-10-08T12:39:32Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:35Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:39Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:35Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:54Z",
+              "conclusion": "success",
+              "name": "Initialize CodeQL",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:24Z",
+              "conclusion": "success",
+              "name": "Analyze",
+              "number": 4,
+              "startedAt": "2026-10-08T12:39:54Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:24Z",
+              "conclusion": "success",
+              "name": "Post Analyze",
+              "number": 6,
+              "startedAt": "2026-10-08T12:43:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:25Z",
+              "conclusion": "success",
+              "name": "Post Initialize CodeQL",
+              "number": 7,
+              "startedAt": "2026-10-08T12:43:24Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:25Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 8,
+              "startedAt": "2026-10-08T12:43:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:43:25Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 9,
+              "startedAt": "2026-10-08T12:43:25Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438239/job/113315144657"
+        },
+        {
+          "completedAt": "2026-10-08T12:40:49Z",
+          "conclusion": "success",
+          "databaseId": 113315144978,
+          "name": "analyze (javascript-typescript)",
+          "startedAt": "2026-10-08T12:39:32Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-10-08T12:39:34Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-10-08T12:39:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:37Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 2,
+              "startedAt": "2026-10-08T12:39:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:39:47Z",
+              "conclusion": "success",
+              "name": "Initialize CodeQL",
+              "number": 3,
+              "startedAt": "2026-10-08T12:39:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:40:46Z",
+              "conclusion": "success",
+              "name": "Analyze",
+              "number": 4,
+              "startedAt": "2026-10-08T12:39:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:40:47Z",
+              "conclusion": "success",
+              "name": "Post Analyze",
+              "number": 6,
+              "startedAt": "2026-10-08T12:40:46Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:40:47Z",
+              "conclusion": "success",
+              "name": "Post Initialize CodeQL",
+              "number": 7,
+              "startedAt": "2026-10-08T12:40:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:40:48Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+              "number": 8,
+              "startedAt": "2026-10-08T12:40:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-10-08T12:40:48Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 9,
+              "startedAt": "2026-10-08T12:40:48Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438239/job/113315144978"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-10-08T12:43:29Z",
+      "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37778438239"
+    }
+  },
+  "sourceManifestRawSha256": "f97a8810ec3bc2d2be13a47528917df5844138e684808739b1ebb59cd89dc47e",
+  "sourceManifestFileCount": 20,
+  "historicalLocalFailures": {
+    "path": "docs/security-remediation/acceptance-callback-body-local.json",
+    "rawSha256": "607b6863653940b253017dc3e89f8d0184bf88dac058f92aa18cbee0e1d2980d",
+    "failures": [
+      {
+        "path": "tmp/provider-email-reader-lifecycle-before.log",
+        "rawSha256": "23ed4d559df414ead2e309db4e828441a64d72300c46c2f8081aa609f6d397ad",
+        "reported": 8,
+        "failed": 1,
+        "buildOutcome": "BUILD FAILURE",
+        "scope": "Controlled lifecycle before-fix8tests:1FAILURE+4ERRORS demonstrate early action-slot release and setup/reset gaps"
+      }
+    ],
+    "scope": "Local pre-fix checkpoints only; these are not PR336 workflow failures and are not regraded"
+  },
+  "priorAcceptedProofHashesUnchanged": {
+    "acceptance-provider-assertion-dev-release.json": "cff544bd1d447c2fceeffbb951f7c38ae6719ea976450b770542d1064f1a5b3b",
+    "acceptance-provider-assertion-image-protection.json": "20037a2efa2f21362c2adef58306f1be105ce39e2f848f58d8627ac91de5c834",
+    "acceptance-provider-assertion-public-smoke.json": "05f943bc53db2f996529e83955883c0422690de50d8c291b2286ef6096767c64"
+  },
+  "priorPr335ProofHashesUnchanged": {
+    "tmp/pr335-final-ci-proof.json": "5f600a06f356d544377005fdbc235f53eddd3229e348ec57bf5f697604337ac6",
+    "tmp/pr335-postmerge-independent-workflow-proof.json": "61eb3f7a56c6457d209cd769333eea1e9fb4a2ad3fdfd91c48867b5fa6700a11",
+    "docs/security-remediation/acceptance-parallel-hardening-ci.json": "c5a17a176887130e9fc48f1dfc833fc89a68fd6a41938eb081904bc1064d65a2",
+    "docs/security-remediation/acceptance-parallel-hardening-completion.json": "075daea7ff9585e9b454320e3fb0b537378f4318b62bbe9a3e1cfa24622d3d73",
+    "docs/security-remediation/acceptance-parallel-hardening-dev-release.json": "641426feef65b55c162dcdc19dcda21592f5b167d868a98e39e6cca36f84ec47",
+    "docs/security-remediation/acceptance-parallel-hardening-governance-local.json": "dbb1aff9d4aaedf46ad0db526247411fb7cb0c4a9d557d38558a21f69affeec6",
+    "docs/security-remediation/acceptance-parallel-hardening-image-protection.json": "8da5a9833ab5222386c46fec2467334520ebe1266ad0799ed373db265aa09879",
+    "docs/security-remediation/acceptance-parallel-hardening-local.json": "1868572999288c71ae1923b10df4452f712e5a7ca4b53d5508c4c6c1b176ca73",
+    "docs/security-remediation/acceptance-parallel-hardening-provider-local.json": "c2cc91eb144a5d749cdad42f549617ab5a3aa9fbcf470f4a768c2aeec0a17459",
+    "docs/security-remediation/acceptance-parallel-hardening-public-smoke.json": "5d3ab921a8519db46657b10dbd5a8f70ed9c7579635a43464521024152dd786c",
+    "docs/security-remediation/acceptance-parallel-hardening-replay-local.json": "eb3f2fdeb55dbf05fd24d67f6faa311e1737815a1d46d1ab2f1603d5241cd3c6",
+    "docs/security-remediation/acceptance-parallel-hardening-revision-preflight.json": "59116208dd02f4985f82ce6d9eabe86860c0cb133eac25ddca9556dc6f680e8d"
+  },
+  "cloudCalls": 0,
+  "cloudMutations": 0,
+  "providerCalls": 0,
+  "sourceWrites": 0,
+  "decision": "MERGE_READY",
+  "scope": "Exact PR336 source CI and synthetic merge CodeQL only. No deployment/live provider/restore/hardware proof. Overlapping Linux/Windows suites are not summed.",
+  "analysisRunWindowTraversal": {
+    "tool": "CodeQL",
+    "ref": "refs/pull/336/merge",
+    "ordering": "created descending verified",
+    "pagesRead": 1,
+    "recordsRead": 2,
+    "maxPages": 4,
+    "selectedRunWindowComplete": true,
+    "stopReason": "Actual page exhaustion"
+  },
+  "codeQL": {
+    "ref": "refs/pull/336/merge",
+    "analysisCommitIsSyntheticMergeNotSourceHead": true,
+    "actualUploads": [
+      {
+        "id": 1915717567,
+        "commit_sha": "0e7c41dcde9b7657a6c71cc95587dbd9e225e130",
+        "ref": "refs/pull/336/merge",
+        "category": "/language:java-kotlin",
+        "created_at": "2026-10-08T12:43:19Z",
+        "error": "",
+        "results_count": 0,
+        "rules_count": 120
+      },
+      {
+        "id": 1915701298,
+        "commit_sha": "0e7c41dcde9b7657a6c71cc95587dbd9e225e130",
+        "ref": "refs/pull/336/merge",
+        "category": "/language:javascript-typescript",
+        "created_at": "2026-10-08T12:40:42Z",
+        "error": "",
+        "results_count": 0,
+        "rules_count": 103
+      }
+    ],
+    "scopedOpenAlerts": 0
+  },
+  "actualLogEvidence": {
+    "linux": {
+      "label": "linux",
+      "jobId": 113315148253,
+      "rawLogSha256": "75c8e6fc88ba3d009abba89faa7d943487deeb14a8779220e463c2234c323fa7",
+      "unitSummaries": [
+        {
+          "stepCommand": "python3 -m unittest scripts.tests.test_verify_github_governance_checks",
+          "reported": 9,
+          "seconds": 0.132,
+          "outcome": "OK",
+          "skipped": 0
+        },
+        {
+          "stepCommand": "python3 -m unittest scripts.tests.test_export_gcp_asset_drift scripts.tests.test_audit_gcp_observability scripts.tests.test_validate_gcp_governance_audit_enablement",
+          "reported": 12,
+          "seconds": 0.338,
+          "outcome": "OK",
+          "skipped": 0
+        },
+        {
+          "stepCommand": "python3 -m unittest scripts.tests.dev_image_config_user_proof_test scripts.tests.dev_db_security_collator_test",
+          "reported": 9,
+          "seconds": 0.189,
+          "outcome": "OK",
+          "skipped": 0
+        },
+        {
+          "stepCommand": "python3 -m unittest scripts.tests.security_target_renderer_test scripts.tests.runtime_role_native_progress_test scripts.tests.service_migration_job_test scripts.tests.runtime_secret_matrix_test scripts.tests.migration_release_trigger_test scripts.tests.service_authorization_machine_proof_test scripts.tests.principal_carrier_release_order_test scripts.tests.direct_release_profile_test scripts.tests.full_release_routing_test scripts.tests.deployment_readiness_audit_test scripts.tests.runtime_secret_revocation_test scripts.tests.synthetic_pubsub_drill_test scripts.tests.bounded_dev_read_acceptance_test scripts.tests.security_acceptance_tool_test scripts.tests.obsolete_revision_cleanup_test scripts.tests.http2_parser_probe_test scripts.tests.final_live_fixture_acceptance_test scripts.tests.dashboard_state_adoption_test scripts.tests.dev_erasure_journal_test",
+          "reported": 116,
+          "seconds": 135.668,
+          "outcome": "OK",
+          "skipped": 0
+        },
+        {
+          "stepCommand": "python3 -O -m unittest scripts.tests.dev_precommit_journal_acceptance_test scripts.tests.dev_precommit_journal_acceptance_postgres_test scripts.tests.dev_photo_erasure_acceptance_test scripts.tests.dev_photo_erasure_acceptance_postgres_test",
+          "reported": 31,
+          "seconds": 3.872,
+          "outcome": "OK",
+          "skipped": 0
+        },
+        {
+          "stepCommand": "python3 -O -m unittest scripts.tests.dev_restore_target_verifier_test scripts.tests.dev_restore_target_verifier_postgres_test scripts.tests.dev_erasure_coverage_test scripts.tests.dev_owner_erasure_replay_test",
+          "reported": 56,
+          "seconds": 31.202,
+          "outcome": "OK",
+          "skipped": 0
+        },
+        {
+          "stepCommand": "python3 -m unittest scripts.tests.test_openapi_ci_gate",
+          "reported": 4,
+          "seconds": 1.855,
+          "outcome": "OK",
+          "skipped": 0
+        },
+        {
+          "stepCommand": "python3 -O -m unittest scripts.tests.image_source_patch_epoch_test scripts.tests.test_build_release_patch_epoch_binding",
+          "reported": 18,
+          "seconds": 47.692,
+          "outcome": "OK",
+          "skipped": 0
+        }
+      ],
+      "mavenAggregates": []
+    },
+    "windows": {
+      "label": "windows",
+      "jobId": 113315148305,
+      "rawLogSha256": "55ecd2fa671e1cebb603a20557dc403077728442070605b2a33178849c36cd38",
+      "unitSummaries": [
+        {
+          "stepCommand": "python -m unittest scripts.tests.signed_probe_serialization_test scripts.tests.pubsub_native_progress_test scripts.tests.dev_erasure_journal_infrastructure_test",
+          "reported": 7,
+          "seconds": 5.854,
+          "outcome": "OK",
+          "skipped": 0
+        },
+        {
+          "stepCommand": "python -O -m unittest scripts.tests.dev_restore_target_verifier_test scripts.tests.dev_erasure_coverage_test scripts.tests.dev_owner_erasure_replay_test.AdapterTests",
+          "reported": 33,
+          "seconds": 1.058,
+          "outcome": "OK",
+          "skipped": 0
+        },
+        {
+          "stepCommand": "python -O -m unittest scripts.tests.image_source_patch_epoch_test scripts.tests.test_build_release_patch_epoch_binding",
+          "reported": 18,
+          "seconds": 55.191,
+          "outcome": "OK",
+          "skipped": 0
+        }
+      ],
+      "mavenAggregates": []
+    },
+    "platform": {
+      "label": "platform",
+      "jobId": 113315219993,
+      "rawLogSha256": "ae448781bd82aae0b8ba5c297c5dcdc910cb68c007c51ff729427a4c7860f32f",
+      "unitSummaries": [],
+      "mavenAggregates": [
+        {
+          "reported": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 18,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 13,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 16,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 17,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 19,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 13,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "reported": 475,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    }
+  },
+  "platformFinalAggregate": {
+    "reported": 475,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "restoreVerifier": {
+    "linuxCombined": {
+      "stepCommand": "python3 -O -m unittest scripts.tests.dev_restore_target_verifier_test scripts.tests.dev_restore_target_verifier_postgres_test scripts.tests.dev_erasure_coverage_test scripts.tests.dev_owner_erasure_replay_test",
+      "reported": 56,
+      "seconds": 31.202,
+      "outcome": "OK",
+      "skipped": 0
+    },
+    "windowsOverlapping": {
+      "stepCommand": "python -O -m unittest scripts.tests.dev_restore_target_verifier_test scripts.tests.dev_erasure_coverage_test scripts.tests.dev_owner_erasure_replay_test.AdapterTests",
+      "reported": 33,
+      "seconds": 1.058,
+      "outcome": "OK",
+      "skipped": 0
+    },
+    "newOwnerReplayModuleIncluded": true,
+    "newOwnerReplayModuleCases": 14,
+    "newPostgresOwnerReplayCases": 7,
+    "newOwnerReplayAdapterCases": 7,
+    "windowsCasesOverlapLinux": true,
+    "liveRestoreVerified": false,
+    "newCaseCountScope": "Frozen new owner-replay module contains7real-PostgreSQL plus7adapter cases; the actual Linux step includes all14 in its56-test no-skip aggregate, while Windows33 includes the7adapter cases only"
+  },
+  "actualGitHubChangedFileCount": 20,
+  "actualGitHubChangedFilesMatchSourceManifest": true,
+  "acceptanceCollectorSha256": "2ca251b64844f574eedaf028f864cbd8307d5a8a633bf793115fb6e43852cc65",
+  "sourceCaptureRawSha256": "1e3b64f1298d5c9ba1eeb869e094fea35492c67620085239eb6be4326d23402f",
+  "subsequentActualMerge": {
+    "sourceSha": "923fc891867f992295931f8c06675879b2ee0746",
+    "mergedAtUtc": "2026-10-08T12:48:30Z",
+    "ciHeadDifferentFromSquashMerge": true,
+    "devAcceptanceRequiresSeparateObservedProof": true,
+    "devReleaseProof": "acceptance-callback-body-dev-release.json"
+  }
+}
