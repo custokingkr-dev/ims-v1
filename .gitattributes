@@ -56,3 +56,11 @@ docs/security-remediation/acceptance-execution-boundary-independent-reviews.json
 docs/security-remediation/acceptance-execution-boundary-local.json text eol=lf
 docs/security-remediation/acceptance-execution-boundary-portability-local.json text eol=lf
 docs/security-remediation/acceptance-execution-boundary-verified-local.json text eol=lf
+
+docs/security-remediation/acceptance-execution-boundary-ci.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-release-tests.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-dev-release.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-image-protection.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-public-smoke.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-native-inventory.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-completion.json text eol=lf
