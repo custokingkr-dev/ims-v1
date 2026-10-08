@@ -88,8 +88,17 @@
       "file": "acceptance-execution-boundary-release-tests.json",
       "sourceFile": "tmp/execution-boundary-postmerge-artifact-proof.json",
       "originalRawSha256": "b8131a386c984e174a3c660eac288026c85c49418092a6a275bd0ff9cbb7371a",
-      "documentRawSha256": "b8131a386c984e174a3c660eac288026c85c49418092a6a275bd0ff9cbb7371a",
-      "representation": "Only CRLF-to-LF normalization; JSON field values unchanged"
+      "documentRawSha256": "7b95dd17b2bd9d1b277f4144a9e18cfc09fdbc8c9cc8ec7435d52c65eb214be8",
+      "representation": "CRLF-to-LF plus the explicitly indexed two copied log-digest field names; values unchanged. Original collector proof preserved.",
+      "fieldNameNormalization": {
+        "originalField": "rawApiLogSha256",
+        "publishedField": "digestSha256",
+        "jsonPaths": [
+          "/selectedTests/0",
+          "/selectedTests/1"
+        ],
+        "valuesUnchanged": true
+      }
     },
     {
       "file": "acceptance-execution-boundary-dev-release.json",
@@ -935,5 +944,19 @@
   ],
   "sourceDatedPendingFlagsSupersededByThisRecord": true,
   "finalEvidencePublicationAcceptanceComplete": false,
-  "scope": "Scoped source and dev acceptance. Local Windows school skip remains historical; both actual Linux CI/release suites run all cases. No universal feature/attack, physical hardware, live provider or full recovery completion claim."
+  "scope": "Scoped source and dev acceptance. Local Windows school skip remains historical; both actual Linux CI/release suites run all cases. No universal feature/attack, physical hardware, live provider or full recovery completion claim.",
+  "publicationInitialSecretScanFailure": {
+    "head": "c13b59acbb4488514f1bc625863ec2e21cb95065",
+    "runId": 37809220333,
+    "conclusion": "failure",
+    "reportedFindings": 2,
+    "classification": "Two independently recomputed release-test API log digests, not credentials",
+    "rawLogPath": "tmp/pr339-initial-secret-scan.log",
+    "rawLogSha256": "9233b6779277f2be682ad800bb6e7162870df12b55d77393fd1ce0276d0c4e14",
+    "independentReviewPath": "tmp/pr339-secret-finding-independent-review.json",
+    "independentReviewSha256": "dd249d5dfe4eabe72f6ca20ee7deb3b80122f0fc8edc06ac69ba2a41e3e66928",
+    "initialCompletionRawSha256": "ac02644329d52128ceb914d59d2f83d6e53700eced57ebb599119d4de5731944",
+    "originalCapturesRetainedInGitAtHead": "c13b59acbb4488514f1bc625863ec2e21cb95065",
+    "suppressionScope": "Only two observed historical commit/file/rule/line fingerprints. No rule, path or future finding suppressed."
+  }
 }

@@ -479,7 +479,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "rawApiLogSha256": "de7c1c15258a4edfe5e059ef77b544c0fc9eca25f76bcbe4928ddfbdc3f73a79"
+      "digestSha256": "de7c1c15258a4edfe5e059ef77b544c0fc9eca25f76bcbe4928ddfbdc3f73a79"
     },
     {
       "service": "school-core-service",
@@ -489,7 +489,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "rawApiLogSha256": "006a2877b0e53cb68542037f59a5d7aefcd9080534e8a1e43127b30628bd0ccb"
+      "digestSha256": "006a2877b0e53cb68542037f59a5d7aefcd9080534e8a1e43127b30628bd0ccb"
     }
   ],
   "uploadedCodeqlAnalyses": [

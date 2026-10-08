@@ -35,3 +35,10 @@ f185f3e923b73d01b5b32b87a15482667b591e42:tools/live-dashboard/server.test.mjs:ge
 # Current copied evidence uses digestSha256 and records its explicit field-name
 # normalization; the original capture is preserved. No rule or path is excluded.
 260c0f4d18531d2015e43c3c0eb6ebe6f0c6e3f0:docs/security-remediation/acceptance-callback-body-completion.json:generic-api-key:1305
+
+# Verified PR339 historical false positives: exactly two SHA256 digests of
+# retained platform/school Actions API log bytes, independently recomputed.
+# Copied evidence uses digestSha256 and indexes the field-name normalization;
+# exclude only these observed historical commit/file/rule/lines.
+c13b59acbb4488514f1bc625863ec2e21cb95065:docs/security-remediation/acceptance-execution-boundary-release-tests.json:generic-api-key:482
+c13b59acbb4488514f1bc625863ec2e21cb95065:docs/security-remediation/acceptance-execution-boundary-release-tests.json:generic-api-key:492
