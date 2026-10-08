@@ -97,6 +97,27 @@ class Msg91NotificationDeliveryProviderTest {
     }
 
     @Test
+    void everyChannelRejectsAmbiguousPayloadBeforeProviderPreparation() throws Exception {
+        Fixture fixture=fixture();
+        fixture.properties.setSmsFlowId("synthetic-flow");
+        fixture.properties.setOtpTemplateId("synthetic-otp");
+        fixture.properties.setEmailFromAddress("sender@synthetic.invalid");
+        fixture.properties.setEmailDomain("synthetic.invalid");
+        fixture.properties.setWhatsappIntegratedNumber("919888888888");
+        for(String channel:new String[]{"SMS","OTP","EMAIL","WHATSAPP"}) {
+            String destination="EMAIL".equals(channel)?"guardian@synthetic.invalid":"919999999999";
+            String valid="{\"destination\":\""+destination+"\",\"templateId\":\"synthetic\",\"templateName\":\"synthetic\"}";
+            assertThat(body(fixture.provider,request("valid-event",channel,valid))).isNotEmpty();
+            for(String payload:new String[]{
+                    valid.replace("\"destination\":","\"destination\":\"other\",\"destination\":"),
+                    valid.replace("\"destination\":","\"destination\":\"other\",\"destin\\u0061tion\":"),
+                    valid+" {}",valid+" null"})
+                assertThatThrownBy(()->body(fixture.provider,request("ambiguous-event",channel,payload)))
+                        .isInstanceOf(RuntimeException.class);
+        }
+    }
+
+    @Test
     void buildsEmailPayload() throws Exception {
         Fixture fixture = fixture();
         fixture.properties.setEmailFromName("Custoking");

@@ -3,7 +3,6 @@ package com.custoking.ims.platformservice.infrastructure;
 import com.custoking.ims.platformservice.application.NotificationDeliveryRequest;
 import com.custoking.ims.platformservice.application.NotificationSubmissionResult;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import tools.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
@@ -15,12 +14,11 @@ final class Msg91GenericSubmissionTransport {
     static final URI SMS_ENDPOINT=URI.create("https://control.msg91.com/api/v5/flow");
     private final Msg91BroadcastLiveProvider.Transport transport;
     private final Msg91SubmissionCodec codec;
-    private final ObjectMapper mapper;
     private final Semaphore capacity=new Semaphore(2);
-    Msg91GenericSubmissionTransport(ObjectMapper mapper) { this(mapper,new Msg91BroadcastLiveProvider.SingleRequestTransport()); }
+    Msg91GenericSubmissionTransport() { this(new Msg91BroadcastLiveProvider.SingleRequestTransport()); }
     // Offline transport injection cannot remove the public provider's live-disable guard.
-    Msg91GenericSubmissionTransport(ObjectMapper mapper,Msg91BroadcastLiveProvider.Transport transport) {
-        this.transport=transport;this.codec=new Msg91SubmissionCodec(mapper);this.mapper=mapper;
+    Msg91GenericSubmissionTransport(Msg91BroadcastLiveProvider.Transport transport) {
+        this.transport=transport;this.codec=new Msg91SubmissionCodec();
     }
     NotificationSubmissionResult submit(NotificationDeliveryRequest request,String body,String authKey) {
         if(TransactionSynchronizationManager.isActualTransactionActive()) throw new IllegalStateException("Provider submission cannot run in a transaction");
@@ -28,7 +26,7 @@ final class Msg91GenericSubmissionTransport {
         if(body==null || body.getBytes(StandardCharsets.UTF_8).length>65_536 || authKey==null || !authKey.matches("[A-Za-z0-9_-]{16,256}"))
             return Msg91SubmissionCodec.unknown(request,"PROVIDER_PREPARATION_INVALID");
         try {
-            var json=mapper.readTree(body);var payload=mapper.readTree(request.payload());
+            var json=Msg91WireJson.read(body);var payload=Msg91WireJson.read(request.payload());
             String destination=payload.path("destination").asString("").replaceAll("[^0-9]","");
             if(!json.path("CRQID").isString() || !NotificationSubmissionResult.correlationId(request.eventId()).equals(json.path("CRQID").asString())
                 || !json.path("recipients").isArray() || json.path("recipients").size()!=1

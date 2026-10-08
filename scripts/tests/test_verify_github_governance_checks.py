@@ -28,6 +28,34 @@ class GitHubGovernanceChecksTest(unittest.TestCase):
         cls.module = load_module()
         cls.fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
 
+    def test_live_pagination_is_bounded_and_repeated_or_malformed_evidence_rejected(self):
+        from unittest.mock import patch
+        module = self.module
+        full = [{"id": n} for n in range(1, 101)]
+        with patch.object(module, "gh_json", side_effect=[{"check_runs": full}, {"check_runs": [{"id": 101}]}]) as read:
+            result = module.paged_check_runs("custokingkr-dev/ims-v1", COMMIT, "gh")
+            self.assertEqual(101, result["total_count"])
+            self.assertEqual(2, read.call_count)
+        for response in ({}, {"check_runs": None}, {"check_runs": [{"id": True}]}, {"check_runs": full + [{"id": 101}]}):
+            with patch.object(module, "gh_json", return_value=response):
+                with self.assertRaises(RuntimeError): module.paged_check_runs("repo", COMMIT, "gh")
+        with patch.object(module, "gh_json", side_effect=[full, full]) as read:
+            with self.assertRaises(RuntimeError): module.paged_rulesets("repo", "gh")
+            self.assertEqual(2, read.call_count)
+        with patch.object(module, "gh_json", side_effect=lambda gh, endpoint: [{"id": 100 * int(endpoint.rsplit("=", 1)[1]) + n} for n in range(100)]) as read:
+            with self.assertRaisesRegex(RuntimeError, "pagination limit exceeded"):
+                module.paged_rulesets("repo", "gh")
+            self.assertEqual(50, read.call_count)
+
+    def test_fractional_string_boolean_and_nonpositive_producer_ids_fail_closed(self):
+        for value in (True, False, 1001.1, 1001.0, "1001", 0, -1, None):
+            self.assertIsNone(self.module.producer_id(value))
+            evidence = copy.deepcopy(self.fixture)
+            evidence["checkRuns"]["check_runs"][0]["app"]["id"] = value
+            self.assertFalse(self.module.verify(evidence, "custokingkr-dev/ims-v1", COMMIT,
+                ["main", "dev"], list(self.module.DEFAULT_REQUIRED_CHECKS))["ready"])
+        self.assertEqual(1001, self.module.producer_id(1001))
+
     def test_classic_and_active_ruleset_exact_contexts_are_ready(self):
         result = self.module.verify(
             copy.deepcopy(self.fixture),

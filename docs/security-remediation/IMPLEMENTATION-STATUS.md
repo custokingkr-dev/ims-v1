@@ -1,5 +1,7 @@
 # Security implementation and verification ledger
 
+Latest parallel source follow-up: [provider wire, governance and recovery preparation fixes](parallel-hardening-2026-10-08.md). Final exact-source CI/dev acceptance is recorded separately; the [owner actions](acceptance-owner-actions.md) remain open until their actual completion evidence exists.
+
 ## Latest implementation follow-up — 2026-10-08
 
 [PR333](https://github.com/custokingkr-dev/ims-v1/pull/333) source CI/CodeQL and its exact [platform-only dev release](acceptance-provider-assertion-dev-release.json) passed. Independent acceptance proved one changed platform runtime, six exact retained baseline revisions/runtimes, seven Ready/current-desired100%,448/448 platform tests, preserved guarded configuration, six exact absent migration jobs and a fresh positive platform libpng `.7` binding. The [disabled egress preparation](../../deploy/gcp/application-egress/README.md) also passed17 mock tests and independent review without live network changes. [Updated findings and next steps](remaining-implementation-followup.md) retain all nine owner rows, residual advisory review and local custody. These newer results supersede the earlier pending source checkpoint below; historical proofs retain their dates.

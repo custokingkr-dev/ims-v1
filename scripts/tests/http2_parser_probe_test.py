@@ -1,5 +1,6 @@
 ﻿import importlib.util,pathlib,unittest
 from unittest.mock import patch
+import json,sys,tempfile,types
 ROOT=pathlib.Path(__file__).resolve().parents[2];spec=importlib.util.spec_from_file_location('probe',ROOT/'scripts/security/dev-http2-parser-probe.py');p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 class Sock:
  def __init__(self,data):self.data=data;self.sent=[]
@@ -27,6 +28,37 @@ class Http2ParserProbeTest(unittest.TestCase):
   self.assertEqual(sock.sent,[p.frame(4,1,0)]);self.assertTrue(p.accepted('healthy_control',result));self.assertEqual(result['status'],200)
  def test_accepted_malformed_request_is_anomaly(self):
   result={'status':200,'streamReset':None,'goaway':None};self.assertFalse(p.accepted('conflicting_content_lengths',result))
+ def test_http_rejection_cannot_mask_non_protocol_error_reset(self):
+  for status in (None,400,403):
+   for code in (0,2,7,True,'1'):
+    for field in ('streamReset','goaway'):
+     result={'status':status,'streamReset':None,'goaway':None};result[field]=code
+     self.assertFalse(p.accepted('content_length_data_mismatch',result))
+  self.assertTrue(p.accepted('bad',{'status':400,'streamReset':None,'goaway':None}))
+ def test_timeout_cannot_accept_late_worker_success(self):
+  class ImmediateThread:
+   def __init__(self,*,target,daemon):self.target=target
+   def start(self):self.target()
+  class ExpiredQueue:
+   def put(self,value):pass
+   def get(self,*,timeout):raise p.queue.Empty
+  def late_success(factory,proof,*args):proof.update(allSelectedChecksPassed=True,allFourChecksPassed=True)
+  with tempfile.TemporaryDirectory() as directory:
+   output=pathlib.Path(directory)/'deadline.json'
+   with patch.object(sys,'argv',['probe','--apply','--output',str(output)]),patch.dict(sys.modules,{'hpack':types.SimpleNamespace(Decoder=Decoder)}),patch.object(p.threading,'Thread',ImmediateThread),patch.object(p.queue,'Queue',return_value=ExpiredQueue()),patch.object(p,'execute',side_effect=late_success),patch('builtins.print'):
+    self.assertEqual(p.main(),1)
+   proof=json.loads(output.read_text(encoding='utf-8'))
+   self.assertEqual(proof['failure'],'FULL_NETWORK_DEADLINE');self.assertTrue(proof['stoppedOnAnomaly'])
+   self.assertFalse(proof['allSelectedChecksPassed']);self.assertFalse(proof['allFourChecksPassed'])
+ def test_exclusive_output_preserves_file_created_after_precheck(self):
+  class ImmediateThread:
+   def __init__(self,*,target,daemon):self.target=target
+   def start(self):self.target()
+  with tempfile.TemporaryDirectory() as directory:
+   output=pathlib.Path(directory)/'existing.json';output.write_text('retained evidence',encoding='utf-8')
+   with patch.object(sys,'argv',['probe','--apply','--output',str(output)]),patch.dict(sys.modules,{'hpack':types.SimpleNamespace(Decoder=Decoder)}),patch.object(pathlib.Path,'exists',return_value=False),patch.object(p.threading,'Thread',ImmediateThread),patch.object(p,'execute'):
+    with self.assertRaises(FileExistsError):p.main()
+   self.assertEqual(output.read_text(encoding='utf-8'),'retained evidence')
  def test_full_deadline_and_frame_bounds(self):
   with self.assertRaises(p.ProbeFailure):p.remaining(p.time.monotonic()-1)
   with self.assertRaises(p.ProbeFailure):p.frame(0,0,1,b'x'*16385)

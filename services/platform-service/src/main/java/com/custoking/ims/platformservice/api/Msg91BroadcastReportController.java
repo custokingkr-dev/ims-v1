@@ -8,8 +8,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.core.StreamReadFeature;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
@@ -25,12 +27,14 @@ public class Msg91BroadcastReportController {
     private final String serviceToken;
     private final LiveBroadcastConfiguration configuration;
     private final BroadcastLiveRepository ledger;
-    private final ObjectMapper mapper;
+    private static final JsonMapper REPORT_JSON=JsonMapper.builder()
+            .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION)
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build();
     private final TransactionTemplate transaction;
     public Msg91BroadcastReportController(@Value("${notification.status.token:}") String serviceToken,
-            LiveBroadcastConfiguration configuration, BroadcastLiveRepository ledger, ObjectMapper mapper, PlatformTransactionManager manager) {
+            LiveBroadcastConfiguration configuration, BroadcastLiveRepository ledger, PlatformTransactionManager manager) {
         this.serviceToken=serviceToken==null ? "" : serviceToken.trim(); this.configuration=configuration;
-        this.ledger=ledger; this.mapper=mapper; transaction=new TransactionTemplate(manager);
+        this.ledger=ledger; transaction=new TransactionTemplate(manager);
     }
     @PostMapping(consumes="application/json")
     @ResponseStatus(HttpStatus.ACCEPTED)
@@ -42,7 +46,7 @@ public class Msg91BroadcastReportController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Invalid provider callback credential");
         if (bytes.length>32768) throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,"Provider report is too large");
         final Report report;
-        try { report=parse(mapper.readTree(bytes)); }
+        try { report=parse(REPORT_JSON.readTree(bytes)); }
         catch (Exception invalid) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid provider report"); }
         try {
             transaction.executeWithoutResult(tx -> ledger.report(report.correlation(),report.providerId(),report.destinationHash(),report.senderHash(),

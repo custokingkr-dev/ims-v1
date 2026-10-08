@@ -74,7 +74,11 @@ def read_result(sock,deadline,decoder):
 
 def accepted(name,result):
  if name=='healthy_control':return result['status']==200 and result['streamReset'] is None and result['goaway'] is None
- return (result['status'] is not None and 400<=result['status']<500) or result['streamReset']==1 or result['goaway']==1
+ # An HTTP rejection cannot conceal an observed non-conforming reset code.
+ # An HTTP-only 4xx proves rejection, not an observed PROTOCOL_ERROR reset.
+ resets=[result[key] for key in ('streamReset','goaway') if result[key] is not None]
+ if any(type(code) is not int or code!=1 for code in resets):return False
+ return bool(resets) or (result['status'] is not None and 400<=result['status']<500)
 
 def execute(decoder_factory,proof,stop,active,cases=CASES):
  deadline=time.monotonic()+DEADLINE_SECONDS
@@ -85,9 +89,11 @@ def execute(decoder_factory,proof,stop,active,cases=CASES):
   proof['cases'].append(record)
   try:
    raw=socket.create_connection((HOST,443),timeout=remaining(deadline));active.append(raw)
+   if stop.is_set():return
    with context.wrap_socket(raw,server_hostname=HOST) as tls:
     active.append(tls);tls.settimeout(remaining(deadline))
     if tls.selected_alpn_protocol()!='h2':raise ProbeFailure('HTTP2_ALPN_NOT_NEGOTIATED')
+    if stop.is_set():return
     record['alpn']='h2';wire=request(headers,body);tls.sendall(wire);record['bytesSubmitted']=len(wire)
     record.update(read_result(tls,deadline,decoder_factory()))
     record['expectedRejectionOrControl']=accepted(name,record)
@@ -99,6 +105,7 @@ def execute(decoder_factory,proof,stop,active,cases=CASES):
     try:sock.close()
     except OSError:pass
    active.clear()
+ if stop.is_set():return
  proof['allSelectedChecksPassed']=len(proof['cases'])==len(cases) and all(c.get('expectedRejectionOrControl') for c in proof['cases'])
  proof['allFourChecksPassed']=len(cases)==4 and proof['allSelectedChecksPassed']
 
@@ -116,13 +123,21 @@ def main():
   try:execute(lambda:Decoder(max_header_list_size=16384),proof,stop,active,cases)
   finally:finished.put(True)
  start=time.monotonic();worker=threading.Thread(target=work,daemon=True);worker.start()
+ timed_out=False
  try:finished.get(timeout=10)
  except queue.Empty:
-  stop.set();proof['failure']='FULL_NETWORK_DEADLINE';proof['stoppedOnAnomaly']=True
+  timed_out=True;stop.set()
   for sock in active:
    try:sock.close()
    except OSError:pass
- proof['elapsedSeconds']=round(time.monotonic()-start,3)
- out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(proof,indent=2)+'\n',encoding='utf-8');print(json.dumps(proof))
- return 0 if proof['allSelectedChecksPassed'] else 1
+ # Detach output from the daemon's mutable observations. A late completion
+ # cannot turn an elapsed deadline into acceptance, even if all cases finished.
+ snapshot=json.loads(json.dumps(proof))
+ if timed_out:
+  snapshot.update(failure='FULL_NETWORK_DEADLINE',stoppedOnAnomaly=True,allSelectedChecksPassed=False,allFourChecksPassed=False)
+ snapshot['elapsedSeconds']=round(time.monotonic()-start,3)
+ out.parent.mkdir(parents=True,exist_ok=True)
+ with out.open('x',encoding='utf-8',newline='\n') as stream:stream.write(json.dumps(snapshot,indent=2)+'\n')
+ print(json.dumps(snapshot))
+ return 0 if snapshot['allSelectedChecksPassed'] else 1
 if __name__=='__main__':raise SystemExit(main())
