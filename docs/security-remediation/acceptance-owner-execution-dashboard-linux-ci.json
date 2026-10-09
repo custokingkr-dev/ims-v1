@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T18:02:28.351311+00:00",
+  "decision": "ACTUAL_LINUX_DASHBOARD_RELEASE_TESTS_ACCEPTED",
+  "pullRequest": 342,
+  "sourceHead": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+  "baseHead": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+  "syntheticMerge": "38b20b7deb0f614b065af3492c6a30d61665c2db",
+  "mergeTree": "ff906ccee4f1362abe23f847908cc3b4dff45a8b",
+  "ciRunId": 37969730096,
+  "jobId": 113952978034,
+  "jobName": "static-architecture-audits",
+  "stepName": "Test explicit dashboard release target and publication controls without Docker",
+  "actualStep": {
+    "name": "Test explicit dashboard release target and publication controls without Docker",
+    "status": "completed",
+    "conclusion": "success",
+    "number": 10,
+    "started_at": "2026-10-09T17:56:09Z",
+    "completed_at": "2026-10-09T17:56:10Z"
+  },
+  "actualUbuntuRunnerLogObserved": true,
+  "testSummary": {
+    "command": "python3 -m unittest scripts.tests.dashboard_release_test",
+    "reported": 11,
+    "seconds": 0.221,
+    "outcome": "OK",
+    "skipped": 0
+  },
+  "sourceCiProof": {
+    "path": "tmp/owner-execution-source-ci-proof.json",
+    "rawSha256": "7cb701d6bc3c18a81f0d9dd7bd6f99de98b769d56a3089af61ce888ce7a2689c"
+  },
+  "log": {
+    "path": "tmp/owner-execution-pr342-static-ci.log",
+    "rawSha256": "222f70f15be047bb7a799f3561b484eedb5227b29fe9e464cac0adfa2c5c7098",
+    "bytes": 44352,
+    "representation": "Exact bounded GitHub CLI job-logs stdout encoded UTF8 by the reviewed GET reader."
+  },
+  "dashboardImageBuiltOrPushedByTests": false,
+  "oauthDashboardDeployedByTests": false,
+  "cloudCalls": 0,
+  "providerCalls": 0,
+  "mutations": 0,
+  "scope": "Actual named Linux static CI step and observed11Python unittest aggregate. Fake Docker calls only within tests; separate from overlapping provider/recovery Maven service totals and not dashboard deployment or live OAuth acceptance."
+}

@@ -123,3 +123,25 @@ tools/live-dashboard/release.sh text eol=lf
 tools/live-dashboard/README.md text eol=lf
 scripts/tests/dashboard_release_test.py text eol=lf
 .github/workflows/ci-pr.yml text eol=lf
+
+# Preserve owner-execution accepted capture representations.
+docs/security-remediation/acceptance-owner-execution-ci.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-ci-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dashboard-linux-ci.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-release-tests.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dev-release.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-image-protection.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-public-smoke.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dev-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-native-primary.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-libpng-publisher.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-libpng-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-libpng-primary-capture.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-adapters.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-adapter-controls.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-adapter-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-collector-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-verifier-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-public-helper-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-current-scan-inventory.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-completion.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

@@ -1,0 +1,966 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:58:14.107061+00:00",
+  "primarySource": "Canonical Ubuntu Security Notices OSV",
+  "publicReadOnly": true,
+  "vendorSiteBrowserTimeoutsPreserved": true,
+  "items": [
+    {
+      "cve": "CVE-2026-18374",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18374.json",
+      "readable": true,
+      "recordSha256": "266f7775f5044d3c371c270d728ac87b132a483c3183377b4ab230933ee66d6a",
+      "modified": "2026-09-10T14:24:53Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "glibc",
+          "purl": "pkg:deb/ubuntu/glibc@2.39-0ubuntu8.9?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "glibc-source",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc-bin",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc-dev-bin",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc-devtools",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-amd64",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-dev-amd64",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-dev-i386",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-dev-s390",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-dev-x32",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-i386",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-s390",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-x32",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "locales",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "locales-all",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "nscd",
+              "binary_version": "2.39-0ubuntu8.9"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2026-18374"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2026-18374"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://sourceware.org/git/?p=glibc.git;a=blob;f=advisories/GLIBC-SA-2026-0015"
+        },
+        {
+          "type": "REPORT",
+          "url": "http://www.openwall.com/lists/oss-security/2026/08/27/6"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": true,
+      "nobleFixedEvents": []
+    },
+    {
+      "cve": "CVE-2026-89092",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89092.json",
+      "readable": true,
+      "recordSha256": "78d5eb9ef5bca6506ede47f2aaec134ec24bd5a6a87803ebd0ac44d960fd5e87",
+      "modified": "2026-09-24T21:44:17Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "glibc",
+          "purl": "pkg:deb/ubuntu/glibc@2.39-0ubuntu8.9?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "glibc-source",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc-bin",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc-dev-bin",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc-devtools",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-amd64",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-dev-amd64",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-dev-i386",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-dev-s390",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-dev-x32",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-i386",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-s390",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "libc6-x32",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "locales",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "locales-all",
+              "binary_version": "2.39-0ubuntu8.9"
+            },
+            {
+              "binary_name": "nscd",
+              "binary_version": "2.39-0ubuntu8.9"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2026-89092"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2026-89092"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://sourceware.org/git/?p=glibc.git;a=blob;f=advisories/GLIBC-SA-2026-0016"
+        },
+        {
+          "type": "REPORT",
+          "url": "http://www.openwall.com/lists/oss-security/2026/09/11/2"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": true,
+      "nobleFixedEvents": []
+    },
+    {
+      "cve": "CVE-2025-66382",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2025/UBUNTU-CVE-2025-66382.json",
+      "readable": true,
+      "recordSha256": "92f1ac85795591f12df81e84ebed48cb900d74fc4d44a16a6d3ecdc08755761b",
+      "modified": "2026-10-06T03:00:10Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "cadaver",
+          "purl": "pkg:deb/ubuntu/cadaver@0.24+dfsg-3build2?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "cadaver",
+              "binary_version": "0.24+dfsg-3build2"
+            }
+          ]
+        },
+        {
+          "sourcePackage": "expat",
+          "purl": "pkg:deb/ubuntu/expat@2.6.1-2ubuntu0.6?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "expat",
+              "binary_version": "2.6.1-2ubuntu0.6"
+            },
+            {
+              "binary_name": "libexpat1",
+              "binary_version": "2.6.1-2ubuntu0.6"
+            }
+          ]
+        },
+        {
+          "sourcePackage": "matanza",
+          "purl": "pkg:deb/ubuntu/matanza@0.13+ds2-1build2?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "matanza",
+              "binary_version": "0.13+ds2-1build2"
+            }
+          ]
+        },
+        {
+          "sourcePackage": "tdom",
+          "purl": "pkg:deb/ubuntu/tdom@0.9.3-1build1?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "tdom",
+              "binary_version": "0.9.3-1build1"
+            }
+          ]
+        },
+        {
+          "sourcePackage": "wbxml2",
+          "purl": "pkg:deb/ubuntu/wbxml2@0.11.8+dfsg-3build1?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "libwbxml2-1",
+              "binary_version": "0.11.8+dfsg-3build1"
+            },
+            {
+              "binary_name": "libwbxml2-utils",
+              "binary_version": "0.11.8+dfsg-3build1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2025-66382"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2025-66382"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": true,
+      "nobleFixedEvents": []
+    },
+    {
+      "cve": "CVE-2026-86145",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-86145.json",
+      "readable": true,
+      "recordSha256": "6f83029127bc847e99dacbf0801d2200f0b7c8568bc861c502b8c6af468317ec",
+      "modified": "2026-09-25T09:45:12Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "pcre2",
+          "purl": "pkg:deb/ubuntu/pcre2@10.42-4ubuntu2.1?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "libpcre2-16-0",
+              "binary_version": "10.42-4ubuntu2.1"
+            },
+            {
+              "binary_name": "libpcre2-32-0",
+              "binary_version": "10.42-4ubuntu2.1"
+            },
+            {
+              "binary_name": "libpcre2-8-0",
+              "binary_version": "10.42-4ubuntu2.1"
+            },
+            {
+              "binary_name": "libpcre2-posix3",
+              "binary_version": "10.42-4ubuntu2.1"
+            },
+            {
+              "binary_name": "pcre2-utils",
+              "binary_version": "10.42-4ubuntu2.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2026-86145"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2026-86145"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-3r4p-g7gg-ppmf"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": true,
+      "nobleFixedEvents": []
+    },
+    {
+      "cve": "CVE-2026-89161",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89161.json",
+      "readable": true,
+      "recordSha256": "c870fa610a177f7a78c16b9a6c9269dae976d4dda3618dcbb6ffc2136e73b384",
+      "modified": "2026-09-25T09:45:14Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "pcre2",
+          "purl": "pkg:deb/ubuntu/pcre2@10.42-4ubuntu2.1?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "libpcre2-16-0",
+              "binary_version": "10.42-4ubuntu2.1"
+            },
+            {
+              "binary_name": "libpcre2-32-0",
+              "binary_version": "10.42-4ubuntu2.1"
+            },
+            {
+              "binary_name": "libpcre2-8-0",
+              "binary_version": "10.42-4ubuntu2.1"
+            },
+            {
+              "binary_name": "libpcre2-posix3",
+              "binary_version": "10.42-4ubuntu2.1"
+            },
+            {
+              "binary_name": "pcre2-utils",
+              "binary_version": "10.42-4ubuntu2.1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2026-89161"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2026-89161"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/PCRE2Project/pcre2/pull/937"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/PCRE2Project/pcre2/commit/1dcd0cf42a6a7cb62cc9a7c024196733abcfda95"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/PCRE2Project/pcre2/releases/tag/pcre2-10.48"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": true,
+      "nobleFixedEvents": []
+    },
+    {
+      "cve": "CVE-2026-46675",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-46675.json",
+      "readable": true,
+      "recordSha256": "d31ade254de5c2319012ddbf9c5647d1e061a5011bf1216cc2ddcb5f18c784a4",
+      "modified": "2026-10-08T16:59:29Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "libpng1.6",
+          "purl": "pkg:deb/ubuntu/libpng1.6@1.6.43-5ubuntu0.7?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                },
+                {
+                  "fixed": "1.6.43-5ubuntu0.7"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "libpng-tools",
+              "binary_version": "1.6.43-5ubuntu0.7"
+            },
+            {
+              "binary_name": "libpng16-16t64",
+              "binary_version": "1.6.43-5ubuntu0.7"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2026-46675"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2026-46675"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/pnggroup/libpng/security/advisories/GHSA-qvg3-h654-xq3j"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/pnggroup/libpng/issues/855"
+        },
+        {
+          "type": "ADVISORY",
+          "url": "https://ubuntu.com/security/notices/USN-8899-1"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": false,
+      "nobleFixedEvents": [
+        "1.6.43-5ubuntu0.7"
+      ]
+    },
+    {
+      "cve": "CVE-2026-40228",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-40228.json",
+      "readable": true,
+      "recordSha256": "c2843d55d3c9ce648a33ecd6ddc6e124e2c2cd0eb8bafa7c6cff9d5568fe7731",
+      "modified": "2026-09-08T12:29:59Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "systemd",
+          "purl": "pkg:deb/ubuntu/systemd@255.4-1ubuntu8.17?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "libnss-myhostname",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "libnss-mymachines",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "libnss-resolve",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "libnss-systemd",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "libpam-systemd",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "libsystemd-shared",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "libsystemd0",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "libudev1",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-boot",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-boot-efi",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-container",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-coredump",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-homed",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-journal-remote",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-oomd",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-resolved",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-standalone-sysusers",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-standalone-tmpfiles",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-sysv",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-tests",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-timesyncd",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-ukify",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "systemd-userdbd",
+              "binary_version": "255.4-1ubuntu8.17"
+            },
+            {
+              "binary_name": "udev",
+              "binary_version": "255.4-1ubuntu8.17"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2026-40228"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2026-40228"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.openwall.com/lists/oss-security/2026/04/08/1"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": true,
+      "nobleFixedEvents": []
+    },
+    {
+      "cve": "CVE-2024-56433",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2024/UBUNTU-CVE-2024-56433.json",
+      "readable": true,
+      "recordSha256": "9531e0ef0ae581506770dc3c37f39039299aa625d9ab0f463d0d3bd46200eed9",
+      "modified": "2026-05-20T15:14:40Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "shadow",
+          "purl": "pkg:deb/ubuntu/shadow@1:4.13+dfsg1-4ubuntu3.2?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "libsubid4",
+              "binary_version": "1:4.13+dfsg1-4ubuntu3.2"
+            },
+            {
+              "binary_name": "login",
+              "binary_version": "1:4.13+dfsg1-4ubuntu3.2"
+            },
+            {
+              "binary_name": "passwd",
+              "binary_version": "1:4.13+dfsg1-4ubuntu3.2"
+            },
+            {
+              "binary_name": "uidmap",
+              "binary_version": "1:4.13+dfsg1-4ubuntu3.2"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2024-56433"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2024-56433"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/shadow-maint/shadow/blob/e2512d5741d4a44bdd81a8c2d0029b6222728cf0/etc/login.defs#L238-L241"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://github.com/shadow-maint/shadow/releases/tag/4.4"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": true,
+      "nobleFixedEvents": []
+    },
+    {
+      "cve": "CVE-2026-18477",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18477.json",
+      "readable": true,
+      "recordSha256": "e012e2739e37cd8f47141505eadfd3faba156d9b6b2e7c96afd32b8704dd75ea",
+      "modified": "2026-08-25T17:36:09Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "tar",
+          "purl": "pkg:deb/ubuntu/tar@1.35+dfsg-3ubuntu0.4?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "tar",
+              "binary_version": "1.35+dfsg-3ubuntu0.4"
+            },
+            {
+              "binary_name": "tar-scripts",
+              "binary_version": "1.35+dfsg-3ubuntu0.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2026-18477"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2026-18477"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://access.redhat.com/security/cve/CVE-2026-18477"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": true,
+      "nobleFixedEvents": []
+    },
+    {
+      "cve": "CVE-2026-18508",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18508.json",
+      "readable": true,
+      "recordSha256": "0f24a43aaf9baa1b7e8d73f59a19c291d790e9e75a938a60088371c99c5c91f6",
+      "modified": "2026-08-25T17:36:09Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "tar",
+          "purl": "pkg:deb/ubuntu/tar@1.35+dfsg-3ubuntu0.4?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "tar",
+              "binary_version": "1.35+dfsg-3ubuntu0.4"
+            },
+            {
+              "binary_name": "tar-scripts",
+              "binary_version": "1.35+dfsg-3ubuntu0.4"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2026-18508"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2026-18508"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://access.redhat.com/security/cve/CVE-2026-18508"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": true,
+      "nobleFixedEvents": []
+    },
+    {
+      "cve": "CVE-2026-85091",
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-85091.json",
+      "readable": true,
+      "recordSha256": "ed4b5722d62c108a7337c33893ab2305e94262812b952b32d5437ed5711e39fd",
+      "modified": "2026-09-16T11:43:10Z",
+      "nobleAffected": [
+        {
+          "sourcePackage": "klibc",
+          "purl": "pkg:deb/ubuntu/klibc@2.0.13-4ubuntu0.2?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "klibc-utils",
+              "binary_version": "2.0.13-4ubuntu0.2"
+            },
+            {
+              "binary_name": "libklibc",
+              "binary_version": "2.0.13-4ubuntu0.2"
+            }
+          ]
+        },
+        {
+          "sourcePackage": "zlib",
+          "purl": "pkg:deb/ubuntu/zlib@1:1.3.dfsg-3.1ubuntu2.2?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "lib32z1",
+              "binary_version": "1:1.3.dfsg-3.1ubuntu2.2"
+            },
+            {
+              "binary_name": "lib64z1",
+              "binary_version": "1:1.3.dfsg-3.1ubuntu2.2"
+            },
+            {
+              "binary_name": "libminizip1t64",
+              "binary_version": "1:1.3.dfsg-3.1ubuntu2.2"
+            },
+            {
+              "binary_name": "libx32z1",
+              "binary_version": "1:1.3.dfsg-3.1ubuntu2.2"
+            },
+            {
+              "binary_name": "minizip",
+              "binary_version": "1:1.3.dfsg-3.1ubuntu2.2"
+            },
+            {
+              "binary_name": "zlib1g",
+              "binary_version": "1:1.3.dfsg-3.1ubuntu2.2"
+            }
+          ]
+        },
+        {
+          "sourcePackage": "zsync",
+          "purl": "pkg:deb/ubuntu/zsync@0.6.2-5build1?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ],
+          "binaries": [
+            {
+              "binary_name": "zsync",
+              "binary_version": "0.6.2-5build1"
+            }
+          ]
+        }
+      ],
+      "references": [
+        {
+          "type": "REPORT",
+          "url": "https://ubuntu.com/security/CVE-2026-85091"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.cve.org/CVERecord?id=CVE-2026-85091"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://gist.github.com/thesmartshadow/e0b9481792afb7c31e86fee1ff084490"
+        },
+        {
+          "type": "REPORT",
+          "url": "https://www.vulncheck.com/advisories/zlib-1.3.1.2-through-1.3.2-heap-buffer-overflow-via-gz-vacate"
+        }
+      ],
+      "sameRecordBytesAsDatedProof": true,
+      "nobleFixedEvents": []
+    }
+  ],
+  "sourceFixApplied": false,
+  "runtimeReachabilityProven": false,
+  "blanketVexOrDismissal": false,
+  "scope": "Public Canonical OSV readback only. Exact prior accepted platform/school images are independently inventoried in current-native-binary-inventory-20261009.json; future release images and all native runtime paths remain unproved.",
+  "completedAtUtc": "2026-10-09T17:58:24.184371+00:00"
+}

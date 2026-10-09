@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T18:36:52.603479+00:00",
+  "decision": "PASS",
+  "blockers": [],
+  "independentReview": true,
+  "reviewer": "/root/recovery_remaining_execution",
+  "devProof": {
+    "path": "tmp/acceptance-owner-execution-dev-release.json",
+    "rawSha256": "a68c92238b5ddec140f2b918c2c0768c0c9284d4f2a590d51b9b852da3179d8d"
+  },
+  "sourceHeadSha": "629bb9bd432d5fcd9cc2f05fd548ca7ee7ff9f06",
+  "runId": 37971242023,
+  "actualPinnedProtection": {
+    "path": "tmp/protect-owner-execution-dev-images.py",
+    "rawSha256": "b37ab38407f47f5e97af2ac0ce8215343f1f233fe22c73e1b7da7646fa57dd21"
+  },
+  "actualPinnedSmoke": {
+    "path": "tmp/run-owner-execution-public-smoke.py",
+    "rawSha256": "43358477f01ee214e14ca73a26373e291c9639c415cffa0f66901c0f502911d6"
+  },
+  "acceptedDevReview": {
+    "path": "tmp/owner-execution-dev-independent-review.json",
+    "rawSha256": "0f76dcbf03317dd82c43b373a0f515db351aa197b4b22f4c93f958f628f56c08"
+  },
+  "priorUnsetAdapterReview": {
+    "path": "tmp/owner-execution-postmerge-adapter-independent-review.json",
+    "rawSha256": "ea32297708a14b98e8db908539c7afdce4c8a47e5f4a77a84047fbbaa9dc1a96"
+  },
+  "reviewedUnsetProtection": {
+    "path": "tmp/protect-owner-execution-dev-images-unset.py",
+    "rawSha256": "c71b862821e5863ed0eb33bb613e0658bae6f92280627f87f07488b8edafa4f1"
+  },
+  "reviewedUnsetSmoke": {
+    "path": "tmp/run-owner-execution-public-smoke-unset.py",
+    "rawSha256": "67d057f9a53ea5be20ad08f2f33ef390e1fa375a684bf718d92d65d943541ac9"
+  },
+  "offlineStageTwoLock": {
+    "path": "tmp/owner-execution-stage-two-lock.json",
+    "rawSha256": "248cf54ce8ed38c2563138bc86580804eb71a043c03d6421d8545bfaa567611f"
+  },
+  "exactProtectionFuturePinCount": 3,
+  "exactSmokeFuturePinCount": 4,
+  "allOtherBytesAndAstCodeblocksPreserved": true,
+  "sameAcceptedProofTupleAndProtectionHelperHashBeforeImportBound": true,
+  "inheritedFourCreateOnlySelectedSourceRuntimeTagsAndExistingKeepPolicyGuardsPreserved": true,
+  "inheritedFifteenDenialsBrowserCspAndSevenRuntimeConfigurationBeforeAfterGuardsPreserved": true,
+  "diffs": [
+    {
+      "path": "tmp/owner-execution-public-helper-protection-reviewed.diff",
+      "rawSha256": "cdcc530bd556a16cd6af7073b9c7df3d4155d57083fdfc582b60a382f0667c54"
+    },
+    {
+      "path": "tmp/owner-execution-public-helper-smoke-reviewed.diff",
+      "rawSha256": "41ffb47abc92fc517973e02ec99e064bf59b41a1eeef3fdb715d998059189cfb"
+    }
+  ],
+  "testsOrAdaptersExecutedByReviewer": 0,
+  "githubCalls": 0,
+  "cloudCalls": 0,
+  "artifactDownloads": 0,
+  "tagsCreated": 0,
+  "publicProbes": 0,
+  "actualTagProtectionAccepted": false,
+  "actualPublicSmokeAccepted": false,
+  "wholePlanComplete": false,
+  "scope": "Independent static actual constant fills only against reviewed fail-closed previews and accepted root dev proof. Four additive selected tags under the existing KEEP rule and fifteen anonymous/forged denials plus browser CSP are the subsequent root-authorized execution scope. This review itself accepts neither live tags nor public probe results and adds no provider/native/global recovery acceptance."
+}

@@ -1,0 +1,154 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T18:28:47.944225+00:00",
+  "decision": "PASS",
+  "blockers": [],
+  "independentReview": true,
+  "reviewer": "/root/recovery_remaining_execution",
+  "artifactProof": {
+    "path": "tmp/owner-execution-postmerge-artifact-proof.json",
+    "rawSha256": "4e4456ce0b10efc86a83fc54bcfaed97190ed332f9306421a17f91d9c94d9f31"
+  },
+  "actualPinnedVerifier": {
+    "path": "tmp/verify-owner-execution-dev-release.py",
+    "rawSha256": "e6207de3dfaffdf45cc7f9e123a5caa2d0d7492697cbcf3db87726a04708370b"
+  },
+  "approvedTuple": {
+    "source": "629bb9bd432d5fcd9cc2f05fd548ca7ee7ff9f06",
+    "parent": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+    "tree": "ff906ccee4f1362abe23f847908cc3b4dff45a8b",
+    "cdRun": 37971242023,
+    "codeqlRun": 37971241448,
+    "tests": {
+      "platform-service": 498,
+      "school-core-service": 986
+    },
+    "ciProofSha256": "7cb701d6bc3c18a81f0d9dd7bd6f99de98b769d56a3089af61ce888ce7a2689c"
+  },
+  "reviewedUnsetVerifier": {
+    "path": "tmp/verify-owner-execution-dev-release-unset.py",
+    "rawSha256": "40e9f9773c09d160549bbbda5a81d910e2133b0eaba90ad662c5530a378ec1a7"
+  },
+  "actualPinnedCollector": {
+    "path": "tmp/collect-owner-execution-postmerge-actual-jobs.py",
+    "rawSha256": "e7f5633e4e3e0a63c86f90352dc304f02626c5e832bf3f7e3690ac48d1c2b049"
+  },
+  "actualCollectorReview": {
+    "path": "tmp/owner-execution-actual-buildnames-collector-independent-review.json",
+    "rawSha256": "841c84a13a5aed9ec00809159e515b72be03599056e3f6953ab4fa71b990d3a4"
+  },
+  "offlineLockProof": {
+    "path": "tmp/owner-execution-dev-verifier-lock.json",
+    "rawSha256": "ee56b54c6ea0b504e4eb8e985d7dc7fd6f8bbe22adcbc286330d3ff01d985604"
+  },
+  "onlySixExactFutureLiteralPinsFilled": true,
+  "allOtherBytesAndCodeblocksPreserved": true,
+  "rawArtifactProofGuardBeforeMetadataPreserved": true,
+  "artifactZip": {
+    "path": "tmp/owner-execution-release-37971242023/downloaded-release-artifact.zip",
+    "rawSha256": "1c6c7216e1cf206f59e90b52d7b6f5fed74b7373cbb9c48aef283ffc19a9db92"
+  },
+  "artifactFileBindings": [
+    {
+      "path": "tmp/owner-execution-release-37971242023/deployment.json",
+      "rawSha256": "1492c0acf29ee3bd7469ebe837689874e2653500b25a38eb60c74f65917f3dc6"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/dev-approvals.json",
+      "rawSha256": "277b71e8eaa3d718414ce9ce12943fcbeddb337cebd67bffd4004a2f26c02996"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/gateway-smoke.json",
+      "rawSha256": "f24510ff095a61519d2fb15c436b93be112dd63053a26b45daf83391f5f26940"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/images.json",
+      "rawSha256": "11527998b2d154d105c7cd4cf97f99b41bc3cb614969b29f9ee2354abb48534b"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/migrations/ims-migrate-platform-dev-20261009182049-dbb8b1b7.job.json",
+      "rawSha256": "68837f6bd5d4b7d117472c7ae4166c648245faf5425743e98df20a210e632a70"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/migrations/ims-migrate-school-core-dev-20261009181917-32c27709.job.json",
+      "rawSha256": "c9f29a7458d23d6c72721f037859f9375f496599d9c4919c11de4faa3861e4fb"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/migrations/platform-service.json",
+      "rawSha256": "16bc1158a782cde1502a71588d4563a7545eb97e51e70ff60c52278b4e522fcf"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/migrations/school-core-service.json",
+      "rawSha256": "83e98085f8c02fc0dba49b525e00c662536053626c77ff6bed77ae670cc56205"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/services-smoke.json",
+      "rawSha256": "a880fdbaee092b179d022c465330a2d9430d590ad70e97e49e2bbf6614e0a884"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/summary.md",
+      "rawSha256": "6c21b872ec7a60614dc862712e6323e9a40dababa91da7da1c0b25d59e0456e2"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/trivy/exact-digest-scan.json",
+      "rawSha256": "5025a67c3b435487c9f2dfdf9b80a4deba1ab9af9e341b25f57358f8bbedaee2"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/trivy/platform-service-sha256-8bca7914c95a68fd8929b406fca58509221263a280a313f166ef6b261283fed8.sarif",
+      "rawSha256": "d6d28e26829a8741f6e9812493976c75c1713d99466722475810fdd128b42f23"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/trivy/platform-service-sha256-8bca7914c95a68fd8929b406fca58509221263a280a313f166ef6b261283fed8.table.txt",
+      "rawSha256": "3a6eec613c1b3a8efaa90703b39a4411842bca8ac25cad96dea54568964afc5a"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/trivy/scan-cache.json",
+      "rawSha256": "329864c52bb1e92ceea6e6c58b2c95eb83f783c20d3d224508a86b14597cf99a"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/trivy/school-core-service-sha256-fb92240a5e43d423442ec1cd3a53f443a6f8c9bee954b3d1eb142ee0755c4eaf.sarif",
+      "rawSha256": "7ec44b519148bc946c807c722d1c23a14a30682abdb3d8d0c9a6ed8207810ae1"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/trivy/school-core-service-sha256-fb92240a5e43d423442ec1cd3a53f443a6f8c9bee954b3d1eb142ee0755c4eaf.table.txt",
+      "rawSha256": "b34be669e28852986645a87aae7423efdc099e5eda6c5fffba2478335a8457de"
+    }
+  ],
+  "actualApiTestLogBindings": [
+    {
+      "path": "tmp/owner-execution-release-37971242023/platform-service-release-test-api.log",
+      "rawSha256": "c8d04a99182df55145eb1d025ee65d550e50aca0474ab5e83fc3e9f50ee90a53"
+    },
+    {
+      "path": "tmp/owner-execution-release-37971242023/school-core-service-release-test-api.log",
+      "rawSha256": "9aa194881a1660507a2c4f0d833e447a836d5d78624341e9627d6671ab24e690"
+    }
+  ],
+  "actualLinuxTestCounts": {
+    "platform-service": 498,
+    "school-core-service": 986
+  },
+  "actualFullTestsZeroFailuresErrorsSkips": true,
+  "actualCodeqlAnalysisIds": [
+    1925316452,
+    1925303230
+  ],
+  "actualCodeqlPositiveRuleCounts": {
+    "/language:java-kotlin": 120,
+    "/language:javascript-typescript": 103
+  },
+  "strictScopedRunWindowAndZeroOpenAlertsEvidenceBound": true,
+  "diff": {
+    "path": "tmp/owner-execution-pinned-verifier-reviewed.diff",
+    "rawSha256": "92314f765bcda6625e4f9edb855f3f45229eefd4efb5d3335744a5b7dde5f157"
+  },
+  "testsOrAdaptersExecutedByReviewer": 0,
+  "githubCalls": 0,
+  "cloudCalls": 0,
+  "artifactDownloads": 0,
+  "tagsCreated": 0,
+  "publicProbes": 0,
+  "actualRuntimeAccepted": false,
+  "wholePlanComplete": false,
+  "scope": "Static exact verifier pin-fill plus independent offline saved artifact/ZIP/log/CodeQL review. Runtime/current configuration and positive package evidence still require root execution and subsequent offline acceptance. No provider delivery, native applicability, hardware or full recovery acceptance is added."
+}
