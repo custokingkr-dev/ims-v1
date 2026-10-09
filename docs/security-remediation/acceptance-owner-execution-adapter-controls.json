@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-09T18:03:06.096999+00:00",
+  "success": true,
+  "scope": "Four actual unset adapter entrypoints and four synthetic pure CI provenance controls with forbidden external operations",
+  "preparationRawSha256": "976c76b0c287c03e333fbf32b0a9792c258f6ba0210233c4e2c48963f190532d",
+  "validationCollectorRawSha256": "55fbb96e012f258c7e2fef3c999933072d7dd5efea14aa02238d6508f6ad0139",
+  "checks": [
+    {
+      "check": "collector-unset-source-tree-workflows-cihash",
+      "expected": "REJECT_BEFORE_EXTERNAL_CALL",
+      "passed": true,
+      "guard": "Exact commit/tree identities required"
+    },
+    {
+      "check": "verifier-unset-tuple-collector-artifacthash-before-artifact-read",
+      "expected": "REJECT_BEFORE_EXTERNAL_CALL",
+      "passed": true,
+      "guard": "Actual accepted owner-execution future tuple/helper/artifact pins are unset; no metadata/cloud calls allowed"
+    },
+    {
+      "check": "protection-unset-source-run-releasehash-even-explicit-apply",
+      "expected": "REJECT_BEFORE_EXTERNAL_CALL",
+      "passed": true,
+      "guard": "Exact successful merge/release identity is not configured; no operation allowed"
+    },
+    {
+      "check": "smoke-unset-source-run-releasehash-helperhash",
+      "expected": "REJECT_BEFORE_EXTERNAL_CALL",
+      "passed": true,
+      "guard": "Exact successful merge/release identity is not configured; no operation allowed"
+    },
+    {
+      "check": "synthetic-exact-ci-head-base-tree-positive",
+      "expected": "PURE_FUNCTION_ACCEPT",
+      "passed": true,
+      "actualCiAcceptanceImplied": false
+    },
+    {
+      "check": "synthetic-ci-sourceHead-mismatch",
+      "expected": "REJECT_BEFORE_EXTERNAL_CALL",
+      "passed": true,
+      "guard": "Exact accepted CI head/base/tree provenance required"
+    },
+    {
+      "check": "synthetic-ci-baseHead-mismatch",
+      "expected": "REJECT_BEFORE_EXTERNAL_CALL",
+      "passed": true,
+      "guard": "Exact accepted CI head/base/tree provenance required"
+    },
+    {
+      "check": "synthetic-ci-mergeTree-mismatch",
+      "expected": "REJECT_BEFORE_EXTERNAL_CALL",
+      "passed": true,
+      "guard": "Exact accepted CI head/base/tree provenance required"
+    }
+  ],
+  "checksPassed": 8,
+  "subprocessCalls": 0,
+  "networkSocketCalls": 0,
+  "originalDonorHashesUnchanged": true,
+  "adapterHashesUnchanged": true,
+  "cloudCalls": 0,
+  "githubCalls": 0,
+  "artifactDownloads": 0,
+  "tagsCreated": 0,
+  "publicProbes": 0,
+  "productionAccessed": false,
+  "acceptedSourceCiEvidence": false,
+  "acceptedRuntimeEvidence": false,
+  "wholePlanComplete": false
+}

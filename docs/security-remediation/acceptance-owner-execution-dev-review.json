@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T18:31:58.724163+00:00",
+  "decision": "PASS",
+  "blockers": [],
+  "independentReview": true,
+  "reviewer": "/root/recovery_remaining_execution",
+  "devProof": {
+    "path": "tmp/acceptance-owner-execution-dev-release.json",
+    "rawSha256": "a68c92238b5ddec140f2b918c2c0768c0c9284d4f2a590d51b9b852da3179d8d"
+  },
+  "artifactProof": {
+    "path": "tmp/owner-execution-postmerge-artifact-proof.json",
+    "rawSha256": "4e4456ce0b10efc86a83fc54bcfaed97190ed332f9306421a17f91d9c94d9f31"
+  },
+  "sourceHeadSha": "629bb9bd432d5fcd9cc2f05fd548ca7ee7ff9f06",
+  "runId": 37971242023,
+  "serviceCount": 7,
+  "changedRuntimeCount": 2,
+  "retainedRuntimeCount": 5,
+  "readyTraffic100": true,
+  "positivePackageEvidenceCount": 2,
+  "actualPinnedVerifier": {
+    "path": "tmp/verify-owner-execution-dev-release.py",
+    "rawSha256": "e6207de3dfaffdf45cc7f9e123a5caa2d0d7492697cbcf3db87726a04708370b"
+  },
+  "acceptedVerifierReview": {
+    "path": "tmp/owner-execution-pinned-verifier-independent-review.json",
+    "rawSha256": "5afc06e3f9132627d2e8c00126f02bf41854514e23d984246b3164c3b6e6b4f8"
+  },
+  "retainedFiveBaselineProof": {
+    "path": "docs/security-remediation/acceptance-runtime-patch-cycle-dev-release.json",
+    "rawSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f"
+  },
+  "immediateChangedBaselineProof": {
+    "path": "docs/security-remediation/acceptance-remaining-round-dev-release.json",
+    "rawSha256": "7c80a89d1a2e2bc54993dd6a272314dfa7f36b5c99324113b9da5f7483d68eab"
+  },
+  "positivePackageEvidence": [
+    {
+      "service": "platform-service",
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.7",
+      "sarifPath": "tmp/owner-execution-release-37971242023/trivy/platform-service-sha256-8bca7914c95a68fd8929b406fca58509221263a280a313f166ef6b261283fed8.sarif",
+      "sarifRawSha256": "d6d28e26829a8741f6e9812493976c75c1713d99466722475810fdd128b42f23"
+    },
+    {
+      "service": "school-core-service",
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.7",
+      "sarifPath": "tmp/owner-execution-release-37971242023/trivy/school-core-service-sha256-fb92240a5e43d423442ec1cd3a53f443a6f8c9bee954b3d1eb142ee0755c4eaf.sarif",
+      "sarifRawSha256": "7ec44b519148bc946c807c722d1c23a14a30682abdb3d8d0c9a6ed8207810ae1"
+    }
+  ],
+  "sourceBoundFullLinuxSuiteCounts": {
+    "platform-service": 498,
+    "school-core-service": 986
+  },
+  "actualFullTestsZeroFailuresErrorsSkips": true,
+  "exactTwoFreshScansZeroCachedVerdicts": true,
+  "savedRuntimeConfigurationProjectionMatchesReviewedBaseline": true,
+  "savedOwnerJobAbsenceProjectionCount": 7,
+  "savedProviderReportDisabledBlankPurposeProjection": true,
+  "savedJournalLineageEpochProjectionPreserved": true,
+  "rawEnvironmentOrCloudResponsesSaved": false,
+  "cloudObservationsIndependentlyRefetched": false,
+  "unsavedRenderedGhTestLogsNotIndependentlyRehashed": true,
+  "separateSavedApiLogsAndExactJobCountsPreviouslyVerified": true,
+  "testsOrAdaptersExecutedByReviewer": 0,
+  "githubCalls": 0,
+  "cloudCalls": 0,
+  "artifactDownloads": 0,
+  "tagsCreated": 0,
+  "publicProbes": 0,
+  "nativeApplicabilityAccepted": false,
+  "providerLiveAccepted": false,
+  "fullRestoreAccepted": false,
+  "wholePlanComplete": false,
+  "scope": "Independent offline acceptance of exact root-produced saved dev proof, retained/immediate baselines, saved workflow/package/scan artifact bytes and configuration projections from the reviewed actual verifier. Root current environment responses are not stored and this peer made no new cloud requests. Both selected immutable-image libpng versions are positively observed; native applicability remains open. No live provider, physical clone/global restoration, deletion or owner-attestation acceptance is added."
+}

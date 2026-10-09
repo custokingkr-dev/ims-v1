@@ -1,0 +1,439 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T18:05:36.406866+00:00",
+  "decision": "PASS",
+  "reviewer": "/root/recovery_remaining_execution",
+  "independentReview": true,
+  "preparation": {
+    "path": "tmp/owner-execution-postmerge-adapter-preparation.json",
+    "rawSha256": "976c76b0c287c03e333fbf32b0a9792c258f6ba0210233c4e2c48963f190532d",
+    "normalizedLfSha256": "976c76b0c287c03e333fbf32b0a9792c258f6ba0210233c4e2c48963f190532d"
+  },
+  "generator": {
+    "path": "tmp/prepare-owner-execution-postmerge-unset.py",
+    "rawSha256": "657b90b00b616dd064f1820c1febd4468d9e0b68e6ee1f3f9becd48caf2fbb0c",
+    "normalizedLfSha256": "657b90b00b616dd064f1820c1febd4468d9e0b68e6ee1f3f9becd48caf2fbb0c"
+  },
+  "savedZeroCallControls": {
+    "path": "tmp/owner-execution-postmerge-unset-controls.json",
+    "rawSha256": "66539bf2eec5822e22de637a24dbafd8e9925229e9986130a2edf83d65765e1f",
+    "normalizedLfSha256": "66539bf2eec5822e22de637a24dbafd8e9925229e9986130a2edf83d65765e1f"
+  },
+  "savedControlCollector": {
+    "path": "tmp/check-owner-execution-postmerge-unset.py",
+    "rawSha256": "55fbb96e012f258c7e2fef3c999933072d7dd5efea14aa02238d6508f6ad0139",
+    "normalizedLfSha256": "55fbb96e012f258c7e2fef3c999933072d7dd5efea14aa02238d6508f6ad0139"
+  },
+  "comparisons": [
+    {
+      "donor": {
+        "path": "tmp/collect-remaining-round-postmerge.py",
+        "rawSha256": "649c9a043c1a7e5b4b8835b24f71aede5a4ce5b5715bd941366df3e49cc679fc",
+        "normalizedLfSha256": "649c9a043c1a7e5b4b8835b24f71aede5a4ce5b5715bd941366df3e49cc679fc"
+      },
+      "target": {
+        "path": "tmp/collect-owner-execution-postmerge-unset.py",
+        "rawSha256": "605f3895d8c8efc105c4cd8a371b1887f019115cbf80f6d46f4e0e0f7c9a9f2e",
+        "normalizedLfSha256": "605f3895d8c8efc105c4cd8a371b1887f019115cbf80f6d46f4e0e0f7c9a9f2e"
+      },
+      "diff": {
+        "path": "tmp/owner-execution-reviewed-collect-owner-execution-postmerge-unset.diff",
+        "rawSha256": "c28d7cc17ccc5a39c7cd588b20c5f1ae8e3fdef9702e4aabd86d84b1c80f84cb",
+        "normalizedLfSha256": "c28d7cc17ccc5a39c7cd588b20c5f1ae8e3fdef9702e4aabd86d84b1c80f84cb"
+      },
+      "matchedFunctions": 25,
+      "functionAstBindings": [
+        {
+          "function": "require#1",
+          "normalizedDonorAstSha256": "b30a7891f0d64d4a9a0b32d0fd8ceff4997f4da3b38eb8511dd33a394379980b",
+          "targetAstSha256": "b30a7891f0d64d4a9a0b32d0fd8ceff4997f4da3b38eb8511dd33a394379980b",
+          "matches": true
+        },
+        {
+          "function": "sha#1",
+          "normalizedDonorAstSha256": "374325cba40e1d60f686a6d28e9787b7ffad1c76a17ebafde611fe45d1e23070",
+          "targetAstSha256": "374325cba40e1d60f686a6d28e9787b7ffad1c76a17ebafde611fe45d1e23070",
+          "matches": true
+        },
+        {
+          "function": "unique#1",
+          "normalizedDonorAstSha256": "8c424060f55bba04a9fc640617908aee84fa1c786f0ff79321e49609de8281c7",
+          "targetAstSha256": "8c424060f55bba04a9fc640617908aee84fa1c786f0ff79321e49609de8281c7",
+          "matches": true
+        },
+        {
+          "function": "parse#1",
+          "normalizedDonorAstSha256": "36d58e8eb5a1c617656a400474b4c457cec738ec143d326c5a9ce7c06c31f46d",
+          "targetAstSha256": "36d58e8eb5a1c617656a400474b4c457cec738ec143d326c5a9ce7c06c31f46d",
+          "matches": true
+        },
+        {
+          "function": "read#1",
+          "normalizedDonorAstSha256": "bc9f6dd9eb328331cb097bc44bc642e7521527f78eb661a3e54d0e72d8169537",
+          "targetAstSha256": "bc9f6dd9eb328331cb097bc44bc642e7521527f78eb661a3e54d0e72d8169537",
+          "matches": true
+        },
+        {
+          "function": "validate_tuple#1",
+          "normalizedDonorAstSha256": "725d4e4ea4414df5a45b4bcfe574d476a76982bf134e25ef6244366d061a37c4",
+          "targetAstSha256": "725d4e4ea4414df5a45b4bcfe574d476a76982bf134e25ef6244366d061a37c4",
+          "matches": true
+        },
+        {
+          "function": "prerequisites#1",
+          "normalizedDonorAstSha256": "dc590cb106db4abdd52f47c35f72855a0dfb4a48b05472371512100eb762378f",
+          "targetAstSha256": "dc590cb106db4abdd52f47c35f72855a0dfb4a48b05472371512100eb762378f",
+          "matches": true
+        },
+        {
+          "function": "Transport.__init__#1",
+          "normalizedDonorAstSha256": "17d6985dd179059072ec925df47c34ec5dc9cc1d13307c2b840e6d861795ba93",
+          "targetAstSha256": "17d6985dd179059072ec925df47c34ec5dc9cc1d13307c2b840e6d861795ba93",
+          "matches": true
+        },
+        {
+          "function": "Transport.remaining#1",
+          "normalizedDonorAstSha256": "4c47fbbee621b5317e41c24b251749cd303fefa0fac81e0e1be3d8ea81cf2e8a",
+          "targetAstSha256": "4c47fbbee621b5317e41c24b251749cd303fefa0fac81e0e1be3d8ea81cf2e8a",
+          "matches": true
+        },
+        {
+          "function": "Transport.get#1",
+          "normalizedDonorAstSha256": "572d5b9bad794400cb5ad4aa3457bb80568bb67d61911afe0e837f34dd8eabc6",
+          "targetAstSha256": "572d5b9bad794400cb5ad4aa3457bb80568bb67d61911afe0e837f34dd8eabc6",
+          "matches": true
+        },
+        {
+          "function": "Transport.api#1",
+          "normalizedDonorAstSha256": "7e0d712354c7dff7173ec91fc599982ce9025563c686bf783971d6ae0f7eaf15",
+          "targetAstSha256": "7e0d712354c7dff7173ec91fc599982ce9025563c686bf783971d6ae0f7eaf15",
+          "matches": true
+        },
+        {
+          "function": "source_binding#1",
+          "normalizedDonorAstSha256": "cedd694193044cd5e6f6bf4860c015d51d0796d12d2d79e7e1bf55b0deeab747",
+          "targetAstSha256": "cedd694193044cd5e6f6bf4860c015d51d0796d12d2d79e7e1bf55b0deeab747",
+          "matches": true
+        },
+        {
+          "function": "workflow#1",
+          "normalizedDonorAstSha256": "926893d6450737d9ab3a1bc939bb6a6d1bbab20f5cc4186fc0000b7ecf1951f7",
+          "targetAstSha256": "926893d6450737d9ab3a1bc939bb6a6d1bbab20f5cc4186fc0000b7ecf1951f7",
+          "matches": true
+        },
+        {
+          "function": "step#1",
+          "normalizedDonorAstSha256": "8a89dfb145c0c3875760e944e557a964aec5c98094ac88a1fb49af1c17ae9e6d",
+          "targetAstSha256": "8a89dfb145c0c3875760e944e557a964aec5c98094ac88a1fb49af1c17ae9e6d",
+          "matches": true
+        },
+        {
+          "function": "validate_jobs#1",
+          "normalizedDonorAstSha256": "7dc81e417c9a279194c223297ba914e7c704aaa813a0dd90dcb2856d13571d3b",
+          "targetAstSha256": "7dc81e417c9a279194c223297ba914e7c704aaa813a0dd90dcb2856d13571d3b",
+          "matches": true
+        },
+        {
+          "function": "test_aggregate#1",
+          "normalizedDonorAstSha256": "5fb6e8c87052236571cb08fb5e46de7ea0ff33eb885ccb9d75b7ba69cf45952a",
+          "targetAstSha256": "5fb6e8c87052236571cb08fb5e46de7ea0ff33eb885ccb9d75b7ba69cf45952a",
+          "matches": true
+        },
+        {
+          "function": "artifact#1",
+          "normalizedDonorAstSha256": "fc18b821dbf02885ae7465d910e987f635d4fc7af76de6d5171311a95be243af",
+          "targetAstSha256": "fc18b821dbf02885ae7465d910e987f635d4fc7af76de6d5171311a95be243af",
+          "matches": true
+        },
+        {
+          "function": "archive#1",
+          "normalizedDonorAstSha256": "c45629b7fef411f4ac132a0afbe1aa8d08922dffc667a9940b48337aacf1dfe7",
+          "targetAstSha256": "c45629b7fef411f4ac132a0afbe1aa8d08922dffc667a9940b48337aacf1dfe7",
+          "matches": true
+        },
+        {
+          "function": "collect#1",
+          "normalizedDonorAstSha256": "4ec0a384da851e17c3beea052775d8e5500a6b7ad598c56d08e9bc2994bd4557",
+          "targetAstSha256": "4ec0a384da851e17c3beea052775d8e5500a6b7ad598c56d08e9bc2994bd4557",
+          "matches": true
+        },
+        {
+          "function": "validate_window_rows#1",
+          "normalizedDonorAstSha256": "33e9769bc0bb5cfd412787696a3055d91002868bba280d007a0c7c591363d8d3",
+          "targetAstSha256": "33e9769bc0bb5cfd412787696a3055d91002868bba280d007a0c7c591363d8d3",
+          "matches": true
+        },
+        {
+          "function": "require_dev_alert_absence#1",
+          "normalizedDonorAstSha256": "58af8d56b6612f3944ea2bedb09c9431a48dde52b4261ff1fb9d39b13e60f6b2",
+          "targetAstSha256": "58af8d56b6612f3944ea2bedb09c9431a48dde52b4261ff1fb9d39b13e60f6b2",
+          "matches": true
+        },
+        {
+          "function": "validate_analyses#1",
+          "normalizedDonorAstSha256": "ca5cccd6ae5ffa062ecc5c08c7290d293d5e8720f8f0b9602d5d982769677790",
+          "targetAstSha256": "ca5cccd6ae5ffa062ecc5c08c7290d293d5e8720f8f0b9602d5d982769677790",
+          "matches": true
+        },
+        {
+          "function": "validate_tuple#2",
+          "normalizedDonorAstSha256": "e89eefcf8d77885a0bbe7f9110e81726e12996fe5c3f0f5f04ac84294d9863c5",
+          "targetAstSha256": "e89eefcf8d77885a0bbe7f9110e81726e12996fe5c3f0f5f04ac84294d9863c5",
+          "matches": true
+        },
+        {
+          "function": "require_ci_provenance#1",
+          "normalizedDonorAstSha256": "2f1994334b5b9d368447dac3718cc70aec0ea7674bd75364754efea94d466a68",
+          "targetAstSha256": "2f1994334b5b9d368447dac3718cc70aec0ea7674bd75364754efea94d466a68",
+          "matches": true
+        },
+        {
+          "function": "prerequisites#2",
+          "normalizedDonorAstSha256": "62584ea97e329cf93f246774525c54beb6dfe0fa61a5c2b5c02aabeec8421f82",
+          "targetAstSha256": "62584ea97e329cf93f246774525c54beb6dfe0fa61a5c2b5c02aabeec8421f82",
+          "matches": true
+        }
+      ]
+    },
+    {
+      "donor": {
+        "path": "tmp/verify-remaining-round-dev-release.py",
+        "rawSha256": "685e76f83508785b979285c4a96f6f843dfcca9c4d164403e23f771c81670d69",
+        "normalizedLfSha256": "685e76f83508785b979285c4a96f6f843dfcca9c4d164403e23f771c81670d69"
+      },
+      "target": {
+        "path": "tmp/verify-owner-execution-dev-release-unset.py",
+        "rawSha256": "40e9f9773c09d160549bbbda5a81d910e2133b0eaba90ad662c5530a378ec1a7",
+        "normalizedLfSha256": "40e9f9773c09d160549bbbda5a81d910e2133b0eaba90ad662c5530a378ec1a7"
+      },
+      "diff": {
+        "path": "tmp/owner-execution-reviewed-verify-owner-execution-dev-release-unset.diff",
+        "rawSha256": "a26cb2311b8ed2627ecf9c517e192e604adae97e22d8e985ddfc0d64562388f0",
+        "normalizedLfSha256": "a26cb2311b8ed2627ecf9c517e192e604adae97e22d8e985ddfc0d64562388f0"
+      },
+      "matchedFunctions": 9,
+      "functionAstBindings": [
+        {
+          "function": "bounded_read#1",
+          "normalizedDonorAstSha256": "dc4605234e9d581ce79d976190d40de33810c275837af51604b3d3c7da93b530",
+          "targetAstSha256": "dc4605234e9d581ce79d976190d40de33810c275837af51604b3d3c7da93b530",
+          "matches": true
+        },
+        {
+          "function": "require#1",
+          "normalizedDonorAstSha256": "99f26fed1caa0b9c33b98fe8c6ab1129b041140d0898dc146ada1ef2edc5c04e",
+          "targetAstSha256": "99f26fed1caa0b9c33b98fe8c6ab1129b041140d0898dc146ada1ef2edc5c04e",
+          "matches": true
+        },
+        {
+          "function": "load#1",
+          "normalizedDonorAstSha256": "b025c0983b01c4fab49ec60474cb7bc4498ff7f5abe6d892d442da0e01e608f6",
+          "targetAstSha256": "b025c0983b01c4fab49ec60474cb7bc4498ff7f5abe6d892d442da0e01e608f6",
+          "matches": true
+        },
+        {
+          "function": "keyed#1",
+          "normalizedDonorAstSha256": "8379bde7719c4f6b46e53e33f686998cff33fbaf0279066dcc4360c40f9b7677",
+          "targetAstSha256": "8379bde7719c4f6b46e53e33f686998cff33fbaf0279066dcc4360c40f9b7677",
+          "matches": true
+        },
+        {
+          "function": "remaining#1",
+          "normalizedDonorAstSha256": "21a4d6dbdeb83c089d24ccf3476e5416dacc97422a22510513de6b435613f690",
+          "targetAstSha256": "21a4d6dbdeb83c089d24ccf3476e5416dacc97422a22510513de6b435613f690",
+          "matches": true
+        },
+        {
+          "function": "call#1",
+          "normalizedDonorAstSha256": "ebf1b37d6626c088c7a97dc639870694f66cefe0853eea13d9d5e84cbd3b8447",
+          "targetAstSha256": "ebf1b37d6626c088c7a97dc639870694f66cefe0853eea13d9d5e84cbd3b8447",
+          "matches": true
+        },
+        {
+          "function": "cloud#1",
+          "normalizedDonorAstSha256": "c588fa4d61808bd1c4b8a259595cd45ff0341b4c8dab6e30a80b2f8ee570714b",
+          "targetAstSha256": "c588fa4d61808bd1c4b8a259595cd45ff0341b4c8dab6e30a80b2f8ee570714b",
+          "matches": true
+        },
+        {
+          "function": "analysis_time#1",
+          "normalizedDonorAstSha256": "720ab2ed83a5aa26873ff5f6815b3014f3932634edcabc8f6fdb2279b9329542",
+          "targetAstSha256": "720ab2ed83a5aa26873ff5f6815b3014f3932634edcabc8f6fdb2279b9329542",
+          "matches": true
+        },
+        {
+          "function": "inspect#1",
+          "normalizedDonorAstSha256": "8ba54a11a3c1ab7273b8f93260f72294f7c28253699baa50d29a283ae049a1f6",
+          "targetAstSha256": "8ba54a11a3c1ab7273b8f93260f72294f7c28253699baa50d29a283ae049a1f6",
+          "matches": true
+        }
+      ]
+    },
+    {
+      "donor": {
+        "path": "tmp/protect-remaining-round-dev-images.py",
+        "rawSha256": "8115ee3649766df57f68d25939592621301b5fc7aa2f682709f9851886cf4705",
+        "normalizedLfSha256": "8115ee3649766df57f68d25939592621301b5fc7aa2f682709f9851886cf4705"
+      },
+      "target": {
+        "path": "tmp/protect-owner-execution-dev-images-unset.py",
+        "rawSha256": "c71b862821e5863ed0eb33bb613e0658bae6f92280627f87f07488b8edafa4f1",
+        "normalizedLfSha256": "c71b862821e5863ed0eb33bb613e0658bae6f92280627f87f07488b8edafa4f1"
+      },
+      "diff": {
+        "path": "tmp/owner-execution-reviewed-protect-owner-execution-dev-images-unset.diff",
+        "rawSha256": "6729cc04e61b1b9addfd1d94376239b4ad819f5c2000e7cc7211bb7296050474",
+        "normalizedLfSha256": "6729cc04e61b1b9addfd1d94376239b4ad819f5c2000e7cc7211bb7296050474"
+      },
+      "matchedFunctions": 15,
+      "functionAstBindings": [
+        {
+          "function": "require#1",
+          "normalizedDonorAstSha256": "ac0d7ee6162bea7cf3aec546f859f8b032e30160b5351b67fb2b0883a9b69c36",
+          "targetAstSha256": "ac0d7ee6162bea7cf3aec546f859f8b032e30160b5351b67fb2b0883a9b69c36",
+          "matches": true
+        },
+        {
+          "function": "read_json#1",
+          "normalizedDonorAstSha256": "322075582e3b474989e67172a7c6ba5eadff7a6b714434efac97b9252ed86aed",
+          "targetAstSha256": "322075582e3b474989e67172a7c6ba5eadff7a6b714434efac97b9252ed86aed",
+          "matches": true
+        },
+        {
+          "function": "keyed#1",
+          "normalizedDonorAstSha256": "5a095e793c01d79d55f81233ec12368ac79ad96e62b7df9f9565e314129dcdd0",
+          "targetAstSha256": "5a095e793c01d79d55f81233ec12368ac79ad96e62b7df9f9565e314129dcdd0",
+          "matches": true
+        },
+        {
+          "function": "reviewed_release#1",
+          "normalizedDonorAstSha256": "3c79a2492aad13583671604b8a007b1756c1ff7006877a9ea67c1e14b2e54df0",
+          "targetAstSha256": "3c79a2492aad13583671604b8a007b1756c1ff7006877a9ea67c1e14b2e54df0",
+          "matches": true
+        },
+        {
+          "function": "reviewed_plan#1",
+          "normalizedDonorAstSha256": "3cc94a41c08865785a34d0d5f66b95d8b93746f2600c44efb53ae0a799ce67aa",
+          "targetAstSha256": "3cc94a41c08865785a34d0d5f66b95d8b93746f2600c44efb53ae0a799ce67aa",
+          "matches": true
+        },
+        {
+          "function": "default_manifest_path#1",
+          "normalizedDonorAstSha256": "2c583d53a0022b880020ae77cacd48bb0c4eaefc1c20a995f0133664818910c0",
+          "targetAstSha256": "2c583d53a0022b880020ae77cacd48bb0c4eaefc1c20a995f0133664818910c0",
+          "matches": true
+        },
+        {
+          "function": "Cloud.__init__#1",
+          "normalizedDonorAstSha256": "5348e592330a49da663ac6c24ed2226a262f7b523fd41a4e8f694fe7125ac3ff",
+          "targetAstSha256": "5348e592330a49da663ac6c24ed2226a262f7b523fd41a4e8f694fe7125ac3ff",
+          "matches": true
+        },
+        {
+          "function": "Cloud.remaining#1",
+          "normalizedDonorAstSha256": "1d2dd2c95eee2da86889325467eee763056b54d4b403e49ba88682721d704b29",
+          "targetAstSha256": "1d2dd2c95eee2da86889325467eee763056b54d4b403e49ba88682721d704b29",
+          "matches": true
+        },
+        {
+          "function": "Cloud.gcloud#1",
+          "normalizedDonorAstSha256": "01deb6b6954283f587fb8067086c575221f0cb0cbdc8f445784e3640878281e4",
+          "targetAstSha256": "01deb6b6954283f587fb8067086c575221f0cb0cbdc8f445784e3640878281e4",
+          "matches": true
+        },
+        {
+          "function": "Cloud.load_token#1",
+          "normalizedDonorAstSha256": "e04fac742e497ac0f9a7f75ec93bccf242900f25dc515bdb4199699f9e218730",
+          "targetAstSha256": "e04fac742e497ac0f9a7f75ec93bccf242900f25dc515bdb4199699f9e218730",
+          "matches": true
+        },
+        {
+          "function": "Cloud.tag#1",
+          "normalizedDonorAstSha256": "6d12848260571bcf6aec357e33f5358bc1552711d7100e28d058011dcf69cb45",
+          "targetAstSha256": "6d12848260571bcf6aec357e33f5358bc1552711d7100e28d058011dcf69cb45",
+          "matches": true
+        },
+        {
+          "function": "repository_policy#1",
+          "normalizedDonorAstSha256": "3fe3a6525153e4a6eed0c65bdd472fd6f38eefa5405203131cb464f62c3d9e09",
+          "targetAstSha256": "3fe3a6525153e4a6eed0c65bdd472fd6f38eefa5405203131cb464f62c3d9e09",
+          "matches": true
+        },
+        {
+          "function": "live_services#1",
+          "normalizedDonorAstSha256": "63dc3bda566edf3d4d2d853692f5541228353d0fe4f27533dec89eb2e34dd884",
+          "targetAstSha256": "63dc3bda566edf3d4d2d853692f5541228353d0fe4f27533dec89eb2e34dd884",
+          "matches": true
+        },
+        {
+          "function": "save#1",
+          "normalizedDonorAstSha256": "7ea17c92ed868666fed3676c2e7b0f706cf7fb6cc8bb2c2d2cfe4fb2fca656d2",
+          "targetAstSha256": "7ea17c92ed868666fed3676c2e7b0f706cf7fb6cc8bb2c2d2cfe4fb2fca656d2",
+          "matches": true
+        },
+        {
+          "function": "main#1",
+          "normalizedDonorAstSha256": "dc33c1b0aac0a0251a2314676e58d3d9e1711a5ed19460574af39a65433fc95e",
+          "targetAstSha256": "dc33c1b0aac0a0251a2314676e58d3d9e1711a5ed19460574af39a65433fc95e",
+          "matches": true
+        }
+      ]
+    },
+    {
+      "donor": {
+        "path": "tmp/run-remaining-round-public-smoke.py",
+        "rawSha256": "90fc639ebd684def66678e730e674f1e96b1e31aa90a4594dfa61de23a37b6fb",
+        "normalizedLfSha256": "90fc639ebd684def66678e730e674f1e96b1e31aa90a4594dfa61de23a37b6fb"
+      },
+      "target": {
+        "path": "tmp/run-owner-execution-public-smoke-unset.py",
+        "rawSha256": "67d057f9a53ea5be20ad08f2f33ef390e1fa375a684bf718d92d65d943541ac9",
+        "normalizedLfSha256": "67d057f9a53ea5be20ad08f2f33ef390e1fa375a684bf718d92d65d943541ac9"
+      },
+      "diff": {
+        "path": "tmp/owner-execution-reviewed-run-owner-execution-public-smoke-unset.diff",
+        "rawSha256": "bba48df7ce0d177c770b94626ecf9b3aa9fa137b01497312a234501247f8e5b6",
+        "normalizedLfSha256": "bba48df7ce0d177c770b94626ecf9b3aa9fa137b01497312a234501247f8e5b6"
+      },
+      "matchedFunctions": 1,
+      "functionAstBindings": [
+        {
+          "function": "main#1",
+          "normalizedDonorAstSha256": "275a3688f321e17cafd92ae2a039acdc6d17bd5f6917ab92a7d2a0206b5c7b7f",
+          "targetAstSha256": "275a3688f321e17cafd92ae2a039acdc6d17bd5f6917ab92a7d2a0206b5c7b7f",
+          "matches": true
+        }
+      ]
+    }
+  ],
+  "inheritedLogicPreserved": {
+    "collectorExactCiHeadBaseTreeAndActualBuildJobs": true,
+    "serverZipDigestSafeEntriesTypesPathsSizeExpansionBounds": true,
+    "twoPositiveSameSourceCodeqlUploadsScopedDevAlertAbsence": true,
+    "twoChangedFiveRetainedSevenReadyCurrentDesired100": true,
+    "rolesNoOwnerOrRecoveryActivationJournalProviderEdgeAndExactJobAbsence": true,
+    "twoFreshScansZeroCachedAndPositiveInstalledLibpngEvidence": true,
+    "fourAdditiveSourceRuntimeKeepTagsPolicyUnchanged": true,
+    "fifteenScopedDenialsAndBrowserCspRuntimeUnchanged": true
+  },
+  "specificForwardChanges": [
+    "Fresh owner-execution ignored TMP namespaces",
+    "Known PR342 head f512 and parent f9; counts498/986",
+    "Immediate changed-runtime baseline PR3407c80; retained five PR3305a955 unchanged",
+    "Future source/tree/workflow/CIproof/collector/artifact/release/protection hashes remain unset",
+    "Verifier new early future gate and exact raw artifact-proof hash guard",
+    "Smoke new explicit future protection hash gate"
+  ],
+  "blockers": [],
+  "recommendations": [],
+  "testsOrAdaptersExecutedByReviewer": 0,
+  "githubCallsByReviewer": 0,
+  "cloudCallsByReviewer": 0,
+  "artifactDownloads": 0,
+  "tagsCreated": 0,
+  "publicProbes": 0,
+  "acceptedActualSourceCi": false,
+  "acceptedActualDev": false,
+  "wholePlanComplete": false,
+  "scope": "Static AST/diff review plus verification of the independently saved eight zero-call controls; future actual evidence must fill NEW reviewed adapters. No CI/dev/provider/full-recovery acceptance is inferred."
+}

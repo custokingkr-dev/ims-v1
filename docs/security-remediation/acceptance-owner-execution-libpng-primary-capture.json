@@ -1,0 +1,24 @@
+{
+  "capturedAtUtc": "2026-10-09T18:14:46.174765+00:00",
+  "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-46675.json",
+  "status": 200,
+  "rawSha256": "d31ade254de5c2319012ddbf9c5647d1e061a5011bf1216cc2ddcb5f18c784a4",
+  "bytes": 7483,
+  "redirectsAllowed": false,
+  "responseTimeoutSeconds": 10,
+  "bodyCapBytes": 524288,
+  "captureWholeProcessDeadlineSeconds": 20,
+  "captureProcessTreeCleanupBoundSeconds": 3,
+  "originalReadbackRetainedOnlyProjectionAndHash": true,
+  "newRawBodyExactlyMatchesOriginalReportedHash": true,
+  "captureStdout": {
+    "path": "tmp/libpng-publisher-peer-20261009/canonical-fetch.stdout",
+    "bytes": 381,
+    "rawSha256": "043a0f4421e0ac874fcc9153f3b84d7feffb2ab588b1c8e6462f3d04d61ebe8a"
+  },
+  "captureStderr": {
+    "path": "tmp/libpng-publisher-peer-20261009/canonical-fetch.stderr",
+    "bytes": 0,
+    "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}
