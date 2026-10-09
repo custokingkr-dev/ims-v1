@@ -74,6 +74,22 @@ At 5 minutes a tab left open all day stays free; at 60 seconds it is ~3.2M serie
 
 ## Deploying it
 
+The release helper requires an explicit project and action. Build and scan locally with
+`./tools/live-dashboard/release.sh --project custoking-dev --scan-only v11`; use
+`--push` instead only for an authorized image publication. Unknown, duplicate or conflicting
+arguments fail before Docker runs. An explicit `--project custoking-prod` intentionally
+selects production; there is no default project or implicit push. The old `<tag>` and
+`<tag> --scan-only` invocations are rejected.
+
+After a successful vulnerability gate and explicit push, the helper verifies exactly one
+repository-matching SHA256 digest and prints that immutable `dashboard_image` reference
+for the selected environment. Review the corresponding observability state and Terraform
+plan separately; the helper performs no infrastructure apply. A pushed image does not
+establish dedicated OAuth configuration or deployed dashboard acceptance.
+
+Verify argument refusal, exact environment routing and failed-gate behavior without Docker
+or registry access using `python -m unittest scripts.tests.dashboard_release_test`.
+
 It runs unchanged on Cloud Run -- it uses the instance metadata server when `K_SERVICE` is set and
 `gcloud` otherwise. The live deployment uses the OAuth flow above because the consumer Google identity
 could not be admitted reliably through IAP. Give the service a dedicated identity with only

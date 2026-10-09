@@ -1,0 +1,374 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T18:46:01.458066+00:00",
+  "success": true,
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "publicationSourceHeadSha": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+  "publicationPrHeadSha": "7f32f61983c3cf20c626172e8a2127d6fa3bfdc4",
+  "publicationPullRequest": 341,
+  "publicationSquashParentSha": "bb1e8c3c0c40fcca98cdc1494f20002e381c40d1",
+  "publicationSquashTreeMatchesCiHead": true,
+  "publishedTreeSha": "f7b9963e01c7f844607176fbf0c22ad601cbd246",
+  "publicationCiRunId": 37825345391,
+  "publicationCdRunId": 37826088234,
+  "publicationCodeqlRunId": 37826087619,
+  "publicationNoDeployment": true,
+  "actualCiAssociation": {
+    "linkedNumbers": [],
+    "emptyAfterMerge": true,
+    "binding": "Locked MERGE_READY proof plus exact actual merged PR, head/branch/source and squash tree."
+  },
+  "actualPublicationCiJobs": [
+    {
+      "name": "promotion-source-policy",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "secret-scan",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "privacy-technical-controls",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "dev-edge-terraform-validation",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "duplicate-class-drift",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "windows-security-helper-validation",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "static-architecture-audits",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "detect / detect",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "service-test (${{ matrix.name }})",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "docker-build (${{ matrix.name }})",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "maven-wrapper-validation (${{ matrix.os }})",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "summary",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "actualPublicationCdJobs": [
+    {
+      "name": "resolve-target",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-secret-scan",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "detect / detect",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-static-gate",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "no-deployment",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "configuration-reconciliation-required",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "release-service-test (${{ matrix.name }})",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "build-images",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "release",
+      "status": "completed",
+      "conclusion": "skipped"
+    }
+  ],
+  "actualPublicationCodeqlAnalyses": [
+    {
+      "id": 1918286072,
+      "ref": "refs/heads/dev",
+      "commit_sha": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+      "category": "/language:java-kotlin",
+      "created_at": "2026-10-08T18:44:35Z",
+      "results_count": 0,
+      "error": "",
+      "rules_count": 120
+    },
+    {
+      "id": 1918265739,
+      "ref": "refs/heads/dev",
+      "commit_sha": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+      "category": "/language:javascript-typescript",
+      "created_at": "2026-10-08T18:41:39Z",
+      "results_count": 0,
+      "error": "",
+      "rules_count": 103
+    }
+  ],
+  "analysisRunWindowTraversal": {
+    "tool": "CodeQL",
+    "ref": "refs/heads/dev",
+    "ordering": "created descending verified",
+    "pagesRead": 1,
+    "recordsRead": 100,
+    "maxPages": 4,
+    "selectedRunWindowComplete": true,
+    "stopReason": "Before selected run start"
+  },
+  "scopedDevCodeqlOpenAlerts": 0,
+  "acceptedApplicationSourceHeadSha": "bb1e8c3c0c40fcca98cdc1494f20002e381c40d1",
+  "acceptedApplicationReleaseRunId": 37821327219,
+  "acceptedProofHashesUnchanged": {
+    "acceptance-remaining-round-dev-release.json": "7c80a89d1a2e2bc54993dd6a272314dfa7f36b5c99324113b9da5f7483d68eab",
+    "acceptance-remaining-round-image-protection.json": "cca8151822339a579625110d9f9016725377ac3289a791e7ac9a577f4404baa1",
+    "acceptance-remaining-round-public-smoke.json": "add782239f0097a569721119b0bd44db7102ad5e071fc5d4aa504b5b157cc312"
+  },
+  "publishedSourceGitBlobsAndLfHashesUnchanged": 7,
+  "publishedEarlierEvidenceGitBlobsAndWorkingRawHashesUnchanged": 206,
+  "publishedKnownBlobReadScopeOnly": 213,
+  "integrityManifestSha256": "bff2a9b22507dc9c8f906d8713a701e74051cba405ab3a30f03e8237cd023a7f",
+  "services": [
+    {
+      "service": "api-gateway",
+      "revision": "custoking-api-gateway-dev-00037-877",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:237f5ac0ead6c395c3e51a44311f4cb7ca2ac1aa2702d75384d15ee5d916e01c",
+      "runtimeMatchesAcceptedApplication": true,
+      "explicitEdgeConfigurationMatchesAcceptedProof": true
+    },
+    {
+      "service": "billing-service",
+      "revision": "custoking-billing-service-dev-00031-f9f",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "runtimeMatchesAcceptedApplication": true,
+      "databaseConfiguration": {
+        "runtimeRole": "ims_billing_rt",
+        "migrationsEnabled": false,
+        "ownerFlywayEnvironmentAbsent": true
+      },
+      "isolatedRecoveryBootstrapInactive": true
+    },
+    {
+      "service": "frontend",
+      "revision": "custoking-frontend-dev-00057-79v",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:cce39fca0ce51405c037be86ccf5f99f2ca5e3c653f05cff73f94adb757ff8b4",
+      "runtimeMatchesAcceptedApplication": true,
+      "explicitEdgeConfigurationMatchesAcceptedProof": true
+    },
+    {
+      "service": "identity-service",
+      "revision": "custoking-identity-service-dev-00035-vgl",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "runtimeMatchesAcceptedApplication": true,
+      "databaseConfiguration": {
+        "runtimeRole": "ims_identity_rt",
+        "migrationsEnabled": false,
+        "ownerFlywayEnvironmentAbsent": true
+      },
+      "isolatedRecoveryBootstrapInactive": true
+    },
+    {
+      "service": "operations-service",
+      "revision": "custoking-operations-service-dev-00032-jbn",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "runtimeMatchesAcceptedApplication": true,
+      "databaseConfiguration": {
+        "runtimeRole": "ims_operations_rt",
+        "migrationsEnabled": false,
+        "ownerFlywayEnvironmentAbsent": true
+      },
+      "isolatedRecoveryBootstrapInactive": true
+    },
+    {
+      "service": "platform-service",
+      "revision": "custoking-platform-service-dev-00040-dpz",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:d3bcbdaef1b1784b1986ac4f923c50c9d5f5d0f7004c6b45cabcb4daef63c6ec",
+      "runtimeMatchesAcceptedApplication": true,
+      "databaseConfiguration": {
+        "runtimeRole": "ims_platform_rt",
+        "migrationsEnabled": false,
+        "ownerFlywayEnvironmentAbsent": true
+      },
+      "providerConfigurationMatchesAcceptedProof": true,
+      "isolatedRecoveryBootstrapInactive": true
+    },
+    {
+      "service": "school-core-service",
+      "revision": "custoking-school-core-service-dev-00078-k8x",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:65e838d902386f8aa5ab2cc121a2984f61745fca88464971730c2bec98e043c6",
+      "runtimeMatchesAcceptedApplication": true,
+      "databaseConfiguration": {
+        "runtimeRole": "ims_school_core_rt",
+        "migrationsEnabled": false,
+        "ownerFlywayEnvironmentAbsent": true
+      },
+      "journalEnvironmentMatchesAcceptedProof": true,
+      "isolatedRecoveryBootstrapInactive": true
+    }
+  ],
+  "serviceCount": 7,
+  "exactDevDescribeReads": 14,
+  "exactDevReadScope": [
+    [
+      "run",
+      "revisions",
+      "describe",
+      "custoking-api-gateway-dev-00037-877"
+    ],
+    [
+      "run",
+      "revisions",
+      "describe",
+      "custoking-billing-service-dev-00031-f9f"
+    ],
+    [
+      "run",
+      "revisions",
+      "describe",
+      "custoking-frontend-dev-00057-79v"
+    ],
+    [
+      "run",
+      "revisions",
+      "describe",
+      "custoking-identity-service-dev-00035-vgl"
+    ],
+    [
+      "run",
+      "revisions",
+      "describe",
+      "custoking-operations-service-dev-00032-jbn"
+    ],
+    [
+      "run",
+      "revisions",
+      "describe",
+      "custoking-platform-service-dev-00040-dpz"
+    ],
+    [
+      "run",
+      "revisions",
+      "describe",
+      "custoking-school-core-service-dev-00078-k8x"
+    ],
+    [
+      "run",
+      "services",
+      "describe",
+      "custoking-api-gateway-dev"
+    ],
+    [
+      "run",
+      "services",
+      "describe",
+      "custoking-billing-service-dev"
+    ],
+    [
+      "run",
+      "services",
+      "describe",
+      "custoking-frontend-dev"
+    ],
+    [
+      "run",
+      "services",
+      "describe",
+      "custoking-identity-service-dev"
+    ],
+    [
+      "run",
+      "services",
+      "describe",
+      "custoking-operations-service-dev"
+    ],
+    [
+      "run",
+      "services",
+      "describe",
+      "custoking-platform-service-dev"
+    ],
+    [
+      "run",
+      "services",
+      "describe",
+      "custoking-school-core-service-dev"
+    ]
+  ],
+  "allSevenRevisionsAndRuntimeDigestsUnchanged": true,
+  "currentAndDesiredTraffic100": true,
+  "latestCreatedEqualsLatestReady": true,
+  "currentSelectedConfigurationMatchesAcceptedApplication": true,
+  "cloudMutations": 0,
+  "providerCalls": 0,
+  "artifactDownloads": 0,
+  "tagsReadOrChanged": false,
+  "productionChanged": false,
+  "historicalDonorSha256": "efb2ddbc7cbf56c673662b1098902ff74f144d2abfac18c274911e9643ed3f13",
+  "collectorRawSha256": "ab2c66c1e54dbaab8ab294ba16c80ac58d4d2efd5d1247d14ad2cf0a9737a043",
+  "scope": "Document publication CI/no-deployment CD and exact final-source dev CodeQL plus14 current dev describes. Previously accepted application configuration is the before baseline; current metadata is the after snapshot. No hard atomic absence-of-drift guarantee between network reads. Two selected native scans retain their existing dates; no artifact/native/job/hardware/provider-delivery/physical-restore acceptance is added."
+}

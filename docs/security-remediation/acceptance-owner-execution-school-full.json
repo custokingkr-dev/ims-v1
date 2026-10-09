@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "service": "school-core-service",
+  "startedAtUtc": "2026-10-09T17:35:10.386512+00:00",
+  "completedAtUtc": "2026-10-09T17:46:03.480502+00:00",
+  "exitCode": 0,
+  "seconds": 653.078,
+  "summary": {
+    "reported": 986,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "passedTests": 985,
+  "skippedTests": [
+    {
+      "class": "com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorageTest",
+      "test": "rejectsSymbolicParentsAndEncodedTraversal",
+      "reason": "org.opentest4j.TestAbortedException: Assumption failed: OS symlink privilege unavailable\n\tat org.junit.jupiter.api.Assumptions.throwAssumptionFailed(Assumptions.java:340)\n\tat org.junit.jupiter.api.Assumptions.assumeTrue(Assumptions.java:127)\n\tat com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorageTest.rejectsSymbolicParentsAndEncodedTraversal(CatalogOrderAssetStorageTest.java:102)\n"
+    }
+  ],
+  "knownWindowsPrivilegeSkip": true,
+  "linuxCiMustRunAllTestsWithoutSkips": true,
+  "sourceFiles": [
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+      "normalizedLfSha256": "5164cf2df01bcb719dad7d8e25f51796d07050c1384b7a672347c33cb1109697",
+      "executedWorkingRawSha256": "1e68533c556d757c1f7ad97489b6c89d20c6723afaba8373992dd0f2afe5dde6"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "normalizedLfSha256": "22c50e8900d17fd0bfbfcbc6fed246f5c393d5ff9fb40a85859d7a9301fc30e8",
+      "executedWorkingRawSha256": "22c50e8900d17fd0bfbfcbc6fed246f5c393d5ff9fb40a85859d7a9301fc30e8"
+    }
+  ],
+  "sourceHashesVerifiedBeforeAndAfter": true,
+  "log": "tmp/owner-boundary-school-core-service-full.log",
+  "rawLogSha256": "f59f38fba7a3ab0b9dfa6d1f60bb109d975523b9e7a306c1cad4c9d115178563",
+  "packaging": {
+    "jar": "services/school-core-service/target/custoking-school-core-service-0.1.0-SNAPSHOT.jar",
+    "rawSha256": "1a6615cdd9369708b5bf35be654ec800af6f27388223de0510d062bdf84b319d",
+    "startClass": "com.custoking.ims.schoolcoreservice.SchoolCoreServiceApplication",
+    "ordinaryBootEntryPointPreserved": true,
+    "jarExecuted": false
+  },
+  "cloudCalls": 0,
+  "scope": "Full clean affected-service local suite and ordinary Boot packaging. Focused tests overlap totals. Windows symlink skip is explicit and requires actual Linux CI. No live provider, recovery clone or general feature safety is established."
+}

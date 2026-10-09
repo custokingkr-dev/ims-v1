@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:37:32.791732+00:00",
+  "decision": "PASS",
+  "reviewer": "/root/recovery_remaining_execution",
+  "independentReview": true,
+  "proofs": [
+    {
+      "path": "tmp/provider-purpose-20261009-initial-proof.json",
+      "rawSha256": "7d60ca85bffb40debe62e121a52bb53dc6f6238aea2f037307d13e72a99867b7",
+      "normalizedLfSha256": "7d60ca85bffb40debe62e121a52bb53dc6f6238aea2f037307d13e72a99867b7"
+    },
+    {
+      "path": "tmp/provider-purpose-20261009-final-proof.json",
+      "rawSha256": "c2c313319bdbc3459426bbacbef4212a41c5eead76f56f21095a3d1fbb3bbb65",
+      "normalizedLfSha256": "c2c313319bdbc3459426bbacbef4212a41c5eead76f56f21095a3d1fbb3bbb65"
+    }
+  ],
+  "logsAndReports": [
+    {
+      "path": "tmp/provider-purpose-20261009-initial.log",
+      "rawSha256": "b8681e3e3c83f31ed54e5ee57f45626bc9dccfe906b5314ad1a1cf1b3aee610c",
+      "normalizedLfSha256": "70909b3ea652240d825d34f0fa49755007d3e1fb7b68389f12fc57ead9b92d19"
+    },
+    {
+      "path": "tmp/provider-purpose-20261009-initial-surefire.xml",
+      "rawSha256": "11dce8ad51d9d3de19d0814154943ec0d27852f016eb3436d1173e777cb8cde8",
+      "normalizedLfSha256": "61f3c32a6d4d8f1e569aeed1113ab79e4393ec6c0110fe52fc9a95939cec6f98"
+    },
+    {
+      "path": "tmp/provider-purpose-20261009-final.log",
+      "rawSha256": "9fe0a76b272fb513cd601351fc7bed917fd7cfc5bd225459b2d5e7addd3cdb4e",
+      "normalizedLfSha256": "cb928c9f4f8c938ea1f552194b61b9ac9299d86a7ffad994e8612a3136a26201"
+    },
+    {
+      "path": "tmp/provider-purpose-20261009-final-surefire.xml",
+      "rawSha256": "a1f3b57844ab6ea06e18470fe7c4ef9b3fb122cd227130bbd50d8d4d1e6ebf2b",
+      "normalizedLfSha256": "323247afb2d8432f82d1b8637fdb6af0ab1cf2ab79abea092761f86053c359d1"
+    }
+  ],
+  "sources": [
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+      "rawSha256": "1a0e8a1605d6d58180daac90e62f7bd044a58570e76ed77e98cdacd14c3d50b2",
+      "normalizedLfSha256": "f346f134b377c75a690d193be2ab65610fcb11e6a2dd9085bb5a544ec9934abd"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java",
+      "rawSha256": "f777029396da3da401672532f9ad6341478dadd6631e61ebd9eb31a8ef327fa1",
+      "normalizedLfSha256": "391b4c91e3b6bf76667cf21664a6a365a5b6eb15fa3189984df401c99bab10b5"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/LiveBroadcastConfiguration.java",
+      "rawSha256": "171c102ffe17431bf9538ef51ca2824594cca6ecda0f3f1ca0308dc72c425cd0",
+      "normalizedLfSha256": "85a73aa718f10ca0df9d46639fc7f8dc04eb901f24b1faa4060d9e3b397c7333"
+    }
+  ],
+  "originalMainMatchesGitHead": true,
+  "initialFailureNames": [
+    "reusedConfiguredCredentialCannotSubmitAnOtherwiseValidReport",
+    "reusedConfiguredCredentialFailsBeforeRequestOrPersistenceEvenWhenSendingIsDisabled"
+  ],
+  "checks": {
+    "effectiveConfiguredTokensBothTrimmedBeforeComparison": true,
+    "constantTimeMessageDigestComparisonReusedForConfiguredPurposeSeparation": true,
+    "serviceCredentialAndPurposeSeparationAndWebhookCredentialCheckedBeforeBodyReceiver": true,
+    "reusedToken401BeforeAnyRequestResponseLedgerInteraction": true,
+    "sendEnabledAndDisabledBothCoveredWithWhitespaceNormalizedEqualSecrets": true,
+    "otherwiseValidReusedTokenReport401WithoutTransactionOrPersistence": true,
+    "distinctTokenReceiptStillAcceptedWithSendingDisabled": true,
+    "actualFrozenXmlCountsAndFailedCasesVerified": true,
+    "localOnlyNoVendorOriginOrLiveDeliveryAcceptanceClaim": true,
+    "sourceHashesUnchangedDuringReadOnlyPeerReview": true
+  },
+  "blockers": [],
+  "recommendations": [],
+  "testsExecutedByReviewer": 0,
+  "cloudCalls": 0,
+  "providerCalls": 0,
+  "scope": "Independent source and immutable saved local-fixture proof review only; does not close account-selected authentication/contracts, external recipient delivery, or incident receipt."
+}

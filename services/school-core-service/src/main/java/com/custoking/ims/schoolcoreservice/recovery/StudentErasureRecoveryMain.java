@@ -95,6 +95,15 @@ public final class StudentErasureRecoveryMain {
               AND NOT has_database_privilege(current_user,current_database(),'CREATE')
               AND NOT has_database_privilege(current_user,current_database(),'TEMP')
               AND NOT EXISTS(SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname !~ '^pg_temp_' AND has_schema_privilege(current_user,oid,'CREATE'))
+              -- Terminal receipts must remain append-only even for this isolated executor.
+              -- has_any_column_privilege includes table grants and individual column grants.
+              AND NOT has_any_column_privilege(current_user,'student.erasure_journal_receipts','UPDATE')
+              AND NOT has_table_privilege(current_user,'student.erasure_journal_receipts','DELETE')
+              AND NOT has_table_privilege(current_user,'student.erasure_journal_receipts','TRUNCATE')
+              -- Replay may enqueue cleanup; it may never erase the durable cleanup evidence.
+              -- UPDATE remains available to separately governed cleanup processing.
+              AND NOT has_table_privilege(current_user,'tenant_school.photo_cleanup_outbox','DELETE')
+              AND NOT has_table_privilege(current_user,'tenant_school.photo_cleanup_outbox','TRUNCATE')
             """).query(Boolean.class).single();
         RecoveryAuthorization.require(safe);
     }

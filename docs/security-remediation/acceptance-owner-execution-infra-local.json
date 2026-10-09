@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:43:05.881529+00:00",
+  "scope": "Infra agent source/local/metadata acceptance; root separately curates source CI and deployment",
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "clientDate": "2026-10-09",
+  "clientTimezone": "Asia/Calcutta",
+  "sourceBindings": [
+    {
+      "path": "tools/live-dashboard/release.sh",
+      "normalizedLfSha256": "daa306beb92641b3280c8a88c4a068ebc7b5fb2e6cf1205a8652edcc657d0320"
+    },
+    {
+      "path": "tools/live-dashboard/README.md",
+      "normalizedLfSha256": "515d0a3728d3938ba149653ce1aaec37ce1d670692fdf767f56dcb3e2c22fe8d"
+    },
+    {
+      "path": "scripts/tests/dashboard_release_test.py",
+      "normalizedLfSha256": "05c87d28e17b67eb60201490f66b9c21b066ea64fe64e1671ee57f726c07335d"
+    },
+    {
+      "path": ".github/workflows/ci-pr.yml",
+      "normalizedLfSha256": "145100ac4953de813cdd30ced0d8f2275bb46fa94912d3dc7f6f76043e75d604"
+    }
+  ],
+  "proofBindings": [
+    {
+      "path": "tmp/owner-execution-readiness-readback-20261009.json",
+      "rawSha256": "0ff23da2b25f36c1da4e59bd907c2953c0f2b97713a9ce87180b705b7210e9ec",
+      "observedAtUtc": "2026-10-09T17:29:29.342282+00:00"
+    },
+    {
+      "path": "tmp/owner-dashboard-service-classification-20261009.json",
+      "rawSha256": "befd80a974cb43cf586bd80acd5eada69df0e05cf0ad476d01a8f3f3e2973bf1",
+      "observedAtUtc": "2026-10-09T17:38:16.911124+00:00"
+    },
+    {
+      "path": "tmp/owner-execution-input-manifest-20261009.json",
+      "rawSha256": "b78a65f351c21232b3cfbff5ca3a3b692110c2dfa81698010fcd4304e5ffea8c",
+      "observedAtUtc": "2026-10-09T17:32:22.350423+00:00"
+    },
+    {
+      "path": "tmp/dashboard-release-safety-initial-20261009.json",
+      "rawSha256": "f1f05527795355f777572ef2db6129b8986e723ea12ecb40c1ae94ee56bc8405",
+      "observedAtUtc": "2026-10-09T17:35:04.760598+00:00"
+    },
+    {
+      "path": "tmp/dashboard-release-safety-fixed-20261009.json",
+      "rawSha256": "d2548eb7078a4b49a7aa8c6e7b1043e43cb6b67fca96fecee687c81f1b8bbeb0",
+      "observedAtUtc": "2026-10-09T17:36:50.110712+00:00"
+    },
+    {
+      "path": "tmp/dashboard-release-safety-prefix-initial-20261009.json",
+      "rawSha256": "aac7e8e9d3cffd16f0ba3c19fd48b183aec1865e709860c298971219ff8a959e",
+      "observedAtUtc": "2026-10-09T17:41:14.411560+00:00"
+    },
+    {
+      "path": "tmp/dashboard-release-safety-prefix-fixed-20261009.json",
+      "rawSha256": "c7a69eff37e52abc90d7d6a76c2cd74c14ba4e497acb0013c71fc8a6917793a1",
+      "observedAtUtc": "2026-10-09T17:41:27.768635+00:00"
+    }
+  ],
+  "sourceFix": {
+    "problem": "Dashboard helper hardcoded production and silently pushed for omitted/misspelled action; first digest extractor admitted nested sha256 delimiter",
+    "behavior": "Explicit validated custoking-dev/custoking-prod target plus exactly one push/scan-only action; all ambiguous or invalid arguments reject before Docker; valid scan then explicit push; only one exact selected-repository prefix plus64lowercasehex prints immutable deploy reference; no infrastructure apply",
+    "originalFailedControls": 2,
+    "digestFollowupFailedControls": 1,
+    "latestFakeDockerTests": 11,
+    "latestFailures": 0,
+    "latestErrors": 0,
+    "latestSkipped": 0,
+    "latestProof": "tmp/dashboard-release-safety-prefix-fixed-20261009.json",
+    "earlierElevenPassProofPreserved": true
+  },
+  "ciHook": {
+    "job": "static-architecture-audits",
+    "runner": "ubuntu-latest",
+    "exactRun": "python3 -m unittest scripts.tests.dashboard_release_test",
+    "exactMatchingSteps": 1,
+    "yamlParser": "PyYAML6.0.3",
+    "yamlParsed": true,
+    "gitDiffCheckPassed": true,
+    "linuxCiActuallyObserved": false
+  },
+  "actionlint": {
+    "reportedByRoot": true,
+    "nativeExitCode": 0,
+    "imageDigest": "b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667",
+    "network": "none",
+    "pull": "never",
+    "readOnly": true,
+    "capDrop": "ALL",
+    "securityOpt": "no-new-privileges",
+    "workflowPath": ".github/workflows/ci-pr.yml",
+    "flags": [
+      "-shellcheck=",
+      "-pyflakes="
+    ],
+    "cloudAndRegistryCalls": 0,
+    "newInstallOrImagePull": false
+  },
+  "exactOwnerManifest": "tmp/owner-execution-input-manifest-20261009.json",
+  "ownerManifestChronology": "Preserved pre-source-fix checkpoint: hardcoded release-helper limit is superseded by the corrected helper/local proof; external input and acceptance criteria remain open. Fresh service READ_ERROR is superseded only by the separate exact NOT_FOUND classification capture. Prior edge/egress network observations retain their dates.",
+  "currentOwnerMetadata": {
+    "repositoryAdmin": false,
+    "repositoryMaintain": false,
+    "devProtected": false,
+    "currentDevSha": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+    "dedicatedDashboardOAuthSecret": "NOT_FOUND",
+    "dedicatedDashboardService": "NOT_FOUND"
+  },
+  "ownerGroupsStillOpen": [
+    "owned_edge",
+    "repository_governance",
+    "dashboard_oauth",
+    "egress_and_file_viewers",
+    "physical_authenticators",
+    "http2_conformance",
+    "local_snapshot_custody"
+  ],
+  "acceptedScope": {
+    "helperSourceAndLocalSafety": true,
+    "exactLinuxCiHookPrepared": true,
+    "actualSourceCiAndDevAcceptance": false,
+    "dashboardOAuthDeployment": false,
+    "effectiveEdgeOrEgress": false,
+    "physicalHardware": false,
+    "http2Conformance": false,
+    "snapshotCustodyClassificationOrCleanup": false,
+    "wholeSavedSecurityPlan": false
+  },
+  "thisAgentActions": {
+    "exactGithubMetadataGets": 4,
+    "exactDevCloudMetadataGets": 3,
+    "actualDockerCalls": 0,
+    "registryPushes": 0,
+    "cloudMutations": 0,
+    "productionAccessed": false,
+    "secretValuesRead": false,
+    "literalEnvironmentValuesRead": false,
+    "malformedHttp2NetworkProbes": 0,
+    "snapshotContentInspected": false,
+    "snapshotRefsRemoved": 0,
+    "obsoleteRevisionsDeleted": 0,
+    "gitStageCheckoutCommit": false,
+    "historicalEvidenceModified": false
+  }
+}
