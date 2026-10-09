@@ -1,5 +1,8 @@
 # Security findings and fix plan
 
+Latest parallel work: [owner execution boundaries](security-remediation/owner-execution-boundaries-2026-10-09.md) fixes callback credential reuse, recovery evidence privileges and implicit dashboard publication. [Frozen local evidence](security-remediation/acceptance-owner-execution-local.json) records platform498/498 and school985 passed/one Windows skip out of986, independent reviews and current prior-image nested-JAR inventory. Exact new Linux CI/dev acceptance is pending at this checkpoint. Nine owner groups plus native applicability and snapshot custody remain open.
+
+
 Latest dated follow-up: [recovery/provider findings and fix plan](security-remediation/remaining-security-completion-2026-10-08.md) and [native advisory matrix](security-remediation/remaining-round-native-advisory-research.md). Three source gaps are fixed and locally verified; new CI/dev acceptance and eleven owner-dependent action/finding groups remain required.
 
 

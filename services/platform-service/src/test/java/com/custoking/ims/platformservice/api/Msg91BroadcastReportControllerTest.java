@@ -78,6 +78,32 @@ class Msg91BroadcastReportControllerTest {
         }
     }
 
+    @Test void reusedConfiguredCredentialFailsBeforeRequestOrPersistenceEvenWhenSendingIsDisabled() {
+        for (boolean enabled : new boolean[]{true, false}) {
+            for (String[] secrets : new String[][]{{WEBHOOK, WEBHOOK}, {" " + WEBHOOK + " ", WEBHOOK}, {WEBHOOK, " " + WEBHOOK + " "}}) {
+                var f = fixture(enabled, secrets[0], secrets[1]);
+                var request = mock(HttpServletRequest.class);
+                var response = mock(HttpServletResponse.class);
+                when(request.getContentLengthLong()).thenThrow(new AssertionError("Reused credential reached body metadata"));
+                org.assertj.core.api.Assertions.assertThatThrownBy(() -> f.controller.report(WEBHOOK, WEBHOOK, request, response))
+                        .isInstanceOfSatisfying(ResponseStatusException.class,
+                                failure -> assertThat(failure.getStatusCode().value()).isEqualTo(401));
+                verifyNoInteractions(request, response, f.ledger);
+                assertThat(f.transactions.commits).isZero();
+                assertThat(f.transactions.rollbacks).isZero();
+            }
+        }
+    }
+
+    @Test void reusedConfiguredCredentialCannotSubmitAnOtherwiseValidReport() throws Exception {
+        var f = fixture(false, WEBHOOK, WEBHOOK);
+        f.mvc.perform(authenticated(body("DELIVERED").getBytes(StandardCharsets.UTF_8), WEBHOOK, WEBHOOK))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(f.ledger);
+        assertThat(f.transactions.commits).isZero();
+        assertThat(f.transactions.rollbacks).isZero();
+    }
+
     @Test void bothIndependentCredentialsAreRequiredBeforeParsingOrPersistence() throws Exception {
         var f = fixture(true, SERVICE, WEBHOOK);
         for (String[] tokens : new String[][]{{"", WEBHOOK}, {SERVICE, ""}, {"wrong", WEBHOOK}, {SERVICE, "wrong"}, {WEBHOOK, SERVICE}}) {
@@ -223,6 +249,9 @@ class Msg91BroadcastReportControllerTest {
     private Map<String, Object> altered(String key, Object value) { var data = fields("DELIVERED"); data.put(key, value); return data; }
     private RequestBuilder authenticated(String body) {return authenticated(body.getBytes(StandardCharsets.UTF_8));}
     private RequestBuilder authenticated(byte[] body) {
+        return authenticated(body, SERVICE, WEBHOOK);
+    }
+    private RequestBuilder authenticated(byte[] body, String service, String webhook) {
         return context->{
             var request=new MockHttpServletRequest(context) {
                 private final ServletInputStream input=new ServletInputStream() {
@@ -240,7 +269,7 @@ class Msg91BroadcastReportControllerTest {
             };
             request.setMethod("POST");request.setRequestURI(PATH);request.setContentType("application/json");
             request.setContent(body);request.setAsyncSupported(true);
-            request.addHeader("X-Notification-Service-Token",SERVICE);request.addHeader("X-MSG91-Webhook-Token",WEBHOOK);
+            request.addHeader("X-Notification-Service-Token",service);request.addHeader("X-MSG91-Webhook-Token",webhook);
             return request;
         };
     }

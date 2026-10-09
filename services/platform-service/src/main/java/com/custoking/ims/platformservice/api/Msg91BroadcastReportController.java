@@ -48,7 +48,10 @@ public class Msg91BroadcastReportController {
             HttpServletRequest request,HttpServletResponse response) throws java.io.IOException {
         requireToken(token,"notification:report");
         // Receipts must continue working after the live send gate is disabled.
-        if (configuration.webhookToken().length()<32 || !equal(configuration.webhookToken(),callbackToken))
+        // The gateway's service credential cannot also authorize a provider callback.
+        // Compare the effective configured values, which both normalize whitespace.
+        if (configuration.webhookToken().length()<32 || equal(serviceToken,configuration.webhookToken())
+                || !equal(configuration.webhookToken(),callbackToken))
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Invalid provider callback credential");
         // Both credentials are checked before even inspecting length or acquiring a servlet stream.
         BODY.receive(request,response,this::record,(reply,status,reason)->reply.sendError(status,reason));

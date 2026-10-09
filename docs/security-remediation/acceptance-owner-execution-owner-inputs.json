@@ -1,0 +1,386 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-10-09T17:32:22.350423+00:00",
+  "scope": "Seven infrastructure/identity/network/hardware/custody execution prerequisite groups; provider/recovery/capacity/native owned by other parallel agents",
+  "clientDate": "2026-10-09",
+  "clientTimezone": "Asia/Calcutta",
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "readOnlyInvestigation": true,
+  "sourceInspection": [
+    {
+      "path": "deploy/gcp/application-edge/main.tf",
+      "normalizedLfSha256": "d651c7eb7ed1c054ecfb40d9cad18bdecefe8c5c04399e534025211cfa9117dd"
+    },
+    {
+      "path": "deploy/gcp/application-edge/variables.tf",
+      "normalizedLfSha256": "b2d59cb92a64f3df03a6f2c8e80c0b14e37dfacfd881641a3422dca65e81a3ef"
+    },
+    {
+      "path": "deploy/gcp/application-edge/README.md",
+      "normalizedLfSha256": "7e862f53fd44c7b8c380be0f30124a66afa334fc9c75385122d6f83bffb10add"
+    },
+    {
+      "path": "deploy/gcp/application-egress/main.tf",
+      "normalizedLfSha256": "a6cf91b52b8eb951172a38ea96dd090c385c88eb5eb3dc6e87a1b7ff7d15a6f5"
+    },
+    {
+      "path": "deploy/gcp/application-egress/variables.tf",
+      "normalizedLfSha256": "ffc71296e7a16a61bfbd54da47c17ef5b3647d674ca6fb97fc3ea996f87a2d29"
+    },
+    {
+      "path": "deploy/gcp/application-egress/README.md",
+      "normalizedLfSha256": "333e5fedccd2e9327af47075f34bedac196432e6a8566749f313f3974d34f77d"
+    },
+    {
+      "path": "deploy/gcp/observability/dashboard_service.tf",
+      "normalizedLfSha256": "4ad1a0b744b6650ef41d30764859f10528d3916c79c858543298da1151562dd9"
+    },
+    {
+      "path": "deploy/gcp/observability/dashboard_security_state.tf",
+      "normalizedLfSha256": "166f931b8579adbd3e7a3a3e20253749474679583a31337df7e74393706b6536"
+    },
+    {
+      "path": "tools/live-dashboard/auth.mjs",
+      "normalizedLfSha256": "5b1b9263715e1976a0f282c81792242207693a149c7f824e3b13666e30f11f54"
+    },
+    {
+      "path": "tools/live-dashboard/security-config.mjs",
+      "normalizedLfSha256": "64b0a1708a015b8688ec31c4168d2c2fe5a7a103edb4d2e3c1093d2dd6a4d26f"
+    },
+    {
+      "path": "tools/live-dashboard/security-state.mjs",
+      "normalizedLfSha256": "9da7d620984d194ebb5d525660728bf7bdd40a1b7dc12d3e45954fc49d3337f4"
+    },
+    {
+      "path": "tools/live-dashboard/server.mjs",
+      "normalizedLfSha256": "29bd7e54b6281fce605cf47c96ec5c408417f95fcbca9a3534660d7bb9231d51"
+    },
+    {
+      "path": "tools/live-dashboard/release.sh",
+      "normalizedLfSha256": "29ac52a1b830ed415fea9058660adfdc1e92c722575f85b69494c29ccdec9fe3"
+    },
+    {
+      "path": "scripts/configure-security-governance-controls.ps1",
+      "normalizedLfSha256": "67ce522fff13a0cc02fcc5d6d0f2facff81d7dbf6e35e5e6915b6a243854c2e0"
+    },
+    {
+      "path": "scripts/verify-github-governance-checks.py",
+      "normalizedLfSha256": "32c06ae9b392427786749a62c726792e42d4b66a9238fcd1cf7c3d564d9bc454"
+    },
+    {
+      "path": "scripts/security/run-live-passkey-acceptance.mjs",
+      "normalizedLfSha256": "4ef05fb0b03d85b901dc07e96ddf80e30020afd3b4cdd10706e8083c00531202"
+    },
+    {
+      "path": "scripts/security/dev-http2-parser-probe.py",
+      "normalizedLfSha256": "a297b1f4136d75e2a48613aade58329a7b1cc5fec9c251ae5baada7c9eddc905"
+    }
+  ],
+  "evidenceBindings": [
+    {
+      "path": "tmp/owner-execution-readiness-readback-20261009.json",
+      "rawSha256": "0ff23da2b25f36c1da4e59bd907c2953c0f2b97713a9ce87180b705b7210e9ec",
+      "observedAtUtc": "2026-10-09T17:29:23.114136+00:00"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-owner-readback.json",
+      "rawSha256": "3a4b9d7bd86b57c6e488ef58b02f8346cda84396a786d9ee0456ab09d8ddb2e9",
+      "observedAtUtc": "2026-10-08T17:23:35.640098+00:00"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-owner-followup.json",
+      "rawSha256": "a9eff19e369aad461eaaa047d361e51a3c89fd2eb6a19dde87ec943ff8fe3003",
+      "observedAtUtc": "2026-10-08T17:24:48.258890+00:00"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-infra-review.json",
+      "rawSha256": "43ff05d0e5ab825b2891de0dd3bc9b71d8b4edd12051c94d7b29ad1b6493d418",
+      "observedAtUtc": "2026-10-08T17:25:21.337525+00:00"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-dashboard-state-adoption.json",
+      "rawSha256": "551ebacb7c87366e1e797512a1f4ad2fa623091930f5828be8fbb9352768b61c",
+      "observedAtUtc": "2026-10-07T13:32:02.831112+00:00"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-application-egress-local.json",
+      "rawSha256": "0727a889b36400f30abf4431199dec95ef21969e91954cd34fa511cca58d7fe5",
+      "observedAtUtc": "2026-10-08T10:29:47.885724+00:00"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-passkeys.json",
+      "rawSha256": "eddc58e35166a0c0f99c836918e6eac945ea4e0366d0c80336380b5623603a7b",
+      "observedAtUtc": "2026-10-07T09:32:59.560Z"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-http2-parser.json",
+      "rawSha256": "1ff94575b9d2a0c495c5306a43537095e5437b7b3bea07e9c864e82dbcb7b94e",
+      "observedAtUtc": "2026-10-07T11:35:47.180576+00:00"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-http2-transfer-encoding.json",
+      "rawSha256": "97d6b1e851cfbec7008f9e90febc1ca76192fd479ae818e43a2dd1b4524a05ba",
+      "observedAtUtc": "2026-10-07T11:37:08.118031+00:00"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-repository-local-history-scope.json",
+      "rawSha256": "92330ac0d98e3d0dca188ad61afd03ed03b8bb58655c3c8e949aa146081fa035",
+      "observedAtUtc": "2026-10-07T19:28:55.538905+00:00"
+    }
+  ],
+  "items": [
+    {
+      "id": "owned_edge",
+      "executableNow": false,
+      "requiredNonsecretInputs": {
+        "owned_dev_hostname": null,
+        "approved_monthly_budget_and_billing_plan": null,
+        "approved_separate_terraform_state_location": null,
+        "cutover_window_and_rollback_owner": null,
+        "webauthn_origin_migration_and_factor_preservation_policy": null
+      },
+      "preparedSource": [
+        "deploy/gcp/application-edge"
+      ],
+      "exactKnownResourceNames": [
+        "custoking-application-edge-dev",
+        "custoking-application-edge-dev-ip",
+        "custoking-edge-frontend-dev",
+        "custoking-edge-gateway-dev"
+      ],
+      "readOnlyPreparationCommands": [
+        "terraform -chdir=deploy/gcp/application-edge init -backend=false -lockfile=readonly",
+        "terraform -chdir=deploy/gcp/application-edge validate",
+        "terraform -chdir=deploy/gcp/application-edge test"
+      ],
+      "commandsAreNotRunThisCapture": true,
+      "guardedExecutionSequence": [
+        "Validate current module plan, current prices and isolated approved state against the supplied owned hostname/budget.",
+        "Provision only the reviewed dev edge after approval; publish owned DNS A record and observe managed certificate ACTIVE.",
+        "Exercise login/refresh/logout, two-school authorization, legitimate JSON/multipart/image/import flows, CSP and existing/new passkeys through the chosen origin.",
+        "Commit approved Cloud Deploy ingress/origin/CORS/cookie/proxy-hop/RP configuration and govern traffic cutover.",
+        "Independently reject external requests through BOTH old frontend and gateway run.app URLs; retain a tested secure rollback route."
+      ],
+      "requiredInvariants": [
+        "Project custoking-dev; region asia-south2; private Java IAM preserved.",
+        "WAF body inspection is limited to64KB, larger bodies retain application/parser limits.",
+        "Per-IP throttles are verified against shared-school NAT and legitimate traffic.",
+        "Owned hostname cannot be invented from zero domain mappings or borrowed public wildcard DNS.",
+        "No closure from only certificate/terraform success; original public routes must deny bypass."
+      ],
+      "evidenceConfidence": "Previous bounded cloud inventory dated2026-10-08T17:23:35Z\u201317:24:24Z; no fresh broad resource scan."
+    },
+    {
+      "id": "repository_governance",
+      "executableNow": false,
+      "requiredNonsecretInputs": {
+        "repository_administrator_execution_or_access": null,
+        "reviewed_dev_branch_and_environment_bypass_policy": null
+      },
+      "freshEvidence": "tmp/owner-execution-readiness-readback-20261009.json",
+      "independentlyReadableEndpoints": [
+        "repos/custokingkr-dev/ims-v1",
+        "repos/custokingkr-dev/ims-v1/branches/dev",
+        "repos/custokingkr-dev/ims-v1/branches/dev/protection",
+        "repos/custokingkr-dev/ims-v1/environments/dev"
+      ],
+      "requiredChecks": [
+        "summary",
+        "analyze (java-kotlin)",
+        "analyze (javascript-typescript)"
+      ],
+      "helperLimit": "configure-security-governance-controls.ps1 is not executed: it unconditionally reads prod environment and its branch apply targets both main/dev. Admin must review exact intended scope rather than call a dev-looking global helper.",
+      "guardedExecutionSequence": [
+        "Repository administrator applies the reviewed exact branch/environment protections through GitHub.",
+        "Independently GET actual protection/ruleset/bypass/environment policy and prove required checks map to current successful check producers.",
+        "Verify stale review/last-push approval, conversation resolution, force-push/deletion restrictions and reviewed administrator bypass policy."
+      ],
+      "requiredInvariants": [
+        "Passing CI is not required-check enforcement.",
+        "No privilege elevation, invented reviewer identities or broad prod policy mutation.",
+        "Classic protection404 alone is not a complete ruleset inventory; protected:false was independently returned."
+      ],
+      "evidenceConfidence": "Fresh exact GETs observed admin:false, maintain:false, push:true and dev protected:false; current dev head captured."
+    },
+    {
+      "id": "dashboard_oauth",
+      "executableNow": false,
+      "requiredNonsecretInputs": {
+        "dedicated_oauth_client_id": null,
+        "oauth_client_secret_managed_reference_and_version": null,
+        "registered_exact_https_origin_and_callback": null,
+        "allowed_google_identity_list": null,
+        "approved_dashboard_image_release_and_monitoring_cost_budget": null
+      },
+      "exactKnownResourceNames": [
+        "custoking-dashboard-dev",
+        "dashboard-oauth-client-secret",
+        "dashboard-session-secret",
+        "ims-dashboard@custoking-dev.iam.gserviceaccount.com",
+        "projects/custoking-dev/databases/ims-dashboard-dev",
+        "dashboardSecurityState/expiresAt"
+      ],
+      "callbackInvariant": "Exactly approved pinned HTTPS origin + /auth/callback; do not derive origin from Host or forwarded headers.",
+      "adoptedStateEvidence": "docs/security-remediation/acceptance-dashboard-state-adoption.json",
+      "stateBackend": {
+        "bucket": "custoking-dev-terraform-state",
+        "prefix": "observability/dev"
+      },
+      "currentReleasePreparationLimit": "tools/live-dashboard/release.sh hardcodes custoking-prod and unknown second arguments proceed to push; it is not executed for this dev task.",
+      "guardedExecutionSequence": [
+        "Owner provisions dedicated OAuth registration and managed secret metadata without supplying credential values to chat/source.",
+        "Preserve enable_dashboard_security_state=true and deletion-protected adopted named state; keep shared web deployment disabled until configuration/image validation passes.",
+        "Produce exact immutable dev image, fresh vulnerability gate and reviewed minimal monitoring/secret IAM; review plan only for intended dashboard changes.",
+        "Deploy exact configured dev web service; independently prove correct login and denied identity without serving monitoring data.",
+        "Consume one authorization flow concurrently across independent deployed replicas/revisions: at most one succeeds; test tampering, expired state, wrong nonce and callback errors.",
+        "Logout on one replica and present same session to another: denied; prove expiry, allowlist removal, state outage fail-closed and coordinated key rotation/old-revision drain.",
+        "Test bounded real monitoring queries/cancellation/cost and observe physical TTL separately from logical expiry."
+      ],
+      "requiredInvariants": [
+        "No application/default/other database permissions; state role only entities.get/entities.create conditioned to exact named database.",
+        "Stable managed session secret >=32bytes; auth on; no local-memory fallback in deployed environment; min0/max2.",
+        "Dedicated secret latest metadata is not secret contents or usable OAuth account configuration.",
+        "Actual recipient identity login cannot be replaced by fake ID token/unit test."
+      ],
+      "evidenceConfidence": "Fresh secret GET NOT_FOUND; fresh service GET READ_ERROR, not classified as absence. Previous2026-10-08T17:24:48Z dedicated service follow-up NOT_FOUND is historical."
+    },
+    {
+      "id": "egress_and_file_viewers",
+      "executableNow": false,
+      "requiredNonsecretInputs": {
+        "existing_compatible_network_subnet_router_public_nat_names": null,
+        "approved_service_job_tag_bindings": null,
+        "approved_destinations_cidrs_ports_protocols": null,
+        "private_google_access_and_nat_port_budget": null,
+        "arbitrary_public_image_import_compatibility_design": null,
+        "approved_window_rollback_and_supported_viewer_versions": null
+      },
+      "preparedSource": [
+        "deploy/gcp/application-egress"
+      ],
+      "readOnlyPreparationCommands": [
+        "terraform -chdir=deploy/gcp/application-egress init -backend=false -lockfile=readonly",
+        "terraform -chdir=deploy/gcp/application-egress fmt -check -recursive",
+        "terraform -chdir=deploy/gcp/application-egress validate",
+        "terraform -chdir=deploy/gcp/application-egress test"
+      ],
+      "commandsAreNotRunThisCapture": true,
+      "existingMockEvidence": "docs/security-remediation/acceptance-application-egress-local.json",
+      "guardedExecutionSequence": [
+        "Owner identifies compatible actual PGA/Public NAT network and route/DNS/higher-priority/hierarchical firewall policy; approve aggregate capacity and per-instance port reserve.",
+        "Resolve compatibility with private SQL, authenticated peer Cloud Run, Google credentials/storage/IAM/PubSub/OIDC/Drive/token, selected provider/SMTP, and implemented public image imports.",
+        "Stage exact dedicated-tag allow rules and dual-stack denies; independently inspect effective policy before creating controlled all-traffic tagged revision.",
+        "Prove exact current/desired tags and all-traffic route on each approved service/job; legitimate destinations work, forbidden destinations fail at intended boundary.",
+        "Exercise controlled DNS-rebinding, redirects and mixed-address resolution through actual deployed path with immutable synthetic fixtures.",
+        "Execute approved malicious/benign PDF, workbook and CSV fixtures in actual supported viewers/version/browser matrix; observe escaping/formula/active content handling."
+      ],
+      "requiredInvariants": [
+        "enabled=false remains zero resources/data reads before approval.",
+        "Existing private-ranges-only revisions do not establish public-traffic enforcement.",
+        "No TEST-NET fixture CIDR becomes a real allowlist; no invented NAT/router/tags/destinations.",
+        "CIDR firewall is not hostname/URL/TLS/tenant/exfiltration policy; platform special paths and higher-priority rules remain separately checked.",
+        "PGA/NAT configuration and17 mock tests are not deployed network or viewer evidence."
+      ],
+      "evidenceConfidence": "Previous17:23\u201317:24UTC inventory observed known subnet PGA:false, regional routers/NAT0, no known egress rules, five Java private-ranges-only/no dedicated tags; no new broad scan."
+    },
+    {
+      "id": "physical_authenticators",
+      "executableNow": false,
+      "requiredNonsecretInputs": {
+        "physical_authenticator_models_and_firmware": null,
+        "supported_os_browser_device_versions": null,
+        "approved_synthetic_accounts_and_factor_recovery_policy": null,
+        "operator_with_physical_presence_user_verification": null
+      },
+      "existingEvidence": "docs/security-remediation/acceptance-passkeys.json",
+      "existingToolLimit": "run-live-passkey-acceptance.mjs explicitly adds Chromium CTAP2 virtual software authenticator; it cannot prove hardware.",
+      "guardedExecutionSequence": [
+        "Operator uses actual supported physical key/passkey devices against pinned approved RP/origin with synthetic privileged accounts.",
+        "Exercise enrollment, user-verified assertion/step-up, cross-account/session/challenge/replay denial, expiration and lost-factor governed recovery.",
+        "Record model/firmware/OS/browser/transport, UV outcome and exact service source/runtime evidence, without raw private credential material.",
+        "If owned-origin cutover changes RP, prove authenticated reenrollment/recovery preserving factors; no silent MFA disable."
+      ],
+      "requiredInvariants": [
+        "Required user verification must be real device output, not automaticPresenceSimulation.",
+        "Virtual CTAP2 proof remains labelled physicalHardwareProof:false.",
+        "No disabling MFA or fabricating supported matrix entries."
+      ],
+      "evidenceConfidence": "Software browser evidence dated2026-10-07T09:32:59.560Z; physical device access unavailable to this agent."
+    },
+    {
+      "id": "http2_conformance",
+      "executableNow": false,
+      "requiredNonsecretInputs": {
+        "owner_selected_ingress_provider_escalation_and_parser_attribution": null,
+        "owned_edge_cutover_and_authorized_retest_window": null
+      },
+      "preservedEvidence": [
+        "docs/security-remediation/acceptance-http2-parser.json",
+        "docs/security-remediation/acceptance-http2-transfer-encoding.json"
+      ],
+      "exactObservedResults": {
+        "healthy_frontend_health": 200,
+        "conflicting_content_lengths": "RST_STREAM1 PROTOCOL_ERROR",
+        "content_length_data_mismatch": "RST_STREAM2 INTERNAL_ERROR; strict conformance failed",
+        "forbidden_transfer_encoding": "RST_STREAM1 PROTOCOL_ERROR"
+      },
+      "guardedExecutionSequence": [
+        "Provider/cloud owner attributes emitting GFE/load-balancer/proxy/parser using preserved bounded observations and provider diagnostics.",
+        "Apply supported configuration/component correction if applicable, without inferring the application emitted the reset.",
+        "After reviewed owned-edge cutover, execute separately approved bounded health-only legitimate and malformed controls; retain actual wire resets/frame evidence and emitting-component attribution."
+      ],
+      "requiredInvariants": [
+        "RFC9113 section8.1.1 expects PROTOCOL_ERROR for detected malformed messages.",
+        "Rejected stream proves rejection, not strict correct reset, end-to-end parser path or website exploit.",
+        "No new malformed network probe in this capture; no retroactive regrading."
+      ],
+      "evidenceConfidence": "Preserved exact framing captures only; owner attribution and corrected live conformance remain unavailable."
+    },
+    {
+      "id": "local_snapshot_custody",
+      "executableNow": false,
+      "requiredNonsecretInputs": {
+        "private_owner_content_classification": null,
+        "exact_ref_removal_approval_if_required": null,
+        "unrelated_work_retention_and_physical_storage_purge_plan": null
+      },
+      "preservedEvidence": "docs/security-remediation/acceptance-repository-local-history-scope.json",
+      "exactBlobSha": "5309531af0534c281e4b9cf32de0157766e150b9",
+      "sizeBytes": 57749,
+      "exactRefs": [
+        "refs/codex/turn-diffs/captures/1791364913588/a39e2c74-926b-452c-af0a-d9db61239487/base",
+        "refs/codex/turn-diffs/captures/1791393872941/a2b933c7-3b59-45ed-94db-cf578bc8fb6c/base",
+        "refs/codex/turn-diffs/checkpoints/023390ba53ca11f913c779e528a94993/d275020efef75415843e9a2cb25318ae/1791393013754/19ff47b7-3428-4a80-bae2-f3db210508dc"
+      ],
+      "guardedExecutionSequence": [
+        "Owner privately classifies exact preserved object; no filename/content disclosure by this manifest.",
+        "Preserve unrelated snapshot work and approve exact cleanup scope if necessary.",
+        "After exact approval only, remove specifically authorized refs and perform independently reviewed physical-storage/recovery-copy cleanup.",
+        "Rerun local all-ref custody audit separately from current remote branch/release gate; save actual scope and remaining physical-copy limits."
+      ],
+      "requiredInvariants": [
+        "No content inspection/deletion/ref mutation or history rewrite in this capture.",
+        "Prior inspected remote scopes excluded object; not a claim it was never externally exposed.",
+        "Removing Git ref reachability does not prove physical object destruction."
+      ],
+      "evidenceConfidence": "Historical2026-10-07T19:28:55Z classification UNDETERMINED and exact three local refs; no new inspection or cleanup."
+    }
+  ],
+  "collectorRawSha256": "9c936784eb32e72347731eb75f37f615b4b3bfebaa1862260c204a46c7f9e5a3",
+  "trackedSourceChanges": 0,
+  "testsRun": 0,
+  "cloudMutations": 0,
+  "productionAccessed": false,
+  "secretValuesRead": false,
+  "rawEnvironmentValuesRead": false,
+  "providerCalls": 0,
+  "malformedHttp2NetworkProbes": 0,
+  "physicalHardwareProof": false,
+  "snapshotContentInspected": false,
+  "snapshotRefsRemoved": 0,
+  "obsoleteRevisionsDeleted": 0,
+  "overallSecurityPlanComplete": false,
+  "ownerInputFieldsAreRequestsNotApprovedValues": true,
+  "decision": "Exact nonsecret input/guarded acceptance sequence prepared; no owner-dependent workstream falsely closed"
+}

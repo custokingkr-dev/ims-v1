@@ -1,0 +1,259 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:32:58.282528+00:00",
+  "decision": "LOCAL_EFFECTIVE_TERMINAL_PRIVILEGE_GUARD_PASSED",
+  "phase": "final",
+  "exitCode": 0,
+  "command": "JAVA_HOME=jdk-25.0.3 mvnw.cmd -pl services/school-core-service '-Dtest=IsolatedStudentErasureRecoveryIntegrationTest,RecoveryAuthorizationTest' test",
+  "log": {
+    "path": "tmp/recovery-terminal-acl-final.log",
+    "rawSha256": "e5b1fff6b4856811ec0c6bc7d136f9b0c548785ffe38e3ba7ec63d7bb24d616a",
+    "normalizedLfSha256": "e5b1fff6b4856811ec0c6bc7d136f9b0c548785ffe38e3ba7ec63d7bb24d616a"
+  },
+  "sources": [
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+      "rawSha256": "1e68533c556d757c1f7ad97489b6c89d20c6723afaba8373992dd0f2afe5dde6",
+      "normalizedLfSha256": "5164cf2df01bcb719dad7d8e25f51796d07050c1384b7a672347c33cb1109697"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "rawSha256": "22c50e8900d17fd0bfbfcbc6fed246f5c393d5ff9fb40a85859d7a9301fc30e8",
+      "normalizedLfSha256": "22c50e8900d17fd0bfbfcbc6fed246f5c393d5ff9fb40a85859d7a9301fc30e8"
+    }
+  ],
+  "classes": [
+    {
+      "name": "RecoveryAuthorizationTest",
+      "xmlPath": "tmp/recovery-terminal-acl-final-RecoveryAuthorizationTest.xml",
+      "rawSha256": "ab69e9a8aa751d67bfbbb173d7103bd5aceee98669a28ac5edff1b62d6842bd7",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        {
+          "name": "currentPhysicalEvidenceAgeAndFractionalThresholdsRefused",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "coerciveSchemaFenceAndBooleansRefused",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "sourcePrivateAddressAndWrongPurposeRefused",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "oversizedInFlightAndAliasedPrimaryIpv4Refused",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "wrongSignerAndPlanBodyReject",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "missingGatewayPauseAndInFlightWorkRefused",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "passwordDecodingPreservesSpacesAndRejectsInvalidUtf8OrTerminators",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "ordinaryRuntimeAndCliOverridesCannotEnterBootstrap",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "callerWritableLocalPolicyCannotBecomeProtectedTrustMount",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "duplicateJsonAndUnsupportedProtectedPolicyEnvironmentRefused",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "worldReadableCredentialOrUnisolatedParentRefused",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "exactAgeAndValidityBoundariesAcceptedButFractionalFreezeRefused",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "validExactApprovalAndSeparateFreezeContract",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "shortExpiredAndStaleAttestationsRefused",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        }
+      ]
+    },
+    {
+      "name": "IsolatedStudentErasureRecoveryIntegrationTest",
+      "xmlPath": "tmp/recovery-terminal-acl-final-IsolatedStudentErasureRecoveryIntegrationTest.xml",
+      "rawSha256": "8f47f8275febaa3743146292738a1d97d9b7834ddbb9d69eddad2bd334700af2",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "cases": [
+        {
+          "name": "actualPurposeTlsSourceTransactionCommitsReceiptOutboxPhotoAndDuplicateIsIdempotent",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "terminalEvidenceColumnGrantAtPrecommitRoleRecheckRollsBackSourceWorkflow",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "epochControlChangedAfterSourceWorkRollsBackEveryTerminalWrite",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "mountedPemRawHashAndExistingVerifierDerFingerprintMustBothMatch",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "freezeChangedBeforeCommitRollsBackEntireOwnerWorkflow",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "temporaryDdlPrivilegeRefusesBeforeSourceOrTerminalMutation",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "purposeOwnedTableAndPublicDdlPrivilegeCannotExecute",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "unsafePurposeRoleTlsOrTargetMismatchRefused",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "exactGenerationMissingAndReusedIncarnationRefuseBeforeDelete",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[1]",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[2]",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[3]",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[4]",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[5]",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[6]",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        },
+        {
+          "name": "leaseExpirationDuringSourceTransactionRollsBackChildrenAndTerminalWrites",
+          "failure": false,
+          "error": false,
+          "skipped": false
+        }
+      ]
+    }
+  ],
+  "aggregate": {
+    "tests": 30,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "realLocalPostgreSql": true,
+  "ownerMigrationChains": [
+    "tenant_school",
+    "student",
+    "fee",
+    "attendance"
+  ],
+  "newControlCases": 7,
+  "cloudCalls": 0,
+  "cloudMutations": 0,
+  "liveCloneVerified": false,
+  "wholeRecoveryComplete": false,
+  "globalFreezeEnforced": false,
+  "restorationReady": false,
+  "deliveryResume": false,
+  "scope": "Effective recovery-executor append-only terminal evidence privileges, including an owner column grant after source work before commit; actual local PostgreSQL only.",
+  "preservedInitialProof": {
+    "path": "tmp/recovery-terminal-acl-initial-proof.json",
+    "rawSha256": "f376de5c9d9a20bb66dbdce7bf1d570317c3f71a9e3f87fb325dc23a56553739",
+    "normalizedLfSha256": "f376de5c9d9a20bb66dbdce7bf1d570317c3f71a9e3f87fb325dc23a56553739"
+  },
+  "primaryGuidance": [
+    "https://www.postgresql.org/docs/16/functions-info.html"
+  ]
+}

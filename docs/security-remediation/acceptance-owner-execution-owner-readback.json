@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "scope": "Six exact repository/dev/dedicated dashboard metadata GETs",
+  "capturedAtUtc": "2026-10-09T17:29:23.114136+00:00",
+  "completedAtUtc": "2026-10-09T17:29:29.342282+00:00",
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "records": [
+    {
+      "scope": "github-repository-permission",
+      "checkedAtUtc": "2026-10-09T17:29:23.114136+00:00",
+      "method": "GET",
+      "exitCode": 0,
+      "projectedResponseRawSha256": "7c82e8091e89bb92d54fec5edde0fefc9c8c536649541500ad58ced3375fbd67",
+      "command": [
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1",
+        "--jq",
+        "{permissions:.permissions,defaultBranch:.default_branch}"
+      ],
+      "metadata": {
+        "defaultBranch": "main",
+        "permissions": {
+          "admin": false,
+          "maintain": false,
+          "pull": true,
+          "push": true,
+          "triage": true
+        }
+      },
+      "status": "READ"
+    },
+    {
+      "scope": "github-dev-branch",
+      "checkedAtUtc": "2026-10-09T17:29:23.949617+00:00",
+      "method": "GET",
+      "exitCode": 0,
+      "projectedResponseRawSha256": "25f86b3b3d7bc168ea9c7aa2a5b80fc7dd1525e11b34abd6084aabc257cf3f59",
+      "command": [
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1/branches/dev",
+        "--jq",
+        "{protected:.protected,sha:.commit.sha}"
+      ],
+      "metadata": {
+        "protected": false,
+        "sha": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042"
+      },
+      "status": "READ"
+    },
+    {
+      "scope": "github-dev-classic-protection",
+      "checkedAtUtc": "2026-10-09T17:29:24.528347+00:00",
+      "method": "GET",
+      "exitCode": 1,
+      "projectedResponseRawSha256": "75c603659be44328a1f22ab62601fcc15ab614458ee7c15edcc683798d9877a9",
+      "command": [
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1/branches/dev/protection"
+      ],
+      "status": "NOT_FOUND",
+      "errorTextRetained": false
+    },
+    {
+      "scope": "github-dev-environment",
+      "checkedAtUtc": "2026-10-09T17:29:25.030206+00:00",
+      "method": "GET",
+      "exitCode": 0,
+      "projectedResponseRawSha256": "4ceea684cf8f765575f32e35893205f877cf5c6041fb189eacadb1592c3dc8a1",
+      "command": [
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1/environments/dev",
+        "--jq",
+        "{name:.name,ruleTypes:[.protection_rules[].type],deploymentBranchPolicy:.deployment_branch_policy}"
+      ],
+      "metadata": {
+        "deploymentBranchPolicy": {
+          "custom_branch_policies": true,
+          "protected_branches": false
+        },
+        "name": "dev",
+        "ruleTypes": [
+          "branch_policy"
+        ]
+      },
+      "status": "READ"
+    },
+    {
+      "scope": "dashboard-dedicated-oauth-secret",
+      "checkedAtUtc": "2026-10-09T17:29:25.574938+00:00",
+      "method": "GET",
+      "exitCode": 1,
+      "projectedResponseRawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "command": [
+        "secrets",
+        "describe",
+        "dashboard-oauth-client-secret",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,createTime)"
+      ],
+      "status": "NOT_FOUND",
+      "errorTextRetained": false
+    },
+    {
+      "scope": "dashboard-dedicated-service",
+      "checkedAtUtc": "2026-10-09T17:29:27.345407+00:00",
+      "method": "GET",
+      "exitCode": 1,
+      "projectedResponseRawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "command": [
+        "run",
+        "services",
+        "describe",
+        "custoking-dashboard-dev",
+        "--region=asia-south2",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(metadata.name,status.latestReadyRevisionName)"
+      ],
+      "status": "READ_ERROR",
+      "errorTextRetained": false
+    }
+  ],
+  "exactMetadataCalls": 6,
+  "collectorRawSha256": "22ccea1b9da5c664417ceea75f40eb9e40eb884d54e528714fefc038062170be",
+  "mutations": 0,
+  "secretValuesRead": false,
+  "literalEnvironmentValuesRead": false,
+  "productionAccessed": false,
+  "governanceEnforcementProven": false,
+  "dashboardOAuthDeploymentProven": false,
+  "limits": [
+    "Classic protection 404 is not a complete ruleset inventory; branch protected flag is independently captured.",
+    "CLI failures are not regraded as absence unless NOT_FOUND/404 text was observed.",
+    "Prior edge/network inventories remain explicitly dated; no new broad cloud scan was performed."
+  ]
+}

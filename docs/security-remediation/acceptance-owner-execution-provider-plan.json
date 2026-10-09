@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:32:35.116123+00:00",
+  "clientDate": "2026-10-09",
+  "clientTimezone": "Asia/Calcutta",
+  "reviewedScope": "Account-selected generic EMAIL/WhatsApp submission/report authentication, lost-response UNKNOWN evidence, and existing EMAIL broadcast credential purpose.",
+  "baselineApplicationSha": "bb1e8c3c0c40fcca98cdc1494f20002e381c40d1",
+  "baselinePublicationSha": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+  "sourceChange": {
+    "problem": "A reused effective configured service token and EMAIL broadcast callback token authenticated an otherwise valid callback with HTTP202; metadata access occurred before rejecting the configuration.",
+    "fix": "Constant-time comparison rejects equal normalized configured tokens before request metadata, async admission, body parsing or persistence. Distinct configured credentials still accept reports when live sending is disabled.",
+    "sourcePath": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+    "sourceLfSha256": "f346f134b377c75a690d193be2ab65610fcb11e6a2dd9085bb5a544ec9934abd",
+    "testPath": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java",
+    "testLfSha256": "391b4c91e3b6bf76667cf21664a6a365a5b6eb15fa3189984df401c99bab10b5",
+    "localFocusedAcceptanceComplete": true,
+    "sourceCiAcceptanceComplete": false,
+    "devDeploymentAcceptanceComplete": false,
+    "tests": {
+      "initial": {
+        "path": "tmp/provider-purpose-20261009-initial-proof.json",
+        "rawSha256": "7d60ca85bffb40debe62e121a52bb53dc6f6238aea2f037307d13e72a99867b7",
+        "nativeExit": 1,
+        "counts": {
+          "tests": 15,
+          "failures": 2,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "final": {
+        "path": "tmp/provider-purpose-20261009-final-proof.json",
+        "rawSha256": "c2c313319bdbc3459426bbacbef4212a41c5eead76f56f21095a3d1fbb3bbb65",
+        "nativeExit": 0,
+        "counts": {
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      }
+    },
+    "scopeLimit": "Prepared source fix and actual local regression only; root must obtain exact source CI/CodeQL, merge and dev release acceptance before claiming deployment."
+  },
+  "earlierJsonCapturesRawHashesUnchanged": 206,
+  "accountConfigurationSuppliedDuringTask": false,
+  "missingAccountInputs": [
+    "Named owner and selected MSG91 account/subaccount/channel API versions; no credential values in source, evidence or chat.",
+    "Exact authenticated send-response and configured raw callback field sets/types, event selection and timestamp/offset/precision semantics; minimally redacted account samples preserving types and identifier relationships.",
+    "Which EMAIL requestId/uuid/msgId and WhatsApp requestId/uuid/WAMID identifiers correspond to each submitted reservation, plus account, sender, destination, template/version/language and deterministic correlation binding.",
+    "Account-selected callback authentication mechanism/header name, managed secret reference/version or signature verification contract, dedicated report caller identity and scope. A customizable header alone is not a vendor signature.",
+    "Verified EMAIL sender/domain/template IDs; SMS selected template/API acknowledgment contract; WhatsApp integrated number/template/version/language. No generic EMAIL or WhatsApp receipt profile may be inferred from a broadcast/public sample.",
+    "Explicit bounded dev recipient approvals and evidence of current contact/consent and sender ownership; designated operator incident recipient and exercise approval.",
+    "Reviewed lost-response attestation authority and exact vendor lookup/report binding rules for missing provider IDs; original UNKNOWN reservation must remain quarantined with no automatic resend.",
+    "Confirmed account-specific callback timeout/retry/auto-pause behavior and approved bounded exercise for duplicates, delayed, conflicting and interrupted responses."
+  ],
+  "implementationRemainingAfterInputs": [
+    "Implement exact selected generic EMAIL/WhatsApp submission codecs and authenticated raw report adapters. Reject unknown/duplicate/trailing/coerced fields and unsupported profiles before database reconciliation.",
+    "Bind provider/account/channel/correlation/request/sender/destination/template/time to the immutable existing reservation; do not authorize reports through cross-tenant discovery or caller supplied provider IDs.",
+    "Implement selected authoritative lost-response evidence separately from current UNVERIFIED_OPERATOR_ASSERTION records; no original result rewriting, new reservation, retry or replacement event ID.",
+    "Measure end-to-end callback deadline including buffering and persistence through deployed ingress. Existing body and SQL limits separately are not proof of the vendor callback deadline.",
+    "Exercise real accepted/rejected/delivered/failed/duplicate/conflicting report results and lost responses with bounded approved recipients. Preserve no-resend through idle/restart and obtain actual designated recipient/incident receipt."
+  ],
+  "primaryResearch": [
+    {
+      "url": "https://msg91.com/help/webhook-new/how-to-receive-email-delivery-reports-via-webhook-new",
+      "observed": "EMAIL event selection and callback JSON fields/headers are configurable. Queued/accepted/delivered/opened/failed are different events. Its requestId description depicts a timestamp while the sample depicts a UUID; exact account identifier semantics remain required.",
+      "accountContractEstablished": false
+    },
+    {
+      "url": "https://msg91.com/help/webhook-new/how-to-receive-whatsapp-delivery-reports-via-webhook-new",
+      "observed": "WhatsApp distinguishes outbound request and delivery reports, exposes configurable fields/headers, and identifies duplicate event/WAMID delivery. Its auto-pause section excludes HTTP429 and describes up to five retries for 5xx/429/temporary failures.",
+      "accountContractEstablished": false
+    },
+    {
+      "url": "https://msg91.com/help/webhook-new",
+      "observed": "General Webhook(New) guidance describes an eight-second callback response budget, up to four retries and pausing for 4xx/5xx. The retry/pause description differs from the WhatsApp page; verify selected account/channel behavior instead of choosing one as a proved contract.",
+      "accountContractEstablished": false
+    },
+    {
+      "url": "https://msg91.com/help/webhooks/webhook-logs",
+      "retrieval": "Web tool returned Internal Error on this fresh attempt. Prior dated successful research remains separate; this result cannot establish current account logs or sample payloads."
+    }
+  ],
+  "measurableAcceptancePreparation": [
+    {
+      "command": ".\\mvnw.cmd -pl services/platform-service -Dtest=Msg91BroadcastReportControllerTest test",
+      "purpose": "Focused callback credential-purpose, authentication-before-buffering, strict report parsing and distinct-token kill-switch-off controls.",
+      "executed": true,
+      "expected": "15 tests; zero failures/errors/skips after fix.",
+      "providerReceiptProof": false
+    },
+    {
+      "command": ".\\mvnw.cmd -pl services/platform-service -Dtest=Msg91SmsV3ReportCodecTest,Msg91SmsV3ReportBridgeTest,Msg91SmsV3ReportBridgePostgresTest,GenericNotificationSubmissionWorkerTest,GenericNotificationSubmissionIntegrationTest,GenericNotificationReportIntegrationTest,GenericNotificationReportServiceTest,GenericNotificationReportControllerTest,GenericNotificationReportHttpIntegrationTest test",
+      "purpose": "Broader synthetic/local PostgreSQL exact-binding, tenant, replay, suppression, uncertainty and no-resend regression before source CI.",
+      "executedDuringThisAgentTask": false,
+      "providerReceiptProof": false
+    },
+    {
+      "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/run-dev-broadcast-acceptance.ps1 -StudentId 123 -RunId product-20261009-provider -PolicyEvidenceSource PublicManifest",
+      "purpose": "Existing helper plan output only, without Apply. It performs no cloud/HTTP/provider operations in plan mode; 123 is a plan placeholder rather than an approved fixture.",
+      "executedDuringThisAgentTask": false,
+      "liveSendHelper": false,
+      "providerReceiptProof": false
+    }
+  ],
+  "liveAcceptanceNotRunnableUntilRequiredInputs": true,
+  "providerAndIncidentDeliveryComplete": false,
+  "wholeSavedSecurityPlanComplete": false,
+  "cloudMutations": 0,
+  "providerCalls": 0,
+  "secretValuesRead": false,
+  "liveSendingEnabled": false,
+  "historicalEvidenceOverwritten": false
+}

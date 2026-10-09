@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T18:49:28.020652+00:00",
+  "decision": "PASS_FINAL_PUBLISHED_EVIDENCE_AND_SAVED_RUNTIME_READBACK",
+  "pins": {
+    "tmp/remaining-round-postpublication-runtime-readback.json": "48031c4c0fc85ffa54e4deac461429ae77988851c1622dbb9a763b810a7f94c6",
+    "tmp/remaining-round-postpublication-runtime-final.py": "ab2c66c1e54dbaab8ab294ba16c80ac58d4d2efd5d1247d14ad2cf0a9737a043",
+    "tmp/remaining-round-postpublication-runtime-unset.py": "8a4be1d4d84f4d55b27bc18160eb678d4317c09b65b40bc996b82307bf32077a",
+    "tmp/remaining-round-publication-ci-proof.json": "6357ceeef30b194c0c458b9850e27778a4758295344b4d77c2cc9e6b17bca10b",
+    "tmp/remaining-round-postpublication-integrity.json": "bff2a9b22507dc9c8f906d8713a701e74051cba405ab3a30f03e8237cd023a7f"
+  },
+  "finalExecutorDiff": "Exactly four previously unset pins supplied; all other AST source identical to independently reviewed8a4 adapter.",
+  "publicationSource": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+  "sourceAndDevApplicationSource": "bb1e8c3c0c40fcca98cdc1494f20002e381c40d1",
+  "publicationScope": {
+    "pullRequest": 341,
+    "ciRun": 37825345391,
+    "cdRun": 37826088234,
+    "codeqlRun": 37826087619,
+    "ciJobs": {
+      "total": 12,
+      "success": 9,
+      "expectedSkip": 3
+    },
+    "cdJobs": {
+      "total": 9,
+      "success": 5,
+      "expectedSkip": 4
+    },
+    "noDeployment": true,
+    "soleAcceptedApplicationParentAndCiTreeMatch": true,
+    "codeqlAnalysisIds": [
+      1918265739,
+      1918286072
+    ],
+    "positiveRulesAndZeroResultsErrors": true,
+    "savedScopedDevAlerts": 0
+  },
+  "runtimeScope": {
+    "savedCapturedAtUtc": "2026-10-08T18:46:01.458066+00:00",
+    "knownDevDescribeReads": 14,
+    "servicesReadyAtCurrentAndDesired100": 7,
+    "allAcceptedRevisionsAndDigestsUnchanged": true,
+    "allFiveRolesAndDormantRecoveryMatch": true,
+    "providerJournalAndEdgeInvariantsMatch": true,
+    "newReviewerCloudReads": 0
+  },
+  "preservedScope": {
+    "sourceLfRawPins": 7,
+    "earlierRawCapturePins": 206,
+    "knownPublishedBlobPins": 213,
+    "offlineBlobMatches": {
+      "raw": 78,
+      "lfNormalized": 135
+    },
+    "oldAcceptedProofHashesUnchanged": {
+      "acceptance-remaining-round-dev-release.json": "7c80a89d1a2e2bc54993dd6a272314dfa7f36b5c99324113b9da5f7483d68eab",
+      "acceptance-remaining-round-image-protection.json": "cca8151822339a579625110d9f9016725377ac3289a791e7ac9a577f4404baa1",
+      "acceptance-remaining-round-public-smoke.json": "add782239f0097a569721119b0bd44db7102ad5e071fc5d4aa504b5b157cc312"
+    }
+  },
+  "remainingRoundSourceAndDevAcceptanceComplete": true,
+  "publicationComplete": true,
+  "wholeSavedSecurityPlanComplete": false,
+  "remainingOwnerGroupCount": 9,
+  "additionalOpenFindingCount": 2,
+  "liveProviderOrFullRestoreAcceptanceAdded": false,
+  "newNativeScanOrPackageInventoryAdded": false,
+  "newArtifactOrJobAbsenceEvidenceAdded": false,
+  "blockingFindings": [],
+  "scope": "Independent read-only review of actual final saved workflow/runtime proof, reviewed executor and frozen local bytes. Published blob readback and14 cloud GETs were performed by the accepted executor; reviewer does not repeat or claim independently rerun live calls. Historical dates/failures remain preserved.",
+  "githubCalls": 0,
+  "cloudCalls": 0,
+  "gitCalls": 0,
+  "mavenCalls": 0,
+  "sourceWrites": 0
+}

@@ -5,6 +5,8 @@ import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.persistence.*;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.support.JdbcTransactionManager;
@@ -98,6 +100,46 @@ class IsolatedStudentErasureRecoveryIntegrationTest {
         }finally{
             owner.sql("REVOKE TEMPORARY ON DATABASE custoking_dev FROM ims_dev_restore_executor").update();
         }
+        assertThat(source(f.student)).isOne();
+        assertThat(count("fee.payment_records",f.student)).isOne();
+        assertThat(count("student.student_enrollments",f.student)).isOne();
+        assertThat(count("student.erasure_journal_receipts",f.student)).isZero();
+        assertThat(count("tenant_school.photo_cleanup_outbox",f.student)).isZero();
+        assertThat(owner.sql("SELECT count(*)FROM tenant_school.outbox_events WHERE event_key=:key")
+                .param("key","StudentDeleted:"+f.student).query(Long.class).single()).isZero();
+    }
+    @ParameterizedTest
+    @ValueSource(strings={
+        "UPDATE ON student.erasure_journal_receipts",
+        "UPDATE (committed_at) ON student.erasure_journal_receipts",
+        "DELETE ON student.erasure_journal_receipts",
+        "TRUNCATE ON student.erasure_journal_receipts",
+        "DELETE ON tenant_school.photo_cleanup_outbox",
+        "TRUNCATE ON tenant_school.photo_cleanup_outbox"
+    })
+    void mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String privilege)throws Exception {
+        Fixture f=fixture();
+        owner.sql("GRANT "+privilege+" TO ims_dev_restore_executor").update();
+        try(var e=executor(f)){
+            assertThatThrownBy(e::execute).as(privilege).isInstanceOf(IllegalStateException.class);
+        }finally{
+            owner.sql("REVOKE "+privilege+" FROM ims_dev_restore_executor").update();
+        }
+        assertSourceAndTerminalWritesRolledBack(f);
+    }
+    @Test void terminalEvidenceColumnGrantAtPrecommitRoleRecheckRollsBackSourceWorkflow()throws Exception {
+        Fixture f=fixture();
+        f.inputs.store.onFreezeRead=()->{if(f.inputs.store.freezeReads==2)
+            owner.sql("GRANT UPDATE (committed_at) ON student.erasure_journal_receipts TO ims_dev_restore_executor").update();
+        };
+        try(var e=executor(f)){
+            assertThatThrownBy(e::execute).isInstanceOf(IllegalStateException.class);
+        }finally{
+            owner.sql("REVOKE UPDATE (committed_at) ON student.erasure_journal_receipts FROM ims_dev_restore_executor").update();
+        }
+        assertSourceAndTerminalWritesRolledBack(f);
+    }
+    private void assertSourceAndTerminalWritesRolledBack(Fixture f){
         assertThat(source(f.student)).isOne();
         assertThat(count("fee.payment_records",f.student)).isOne();
         assertThat(count("student.student_enrollments",f.student)).isOne();

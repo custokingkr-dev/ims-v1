@@ -86,6 +86,8 @@ jobs:
         run: node --test scripts/tests/signed_transport_probe.test.cjs
       - name: Test immutable GitHub governance check verification
         run: python3 -m unittest scripts.tests.test_verify_github_governance_checks
+      - name: Test explicit dashboard release target and publication controls without Docker
+        run: python3 -m unittest scripts.tests.dashboard_release_test
       - name: Test offline GCP governance audits
         run: python3 -m unittest scripts.tests.test_export_gcp_asset_drift scripts.tests.test_audit_gcp_observability scripts.tests.test_validate_gcp_governance_audit_enablement
       - name: Verify digest-bound image User and database catalog evidence rejection

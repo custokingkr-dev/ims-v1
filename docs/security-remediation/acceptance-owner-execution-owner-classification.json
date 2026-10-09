@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-09T17:38:16.911124+00:00",
+  "scope": "One exact dedicated custoking-dashboard-dev metadata GET to classify prior CLI failure",
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "exitCode": 1,
+  "classification": "NOT_FOUND",
+  "metadataReadOnly": true,
+  "errorTextRetained": false,
+  "secretValuesRead": false,
+  "cloudMutations": 0,
+  "productionAccessed": false,
+  "exactMetadataCalls": 1,
+  "priorReadbackRawSha256": "0ff23da2b25f36c1da4e59bd907c2953c0f2b97713a9ce87180b705b7210e9ec"
+}

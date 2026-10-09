@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:45:02.733321+00:00",
+  "reviewer": "/root/recovery_remaining_execution",
+  "independentReview": true,
+  "testsExecutedByReviewer": 0,
+  "dockerCallsByReviewer": 0,
+  "cloudCallsByReviewer": 0,
+  "historicalEvidenceManifest": {
+    "path": "tmp/remaining-round-postpublication-integrity.json",
+    "rawSha256": "bff2a9b22507dc9c8f906d8713a701e74051cba405ab3a30f03e8237cd023a7f",
+    "normalizedLfSha256": "bff2a9b22507dc9c8f906d8713a701e74051cba405ab3a30f03e8237cd023a7f"
+  },
+  "historical206RawHashesUnchanged": true,
+  "linuxCiActualAcceptancePending": true,
+  "decision": "CHANGES_REQUIRED",
+  "historicalReview": true,
+  "reviewedSourceBindings": [
+    {
+      "path": "tools/live-dashboard/release.sh",
+      "normalizedLfSha256": "b1a3906713e33ed80234bed6290fd44aac08a6baac573fc80622ac18d0159e32"
+    },
+    {
+      "path": "scripts/tests/dashboard_release_test.py",
+      "normalizedLfSha256": "e0d0cf08d7054848712eea18c36e8c6de38d65d94341a3065d79e299127298ca"
+    }
+  ],
+  "reviewedOldBytesVerifiedByExactInverseFixProjection": true,
+  "proofAndLogBindings": [
+    {
+      "path": "tmp/dashboard-release-safety-initial-20261009.json",
+      "rawSha256": "f1f05527795355f777572ef2db6129b8986e723ea12ecb40c1ae94ee56bc8405",
+      "normalizedLfSha256": "91f6ee4c20b4cde55852b9e1030e5bd68e22a6c6b3d0f6039eeb68885272e0db"
+    },
+    {
+      "path": "tmp/dashboard-release-safety-fixed-20261009.json",
+      "rawSha256": "d2548eb7078a4b49a7aa8c6e7b1043e43cb6b67fca96fecee687c81f1b8bbeb0",
+      "normalizedLfSha256": "47a778bd014b412bbe82500f74458aceb4903c07a1f3640fdb30f1ce56cbcab3"
+    },
+    {
+      "path": "tmp\\dashboard-release-safety-initial-20261009.log",
+      "rawSha256": "4c13f4023200651acbcd9bea11e60f0de51ab4d0479663cabfca59f21e1a88b0",
+      "normalizedLfSha256": "4c13f4023200651acbcd9bea11e60f0de51ab4d0479663cabfca59f21e1a88b0"
+    },
+    {
+      "path": "tmp/collect-dashboard-release-safety-proof-20261009.py",
+      "rawSha256": "e349d43811b14d9b9f81d342e2d5b7434ba9000e765cf6b04ea754afafc243b9",
+      "normalizedLfSha256": "e349d43811b14d9b9f81d342e2d5b7434ba9000e765cf6b04ea754afafc243b9"
+    },
+    {
+      "path": "tmp\\dashboard-release-safety-fixed-20261009.log",
+      "rawSha256": "9a516e5a8925bb98ab33bdda6db949761694802f1ce173ca1f0c8bd589671ad7",
+      "normalizedLfSha256": "9a516e5a8925bb98ab33bdda6db949761694802f1ce173ca1f0c8bd589671ad7"
+    },
+    {
+      "path": "tmp/collect-dashboard-release-safety-proof-20261009.py",
+      "rawSha256": "e349d43811b14d9b9f81d342e2d5b7434ba9000e765cf6b04ea754afafc243b9",
+      "normalizedLfSha256": "e349d43811b14d9b9f81d342e2d5b7434ba9000e765cf6b04ea754afafc243b9"
+    }
+  ],
+  "blockers": [
+    {
+      "path": "tools/live-dashboard/release.sh",
+      "line": 133,
+      "issue": "Longest suffix extraction accepted a malformed selected-repository reference containing another @sha256: delimiter.",
+      "example": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-dashboard@sha256:malformed@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "requiredFix": "Remove the exact selected repository prefix, then validate the entire remainder as precisely64 lowercasehex. Add nested-delimiter fake-Docker rejection."
+    }
+  ],
+  "scope": "Historical peer review of source b1a390 and test e0d0cf at the original eleven-pass checkpoint; superseded by a separate corrected review."
+}
