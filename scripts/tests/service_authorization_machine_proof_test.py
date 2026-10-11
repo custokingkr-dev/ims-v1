@@ -14,6 +14,9 @@ class MachineProofAuditTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="ims-auth-proof-")
         self.root = pathlib.Path(self.temp.name)
+        self.copy(ROOT / "services/api-gateway/routing.js")
+        for name in ("authentication.js", "quota.js", "transport.js"):
+            self.copy(ROOT / "services/api-gateway" / name)
         for path in ROOT.glob("services/*-service/src/main/java/**/MachineCallerFilter.java"):
             self.copy(path)
         names = {"OutboxRelayTriggerController.java", "AsyncWorkTriggerController.java", "PasswordResetDrainController.java", "IdentityDirectoryController.java", "TenantSchoolClient.java", "GenericNotificationReportController.java", "NotificationReportAuthority.java", "GoogleIdentityTokenVerifier.java"}
@@ -27,6 +30,7 @@ class MachineProofAuditTest(unittest.TestCase):
     def audit(self):
         return subprocess.run([POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts/audit-service-authorization-boundaries.ps1"),
             "-GatewayTemplate", str(ROOT / "services/api-gateway/server.js"), "-ComposeFile", str(ROOT / "docker-compose.yml"),
+            "-GatewayRoutesTemplate", str(self.root / "services/api-gateway/routing.js"),
             "-CloudRunDirectory", str(ROOT / "deploy/cloudrun"), "-AsyncSchedulerScript", str(ROOT / "scripts/configure-async-relay-scheduler.ps1")],
             cwd=self.root, capture_output=True, text=True, timeout=30)
     def alter(self, name, before, after):
@@ -35,9 +39,32 @@ class MachineProofAuditTest(unittest.TestCase):
         path.write_text(path.read_text().replace(before, after))
     def test_reviewed_exact_machine_capabilities_pass(self):
         result = self.audit(); self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+    def test_internal_routes_added_to_routing_module_cannot_bypass_gateway_audit(self):
+        path = self.root / "services/api-gateway/routing.js"
+        original = path.read_text(encoding="utf-8")
+        for route, message in [
+            ("/api/v1/internal/outbox/relay", "exposed through the API gateway"),
+            ("/api/v1/internal/notifications/reports/reconcile", "gateway-exposed"),
+        ]:
+            with self.subTest(route=route):
+                path.write_text(original.replace("const routes = [", "const routes = [\n  route('notification', '" + route + "'),"), encoding="utf-8")
+                result = self.audit()
+                self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn(message, result.stdout)
+        path.write_text(original, encoding="utf-8")
     def test_missing_signature_verification_fails(self):
         self.alter("MachineCallerFilter.java", "GOOGLE.verify(token)", "unverified(token)")
         result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("proof missing", result.stdout)
+    def test_internal_routes_in_extracted_policy_modules_cannot_bypass_gateway_audit(self):
+        for name in ("authentication.js", "quota.js", "transport.js"):
+            with self.subTest(module=name):
+                path = self.root / "services/api-gateway" / name
+                original = path.read_text(encoding="utf-8")
+                path.write_text(original + "\nconst exposed = '/api/v1/internal/outbox/relay';\n", encoding="utf-8")
+                result = self.audit()
+                self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn("exposed through the API gateway", result.stdout)
+                path.write_text(original, encoding="utf-8")
     def test_missing_independent_carrier_fails(self):
         self.alter("MachineCallerFilter.java", "X-IMS-Principal-Carrier-Token", "X-Untrusted-Header")
         result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("carrier proof missing", result.stdout)

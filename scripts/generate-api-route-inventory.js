@@ -5,122 +5,123 @@ const path = require('node:path');
 
 const repositoryRoot = path.resolve(__dirname, '..');
 const outputPath = path.join(repositoryRoot, 'services', 'api-gateway', 'api-route-inventory.json');
-const checkOnly = process.argv.includes('--check');
 
-const serviceDirectories = fs.readdirSync(path.join(repositoryRoot, 'services'), { withFileTypes: true })
-  .filter((entry) => entry.isDirectory() && entry.name.endsWith('-service'))
-  .map((entry) => entry.name)
-  .sort();
+function main(checkOnly = false) {
+  const serviceDirectories = fs.readdirSync(path.join(repositoryRoot, 'services'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name.endsWith('-service'))
+    .map((entry) => entry.name)
+    .sort();
 
-const endpoints = [];
-const controllers = [];
+  const endpoints = [];
+  const controllers = [];
 
-for (const service of serviceDirectories) {
-  const javaRoot = path.join(repositoryRoot, 'services', service, 'src', 'main', 'java');
-  if (!fs.existsSync(javaRoot)) continue;
-  for (const file of walk(javaRoot).filter((candidate) => candidate.endsWith('.java'))) {
-    const source = fs.readFileSync(file, 'utf8');
-    const classMatch = /\b(?:public\s+)?(?:final\s+)?class\s+([A-Za-z_$][\w$]*)/.exec(source);
-    if (!classMatch) continue;
-    const annotations = mappingAnnotations(source);
-    if (!annotations.length) continue;
+  for (const service of serviceDirectories) {
+    const javaRoot = path.join(repositoryRoot, 'services', service, 'src', 'main', 'java');
+    if (!fs.existsSync(javaRoot)) continue;
+    for (const file of walk(javaRoot).filter((candidate) => candidate.endsWith('.java'))) {
+      const source = fs.readFileSync(file, 'utf8');
+      const classMatch = /\b(?:public\s+)?(?:final\s+)?class\s+([A-Za-z_$][\w$]*)/.exec(source);
+      if (!classMatch) continue;
+      const annotations = mappingAnnotations(source);
+      if (!annotations.length) continue;
 
-    const relativeSource = path.relative(repositoryRoot, file).replaceAll(path.sep, '/');
-    const classPosition = classMatch.index;
-    const classMappings = annotations.filter((annotation) => annotation.index < classPosition);
-    const methodMappings = annotations.filter((annotation) => annotation.index > classPosition);
-    const basePaths = classMappings.length
-      ? unique(classMappings.flatMap((annotation) => annotation.paths))
-      : [''];
-    const classification = relativeSource.includes('/api/compat/')
-      ? 'compatibility'
-      : relativeSource.includes('/api/internal/')
-        ? 'internal'
-        : 'canonical';
+      const relativeSource = path.relative(repositoryRoot, file).replaceAll(path.sep, '/');
+      const classPosition = classMatch.index;
+      const classMappings = annotations.filter((annotation) => annotation.index < classPosition);
+      const methodMappings = annotations.filter((annotation) => annotation.index > classPosition);
+      const basePaths = classMappings.length
+        ? unique(classMappings.flatMap((annotation) => annotation.paths))
+        : [''];
+      const classification = relativeSource.includes('/api/compat/')
+        ? 'compatibility'
+        : relativeSource.includes('/api/internal/')
+          ? 'internal'
+          : 'canonical';
 
-    let endpointCount = 0;
-    for (const annotation of methodMappings) {
-      const methods = annotation.methods.length ? annotation.methods : ['ANY'];
-      for (const basePath of basePaths) {
-        for (const localPath of annotation.paths) {
-          for (const method of methods) {
-            endpoints.push({
-              service,
-              controller: classMatch[1],
-              method,
-              path: joinPaths(basePath, localPath),
-              classification,
-              source: relativeSource,
-              line: lineNumberAt(source, annotation.index),
-            });
-            endpointCount += 1;
+      let endpointCount = 0;
+      for (const annotation of methodMappings) {
+        const methods = annotation.methods.length ? annotation.methods : ['ANY'];
+        for (const basePath of basePaths) {
+          for (const localPath of annotation.paths) {
+            for (const method of methods) {
+              endpoints.push({
+                service,
+                controller: classMatch[1],
+                method,
+                path: joinPaths(basePath, localPath),
+                classification,
+                source: relativeSource,
+                line: lineNumberAt(source, annotation.index),
+              });
+              endpointCount += 1;
+            }
           }
         }
       }
+
+      controllers.push({
+        service,
+        controller: classMatch[1],
+        classification,
+        basePaths,
+        endpointCount,
+        source: relativeSource,
+      });
     }
-
-    controllers.push({
-      service,
-      controller: classMatch[1],
-      classification,
-      basePaths,
-      endpointCount,
-      source: relativeSource,
-    });
   }
-}
 
-endpoints.sort(compareBy('service', 'path', 'method', 'controller'));
-controllers.sort(compareBy('service', 'controller'));
+  endpoints.sort(compareBy('service', 'path', 'method', 'controller'));
+  controllers.sort(compareBy('service', 'controller'));
 
-const gatewayRoutes = parseGatewayRoutes(path.join(repositoryRoot, 'services', 'api-gateway', 'server.js'));
-const diagnosticAliases = gatewayRoutes
-  .filter((route) => route.kind === 'diagnostic-alias')
-  .map((route) => ({
-    id: `diagnostic:${route.service}`,
-    service: route.service,
-    prefix: route.matcher,
-    classification: 'compatibility',
-    successorTemplate: `/api/v1/{remainder}`,
-  }));
+  const gatewayRoutes = parseGatewayRoutes(path.join(repositoryRoot, 'services', 'api-gateway', 'routing.js'));
+  const diagnosticAliases = gatewayRoutes
+    .filter((route) => route.kind === 'diagnostic-alias')
+    .map((route) => ({
+      id: `diagnostic:${route.service}`,
+      service: route.service,
+      prefix: route.matcher,
+      classification: 'compatibility',
+      successorTemplate: `/api/v1/{remainder}`,
+    }));
 
-const compatibilityEndpoints = endpoints.filter((endpoint) => endpoint.classification === 'compatibility');
-const clientMigrationReferences = findFrontendCompatibilityReferences(compatibilityEndpoints);
-const inventory = {
-  schemaVersion: 1,
-  kind: 'ims-api-route-inventory',
-  description: 'Generated from Spring MVC controller annotations. Paths describe routing contracts, not request/response schemas.',
-  sourceRoots: serviceDirectories.map((service) => `services/${service}/src/main/java`),
-  summary: {
-    services: serviceDirectories.length,
-    controllers: controllers.length,
-    endpoints: endpoints.length,
-    canonicalEndpoints: endpoints.filter((endpoint) => endpoint.classification === 'canonical').length,
-    compatibilityEndpoints: compatibilityEndpoints.length,
-    internalEndpoints: endpoints.filter((endpoint) => endpoint.classification === 'internal').length,
-    diagnosticAliases: diagnosticAliases.length,
-    gatewayRoutes: gatewayRoutes.length,
-    frontendCompatibilityCalls: clientMigrationReferences.length,
-    frontendCompatibilityFiles: unique(clientMigrationReferences.map((reference) => reference.source)).length,
-  },
-  diagnosticAliases,
-  gatewayRoutes,
-  clientMigrationReferences,
-  controllers,
-  endpoints,
-};
+  const compatibilityEndpoints = endpoints.filter((endpoint) => endpoint.classification === 'compatibility');
+  const clientMigrationReferences = findFrontendCompatibilityReferences(compatibilityEndpoints);
+  const inventory = {
+    schemaVersion: 1,
+    kind: 'ims-api-route-inventory',
+    description: 'Generated from Spring MVC controller annotations. Paths describe routing contracts, not request/response schemas.',
+    sourceRoots: serviceDirectories.map((service) => `services/${service}/src/main/java`),
+    summary: {
+      services: serviceDirectories.length,
+      controllers: controllers.length,
+      endpoints: endpoints.length,
+      canonicalEndpoints: endpoints.filter((endpoint) => endpoint.classification === 'canonical').length,
+      compatibilityEndpoints: compatibilityEndpoints.length,
+      internalEndpoints: endpoints.filter((endpoint) => endpoint.classification === 'internal').length,
+      diagnosticAliases: diagnosticAliases.length,
+      gatewayRoutes: gatewayRoutes.length,
+      frontendCompatibilityCalls: clientMigrationReferences.length,
+      frontendCompatibilityFiles: unique(clientMigrationReferences.map((reference) => reference.source)).length,
+    },
+    diagnosticAliases,
+    gatewayRoutes,
+    clientMigrationReferences,
+    controllers,
+    endpoints,
+  };
 
-const rendered = `${JSON.stringify(inventory, null, 2)}\n`;
-if (checkOnly) {
-  const current = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf8') : '';
-  if (current.replace(/\r\n/g, '\n') !== rendered) {
-    console.error(`API route inventory is stale. Run: node ${path.relative(repositoryRoot, __filename)}`);
-    process.exit(1);
+  const rendered = `${JSON.stringify(inventory, null, 2)}\n`;
+  if (checkOnly) {
+    const current = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf8') : '';
+    if (current.replace(/\r\n/g, '\n') !== rendered) {
+      console.error(`API route inventory is stale. Run: node ${path.relative(repositoryRoot, __filename)}`);
+      process.exit(1);
+    }
+    console.log(`API route inventory is current: ${inventory.summary.endpoints} endpoints, ${inventory.summary.compatibilityEndpoints} compatibility mappings, ${inventory.summary.diagnosticAliases} diagnostic aliases.`);
+  } else {
+    fs.writeFileSync(outputPath, rendered);
+    console.log(`Wrote ${path.relative(repositoryRoot, outputPath)} with ${inventory.summary.endpoints} endpoints.`);
   }
-  console.log(`API route inventory is current: ${inventory.summary.endpoints} endpoints, ${inventory.summary.compatibilityEndpoints} compatibility mappings, ${inventory.summary.diagnosticAliases} diagnostic aliases.`);
-} else {
-  fs.writeFileSync(outputPath, rendered);
-  console.log(`Wrote ${path.relative(repositoryRoot, outputPath)} with ${inventory.summary.endpoints} endpoints.`);
 }
 
 function walk(directory) {
@@ -179,9 +180,38 @@ function balancedClose(source, open) {
 
 function pathExpression(body) {
   if (!body) return '';
-  const named = /(?:^|,)\s*(?:value|path)\s*=\s*/m.exec(body);
-  if (named) return body.slice(named.index + named[0].length).split(/,\s*(?:consumes|produces|params|headers|method)\s*=/m, 1)[0];
-  return body.split(/,\s*(?:consumes|produces|params|headers|method)\s*=/m, 1)[0];
+  for (const argument of annotationArguments(body)) {
+    const namedPath = /^(?:value|path)\s*=\s*([\s\S]*)$/.exec(argument);
+    if (namedPath) return namedPath[1];
+    // An unnamed literal/array is Spring's shorthand for value. Other named
+    // attributes (including a pathless consumes/produces) never define a URL.
+    if (/^(?:"|\{)/.test(argument)) return argument;
+  }
+  return '';
+}
+
+function annotationArguments(body) {
+  const parts = [];
+  let start = 0;
+  let depth = 0;
+  let quoted = false;
+  let escaped = false;
+  for (let index = 0; index < body.length; index += 1) {
+    const character = body[index];
+    if (quoted) {
+      if (escaped) escaped = false;
+      else if (character === '\\') escaped = true;
+      else if (character === '"') quoted = false;
+    } else if (character === '"') quoted = true;
+    else if ('{[('.includes(character)) depth += 1;
+    else if ('}])'.includes(character)) depth -= 1;
+    else if (character === ',' && depth === 0) {
+      parts.push(body.slice(start, index).trim());
+      start = index + 1;
+    }
+  }
+  parts.push(body.slice(start).trim());
+  return parts;
 }
 
 function quotedStrings(expression) {
@@ -224,6 +254,7 @@ function compareBy(...keys) {
 
 function parseGatewayRoutes(file) {
   const source = fs.readFileSync(file, 'utf8');
+  const relativeSource = path.relative(repositoryRoot, file).replaceAll(path.sep, '/');
   const routesBlock = /const routes = \[([\s\S]*?)\n\];/.exec(source);
   if (!routesBlock) throw new Error('Could not find gateway routes declaration');
   const blockStart = routesBlock.index + routesBlock[0].indexOf(routesBlock[1]);
@@ -242,7 +273,7 @@ function parseGatewayRoutes(file) {
         methods: routeMatch[3]
           ? [...routeMatch[3].matchAll(/'([^']+)'/g)].map((match) => match[1])
           : ['ANY'],
-        source: 'services/api-gateway/server.js',
+        source: relativeSource,
         line: lineNumberAt(source, blockStart) + offset,
       });
       continue;
@@ -257,7 +288,7 @@ function parseGatewayRoutes(file) {
         matcher: diagnosticMatch[2],
         methods: ['ANY'],
         rewritePrefix: '/api/v1/',
-        source: 'services/api-gateway/server.js',
+        source: relativeSource,
         line: lineNumberAt(source, blockStart) + offset,
       });
       continue;
@@ -308,3 +339,7 @@ function findFrontendCompatibilityReferences(compatibilityMappings) {
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+if (require.main === module) main(process.argv.includes('--check'));
+
+module.exports = { mappingAnnotations, parseGatewayRoutes };

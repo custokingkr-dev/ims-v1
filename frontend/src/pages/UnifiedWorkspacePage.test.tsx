@@ -3,14 +3,19 @@ import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import UnifiedWorkspacePage from './UnifiedWorkspacePage';
 import api from '../services/api';
+import { useDraftDirty, useWorkspaceDraft } from './workspace/WorkspaceDrafts';
 
-const state = vi.hoisted(() => ({ user: { userId: 1, branchId: 7, zoneId: null as number | null, role: 'ADMIN', fullName: 'School admin' }, permissions: ['student:read', 'student:create'], modules: ['ERP'] }));
+const state = vi.hoisted(() => ({ user: { userId: 1, branchId: 7, zoneId: null as number | null, role: 'ADMIN', fullName: 'School admin' }, permissions: ['student:read', 'student:create'], modules: ['ERP'], logout: vi.fn() }));
 vi.mock('../services/api');
-vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ user: state.user, logout: vi.fn() }) }));
+vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ user: state.user, logout: state.logout }) }));
 vi.mock('../hooks/usePermissions', () => ({ usePermissions: () => ({ can: (code: string) => state.permissions.includes(code), canAny: (codes: string[]) => codes.some(code => state.permissions.includes(code)) }) }));
 vi.mock('./workspace/panels/HomePanel', () => ({ HomePanel: () => <p>School dashboard content</p> }));
 vi.mock('./workspace/panels/StudentsPanel', () => ({ StudentsPanel: ({ setPanel }: { setPanel: (key: string) => void }) => <button onClick={() => setPanel('addstudent')}>Start admission</button> }));
-vi.mock('./workspace/panels/AddStudentPanel', () => ({ AddStudentPanel: () => <p>Admission form content</p> }));
+vi.mock('./workspace/panels/AddStudentPanel', () => ({ AddStudentPanel: () => {
+  const [name, setName] = useWorkspaceDraft('test-admission', '');
+  useDraftDirty('test-admission', !!name);
+  return <><p>Admission form content</p><input aria-label="Draft student name" value={name} onChange={event => setName(event.target.value)} /></>;
+} }));
 
 function LocationControls() {
   const location = useLocation();
@@ -20,9 +25,10 @@ function LocationControls() {
 function mount(url: string) {
   return render(<MemoryRouter initialEntries={[url]}><LocationControls /><UnifiedWorkspacePage /></MemoryRouter>);
 }
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 beforeEach(() => {
   localStorage.clear();
+  state.logout.mockClear();
   state.user = { userId: 1, branchId: 7, zoneId: null, role: 'ADMIN', fullName: 'School admin' };
   state.permissions = ['student:read', 'student:create'];
   state.modules = ['ERP'];
@@ -31,6 +37,21 @@ beforeEach(() => {
 });
 
 describe('task-addressable workspace navigation', () => {
+  it('retains unsaved admission across task navigation and honors a cancelled sign-out', async () => {
+    mount('/dashboard?panel=addstudent');
+    fireEvent.change(await screen.findByLabelText('Draft student name'), { target: { value: 'Unfinished admission' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Students' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Start admission' }));
+    expect(await screen.findByLabelText('Draft student name')).toHaveValue('Unfinished admission');
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(state.logout).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Current URL')).toHaveTextContent('?panel=addstudent');
+    const refresh = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(refresh);
+    expect(refresh.defaultPrevented).toBe(true);
+  });
   it('restores a bookmarked panel, writes task URLs, and honors browser Back', async () => {
     mount('/dashboard?panel=students');
     fireEvent.click(await screen.findByRole('button', { name: 'Start admission' }));

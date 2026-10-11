@@ -5,7 +5,7 @@ and `node scripts/generate-openapi-typescript-client.js --check` in verification
 The route inventory must first be current (`node scripts/generate-api-route-inventory.js`).
 The always-run CI architecture job checks generation and the generator/routing tests.
 
-Current coverage is **52 canonical operations across 11 contract files/clients**:
+Current coverage is **58 canonical operations across 11 contract files/clients**:
 
 | Contract | Operations | Covered workflow |
 | --- | ---: | --- |
@@ -17,7 +17,7 @@ Current coverage is **52 canonical operations across 11 contract files/clients**
 | Broadcasts | 8 | Draft/list, capabilities, preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
 | Quotation documents | 4 | Capabilities, multipart upload, authenticated download, removal |
 | Catalog | 6 | Paginated order read, scoped statistics, guarded status/delivery, annual-plan review/confirmation |
-| Reporting | 1 | Workspace dashboard envelope |
+| Reporting | 7 | Workspace, command-center dashboard, fee defaulters, low-attendance sections/students, vendor dues and reorder signals |
 | Firefighting creation | 2 | Stable-key request and quotation creation |
 | Workflow decisions | 3 | Read versioned instance, approve and reject with required reviewed expectedVersion |
 
@@ -26,6 +26,13 @@ controller. Legacy report row extensions and receipt detail fields remain explic
 extensible objects; payment results, upload metadata, attendance registers, billing
 totals and broadcast policy/outcome envelopes have named fields. Runtime validation
 still belongs to the server and existing frontend response parsers.
+
+The reporting drilldowns use the shared authenticated Axios transport and retain optional school,
+date, fee-filter and pagination parameters. Section identifiers are encoded once in the path.
+Nullable projected vendor timestamps remain nullable in the contract and browser types.
+Serialized server-response checks cover all six added endpoints, alongside negative tests for
+cross-school requests, missing permissions and invalid service tokens. Existing PostgreSQL/RLS
+tests verify the underlying query behavior; generated clients do not retry denied requests.
 
 Each specification declares its owning service/controller and gateway service.
 Per-operation controller overrides are supported. Generation rejects aliases,

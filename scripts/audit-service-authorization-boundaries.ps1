@@ -3,7 +3,9 @@ param(
     [string]$GatewayTemplate = "services/api-gateway/server.js",
     [string]$ComposeFile = "docker-compose.yml",
     [string]$CloudRunDirectory = "deploy/cloudrun",
-    [string]$AsyncSchedulerScript = "scripts/configure-async-relay-scheduler.ps1"
+    [string]$AsyncSchedulerScript = "scripts/configure-async-relay-scheduler.ps1",
+    [string]$GatewayRoutesTemplate = "services/api-gateway/routing.js",
+    [string[]]$GatewayPolicyTemplates = @("services/api-gateway/authentication.js", "services/api-gateway/quota.js", "services/api-gateway/transport.js")
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,6 +30,10 @@ function Normalize-JavaContract {
 
 $violations = New-Object System.Collections.Generic.List[string]
 $gateway = Read-RequiredFile $GatewayTemplate
+$gateway += "`n" + (Read-RequiredFile $GatewayRoutesTemplate)
+foreach ($policyTemplate in $GatewayPolicyTemplates) {
+    $gateway += "`n" + (Read-RequiredFile $policyTemplate)
+}
 $compose = Read-RequiredFile $ComposeFile
 $cloudRun = (Get-ChildItem -Path $CloudRunDirectory -Filter "*.yaml" -File |
     ForEach-Object { Get-Content -Raw -Path $_.FullName }) -join "`n"
