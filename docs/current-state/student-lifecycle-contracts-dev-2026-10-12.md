@@ -34,7 +34,42 @@ Local controller, PostgreSQL lifecycle/outbox and reused-connection RLS checks p
 skipped rows, completed-token replay, progress, promotion items/batches, empty/active review
 status, nullable review items/pages, verification summaries and confirmed erasure serialization.
 Generator, inventory and gateway contract checks passed for all 83 operations. The full frontend suite passed (462 tests), and the frontend TypeScript/build check passed.
-Affected CI, exact-image release evidence and live dev acceptance are recorded below when complete.
+[PR #347](https://github.com/custokingkr-dev/ims-v1/pull/347) merged as
+`5132f4d5452e83a4d4c3b5a6f3c91a92ad0839ac`, tree
+`fa25ee75d7007d185f8097a78063cd601792cf88`. [CI 38180811513](https://github.com/custokingkr-dev/ims-v1/actions/runs/38180811513)
+and [dev release 38181290903](https://github.com/custokingkr-dev/ims-v1/actions/runs/38181290903)
+passed 995 school tests (zero skips), 462 frontend tests, 116 authenticated browser tests and
+108 gateway tests. Both source and post-merge CodeQL runs have two actual language uploads
+with zero results. The accepted source matches the tested tree.
+
+Independent readback accepted these changed runtimes against exact release manifest digests:
+
+| Service | Ready revision | Traffic |
+| --- | --- | ---: |
+| Frontend | `custoking-frontend-dev-00059-fkc` | 100% |
+| School-core | `custoking-school-core-service-dev-00081-8fv` | 100% |
+| Gateway | `custoking-api-gateway-dev-00040-nwh` | 100% |
+
+The other four services retain their exact prior revision, image and selected configuration.
+All seven are Ready with sole untagged 100% traffic. Five runtime database roles and disabled
+runtime migrations remain guarded. Matching snapshots bracket 19 passing anonymous/forged
+access-denial requests and full security-header/CSP/browser checks on both exact dev origins.
+The frontend and gateway image manifests/config hashes verify configured nonroot users
+`nginx` and `node`; this establishes image configuration, not an observed process UID.
+
+Fresh exact-digest HIGH/CRITICAL gates passed. Full scans report frontend 0, gateway 0 and
+school-core 16 findings (12 MEDIUM, 4 LOW, ten unique CVEs). All sixteen package/version/CVE
+rows are saved in the [acceptance evidence](../security-remediation/acceptance-student-lifecycle-dev-2026-10-12.json).
+The scanner reports blank fixed-version values; this does not establish vendor fix availability
+or applicability. The retained platform image and its earlier findings keep their separate dated
+[evidence](../security-remediation/acceptance-architecture-native-findings-2026-10-12.json).
+The native fix plan remains: review each installed version against authoritative vendor
+advisories, assess the actual runtime path, apply supported fixes, and rerun the exact-image
+and application gates. No advisory applicability is closed by the image threshold gate.
+
+Production was not deployed. Anonymous live checks establish their stated ingress/header
+behavior; authenticated student mutations were exercised against synthetic local/CI fixtures,
+not real dev student records.
 
 ## Remaining work
 

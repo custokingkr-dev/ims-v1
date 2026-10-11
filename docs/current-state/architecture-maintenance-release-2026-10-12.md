@@ -142,3 +142,15 @@ records the primary [camera policy reference](https://developer.mozilla.org/en-U
 It describes the same-origin default and limited browser support; real device/browser acceptance remains
 open. Two Ubuntu advisory fetches returned internal errors, so no vendor clearance was inferred.
 The eleven owner areas and incremental payload coverage listed above remain open. Production was not changed.
+
+
+## Student lifecycle continuation accepted in dev
+
+PR #347 and dev release 38181290903 completed the 25-operation student lifecycle addition.
+Browser coverage is now 83 canonical operations across eleven clients. CI and release passed
+995 school, 462 frontend, 116 authenticated browser and 108 gateway tests; both CodeQL
+languages have zero reported results. Three exact changed runtimes and four retained runtimes
+passed independent metadata acceptance, 19 public denials and two-origin CSP checks. The
+[student lifecycle record](student-lifecycle-contracts-dev-2026-10-12.md) saves findings, fixes,
+scanner rows, source/run links and the next uncovered workflow groups. All eleven owner
+acceptance areas remain open; broader payload coverage is still incremental.
