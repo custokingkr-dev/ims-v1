@@ -1,10 +1,10 @@
 # API Contracts and Client Migration
 
-Last reconciled: 2026-09-26 against source controllers, the generated route inventory,
+Last reconciled: 2026-10-11 against source controllers, the generated route inventory,
 Java DTOs, and browser contracts.
 
 The gateway route inventory records controller ownership and compatibility use.
-OpenAPI adds payload schemas for **42 canonical operations across 10 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
+OpenAPI adds payload schemas for **52 canonical operations across 11 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
 from 95. Static source coverage is not production traffic telemetry, and retained
 aliases can still have external consumers.
 
@@ -12,7 +12,7 @@ aliases can still have external consumers.
 
 | Contract | Operations | Workflow |
 | --- | ---: | --- |
-| Identity | 6 | Login, refresh, logout, password-reset capabilities/request/confirmation |
+| Identity | 13 | Login, refresh, logout, password reset, MFA and passkey enrollment/authentication/recovery |
 | Fees | 6 | Stable-key collection, JSON/PDF receipt, collection/overdue reports, reminders |
 | Students | 5 | Create/update, ID-based roster, multipart photo upload, authenticated photo read |
 | Attendance | 3 | Read/save register and submit section |
@@ -22,6 +22,7 @@ aliases can still have external consumers.
 | Catalog | 6 | Paginated orders, scoped statistics, guarded status/delivery, reviewed annual-plan confirmation |
 | Reporting | 1 | Workspace dashboard envelope |
 | Firefighting creation | 2 | Stable-key request and quotation creation |
+| Workflow decisions | 3 | Read versioned instance, approve/reject with the reviewed expectedVersion |
 
 Specifications live in `contracts/openapi/*.openapi.json`; generated TypeScript
 clients live in `frontend/src/generated`. These are critical workflow contracts,
@@ -43,8 +44,9 @@ From the repository root:
 ```powershell
 node scripts/generate-api-route-inventory.js
 node scripts/generate-openapi-typescript-client.js
+node scripts/generate-api-route-inventory.js --check
 node scripts/generate-openapi-typescript-client.js --check
-node --test scripts/tests/generate-openapi-typescript-client.test.js services/api-gateway/api-contract.test.js
+node --test scripts/tests/generate-api-route-inventory.test.js scripts/tests/generate-openapi-typescript-client.test.js services/api-gateway/api-contract.test.js
 ```
 
 The dependency-free generator validates canonical service/controller ownership,
@@ -59,8 +61,11 @@ multipart FormData without overriding its boundary, and request Blob downloads.
 Internal service tokens are absent from browser contracts. Existing refresh,
 credential and authentication behavior remains in the shared transport.
 
-The always-run CI architecture job verifies inventory/client freshness and runs
-contract generator/routing tests independently of the affected-service matrix.
+The always-run PR architecture job and release static gate verify inventory/client freshness.
+The PR job runs contract generator/routing tests independently of the affected-service matrix.
+Typed operations are resolved through the actual runtime table in `services/api-gateway/routing.js`,
+so a current generated inventory cannot hide a runtime route-owner or precedence mismatch.
+Spring consumes/produces/header metadata is excluded from path extraction, including pathless mappings.
 Frontend tests exercise the real generated clients with mocked transport, including
 lost-response replay identity, scoped filters, page envelopes, multipart/binary
 operations and reviewed broadcast/annual-plan fingerprints.

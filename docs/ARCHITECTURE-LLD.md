@@ -1,7 +1,8 @@
 # Custoking IMS Low-Level Design
 
-Last reconciled: 2026-08-12. This design describes current source boundaries; live capacity and
-infrastructure gaps are maintained in [REMAINING-WORK-2026-08-12.md](REMAINING-WORK-2026-08-12.md).
+Reference baseline reconciled: 2026-08-12. Current build, gateway and data boundaries are described in
+[current source architecture](current-state/project-architecture.md), reconciled on 2026-10-11.
+Use [the owner-action plan](security-remediation/acceptance-owner-actions.md) for current operational gates.
 
 ## Repository Layout
 

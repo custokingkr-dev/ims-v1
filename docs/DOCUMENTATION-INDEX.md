@@ -1,6 +1,7 @@
 # Documentation Index and Source Precedence
 
-Reconciled: 2026-08-24
+Source architecture and contract references reconciled: 2026-10-11.
+Infrastructure and dated evidence retain their recorded capture dates.
 
 This index covers the repository documentation under `docs/` plus the primary root-level
 project documents. It prevents dated plans and test evidence from being mistaken for current live state.
@@ -23,9 +24,13 @@ repository now ignores `outputs/`.
 
 ## Authoritative current documents
 
-- `architecture/custoking-architecture.html` — verified application architecture plus live GCP boundary,
-  capacity evidence, and unresolved infrastructure gates.
-- `REMAINING-WORK-2026-08-12.md` — single prioritized backlog and go/no-go checklist.
+- `current-state/project-architecture.md` — current source topology, build boundaries, schema ownership,
+  gateway modules, auth, events and maintenance boundaries; reconciled on 2026-10-11.
+- `current-state/api-contracts.md` — current generated inventory and critical browser contract coverage.
+- `security-remediation/acceptance-owner-actions.md` — current security and operational owner gates.
+- `architecture/custoking-architecture.html` — visual overview and dated GCP/capacity evidence; use the
+  source architecture above for implementation changes and each capture date for runtime claims.
+- `REMAINING-WORK-2026-08-12.md` — broader August launch backlog; read with the current owner-action plan.
 - `GCP-SPLIT-PROJECT-MIGRATION-PLAN-2026-08-18.md` — **executed migration plan.** Rebuilt from live
   discovery: full verified source inventory, the four decisions that must be made first (Artifact Registry
   topology above all), and the exact GitHub-variable and repository-file changes required. Records that no
@@ -68,7 +73,6 @@ repository now ignores `outputs/`.
   account is inaccessible to the operating account. Supersedes the "destinations not visible" blocker in
   both documents above; update this file rather than ticking boxes in the runbook.
 - `current-state/README.md` — map and evidence rules.
-- `current-state/project-architecture.md` — service topology, route flow, schemas, JWT and tenant isolation.
 - `current-state/gcp-infrastructure.md` — live resource inventory; its 2026-08-12 reconciliation overrides
   older point-in-time rows in the same file.
 - `current-state/deployment-cicd.md` — active branch-owned build/release path and live target drift.

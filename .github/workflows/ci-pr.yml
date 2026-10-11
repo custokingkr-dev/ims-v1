@@ -62,10 +62,12 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
+      - name: Verify API route inventory is current
+        run: node scripts/generate-api-route-inventory.js --check
       - name: Verify generated OpenAPI clients are current
         run: node scripts/generate-openapi-typescript-client.js --check
       - name: Test browser contract generation and canonical routing
-        run: node --test scripts/tests/generate-openapi-typescript-client.test.js services/api-gateway/api-contract.test.js
+        run: node --test scripts/tests/generate-api-route-inventory.test.js scripts/tests/generate-openapi-typescript-client.test.js services/api-gateway/api-contract.test.js
       - name: Audit offline service boundaries
         shell: pwsh
         run: |
