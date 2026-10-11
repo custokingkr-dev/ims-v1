@@ -1,0 +1,22 @@
+{
+  "checkedAt": "2026-10-11T20:55:15.473092+00:00",
+  "sources": [
+    {
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy/camera",
+      "status": "Fetched",
+      "finding": "The camera directive governs document access to video input; its default allowlist is self. Browser support is limited. The existing frontend camera=(self) policy is preserved; real device/browser acceptance remains separate."
+    },
+    {
+      "url": "https://ubuntu.com/security/CVE-2026-18374",
+      "status": "Web fetch returned Internal Error",
+      "finding": "No vendor fix-status or applicability conclusion; retain the exact-image scanner row for authoritative review."
+    },
+    {
+      "url": "https://ubuntu.com/security/CVE-2026-18508",
+      "status": "Web fetch returned Internal Error",
+      "finding": "No vendor fix-status or applicability conclusion; retain the exact-image scanner row for authoritative review."
+    }
+  ],
+  "nativeInventory": "tmp/architecture-native-findings-4e50ed8fa9be422c8483bd4c434d2f3d.json",
+  "remainingFixPlan": "docs/current-state/architecture-maintenance-release-2026-10-12.md"
+}
