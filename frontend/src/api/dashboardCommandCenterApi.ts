@@ -1,4 +1,5 @@
 import api, { getAuthSessionVersion } from '../services/api';
+import { reportingClient } from '../services/reportingApi';
 import type {
   DashboardCommandCenterResponse,
   FeeDefaulterListResponse,
@@ -46,12 +47,12 @@ export async function fetchCommandCenterMetrics(): Promise<DashboardCommandCente
   }
   if (commandCenterRequest?.authSessionVersion === sessionVersion) return commandCenterRequest.promise;
 
-  const request = api.get<DashboardCommandCenterResponse>('/reporting/dashboard-command-center')
-    .then((res) => {
+  const request = reportingClient.getDashboardCommandCenter()
+    .then((data) => {
       if (getAuthSessionVersion() === sessionVersion) {
-        commandCenterCache = { authSessionVersion: sessionVersion, loadedAt: Date.now(), data: res.data };
+        commandCenterCache = { authSessionVersion: sessionVersion, loadedAt: Date.now(), data };
       }
-      return res.data;
+      return data;
     })
     .finally(() => {
       if (commandCenterRequest?.promise === request) commandCenterRequest = null;
@@ -68,8 +69,7 @@ export async function fetchFeeDefaulters(params: {
   page?: number;
   size?: number;
 }): Promise<FeeDefaulterListResponse> {
-  const res = await api.get<FeeDefaulterListResponse>('/reporting/fee-defaulters', { params });
-  return res.data;
+  return reportingClient.getFeeDefaulters(params);
 }
 
 export async function sendFeeReminders(request: SendFeeRemindersRequest): Promise<SendFeeRemindersResult> {
@@ -242,18 +242,11 @@ export async function completeReviewCampaign(campaignId: string): Promise<void> 
 // ── Low Attendance Meeting Invites ────────────────────────────────────────────
 
 export async function fetchLowAttendanceSections(date?: string): Promise<LowAttendanceSectionsResponse> {
-  const res = await api.get<LowAttendanceSectionsResponse>(
-    '/reporting/low-attendance/sections',
-    { params: date ? { date } : undefined }
-  );
-  return res.data;
+  return reportingClient.getLowAttendanceSections(date ? { date } : undefined);
 }
 
 export async function fetchLowAttendanceStudents(sectionId: string): Promise<LowAttendanceStudentItem[]> {
-  const res = await api.get<LowAttendanceStudentItem[]>(
-    `/reporting/low-attendance/sections/${encodeURIComponent(sectionId)}/students`
-  );
-  return res.data;
+  return reportingClient.getLowAttendanceStudents({ sectionId });
 }
 
 export async function sendMeetingInvites(
@@ -269,8 +262,7 @@ export async function sendMeetingInvites(
 // ── Vendor Payment Dues ───────────────────────────────────────────────────────
 
 export async function fetchVendorDues(): Promise<VendorDuesListResponse> {
-  const res = await api.get<VendorDuesListResponse>('/reporting/vendor-dues');
-  return res.data;
+  return reportingClient.getVendorDues();
 }
 
 export async function markCatalogOrderVendorPaid(
@@ -290,6 +282,5 @@ export async function markFirefightingVendorPaid(
 // ── Reorder Prediction ────────────────────────────────────────────────────────
 
 export async function fetchReorderSignals(): Promise<ReorderSignalsResponse> {
-  const res = await api.get<ReorderSignalsResponse>('/reporting/reorder-signals');
-  return res.data;
+  return reportingClient.getReorderSignals();
 }

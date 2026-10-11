@@ -6,14 +6,76 @@ import type { AxiosInstance } from 'axios';
 
 export type ReportingWorkspace = { "school": { "name": string; "meta": string; "timeZone"?: string; "currencyCode"?: string; "students"?: number; "sections"?: number; [key: string]: unknown; }; "dashboard": { "students": number; "sections": number; "attendancePercent": number; "attendanceSubmittedSections": number; "attendanceState": "NOT_STARTED" | "PARTIAL" | "SUBMITTED"; "feeCollectedLakh": number; "feeTargetLakh": number; "feesConfigured": boolean; "feeOverdueCount": number; "firefightingActive": number; "pendingApprovals": number; "attendancePresent": number; [key: string]: unknown; }; "fees": { "summary": { "collected": number; "target": number; "outstanding": number; "progressPercent": number; "overdueCount": number; [key: string]: unknown; }; [key: string]: unknown; }; "recentActivity": Array<{ "icon": string; "title": string; "meta": string; "tag": string; [key: string]: unknown; }>; "staff": Array<{ "id": string; "name": string; "designation": string; "department": string; "payrollStatus": string; "monthlySalary": number; [key: string]: unknown; }>; "annualPlan": { "terms": Array<{ "term": string; "category": string; "status": string; "quantity": string; "amount": number; [key: string]: unknown; }>; [key: string]: unknown; }; [key: string]: unknown; };
 
+export type FeeSection = { "defaulterCount": number; "totalOverdueAmountPaise": number; "oldestDueDays": number; };
+
+export type PhotographySection = { "eventId": (string | null); "collectedAmount": number; "pendingAmount": number; "targetAmount": number; };
+
+export type LifecycleSection = { "pendingReviewCount": number; "longAbsenceCount": number; };
+
+export type AttendanceSection = { "sectionsBelowThresholdCount": number; "thresholdPercent": number; };
+
+export type VendorDuesSection = { "catalogOrderCount": number; "catalogOrderTotalPaise": number; "firefightingCount": number; "firefightingTotalPaise": number; "totalDuesPaise": number; };
+
+export type ReorderSection = { "alertCount": number; };
+
+export type DashboardCommandCenterResponse = { "fees": FeeSection; "photography": PhotographySection; "lifecycle": LifecycleSection; "attendance": AttendanceSection; "vendorDues": VendorDuesSection; "reorderSignals": ReorderSection; };
+
+export type FeeDefaulterItem = { "studentId": number; "studentName": string; "admissionNo": string; "className": string; "sectionName": string; "parentName": (string | null); "parentPhone": (string | null); "dueAmount": number; "dueDate": (string | null); "daysOverdue": number; "lastReminderSentAt": (string | null); "reminderStatus": "NOT_SENT" | "SENT" | "PENDING" | "FAILED"; "paymentStatus": string; };
+
+export type FeeDefaulterListResponse = { "totalDefaulters": number; "totalOverdueAmount": number; "oldestDueDays": number; "items": Array<FeeDefaulterItem>; "page": number; "size": number; "totalElements": number; };
+
+export type LowAttendanceSectionItem = { "sectionId": string; "sectionName": string; "className": string; "presentCount": number; "totalEnrolled": number; "attendancePct": number; "studentsBelowThreshold": number; };
+
+export type LowAttendanceSectionsResponse = { "date": string; "thresholdPercent": number; "sections": Array<LowAttendanceSectionItem>; };
+
+export type LowAttendanceStudentItem = { "studentId": number; "studentName": string; "admissionNo": string; "className": string; "sectionName": string; "fatherName": (string | null); "fatherContact": (string | null); "attendancePercent": (number | null); "lastInviteSentAt": (string | null); };
+
+export type VendorDueItem = { "sourceType": "CATALOG_ORDER" | "FIREFIGHTING"; "id": string; "title": string; "category": string; "vendorName": (string | null); "amountPaise": number; "status": string; "createdAt": (string | null); };
+
+export type VendorDuesListResponse = { "catalogOrderCount": number; "catalogOrderTotalPaise": number; "firefightingCount": number; "firefightingTotalPaise": number; "totalDuesPaise": number; "items": Array<VendorDueItem>; };
+
+export type ReorderSignalItem = { "category": string; "lastOrderDate": string; "daysSinceLastOrder": number; "avgIntervalDays": (number | null); "predictedNextOrderDate": (string | null); "alertLevel": "RED" | "YELLOW" | "OK"; };
+
+export type ReorderSignalsResponse = { "alertCount": number; "items": Array<ReorderSignalItem>; };
+
 export interface ReportingClient {
   getWorkspace(parameters?: { schoolId?: number; }): Promise<ReportingWorkspace>;
+  getDashboardCommandCenter(parameters?: { schoolId?: number; }): Promise<DashboardCommandCenterResponse>;
+  getFeeDefaulters(parameters?: { schoolId?: number; classId?: string; sectionId?: string; daysOverdue?: number; reminderStatus?: string; page?: number; size?: number; }): Promise<FeeDefaulterListResponse>;
+  getLowAttendanceSections(parameters?: { schoolId?: number; date?: string; }): Promise<LowAttendanceSectionsResponse>;
+  getLowAttendanceStudents(parameters: { schoolId?: number; sectionId: string; }): Promise<Array<LowAttendanceStudentItem>>;
+  getVendorDues(parameters?: { schoolId?: number; }): Promise<VendorDuesListResponse>;
+  getReorderSignals(parameters?: { schoolId?: number; }): Promise<ReorderSignalsResponse>;
 }
 
 export function createReportingClient(http: AxiosInstance): ReportingClient {
   return {
     async getWorkspace(parameters: { schoolId?: number; } = {}) {
       const response = await http.get<ReportingWorkspace>("/reporting/workspace", { params: { schoolId: parameters.schoolId } });
+      return response.data;
+    },
+    async getDashboardCommandCenter(parameters: { schoolId?: number; } = {}) {
+      const response = await http.get<DashboardCommandCenterResponse>("/reporting/dashboard-command-center", { params: { schoolId: parameters.schoolId } });
+      return response.data;
+    },
+    async getFeeDefaulters(parameters: { schoolId?: number; classId?: string; sectionId?: string; daysOverdue?: number; reminderStatus?: string; page?: number; size?: number; } = {}) {
+      const response = await http.get<FeeDefaulterListResponse>("/reporting/fee-defaulters", { params: { schoolId: parameters.schoolId, classId: parameters.classId, sectionId: parameters.sectionId, daysOverdue: parameters.daysOverdue, reminderStatus: parameters.reminderStatus, page: parameters.page, size: parameters.size } });
+      return response.data;
+    },
+    async getLowAttendanceSections(parameters: { schoolId?: number; date?: string; } = {}) {
+      const response = await http.get<LowAttendanceSectionsResponse>("/reporting/low-attendance/sections", { params: { schoolId: parameters.schoolId, date: parameters.date } });
+      return response.data;
+    },
+    async getLowAttendanceStudents(parameters: { schoolId?: number; sectionId: string; }) {
+      const response = await http.get<Array<LowAttendanceStudentItem>>(`/reporting/low-attendance/sections/${encodeURIComponent(String(parameters.sectionId))}/students`, { params: { schoolId: parameters.schoolId } });
+      return response.data;
+    },
+    async getVendorDues(parameters: { schoolId?: number; } = {}) {
+      const response = await http.get<VendorDuesListResponse>("/reporting/vendor-dues", { params: { schoolId: parameters.schoolId } });
+      return response.data;
+    },
+    async getReorderSignals(parameters: { schoolId?: number; } = {}) {
+      const response = await http.get<ReorderSignalsResponse>("/reporting/reorder-signals", { params: { schoolId: parameters.schoolId } });
       return response.data;
     },
   };

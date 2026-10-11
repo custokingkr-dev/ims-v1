@@ -1,48 +1,18 @@
-import { reportingClient } from '../services/reportingApi';
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { X, ChevronDown, PanelLeft, PanelLeftClose } from 'lucide-react';
-import { type WorkspaceData, withDerivedModuleGroups } from './workspace/config';
 import { useWorkspaceNavigation } from './workspace/useWorkspaceNavigation';
 import { useWorkspaceDrawer } from './workspace/useWorkspaceDrawer';
 import { useSupplyOrders } from './workspace/useSupplyOrders';
 import { SupplyOrdersPanels } from './workspace/SupplyOrdersPanels';
+import { useWorkspaceBootstrap } from './workspace/useWorkspaceBootstrap';
+import { SchoolWorkspacePanels, PlatformWorkspacePanels, FirefightingWorkspacePanels } from './workspace/WorkspacePanels';
 import { humaniseCode } from '../shared/display/status';
 import { NavIcon } from '../shared/display/icons';
 import { ModuleShell } from './workspace/ui';
 import { WorkspaceDraftProvider, useConfirmWorkspaceExit } from './workspace/WorkspaceDrafts';
-
-// Panels are navigation-level features. Loading them on demand keeps large,
-// role-specific modules out of the initial workspace download without changing
-// the panel API or its state ownership.
-const HomePanel = lazy(() => import('./workspace/panels/HomePanel').then((module) => ({ default: module.HomePanel })));
-const StudentsPanel = lazy(() => import('./workspace/panels/StudentsPanel').then((module) => ({ default: module.StudentsPanel })));
-const FeeModulePanel = lazy(() => import('./workspace/panels/FeeModulePanel').then((module) => ({ default: module.FeeModulePanel })));
-const AttendanceModulePanel = lazy(() => import('./workspace/panels/AttendanceModulePanel').then((module) => ({ default: module.AttendanceModulePanel })));
-const TimetableStudioPanel = lazy(() => import('./workspace/panels/TimetableStudioPanel').then((module) => ({ default: module.TimetableStudioPanel })));
-const StaffPanel = lazy(() => import('./workspace/panels/StaffPanel').then((module) => ({ default: module.StaffPanel })));
-const PlanningPanel = lazy(() => import('./workspace/panels/PlanningPanel').then((module) => ({ default: module.PlanningPanel })));
-const CatalogPanel = lazy(() => import('./workspace/panels/CatalogPanel').then((module) => ({ default: module.CatalogPanel })));
-const AddStudentPanel = lazy(() => import('./workspace/panels/AddStudentPanel').then((module) => ({ default: module.AddStudentPanel })));
-const SchoolStructurePanel = lazy(() => import('./workspace/panels/SchoolStructurePanel').then((module) => ({ default: module.SchoolStructurePanel })));
-const BulkImportPanel = lazy(() => import('./workspace/panels/BulkImportPanel').then((module) => ({ default: module.BulkImportPanel })));
-const PhotoImportPanel = lazy(() => import('./workspace/panels/PhotoImportPanel').then((module) => ({ default: module.PhotoImportPanel })));
-const StudentExportPanel = lazy(() => import('./workspace/panels/StudentExportPanel').then((module) => ({ default: module.StudentExportPanel })));
-const FirefightingDashboardPanel = lazy(() => import('./workspace/panels/FirefightingDashboardPanel').then((module) => ({ default: module.FirefightingDashboardPanel })));
-const FirefightingNewPanel = lazy(() => import('./workspace/panels/FirefightingNewPanel').then((module) => ({ default: module.FirefightingNewPanel })));
-const FirefightingApprovalsPanel = lazy(() => import('./workspace/panels/FirefightingApprovalsPanel').then((module) => ({ default: module.FirefightingApprovalsPanel })));
-const FirefightingOrdersPanel = lazy(() => import('./workspace/panels/FirefightingOrdersPanel').then((module) => ({ default: module.FirefightingOrdersPanel })));
-const SaErpPanel = lazy(() => import('./workspace/panels/SaErpPanel').then((module) => ({ default: module.SaErpPanel })));
-const SaRevenuePanel = lazy(() => import('./workspace/panels/SaRevenuePanel').then((module) => ({ default: module.SaRevenuePanel })));
-const SaCatalogPanel = lazy(() => import('./workspace/panels/SaCatalogPanel').then((module) => ({ default: module.SaCatalogPanel })));
-const SaAllOrdersPanel = lazy(() => import('./workspace/panels/SaAllOrdersPanel').then((module) => ({ default: module.SaAllOrdersPanel })));
-const SaNewOrderPanel = lazy(() => import('./workspace/panels/SaNewOrderPanel').then((module) => ({ default: module.SaNewOrderPanel })));
-const SaSchoolsPanel = lazy(() => import('./workspace/panels/SaSchoolsPanel').then((module) => ({ default: module.SaSchoolsPanel })));
-const SaInvoicesPanel = lazy(() => import('./workspace/panels/SaInvoicesPanel').then((module) => ({ default: module.SaInvoicesPanel })));
-const ZoneAdminPanel = lazy(() => import('./workspace/panels/ZoneAdminPanel').then((module) => ({ default: module.ZoneAdminPanel })));
 
 export default function UnifiedWorkspacePage() {
   const { user } = useAuth();
@@ -71,99 +41,15 @@ function WorkspaceContent() {
   } = useWorkspaceDrawer(role);
 
   // ── Core workspace state ────────────────────────────────────────────────────
-  const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
-  const [workspaceError, setWorkspaceError] = useState('');
+  const { workspace, workspaceError, refresh, schoolScopedParams } = useWorkspaceBootstrap({
+    user, isPlatformAdmin, isZoneAdmin, isOperations, setActiveModules, logout, navigate,
+  });
   // saInvBadge: invoice notification badge in the SA nav sidebar.
   const [saInvBadge, setSaInvBadge] = useState(0);
 
-  // schoolScopedParams: used for non-platform-admin API calls that need a schoolId filter.
-  const schoolScopedParams = !isPlatformAdmin && user?.branchId
-    ? { schoolId: user.branchId }
-    : undefined;
   const supplyOrders = useSupplyOrders({
     panel, panelAllowed, entitlementsReady, isPlatformAdmin, schoolScopedParams,
   });
-
-  // ── Workspace data loader ───────────────────────────────────────────────────
-  const refresh = async () => {
-    try {
-      setWorkspaceError('');
-      if (isZoneAdmin || (isOperations && !user?.branchId)) {
-        setWorkspace({
-          school: {
-            name: isZoneAdmin ? user?.zoneName || 'Zone administration' : 'Custoking Operations',
-            meta: isZoneAdmin ? 'Assigned zone schools' : 'Assigned school workflows',
-          },
-          dashboard: {
-            students: 0,
-            sections: 0,
-            attendancePercent: 0,
-            attendancePresent: 0,
-            feeCollectedLakh: 0,
-            feeTargetLakh: 0,
-            feeOverdueCount: 0,
-            firefightingActive: 0,
-            pendingApprovals: 0,
-          },
-          recentActivity: [],
-          orders: [],
-          staff: [],
-          annualPlan: { terms: [] },
-        });
-        setActiveModules(withDerivedModuleGroups(['ORDERS', 'FIREFIGHTING']));
-        return;
-      }
-      if (!isPlatformAdmin && !user?.branchId) {
-        throw new Error('This account is not assigned to a school.');
-      }
-      const workspaceRequest = reportingClient.getWorkspace(schoolScopedParams).then(data => ({ data }));
-      const modulesRequest = isPlatformAdmin
-        ? Promise.resolve<string[]>([])
-        : api.get(`/schools/${user!.branchId}/modules/active`).then(res =>
-            (Array.isArray(res.data) ? res.data : []).map((module: any) =>
-              String(module.moduleCode).toUpperCase()
-            )
-          );
-      const [workspaceResponse, moduleCodes] = await Promise.all([workspaceRequest, modulesRequest]);
-      setWorkspace(workspaceResponse.data);
-      if (!isPlatformAdmin) {
-        setActiveModules(withDerivedModuleGroups(moduleCodes));
-      }
-    } catch (error: any) {
-      const message = error?.response?.data?.message || error?.message || 'Unable to load workspace.';
-      if (['Invalid access token', 'Missing bearer token', 'Invalid refresh token'].includes(message)) {
-        logout();
-        navigate('/login', { replace: true });
-        return;
-      }
-      setWorkspaceError(message);
-    }
-  };
-
-  // ── Bootstrap and panel-change effects ─────────────────────────────────────
-  useEffect(() => {
-    if (isPlatformAdmin) {
-      setWorkspace({
-        school: { name: 'Custoking Platform', meta: 'Super Admin' },
-        dashboard: {
-          students: 0,
-          sections: 0,
-          attendancePercent: 0,
-          attendancePresent: 0,
-          feeCollectedLakh: 0,
-          feeTargetLakh: 0,
-          feeOverdueCount: 0,
-          firefightingActive: 0,
-          pendingApprovals: 0,
-        },
-        recentActivity: [],
-        staff: [],
-        annualPlan: { terms: [] },
-      });
-      return;
-    }
-    refresh();
-  }, [isPlatformAdmin, isZoneAdmin, user?.branchId, user?.zoneId]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const isFire = panel.startsWith('ff-');
@@ -334,92 +220,25 @@ function WorkspaceContent() {
             </ModuleShell>
           )}
 
-          {panelAllowed && panel === 'home' && workspace && (
-            <HomePanel
-              workspace={workspace}
-              setPanel={setPanel}
-              moduleAccess={dashboardModuleAccess}
-            />
-          )}
-
-          {panelAllowed && panel === 'students' && <StudentsPanel setPanel={setPanel} onRefresh={refresh} />}
-
-          {panelAllowed && panel === 'fees' && <FeeModulePanel workspace={workspace} onRefresh={refresh} initialView="overview" />}
-
-          {panelAllowed && panel === 'feestructure' && <FeeModulePanel workspace={workspace} onRefresh={refresh} initialView="configuration" />}
-
-          {panelAllowed && panel === 'addstudent' && <AddStudentPanel setPanel={setPanel} onRefresh={refresh} schoolScopedParams={schoolScopedParams} canImportStudents={can('student:import')} />}
-
-          {panelAllowed && panel === 'classsetup' && <SchoolStructurePanel schoolId={user?.branchId ?? undefined} onSaved={refresh} />}
-
-          {panelAllowed && panel === 'bulkimport' && <BulkImportPanel setPanel={setPanel} onRefresh={refresh} schoolScopedParams={schoolScopedParams} canCreateStudents={can('student:create')} />}
-
-          {panelAllowed && panel === 'photoimport' && <PhotoImportPanel />}
-
-          {panelAllowed && panel === 'studentexport' && <StudentExportPanel />}
-
-          {panelAllowed && panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
-
-          {panelAllowed && panel === 'timetable' && <TimetableStudioPanel readOnly={isTeacher} staff={workspace?.staff} />}
-
-          {panelAllowed && panel === 'staff' && workspace && <StaffPanel workspace={workspace} onRefresh={refresh} />}
-
-          {panelAllowed && isZoneAdmin && (panel === 'za-overview' || panel === 'za-schools') && <ZoneAdminPanel zoneId={user?.zoneId} zoneName={user?.zoneName} view={panel === 'za-overview' ? 'overview' : 'schools'} setPanel={setPanel} />}
-
-          {panelAllowed && panel === 'catalog' && (
-            <CatalogPanel
-              setPanel={setPanel}
-              financialYearStartMonth={workspace?.school?.financialYearStartMonth}
-            />
-          )}
+          <SchoolWorkspacePanels
+            panel={panel} panelAllowed={panelAllowed} workspace={workspace} setPanel={setPanel}
+            refresh={refresh} schoolScopedParams={schoolScopedParams} user={user}
+            isZoneAdmin={isZoneAdmin} isTeacher={isTeacher} dashboardModuleAccess={dashboardModuleAccess}
+            canImportStudents={can('student:import')} canCreateStudents={can('student:create')}
+          />
 
           <SupplyOrdersPanels
             panel={panel} panelAllowed={panelAllowed} isPlatformAdmin={isPlatformAdmin}
             isOperations={isOperations} setPanel={setPanel} snapshotOrders={workspace?.orders}
             orders={supplyOrders}
           />
-          {panel === 'sa-all-orders' && isPlatformAdmin && (
-            <SaAllOrdersPanel onNewOrder={() => setPanel('sa-new-order')} />
-          )}
-          {panel === 'sa-new-order' && isPlatformAdmin && (
-            <SaNewOrderPanel onOrderCreated={() => setPanel('sa-all-orders')} />
-          )}
-          {panel === 'sa-invoices' && isPlatformAdmin && (
-            <SaInvoicesPanel onBadgeChange={(n) => setSaInvBadge(n)} />
-          )}
-          {panel === 'sa-schools' && isPlatformAdmin && <SaSchoolsPanel />}
-          {panel === 'sa-erp' && isPlatformAdmin && <SaErpPanel />}
-          {panel === 'sa-revenue' && isPlatformAdmin && <SaRevenuePanel />}
-          {panel === 'sa-catalog' && isPlatformAdmin && <SaCatalogPanel />}
-
-
-
-
-
-          {panelAllowed && panel === 'planning' && workspace && <PlanningPanel workspace={workspace} onRefresh={refresh} setPanel={setPanel} />}
-
-          {panelAllowed && panel === 'ff-dashboard' && (
-            <FirefightingDashboardPanel
-              isSuperAdmin={isPlatformAdmin}
-              setPanel={setPanel}
-              onOpenFfDraft={openFfDraft}
-            />
-          )}
-          {panelAllowed && panel === 'ff-new' && (
-            <FirefightingNewPanel editingCode={ffEditingCode} setPanel={setPanel} onRefresh={refresh} />
-          )}
-          {panelAllowed && panel === 'ff-approvals' && (
-            <FirefightingApprovalsPanel
-              isSuperAdmin={isPlatformAdmin}
-              onRefresh={refresh}
-            />
-          )}
-          {panelAllowed && panel === 'ff-orders' && (
-            <FirefightingOrdersPanel
-              isSuperAdmin={isPlatformAdmin}
-              onRefresh={refresh}
-            />
-          )}
+          <PlatformWorkspacePanels
+            panel={panel} isPlatformAdmin={isPlatformAdmin} setPanel={setPanel} setSaInvBadge={setSaInvBadge}
+          />
+          <FirefightingWorkspacePanels
+            panel={panel} panelAllowed={panelAllowed} isPlatformAdmin={isPlatformAdmin}
+            setPanel={setPanel} openFfDraft={openFfDraft} ffEditingCode={ffEditingCode} refresh={refresh}
+          />
           </Suspense>
         </div>
       </main>

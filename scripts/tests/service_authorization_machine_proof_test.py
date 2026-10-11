@@ -15,6 +15,8 @@ class MachineProofAuditTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="ims-auth-proof-")
         self.root = pathlib.Path(self.temp.name)
         self.copy(ROOT / "services/api-gateway/routing.js")
+        for name in ("authentication.js", "quota.js", "transport.js"):
+            self.copy(ROOT / "services/api-gateway" / name)
         for path in ROOT.glob("services/*-service/src/main/java/**/MachineCallerFilter.java"):
             self.copy(path)
         names = {"OutboxRelayTriggerController.java", "AsyncWorkTriggerController.java", "PasswordResetDrainController.java", "IdentityDirectoryController.java", "TenantSchoolClient.java", "GenericNotificationReportController.java", "NotificationReportAuthority.java", "GoogleIdentityTokenVerifier.java"}
@@ -53,6 +55,16 @@ class MachineProofAuditTest(unittest.TestCase):
     def test_missing_signature_verification_fails(self):
         self.alter("MachineCallerFilter.java", "GOOGLE.verify(token)", "unverified(token)")
         result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("proof missing", result.stdout)
+    def test_internal_routes_in_extracted_policy_modules_cannot_bypass_gateway_audit(self):
+        for name in ("authentication.js", "quota.js", "transport.js"):
+            with self.subTest(module=name):
+                path = self.root / "services/api-gateway" / name
+                original = path.read_text(encoding="utf-8")
+                path.write_text(original + "\nconst exposed = '/api/v1/internal/outbox/relay';\n", encoding="utf-8")
+                result = self.audit()
+                self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
+                self.assertIn("exposed through the API gateway", result.stdout)
+                path.write_text(original, encoding="utf-8")
     def test_missing_independent_carrier_fails(self):
         self.alter("MachineCallerFilter.java", "X-IMS-Principal-Carrier-Token", "X-Untrusted-Header")
         result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("carrier proof missing", result.stdout)

@@ -71,7 +71,13 @@ Its OAuth allowlist and shared Firestore security state have their own deploymen
 - Canonical and compatibility student controllers route their repository write operations through
   `application/StudentCommands`. Its 19 command entry points own transactions; managed persistence
   writes require an existing transaction and cannot start one.
-  Directory/workspace list reads live in `persistence/StudentDirectoryQueries`.
+  Directory/workspace list reads live in `persistence/StudentDirectoryQueries`; detail, history,
+  fee history and stored-photo reads live in `StudentProfileQueries`.
+  Imports, promotions and reviews have separate persistence components. They participate in the
+  application transaction and retain mandatory guards on their managed write entry points.
+  Shared structure/calendar access and enrollment/outbox writes each have one implementation.
+  Admission/update and erasure remain cohesive orchestrations in the facade, using those shared
+  components. Existing manual fixture/recovery constructors and public response records remain compatible.
 - Ten intentionally identical infrastructure classes are guarded by
   `scripts/check-duplicate-class-drift.py`. Service-specific variants remain independent.
 
@@ -135,8 +141,15 @@ Compatibility aliases and callback siblings do not inherit that exemption.
 
 - `services/api-gateway/routing.js`: ordered route declarations, prefix/regex/method matching,
   diagnostic rewriting and internal-path classification; no HTTP server or environment dependencies.
-- `services/api-gateway/server.js`: HTTP lifecycle, authentication, tenant propagation, security headers,
-  CORS, rate limits, request bounds, deadlines and upstream streaming.
+- `services/api-gateway/server.js`: environment configuration, module composition, ordered HTTP request
+  handling, security headers/CORS and structured request/tracing lifecycle.
+- `services/api-gateway/authentication.js`: explicit-dependency factory for authoritative identity
+  introspection, optional rejecting JWT prefilter, public/cookie route policy and step-up policy.
+- `services/api-gateway/quota.js`: per-instance bounded rate buckets and verified-user budget grouping;
+  associations never authenticate a request or suppress identity introspection.
+- `services/api-gateway/transport.js`: explicit-dependency factory for service credentials, Cloud Run
+  authorization, principal/header propagation, safe targets, streaming bounds/backpressure and deadlines.
+  Its injectable fetch transport permits isolated tests without starting the HTTP server or reading secrets.
 - `services/api-gateway/api-contract.js`: compatibility classification and deprecation headers.
 - `services/api-gateway/tracing.js`: tracing/export lifecycle.
 - `scripts/generate-api-route-inventory.js`: controller method/path inventory and gateway route metadata.
@@ -146,7 +159,7 @@ The current inventory records 49 controllers and 449 method/path mappings: 345 c
 Mapping totals include compatibility surfaces and are not business-feature counts.
 Only Spring path/value attributes define URLs; consumes/produces/header metadata does not.
 
-OpenAPI covers 52 critical canonical operations across 11 contracts/clients. This is partial payload
+OpenAPI covers 58 critical canonical operations across 11 contracts/clients. This is partial payload
 coverage, not the complete 449-mapping inventory. Clients share Axios authentication, preserve stable
 idempotency keys and reviewed versions/fingerprints, and support multipart uploads and Blob downloads.
 [Browser contract details](../../contracts/openapi/README.md) and
@@ -166,10 +179,14 @@ project reporting dimensions/facts and process notification work with retries an
 Reporting repositories read owned projections rather than joining domain schemas. Dashboards are
 eventually consistent and can lag a successful domain write.
 
-`ReportingReadRepository` retains its API as a facade while delegating invoice lists/metrics to
-`InvoiceReportingQueries` and academic-event/photography reads to `PhotographyReportingQueries`.
-Both components continue querying only platform-owned reporting tables with the existing school
-filters, status handling, pagination and amount calculations.
+`ReportingReadRepository` retains its API and response records as a facade. Invoice, photography,
+attendance, fee, procurement, workspace and command-center query groups have separate components.
+`ReportingSchoolContext` centralizes calendar/localization reads, `ReportingScalarQueries` centralizes
+scalar SQL reads and `ReportingPresentation` owns pure formatting. These components use platform-owned
+schemas and retain the existing school filters, SQL, status handling, pagination and calculations.
+Explicit constructor dependencies avoid query groups calling back through the facade; a managed
+Spring wiring test verifies this graph. This changes source ownership without introducing another
+runtime service, database connection pool or cross-service query.
 
 Private Google-OIDC-authenticated Scheduler calls wake relay/drain endpoints. In-process scheduled
 loops alone do not guarantee progress on scale-to-zero Cloud Run instances.
@@ -185,8 +202,11 @@ The central API transport coordinates refresh and logout across concurrent reque
 `useWorkspaceNavigation` owns panel URLs, role/permission/module filtering, bookmark fallback and
 urgent-request draft links. `useWorkspaceDrawer` owns responsive modal behavior, focus trapping,
 focus restoration and sidebar preferences. `useSupplyOrders` retains order loading, approval/rejection,
-design confirmation and reorder state across navigation; `SupplyOrdersPanels` wires the relevant
-role-specific panels. `WorkspaceDraftProvider` remains scoped to the current
+design confirmation and reorder state across navigation; `SupplyOrdersPanels` wires order panels.
+`useWorkspaceBootstrap` loads the school workspace and entitlements together, preserves pending
+entitlements after partial failure, and owns retry/authentication recovery and role-specific shells.
+School, platform and firefighting containers in `WorkspacePanels` select the other lazy panels.
+These containers own no drafts or command state. `WorkspaceDraftProvider` remains scoped to the current
 user/school/zone and keeps unsaved data in memory across panel navigation. Moving those responsibilities
 out of `UnifiedWorkspacePage` does not turn browser navigation checks into server authorization.
 
@@ -216,13 +236,13 @@ Outstanding provider, edge, recovery, hardware and other owner gates remain in
 
 ## Guardrails for further maintenance
 
-| Area | Boundary implemented | Further separation |
+| Area | Boundary implemented | Continuation scope |
 | --- | --- | --- |
-| Student repositories | Application command transaction ownership, mandatory transaction guard, directory queries and shared pure response formatting | Group remaining import/promotion/review/detail persistence by responsibility |
-| Reporting repository | Invoice and academic-event/photography query components behind the existing facade | Group attendance, fee and procurement/dashboard queries |
-| Workspace UI | Navigation/entitlement policy, drawer lifecycle/preferences and supply-order hooks; focused order-panel container; existing draft provider retained | Workspace bootstrap loading and remaining panel groups |
-| Gateway server | Pure ordered routing module and runtime contract verification | Independently testable transport/auth/quota components |
-| Browser contracts | 52 critical canonical operations across 11 generated clients | Additional reviewed workflow slices with server/client validation |
+| Student repositories | Command transactions and mandatory guards; directory/profile reads; import/promotion/review groups; shared structure/enrollment persistence and pure parsing/formatting | Planned responsibility groups completed; admission/update and erasure retain their atomic orchestration |
+| Reporting repository | Seven query groups, shared context/scalar reads and formatting behind the existing facade | Planned query groups completed |
+| Workspace UI | Navigation, drawer, bootstrap and supply-order hooks; school/platform/firefighting/order containers; scoped draft provider | Planned loading and panel groups completed |
+| Gateway server | Ordered routing and separate injectable authentication, quota and proxy transport factories | Planned module boundaries completed |
+| Browser contracts | 58 canonical operations across 11 clients, including six reporting drilldowns with server/client checks | Broader payload coverage remains incremental; the 449-mapping inventory is not full payload coverage |
 
 Each refactor must preserve authorization, tenant scope, transaction atomicity, idempotency, uncertain
 outcome handling and unsaved-edit behavior. Applied migrations and dated acceptance evidence retain
@@ -234,10 +254,19 @@ mutation and survive rollback; import progress still completes after commit. Off
 its separately bounded `TransactionTemplate`. New PostgreSQL integration cases verify admission
 and update rollback when an outbox write fails, and reject managed writes outside a transaction.
 
-Local verification for this phase: 440 frontend tests, 498 platform tests, and the 989-test school-core
-suite pass. One Windows symlink-privilege skip is covered by a separate Linux run of all eight asset
-security tests with no skips. Fourteen gateway contract/inventory tests, eleven architecture audits,
-inventory/client freshness checks, duplicate-class checks and the frontend/service builds also pass.
+Local verification is recorded with the maintenance commit and source-bound closeout evidence in
+`tmp`. The current phase adds isolated gateway factory checks, managed student/reporting wiring and
+transaction guards, bootstrap/recovery tests and serialized reporting response/tenant-denial checks.
+Method comparisons preserve 37 gateway functions, 33 reporting methods, 10 student profile methods,
+105 grouped student methods and the 19 command implementations, allowing only explicit component
+qualification and fetch injection. SQL literals and the erasure workflow retain their previous meaning.
+
+Final local checks: 450 frontend tests, 506 platform tests and the 990-test school-core suite have
+zero failures/errors. School core has one Windows symlink-privilege skip; all eight asset-security
+tests pass separately in Linux with no skips, including that symlink case. The gateway suite passes
+108 tests, the additional generator suite passes eight tests, and the machine-authorization audit
+regressions pass 16 tests. Twelve architecture audits, inventory/client freshness, ten guarded-class
+comparisons, the frontend and Java builds, and eight non-root gateway-image HTTP smoke checks pass.
 
 This maintenance branch records source changes and local verification. It does not establish a new
 dev/production deployment or close the operational owner gates linked above.

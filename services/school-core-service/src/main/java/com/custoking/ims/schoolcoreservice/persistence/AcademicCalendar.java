@@ -53,6 +53,10 @@ final class AcademicCalendar {
         return ensureAcademicYear(jdbc, currentAcademicYear(academicYearStartMonth(jdbc, schoolId)));
     }
 
+    static String activeOrCurrentAcademicYearId(JdbcClient jdbc, Long schoolId) {
+        return schoolId == null ? activeOrCurrentAcademicYearId(jdbc) : currentAcademicYearId(jdbc, schoolId);
+    }
+
     static String currentAcademicYearId(JdbcClient jdbc, Long schoolId) {
         return currentAcademicYear(jdbc, schoolId).id();
     }

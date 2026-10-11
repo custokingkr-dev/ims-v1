@@ -45,7 +45,7 @@ export interface VendorDueItem {
   vendorName: string | null;
   amountPaise: number;
   status: string;
-  createdAt: string;
+  createdAt: string | null;
 }
 
 export interface VendorDuesListResponse {

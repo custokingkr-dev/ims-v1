@@ -1,10 +1,10 @@
 # API Contracts and Client Migration
 
-Last reconciled: 2026-10-11 against source controllers, the generated route inventory,
+Last reconciled: 2026-10-12 against source controllers, the generated route inventory,
 Java DTOs, and browser contracts.
 
 The gateway route inventory records controller ownership and compatibility use.
-OpenAPI adds payload schemas for **52 canonical operations across 11 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
+OpenAPI adds payload schemas for **58 canonical operations across 11 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
 from 95. Static source coverage is not production traffic telemetry, and retained
 aliases can still have external consumers.
 
@@ -20,7 +20,7 @@ aliases can still have external consumers.
 | Broadcasts | 8 | Draft/list, capabilities, policy preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
 | Quotation documents | 4 | Capabilities, private upload/download/removal |
 | Catalog | 6 | Paginated orders, scoped statistics, guarded status/delivery, reviewed annual-plan confirmation |
-| Reporting | 1 | Workspace dashboard envelope |
+| Reporting | 7 | Workspace, command-center dashboard, fee defaulters, low-attendance sections/students, vendor dues and reorder signals |
 | Firefighting creation | 2 | Stable-key request and quotation creation |
 | Workflow decisions | 3 | Read versioned instance, approve/reject with the reviewed expectedVersion |
 
