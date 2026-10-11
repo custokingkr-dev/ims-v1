@@ -29,6 +29,63 @@ import static org.mockito.Mockito.when;
 
 class StudentImportPhotoIntegrationTest {
 
+    @Test
+    void persistedLifecycleResponsesMatchBrowserContractsIncludingNullsAndReplay() throws Exception {
+        long schoolId = seedSchool(5, 2);
+        StudentReadRepository students = new StudentReadRepository(
+                jdbc, mock(StudentPhotoStorage.class), new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+        var preview = students.previewImport(Map.of("schoolId", schoolId, "rows", List.of(
+                Map.of("Name", "Contract Student", "Class", "1", "Section", "A", "AdmissionNo", "CONTRACT-1",
+                        "Gender", "Female", "Phone", "9876543210"),
+                Map.of("Name", "Invalid Student", "Class", "Missing Class", "Section", "A", "AdmissionNo", "INVALID-1"))));
+        contract("ImportPreview", preview);
+        var confirmation = students.confirmImport(Map.of("schoolId", schoolId, "fileToken", preview.get("fileToken")));
+        contract("ImportConfirmation", confirmation);
+        assertThat(confirmation.get("inserted")).isEqualTo(1);
+        assertThat(confirmation.get("skipped")).isEqualTo(1);
+        contract("ImportConfirmation", students.confirmImport(Map.of("schoolId", schoolId, "fileToken", preview.get("fileToken"))));
+        contract("ImportProgress", students.importStatus(String.valueOf(preview.get("jobId")), schoolId));
+        long id = jdbc.sql("SELECT id FROM student.students WHERE admission_no='CONTRACT-1'").query(Long.class).single();
+
+        contract("IdCardReviewStatus", students.idCardReviewStatus(schoolId));
+        contract("FullNameReviewStatus", students.fullNameVerificationStatus(schoolId));
+        contract("StudentVerificationSummary", students.studentVerificationSummary(id, schoolId));
+        var idCard = students.initiateIdCardReview(Map.of("schoolId", schoolId, "actorId", 77L));
+        contract("IdCardReviewStatus", idCard);
+        var page = students.campaignReviewItems(schoolId, String.valueOf(idCard.get("campaignId")), null, null, null, 0, 17);
+        contract("ReviewItemPage", page);
+        assertThat(page.get("size")).isEqualTo(17);
+        String itemId = jdbc.sql("SELECT id FROM student.student_review_items WHERE campaign_id=:id")
+                .param("id", idCard.get("campaignId")).query(String.class).single();
+        contract("ReviewItemDetail", students.updateReviewItem(itemId, Map.of("schoolId", schoolId, "verifiedPhoto", true)));
+
+        var fullName = students.initiateFullNameVerification(Map.of("schoolId", schoolId, "actorId", 77L, "verifier", "TEACHER"));
+        contract("FullNameReviewStatus", fullName);
+        String nameItem = jdbc.sql("SELECT id FROM student.student_review_items WHERE campaign_id=:id")
+                .param("id", fullName.get("campaignId")).query(String.class).single();
+        contract("ReviewItemDetail", students.verifyFullName(nameItem, Map.of("schoolId", schoolId, "confirmed", true)));
+        contract("CompletedReviewCampaign", students.completeCampaign(String.valueOf(fullName.get("campaignId")), 77L));
+        contract("ReviewStatus", students.initiateProfileVerification(Map.of("schoolId", schoolId, "actorId", 77L)));
+        contract("ReviewStatus", students.initiatePhotoVerification(Map.of("schoolId", schoolId, "actorId", 77L)));
+        contract("ReviewItemDetail", students.verifyStudentProfile(id, schoolId, 77L));
+        contract("ReviewItemDetail", students.verifyStudentPhoto(id, schoolId, 77L));
+        contract("StudentVerificationSummary", students.studentVerificationSummary(id, schoolId));
+
+        jdbc.sql("INSERT INTO tenant_school.academic_years(id,label,active) VALUES ('ay-next','2026-27',false)").update();
+        var promotion = students.createPromotionBatch(Map.of("schoolId", schoolId, "sourceClassId", "c1", "targetAcademicYearId", "ay-next"));
+        contract("PromotionBatch", promotion);
+        String batchId = String.valueOf(promotion.get("id"));
+        String promotionItem = jdbc.sql("SELECT id FROM student.student_promotion_batch_items WHERE batch_id=:id")
+                .param("id", batchId).query(String.class).single();
+        contract("PromotionBatch", students.updatePromotionBatchItem(batchId, promotionItem, Map.of("action", "HOLD", "reason", "Reviewed hold")));
+        contract("PromotionBatch", students.applyPromotionBatch(batchId));
+        assertThat(students.promotionBatchDetail(batchId).get("status")).isEqualTo("APPLIED");
+    }
+
+    private static void contract(String schema, Object value) {
+        com.custoking.ims.schoolcoreservice.contracts.StudentLifecycleContractAssertions.assertResponse(schema, value);
+    }
+
     static PostgreSQLContainer<?> PG;
     static DataSource dataSource;
     static JdbcClient jdbc;

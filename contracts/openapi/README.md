@@ -5,13 +5,13 @@ and `node scripts/generate-openapi-typescript-client.js --check` in verification
 The route inventory must first be current (`node scripts/generate-api-route-inventory.js`).
 The always-run CI architecture job checks generation and the generator/routing tests.
 
-Current coverage is **58 canonical operations across 11 contract files/clients**:
+Current coverage is **83 canonical operations across 11 contract files/clients**:
 
 | Contract | Operations | Covered workflow |
 | --- | ---: | --- |
 | Identity | 13 | Login, refresh, logout, password reset, MFA and passkey enrollment/authentication/recovery |
 | Fees | 6 | Idempotent payment, receipt JSON/PDF, collection/overdue reports, reminders |
-| Students | 5 | Admission, profile update, ID-based roster, multipart photo upload, authenticated photo download |
+| Students | 30 | Admission/profile/roster/photos, file preview and confirmation/progress, promotion batches, four review campaigns/items/verification, confirmed erasure |
 | Attendance | 3 | Read/save register, submit section |
 | Billing | 1 | Complete invoice statistics; Java-bound payment DTO exported with exact compatibility-route binding |
 | Broadcasts | 8 | Draft/list, capabilities, preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
@@ -60,3 +60,24 @@ or parameter locations must gain implementation and regression coverage before
 being added to a contract. No third-party code generation dependency is required.
 
 Workflow decisions send the version from the reviewed instance, including zero. A409 requires reloading and reviewing current state before another deliberate decision; generated clients never silently retry or refresh. The browser source currently has no generic workflow decision or B2B billing-payment callers: firefighting approvals use separate domain handlers and fee collections use their own stable-key client. The billing payment request schema documents POST /api/v1/billing-payments, explicitly classified compatibility and excluded from canonical client operations. It requires a stable idempotencyKey, invoiceId, integer amount and paymentMode; actor/branch are server-owned. There is no invented /billing/payments endpoint.
+
+Student lifecycle contracts preserve the actual review pagination envelope (`content`,
+`totalElements`, `page`, `size`), nullable timestamps/names/photos, and both empty and
+active campaign status. PostgreSQL-backed serialization checks cover preview rows,
+structure analysis, skipped rows, completed-token replay, import progress, promotion
+items/batches, review items/pages/status, and verification summaries. Controller tests
+cover school/permission denials and the server-owned review item scope. Admission
+confirmation stays in the required `X-Student-Delete-Confirmation` header, encoded
+once by the client and decoded once by the controller. The generator permits that
+header only on the canonical student DELETE; authentication, tenant identity, cookie
+and peer headers cannot be declared in browser contracts.
+
+Import multipart fields support explicit strings and binary files; the browser sets
+the boundary. The existing `/students/import/upload-preview` route is canonical in
+`StudentReadController` despite its singular spelling; confirm/status use their
+plural canonical paths. The form sends the parsed `rowsJson` string alongside its
+source file, with school scope in query parameters. The UI and server use the same
+10 MB file limit. Job failure stops polling without resubmitting confirmation.
+Generated types and these test assertions do not introduce a production response
+validator or replace server-side validation/RLS. The full controller inventory still
+has broader payload work beyond these 83 operations.

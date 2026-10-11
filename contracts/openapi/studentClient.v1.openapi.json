@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Custoking student admission and photos",
-    "version": "1.0.0"
+    "title": "Custoking student admission, imports, promotions, reviews and erasure",
+    "version": "1.1.0"
   },
   "servers": [
     {
@@ -259,6 +259,1178 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateStudentRequest"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteStudent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "X-Student-Delete-Confirmation",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "x-ims-client-name": "confirmation",
+            "x-ims-header-encoding": "uri-component",
+            "description": "Admission number typed by the user; encoded once and decoded once by the controller."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentDeletion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/imports/preview": {
+      "post": {
+        "operationId": "previewImport",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewImportRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/import/upload-preview": {
+      "post": {
+        "operationId": "previewImportFile",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportFileUpload"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/imports/confirm": {
+      "post": {
+        "operationId": "confirmImport",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportConfirmation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmImportRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/imports/status/{jobId}": {
+      "get": {
+        "operationId": "getImportStatus",
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportProgress"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/promotion-batches": {
+      "post": {
+        "operationId": "createPromotionBatch",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePromotionBatchRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/promotion-batches/{batchId}": {
+      "get": {
+        "operationId": "getPromotionBatch",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/promotion-batches/{batchId}/items/{itemId}": {
+      "patch": {
+        "operationId": "updatePromotionItem",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePromotionItemRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/promotion-batches/{batchId}/apply": {
+      "post": {
+        "operationId": "applyPromotionBatch",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PromotionBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/reviews/id-card/status": {
+      "get": {
+        "operationId": "getIdCardReviewStatus",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdCardReviewStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/reviews/id-card/initiate": {
+      "post": {
+        "operationId": "initiateIdCardReview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdCardReviewStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitiateIdCardReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/reviews/full-name/status": {
+      "get": {
+        "operationId": "getFullNameReviewStatus",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FullNameReviewStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/reviews/full-name/initiate": {
+      "post": {
+        "operationId": "initiateFullNameReview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FullNameReviewStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitiateFullNameReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/reviews/profile/status": {
+      "get": {
+        "operationId": "getProfileReviewStatus",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/reviews/profile/initiate": {
+      "post": {
+        "operationId": "initiateProfileReview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitiateIdCardReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/reviews/photo/status": {
+      "get": {
+        "operationId": "getPhotoReviewStatus",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/reviews/photo/initiate": {
+      "post": {
+        "operationId": "initiatePhotoReview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitiateIdCardReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{id}/verification": {
+      "get": {
+        "operationId": "getStudentVerification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentVerificationSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/{id}/verification/profile/verify": {
+      "post": {
+        "operationId": "verifyStudentProfile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItemDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/{id}/verification/photo/verify": {
+      "post": {
+        "operationId": "verifyStudentPhoto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItemDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/reviews/items/{itemId}": {
+      "post": {
+        "operationId": "updateReviewItem",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItemDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateReviewItemRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/reviews/items/{itemId}/full-name-verification": {
+      "post": {
+        "operationId": "verifyFullName",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItemDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyFullNameRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/review-campaigns/{campaignId}/items": {
+      "get": {
+        "operationId": "getCampaignItems",
+        "parameters": [
+          {
+            "name": "campaignId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "classId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewItemPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/review-campaigns/{campaignId}/complete": {
+      "post": {
+        "operationId": "completeReviewCampaign",
+        "parameters": [
+          {
+            "name": "campaignId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletedReviewCampaign"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/{id}/photo-from-url": {
+      "post": {
+        "operationId": "attachStudentPhotoFromUrl",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or incompatible state"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "404": {
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoFromUrlRequest"
               }
             }
           }
@@ -541,6 +1713,1220 @@
             "type": "string"
           },
           "address": {
+            "type": "string"
+          }
+        }
+      },
+      "PreviewImportRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "schoolId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean",
+                  "null"
+                ]
+              },
+              "maxProperties": 64
+            },
+            "maxItems": 500
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/dto/PreviewImportRequest.java",
+          "name": "PreviewImportRequest"
+        }
+      },
+      "ConfirmImportRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fileToken"
+        ],
+        "properties": {
+          "fileToken": {
+            "type": "string",
+            "minLength": 1
+          },
+          "schoolId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/dto/ConfirmImportRequest.java",
+          "name": "ConfirmImportRequest"
+        }
+      },
+      "ImportFileUpload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file",
+          "rowsJson"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary"
+          },
+          "rowsJson": {
+            "type": "string",
+            "maxLength": 2097152
+          }
+        }
+      },
+      "ImportPreviewRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rowNumber",
+          "name",
+          "className",
+          "sectionName",
+          "admissionNo",
+          "dateOfBirth",
+          "phone",
+          "status",
+          "statusTone",
+          "description",
+          "message"
+        ],
+        "properties": {
+          "rowNumber": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "statusTone": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportStructurePreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "currentClassCount",
+          "currentSectionCount",
+          "requiredClassCount",
+          "requiredSectionCount",
+          "requiresStructureUpdate",
+          "missingClasses",
+          "missingSections",
+          "unsupportedClasses"
+        ],
+        "properties": {
+          "currentClassCount": {
+            "type": "integer"
+          },
+          "currentSectionCount": {
+            "type": "integer"
+          },
+          "requiredClassCount": {
+            "type": "integer"
+          },
+          "requiredSectionCount": {
+            "type": "integer"
+          },
+          "requiresStructureUpdate": {
+            "type": "boolean"
+          },
+          "missingClasses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missingSections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unsupportedClasses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ImportPreview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rows",
+          "fileToken",
+          "jobId",
+          "validCount",
+          "errorCount",
+          "warningCount",
+          "batchId",
+          "originalFileStored",
+          "structure"
+        ],
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportPreviewRow"
+            }
+          },
+          "fileToken": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "validCount": {
+            "type": "integer"
+          },
+          "errorCount": {
+            "type": "integer"
+          },
+          "warningCount": {
+            "type": "integer"
+          },
+          "batchId": {
+            "type": "string"
+          },
+          "originalFileStored": {
+            "type": "boolean"
+          },
+          "structure": {
+            "$ref": "#/components/schemas/ImportStructurePreview"
+          }
+        }
+      },
+      "SkippedImportRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rowNumber",
+          "name",
+          "admissionNo",
+          "className",
+          "sectionName",
+          "phone",
+          "status",
+          "message",
+          "reason"
+        ],
+        "properties": {
+          "rowNumber": {
+            "type": "integer"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "admissionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "className": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sectionName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportConfirmation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batchId",
+          "jobId",
+          "schoolId",
+          "totalRows",
+          "inserted",
+          "skipped",
+          "done",
+          "skippedRows",
+          "insertedStudents"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "totalRows": {
+            "type": "integer"
+          },
+          "inserted": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "done": {
+            "type": "boolean"
+          },
+          "skippedRows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkippedImportRow"
+            }
+          },
+          "insertedStudents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "admissionNo",
+                "studentId"
+              ],
+              "properties": {
+                "admissionNo": {
+                  "type": "string"
+                },
+                "studentId": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ImportProgress": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "pct",
+          "done",
+          "inserted",
+          "skipped"
+        ],
+        "properties": {
+          "pct": {
+            "type": "integer"
+          },
+          "done": {
+            "type": "boolean"
+          },
+          "inserted": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "skippedRows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkippedImportRow"
+            }
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "batchId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "totalRows": {
+            "type": "integer"
+          },
+          "processedRows": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "CreatePromotionBatchRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "targetAcademicYearId"
+        ],
+        "properties": {
+          "schoolId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
+          },
+          "sourceAcademicYearId": {
+            "type": "string"
+          },
+          "targetAcademicYearId": {
+            "type": "string"
+          },
+          "sourceClassId": {
+            "type": "string"
+          },
+          "sourceSectionId": {
+            "type": "string"
+          },
+          "targetClassId": {
+            "type": "string"
+          },
+          "targetSectionId": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdatePromotionItemRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "targetClassId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetSectionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "PROMOTE",
+              "HOLD"
+            ]
+          }
+        }
+      },
+      "PromotionBatchItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "studentId",
+          "studentName",
+          "admissionNumber",
+          "sourceClassId",
+          "sourceClassName",
+          "sourceSectionId",
+          "sourceSectionName",
+          "targetClassId",
+          "targetClassName",
+          "targetSectionId",
+          "targetSectionName",
+          "reason",
+          "action",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "integer"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "admissionNumber": {
+            "type": "string"
+          },
+          "sourceClassId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceClassName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceSectionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceSectionName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetClassId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetClassName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetSectionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetSectionName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "PromotionBatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "schoolId",
+          "sourceAcademicYearId",
+          "targetAcademicYearId",
+          "sourceClassId",
+          "sourceSectionId",
+          "status",
+          "notes",
+          "createdBy",
+          "createdAt",
+          "appliedBy",
+          "appliedAt",
+          "items"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "sourceAcademicYearId": {
+            "type": "string"
+          },
+          "targetAcademicYearId": {
+            "type": "string"
+          },
+          "sourceClassId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceSectionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "appliedBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
+          },
+          "appliedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PromotionBatchItem"
+            }
+          },
+          "promoted": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          }
+        }
+      },
+      "StudentDeletion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "deleted",
+          "permanent"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "permanent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReviewItemDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "itemId",
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "className",
+          "sectionName",
+          "photoUrl",
+          "currentFullName",
+          "suggestedFullName",
+          "status",
+          "verifiedPhoto",
+          "verifiedFullName",
+          "verifiedAdmissionNo",
+          "verifiedClassSection",
+          "verifiedRollNo",
+          "verifiedFatherName",
+          "verifiedFatherContact",
+          "verifiedAddress",
+          "verifiedBloodGroup",
+          "parentConfirmed",
+          "teacherConfirmed",
+          "correctionRequested",
+          "correctionNotes",
+          "completedAt"
+        ],
+        "properties": {
+          "itemId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "integer"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "currentFullName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suggestedFullName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "COMPLETED",
+              "NEEDS_CORRECTION"
+            ]
+          },
+          "verifiedPhoto": {
+            "type": "boolean"
+          },
+          "verifiedFullName": {
+            "type": "boolean"
+          },
+          "verifiedAdmissionNo": {
+            "type": "boolean"
+          },
+          "verifiedClassSection": {
+            "type": "boolean"
+          },
+          "verifiedRollNo": {
+            "type": "boolean"
+          },
+          "verifiedFatherName": {
+            "type": "boolean"
+          },
+          "verifiedFatherContact": {
+            "type": "boolean"
+          },
+          "verifiedAddress": {
+            "type": "boolean"
+          },
+          "verifiedBloodGroup": {
+            "type": "boolean"
+          },
+          "parentConfirmed": {
+            "type": "boolean"
+          },
+          "teacherConfirmed": {
+            "type": "boolean"
+          },
+          "correctionRequested": {
+            "type": "boolean"
+          },
+          "correctionNotes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "StudentVerificationSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "profile",
+          "photo"
+        ],
+        "properties": {
+          "profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewItemDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "photo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewItemDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ReviewStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "campaignId",
+          "totalStudents",
+          "completed",
+          "pending",
+          "needsCorrection",
+          "completionPercent"
+        ],
+        "properties": {
+          "campaignId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalStudents": {
+            "type": "integer"
+          },
+          "completed": {
+            "type": "integer"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "needsCorrection": {
+            "type": "integer"
+          },
+          "completionPercent": {
+            "type": "number"
+          }
+        }
+      },
+      "IdCardReviewStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "campaignId",
+          "totalStudents",
+          "completed",
+          "pending",
+          "needsCorrection",
+          "completionPercent"
+        ],
+        "properties": {
+          "campaignId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalStudents": {
+            "type": "integer"
+          },
+          "completed": {
+            "type": "integer"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "needsCorrection": {
+            "type": "integer"
+          },
+          "completionPercent": {
+            "type": "number"
+          },
+          "classWiseStatus": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "FullNameReviewStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "campaignId",
+          "totalStudents",
+          "confirmed",
+          "correctionRequested",
+          "pending",
+          "completionPercent"
+        ],
+        "properties": {
+          "campaignId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalStudents": {
+            "type": "integer"
+          },
+          "confirmed": {
+            "type": "integer"
+          },
+          "correctionRequested": {
+            "type": "integer"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "completionPercent": {
+            "type": "number"
+          }
+        }
+      },
+      "InitiateIdCardReviewRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "schoolId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
+          },
+          "actorId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "sectionIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "assignedToUserId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/dto/InitiateIdCardReviewRequest.java",
+          "name": "InitiateIdCardReviewRequest"
+        }
+      },
+      "InitiateFullNameReviewRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "schoolId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
+          },
+          "actorId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "verifier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "TEACHER",
+              "PARENT",
+              "BOTH",
+              null
+            ]
+          },
+          "classIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "sectionIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/dto/InitiateFullNameReviewRequest.java",
+          "name": "InitiateFullNameReviewRequest"
+        }
+      },
+      "UpdateReviewItemRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "verifiedPhoto": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedFullName": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedAdmissionNo": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedClassSection": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedRollNo": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedFatherName": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedFatherContact": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedAddress": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedBloodGroup": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "correctionNotes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "VerifyFullNameRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "confirmed"
+        ],
+        "properties": {
+          "confirmed": {
+            "type": "boolean"
+          },
+          "suggestedFullName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "correctionNotes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ReviewItemPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "content",
+          "totalElements",
+          "page",
+          "size"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewItemDetail"
+            }
+          },
+          "totalElements": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          }
+        }
+      },
+      "CompletedReviewCampaign": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ReviewStatus"
+          },
+          {
+            "$ref": "#/components/schemas/FullNameReviewStatus"
+          }
+        ]
+      },
+      "PhotoFromUrlRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
             "type": "string"
           }
         }

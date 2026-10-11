@@ -109,6 +109,11 @@ actual browser workflows:
 
 The detailed boundaries and reasons remain in [the architecture reference](project-architecture.md).
 
+The next continuation implements the student import, promotion, review and erasure contract
+families, bringing browser coverage to 83 operations. Its findings, validation, release acceptance
+and remaining workflow scope are tracked in [the student lifecycle record](student-lifecycle-contracts-dev-2026-10-12.md).
+The earlier 58-operation acceptance above remains a dated record of that release.
+
 ## Later gateway header acceptance
 
 Captured 2026-10-11T21:03:42.938008+00:00. [PR 345](https://github.com/custokingkr-dev/ims-v1/pull/345)

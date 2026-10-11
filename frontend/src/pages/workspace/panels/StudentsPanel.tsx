@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../../../services/api';
+import { studentClient } from '../../../services/studentApi';
+import type { PromotionBatch } from '../../../generated/studentClient';
 import Paginator from '../../../components/Paginator';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
@@ -60,27 +62,6 @@ interface StudentHistoryPayload {
   promotions?: Array<Record<string, any>>;
   feeAssignments?: Array<Record<string, any>>;
   feePayments?: Array<Record<string, any>>;
-}
-
-interface PromotionBatchItem {
-  id: string;
-  studentName: string;
-  admissionNumber: string;
-  sourceClassName?: string;
-  sourceSectionName?: string;
-  targetClassName?: string;
-  targetSectionName?: string;
-  action?: string;
-  status?: string;
-  reason?: string;
-}
-
-interface PromotionBatch {
-  id: string;
-  status: string;
-  promoted?: number;
-  skipped?: number;
-  items?: PromotionBatchItem[];
 }
 
 export function StudentsPanel({ setPanel, onRefresh }: Props) {
@@ -279,9 +260,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setEditPhotoBusy(true);
     setModalError(null);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      await api.post(`/students/${studentDetail.id}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await studentClient.uploadStudentPhoto({ id: studentDetail.id }, { file });
       const res = await api.get(`/students/${studentDetail.id}/workspace`);
       setStudentDetail(res.data);
       setVerificationSummary(null);
@@ -428,11 +407,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       setModalError(null);
       setDeleteConfirmError(null);
       if (closeModal === false) setStudentsError(null);
-      await api.delete(`/students/${student.id}`, {
-        headers: {
-          'X-Student-Delete-Confirmation': encodeURIComponent(deleteConfirmText.trim()),
-        },
-      });
+      await studentClient.deleteStudent({ id: student.id, confirmation: deleteConfirmText.trim() });
       setDeleteConfirm(null);
       setDeleteConfirmText('');
       if (closeModal !== false) closeStudentModal();
@@ -504,11 +479,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     try {
       setPromotionLoading(true);
       setPromotionError(null);
-      const res = await api.post('/students/promotion-batches', {
+      const batch = await studentClient.createPromotionBatch({
         ...promotionForm,
         ...(schoolScopedParams || {}),
       });
-      setPromotionBatch(res.data);
+      setPromotionBatch(batch);
     } catch (err: unknown) {
       setPromotionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not create promotion batch.'));
     } finally {
@@ -521,11 +496,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     try {
       setPromotionLoading(true);
       setPromotionError(null);
-      const res = await api.patch(`/students/promotion-batches/${encodeURIComponent(promotionBatch.id)}/items/${encodeURIComponent(itemId)}`, {
+      const batch = await studentClient.updatePromotionItem({ batchId: promotionBatch.id, itemId }, {
         action,
         reason: action === 'HOLD' ? 'Held from promotion wizard' : '',
       });
-      setPromotionBatch(res.data);
+      setPromotionBatch(batch);
     } catch (err: unknown) {
       setPromotionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not update promotion item.'));
     } finally {
@@ -541,8 +516,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     try {
       setPromotionLoading(true);
       setPromotionError(null);
-      const res = await api.post(`/students/promotion-batches/${encodeURIComponent(promotionBatch.id)}/apply`);
-      setPromotionBatch(res.data);
+      const batch = await studentClient.applyPromotionBatch({ batchId: promotionBatch.id });
+      setPromotionBatch(batch);
       await loadStudents(studentFilters, studentsPage);
       onRefresh();
     } catch (err: unknown) {

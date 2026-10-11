@@ -91,3 +91,34 @@ test('live broadcast queueing binds explicit mode and fingerprint while preservi
   assert.match(result, /queueBroadcast\(parameters: \{ id: string; \}, request: QueueBroadcastRequest\)/);
   assert.match(result, /http.post<BroadcastOutcomes>\(`[^`]+\/send`, request\)/);
 });
+
+test('erasure confirmation headers are explicit, encoded once and cannot become identity headers', () => {
+  const original = read('studentClient.v1.openapi.json');
+  const generated = renderClient(original, 'studentClient.v1.openapi.json');
+  assert.match(generated, /"X-Student-Delete-Confirmation": encodeURIComponent\(String\(parameters.confirmation\)\)/);
+  for (const name of ['Authorization', 'X-Student-Service-Token', 'X-Authenticated-School-Id', 'Cookie']) {
+    const spec = structuredClone(original);
+    spec.paths['/api/v1/students/{id}'].delete.parameters[1].name = name;
+    assert.throws(() => validateContract(spec, inventory), /Unsupported or duplicate parameter/);
+  }
+  for (const patch of [{ required: false }, { 'x-ims-header-encoding': 'raw' }, { schema: { type: 'integer' } }, { 'x-ims-client-name': 'id' }]) {
+    const spec = structuredClone(original);
+    Object.assign(spec.paths['/api/v1/students/{id}'].delete.parameters[1], patch);
+    assert.throws(() => validateContract(spec, inventory), /Unsupported or duplicate parameter/);
+  }
+  const spec = structuredClone(original);
+  spec.paths['/api/v1/students'].post.parameters.push(spec.paths['/api/v1/students/{id}'].delete.parameters[1]);
+  assert.throws(() => validateContract(spec, inventory), /Unsupported or duplicate parameter/);
+});
+
+test('import multipart text is explicit and complex form fields fail closed', () => {
+  const original = read('studentClient.v1.openapi.json');
+  const generated = renderClient(original, 'studentClient.v1.openapi.json');
+  assert.match(generated, /form.append\("rowsJson", request.rowsJson\)/);
+  assert.doesNotMatch(generated, /Content-Type|Service-Token/);
+  for (const field of [{ type: 'object' }, { type: 'integer' }, { type: 'string', format: 'date-time' }]) {
+    const spec = structuredClone(original);
+    spec.components.schemas.ImportFileUpload.properties.rowsJson = field;
+    assert.throws(() => validateContract(spec, inventory), /Multipart generation supports explicit string or binary fields/);
+  }
+});

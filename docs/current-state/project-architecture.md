@@ -159,7 +159,7 @@ The current inventory records 49 controllers and 449 method/path mappings: 345 c
 Mapping totals include compatibility surfaces and are not business-feature counts.
 Only Spring path/value attributes define URLs; consumes/produces/header metadata does not.
 
-OpenAPI covers 58 critical canonical operations across 11 contracts/clients. This is partial payload
+OpenAPI covers 83 critical canonical operations across 11 contracts/clients. This is partial payload
 coverage, not the complete 449-mapping inventory. Clients share Axios authentication, preserve stable
 idempotency keys and reviewed versions/fingerprints, and support multipart uploads and Blob downloads.
 [Browser contract details](../../contracts/openapi/README.md) and
@@ -242,7 +242,7 @@ Outstanding provider, edge, recovery, hardware and other owner gates remain in
 | Reporting repository | Seven query groups, shared context/scalar reads and formatting behind the existing facade | Planned query groups completed |
 | Workspace UI | Navigation, drawer, bootstrap and supply-order hooks; school/platform/firefighting/order containers; scoped draft provider | Planned loading and panel groups completed |
 | Gateway server | Ordered routing and separate injectable authentication, quota and proxy transport factories | Planned module boundaries completed |
-| Browser contracts | 58 canonical operations across 11 clients, including six reporting drilldowns with server/client checks | Broader payload coverage remains incremental; the 449-mapping inventory is not full payload coverage |
+| Browser contracts | 83 canonical operations across 11 clients, including reporting drilldowns and student lifecycle server/client checks | Broader payload coverage remains incremental; the 449-mapping inventory is not full payload coverage |
 
 Each refactor must preserve authorization, tenant scope, transaction atomicity, idempotency, uncertain
 outcome handling and unsaved-edit behavior. Applied migrations and dated acceptance evidence retain

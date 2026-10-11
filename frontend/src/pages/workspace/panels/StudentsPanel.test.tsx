@@ -208,7 +208,7 @@ describe('StudentsPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /verify image/i }));
 
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/101/verification/photo/verify', {}));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/101/verification/photo/verify'));
     expect(onRefresh).toHaveBeenCalled();
   });
 
