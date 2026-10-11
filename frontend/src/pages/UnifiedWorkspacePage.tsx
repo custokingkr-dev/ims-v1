@@ -1,17 +1,15 @@
 import { reportingClient } from '../services/reportingApi';
-import { catalogClient } from '../services/catalogApi';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { X, ChevronDown, PanelLeft, PanelLeftClose } from 'lucide-react';
-import {
-  type PanelKey, type WorkspaceData,
-  ACCOUNTANT_NAV_SECTIONS, ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS,
-  SUPERADMIN_NAV_SECTIONS, TEACHER_NAV_SECTIONS, VIEWER_NAV_SECTIONS,
-  ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES, filterNavSectionsForModules, withDerivedModuleGroups,
-} from './workspace/config';
+import { type WorkspaceData, withDerivedModuleGroups } from './workspace/config';
+import { useWorkspaceNavigation } from './workspace/useWorkspaceNavigation';
+import { useWorkspaceDrawer } from './workspace/useWorkspaceDrawer';
+import { useSupplyOrders } from './workspace/useSupplyOrders';
+import { SupplyOrdersPanels } from './workspace/SupplyOrdersPanels';
 import { humaniseCode } from '../shared/display/status';
 import { NavIcon } from '../shared/display/icons';
 import { ModuleShell } from './workspace/ui';
@@ -40,46 +38,11 @@ const FirefightingOrdersPanel = lazy(() => import('./workspace/panels/Firefighti
 const SaErpPanel = lazy(() => import('./workspace/panels/SaErpPanel').then((module) => ({ default: module.SaErpPanel })));
 const SaRevenuePanel = lazy(() => import('./workspace/panels/SaRevenuePanel').then((module) => ({ default: module.SaRevenuePanel })));
 const SaCatalogPanel = lazy(() => import('./workspace/panels/SaCatalogPanel').then((module) => ({ default: module.SaCatalogPanel })));
-const SaOrderApprovalsPanel = lazy(() => import('./workspace/panels/SaOrderApprovalsPanel').then((module) => ({ default: module.SaOrderApprovalsPanel })));
-const AdminOrdersPanel = lazy(() => import('./workspace/panels/AdminOrdersPanel').then((module) => ({ default: module.AdminOrdersPanel })));
 const SaAllOrdersPanel = lazy(() => import('./workspace/panels/SaAllOrdersPanel').then((module) => ({ default: module.SaAllOrdersPanel })));
 const SaNewOrderPanel = lazy(() => import('./workspace/panels/SaNewOrderPanel').then((module) => ({ default: module.SaNewOrderPanel })));
 const SaSchoolsPanel = lazy(() => import('./workspace/panels/SaSchoolsPanel').then((module) => ({ default: module.SaSchoolsPanel })));
 const SaInvoicesPanel = lazy(() => import('./workspace/panels/SaInvoicesPanel').then((module) => ({ default: module.SaInvoicesPanel })));
 const ZoneAdminPanel = lazy(() => import('./workspace/panels/ZoneAdminPanel').then((module) => ({ default: module.ZoneAdminPanel })));
-
-/**
- * Mirrors the drawer breakpoint in styles/sidebar.css. Below it the sidebar is
- * an off-canvas modal drawer over a backdrop; at or above it the very same
- * <aside> is a persistent, non-modal icon rail. Every modal behaviour below —
- * role="dialog", aria-modal, the focus trap, inerting the page behind it — is
- * gated on this, because applying any of it to the desktop rail would tell a
- * screen-reader user the whole workspace had disappeared behind a dialog.
- */
-const DRAWER_BREAKPOINT = '(max-width: 768px)';
-
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',');
-
-/**
- * Focusable descendants that are actually rendered.
- *
- * The rendered filter is load-bearing rather than defensive: the drawer always
- * contains controls that CSS has removed at this breakpoint (.ck-sb-pin) or
- * that a collapsed accordion group hides (.ck-nav-item), and a trap whose
- * first/last handles point at a `display: none` button parks focus on nothing
- * at the wrap-around and silently drops the user back onto <body>.
- */
-function focusableWithin(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-    .filter((el) => el.getClientRects().length > 0);
-}
 
 export default function UnifiedWorkspacePage() {
   const { user } = useAuth();
@@ -89,42 +52,27 @@ export default function UnifiedWorkspacePage() {
 function WorkspaceContent() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const confirmExit = useConfirmWorkspaceExit();
   const { can, canAny } = usePermissions();
 
-  const role = user?.role;
-  const isPlatformAdmin = role === 'SUPERADMIN' || can('platform:admin');
-  const isZoneAdmin = !isPlatformAdmin && (role === 'ZONE_ADMIN' || can('zone:manage'));
-  const isOperations = role === 'OPERATIONS';
-  const isAccountant = role === 'ACCOUNTANT';
-  const isTeacher = role === 'TEACHER';
-  const isViewer = role === 'VIEWER';
-  const defaultPanel: PanelKey = isPlatformAdmin
-    ? 'orders'
-    : isOperations
-      ? 'photoimport'
-    : isZoneAdmin
-      ? 'za-overview'
-      : 'home';
+  // null means entitlements are still loading. Keeping that distinct from an
+  // entitled-to-nothing school prevents the navigation from collapsing during login.
+  const [activeModules, setActiveModules] = useState<Set<string> | null>(null);
+
+  const {
+    role, isPlatformAdmin, isZoneAdmin, isOperations, isTeacher,
+    panel, setPanel, openFfDraft, ffEditingCode, currentTitle,
+    navSections, panelAllowed, entitlementsReady, dashboardModuleAccess,
+  } = useWorkspaceNavigation({ role: user?.role, activeModules, can, canAny });
+  const {
+    sidebarOpen, setSidebarOpen, drawerIsModal,
+    sidebarRef, mainRef, menuToggleRef, sidebarCloseRef,
+    pinned, togglePinned, openGroups, toggleGroup,
+  } = useWorkspaceDrawer(role);
 
   // ── Core workspace state ────────────────────────────────────────────────────
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [workspaceError, setWorkspaceError] = useState('');
-  const requestedPanel = searchParams.get('panel');
-  const panel = requestedPanel && Object.prototype.hasOwnProperty.call(PANEL_TITLES, requestedPanel) ? requestedPanel as PanelKey : defaultPanel;
-  const setPanel = (nextPanel: PanelKey, replace = false) => {
-    setSearchParams(previous => {
-      const next = new URLSearchParams(previous);
-      next.set('panel', nextPanel);
-      if (nextPanel !== 'ff-new') next.delete('request');
-      return next;
-    }, { replace });
-  };
-
-  // ffEditingCode: passed into FirefightingNewPanel when opening a draft from the dashboard.
-  const ffEditingCode = panel === 'ff-new' ? searchParams.get('request') : null;
-
   // saInvBadge: invoice notification badge in the SA nav sidebar.
   const [saInvBadge, setSaInvBadge] = useState(0);
 
@@ -132,129 +80,9 @@ function WorkspaceContent() {
   const schoolScopedParams = !isPlatformAdmin && user?.branchId
     ? { schoolId: user.branchId }
     : undefined;
-
-  // null means entitlements are still loading. Keeping that distinct from an
-  // entitled-to-nothing school prevents the navigation from collapsing during login.
-  const [activeModules, setActiveModules] = useState<Set<string> | null>(null);
-
-  // ── Supply order state (AdminOrdersPanel and SaOrderApprovalsPanel need page-level state) ──
-  // liveOrders holds the full PageResponse envelope { content, page, size, totalElements, totalPages, last }
-  const [liveOrders, setLiveOrders] = useState<any | null>(null);
-  const [ordersPage, setOrdersPage] = useState(0);
-  const [liveOrderStats, setLiveOrderStats] = useState<any | null>(null);
-  const [ordersLoading, setOrdersLoading] = useState(false);
-  const [catalogNotice, setCatalogNotice] = useState<{ type: string; msg: string } | null>(null);
-
-  const [pendingApprovalOrders, setPendingApprovalOrders] = useState<any[]>([]);
-  const [pendingApprovalLoading, setPendingApprovalLoading] = useState(false);
-  const [approvalActionSaving, setApprovalActionSaving] = useState('');
-  const [approvalNotice, setApprovalNotice] = useState<{ type: string; msg: string } | null>(null);
-  const [rejectModalOrderId, setRejectModalOrderId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [designApprovingSaving, setDesignApprovingSaving] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const sidebarRef = useRef<HTMLElement | null>(null);
-  const mainRef = useRef<HTMLElement | null>(null);
-  const menuToggleRef = useRef<HTMLButtonElement | null>(null);
-  const sidebarCloseRef = useRef<HTMLButtonElement | null>(null);
-  // matchMedia is guarded rather than assumed: jsdom (vitest) does not
-  // implement it, and an unguarded call would take down every test that mounts
-  // the workspace rather than just the drawer behaviour.
-  const [isDrawerViewport, setIsDrawerViewport] = useState(
-    () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia(DRAWER_BREAKPOINT).matches
-      : false),
-  );
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    const query = window.matchMedia(DRAWER_BREAKPOINT);
-    const sync = (event: MediaQueryList | MediaQueryListEvent) => setIsDrawerViewport(event.matches);
-    sync(query);
-    query.addEventListener('change', sync);
-    return () => query.removeEventListener('change', sync);
-  }, []);
-  /** The sidebar is a modal drawer only while it is open AND below the breakpoint. */
-  const drawerIsModal = sidebarOpen && isDrawerViewport;
-
-  // ── Modal drawer focus management ──────────────────────────────────────────
-  // Opening the drawer used to leave focus on .ck-menu-toggle, so a keyboard
-  // user had to tab through the entire (still interactive) page behind the
-  // backdrop to reach the nav they had just opened.
-  useEffect(() => {
-    if (!drawerIsModal) return;
-    const drawer = sidebarRef.current;
-    if (!drawer) return;
-    const main = mainRef.current;
-
-    // Nothing behind the backdrop is reachable while the drawer is open.
-    // Applied as a raw attribute because React 18's JSX types do not know
-    // `inert`; the DOM property landed in React 19.
-    main?.setAttribute('inert', '');
-    (sidebarCloseRef.current ?? drawer).focus();
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        setSidebarOpen(false);
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const focusables = focusableWithin(drawer);
-      if (focusables.length === 0) {
-        event.preventDefault();
-        return;
-      }
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      const inside = !!active && drawer.contains(active);
-      if (event.shiftKey) {
-        if (!inside || active === first) {
-          event.preventDefault();
-          last.focus();
-        }
-      } else if (!inside || active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-      main?.removeAttribute('inert');
-      // Hand focus back to whatever opened the drawer. Skipped when the drawer
-      // stopped being modal because the viewport grew past the breakpoint — the
-      // toggle is display:none up there and focusing it would silently dump
-      // focus on <body>.
-      const toggle = menuToggleRef.current;
-      const active = document.activeElement;
-      const focusIsLoose = !active || active === document.body || drawer.contains(active);
-      if (toggle && toggle.getClientRects().length > 0 && focusIsLoose) toggle.focus();
-    };
-  }, [drawerIsModal]);
-
-  const [pinned, setPinned] = useState(() => {
-    try { return localStorage.getItem('ck_nav_pinned') !== '0'; } catch { return true; }
+  const supplyOrders = useSupplyOrders({
+    panel, panelAllowed, entitlementsReady, isPlatformAdmin, schoolScopedParams,
   });
-  const togglePinned = () => {
-    setPinned((prev) => {
-      const next = !prev;
-      try { localStorage.setItem('ck_nav_pinned', next ? '1' : '0'); } catch { /* ignore */ }
-      return next;
-    });
-  };
-  const navGroupsKey = `ck_nav_groups:${role ?? 'default'}`;
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    try { return JSON.parse(localStorage.getItem(navGroupsKey) || '{}'); } catch { return {}; }
-  });
-  const toggleGroup = (title: string) => {
-    setOpenGroups((prev) => {
-      const next = { ...prev, [title]: !(prev[title] ?? true) };
-      try { localStorage.setItem(navGroupsKey, JSON.stringify(next)); } catch { /* ignore */ }
-      return next;
-    });
-  };
 
   // ── Workspace data loader ───────────────────────────────────────────────────
   const refresh = async () => {
@@ -312,92 +140,6 @@ function WorkspaceContent() {
     }
   };
 
-  // ── Supply order loaders and actions ───────────────────────────────────────
-  const loadLiveOrders = async (page = 0) => {
-    setOrdersLoading(true);
-    try {
-      const [ordRes, statsRes] = await Promise.all([
-        catalogClient.getOrderPage({ ...schoolScopedParams, page, size: 20 }).then(data => ({ data })),
-        catalogClient.getOrderSummary(schoolScopedParams).then(data => ({ data })),
-      ]);
-      // GET /supply/orders now returns a real PageResponse envelope
-      // ({content, page, size, totalElements, totalPages}). Fall back to treating a
-      // bare array as a single page for resilience against older/mocked responses.
-      const ordersData: any = ordRes.data;
-      const content = Array.isArray(ordersData) ? ordersData : (ordersData?.content ?? []);
-      const totalPages = Array.isArray(ordersData) ? 1 : (ordersData?.totalPages ?? 1);
-      setLiveOrders({
-        content,
-        totalPages,
-        page,
-      });
-      setOrdersPage(page);
-      setLiveOrderStats(statsRes.data);
-    } catch (e: any) {
-      setCatalogNotice({ type: 'error', msg: e?.response?.data?.message || 'Failed to load orders.' });
-    } finally { setOrdersLoading(false); }
-  };
-
-  const loadPendingApprovalOrders = async () => {
-    setPendingApprovalLoading(true);
-    try {
-      const res = await api.get('/catalog/orders/pending-approval');
-      setPendingApprovalOrders(Array.isArray(res.data) ? res.data : []);
-    } catch (e: any) {
-      setApprovalNotice({ type: 'error', msg: e?.response?.data?.message || 'Failed to load orders.' });
-    } finally {
-      setPendingApprovalLoading(false);
-    }
-  };
-
-  const approveOrder = async (orderId: string) => {
-    setApprovalActionSaving(orderId);
-    setApprovalNotice(null);
-    try {
-      await api.post(`/catalog/orders/${orderId}/superadmin-approve`);
-      setApprovalNotice({ type: 'success', msg: `Order ${orderId} approved and marked for fulfilment.` });
-      await loadPendingApprovalOrders();
-    } catch (e: any) {
-      setApprovalNotice({ type: 'error', msg: e?.response?.data?.message || 'Approval failed.' });
-    } finally {
-      setApprovalActionSaving('');
-    }
-  };
-
-  const rejectOrder = async () => {
-    if (!rejectModalOrderId) return;
-    setApprovalActionSaving(rejectModalOrderId);
-    setApprovalNotice(null);
-    try {
-      await api.post(`/catalog/orders/${rejectModalOrderId}/superadmin-reject`, {
-        reason: rejectReason || 'Rejected by Superadmin',
-      });
-      setApprovalNotice({ type: 'success', msg: `Order ${rejectModalOrderId} sent back for revision.` });
-      setRejectModalOrderId(null);
-      setRejectReason('');
-      await loadPendingApprovalOrders();
-    } catch (e: any) {
-      setApprovalNotice({ type: 'error', msg: e?.response?.data?.message || 'Rejection failed.' });
-    } finally {
-      setApprovalActionSaving('');
-    }
-  };
-
-  const markDesignApproved = async (orderId: string) => {
-    if (designApprovingSaving === orderId) return;
-    setDesignApprovingSaving(orderId);
-    try {
-      await api.post(`/catalog/orders/${orderId}/design-approved`);
-      setCatalogNotice({ type: 'success', msg: `Order ${orderId} marked design approved and moved to superadmin review.` });
-      await loadLiveOrders();
-      if (isPlatformAdmin) await loadPendingApprovalOrders();
-    } catch (e: any) {
-      setCatalogNotice({ type: 'error', msg: e?.response?.data?.message || 'Failed to update design status.' });
-    } finally {
-      setDesignApprovingSaving('');
-    }
-  };
-
   // ── Bootstrap and panel-change effects ─────────────────────────────────────
   useEffect(() => {
     if (isPlatformAdmin) {
@@ -418,109 +160,13 @@ function WorkspaceContent() {
         staff: [],
         annualPlan: { terms: [] },
       });
-      loadPendingApprovalOrders();
       return;
     }
     refresh();
   }, [isPlatformAdmin, isZoneAdmin, user?.branchId, user?.zoneId]);
 
-  useEffect(() => {
-    if (!isPlatformAdmin) return;
-    const adminOnlyPanels: PanelKey[] = [
-      'home', 'students', 'fees', 'feestructure', 'attendance',
-      'timetable', 'addstudent', 'bulkimport', 'staff', 'catalog', 'planning',
-      'ff-new', 'ff-approvals',
-    ];
-    if (adminOnlyPanels.includes(panel)) setPanel('orders');
-  }, [isPlatformAdmin, panel]);
-
   // ── Derived values ──────────────────────────────────────────────────────────
-  const currentTitle = isPlatformAdmin && panel === 'orders'
-    ? 'Supply order approvals'
-    : PANEL_TITLES[panel];
-
-  const rawNavSections = isPlatformAdmin
-    ? SUPERADMIN_NAV_SECTIONS
-    : isZoneAdmin
-      ? ZONE_ADMIN_NAV_SECTIONS
-      : isOperations
-        ? OPERATIONS_NAV_SECTIONS
-        : isAccountant
-          ? ACCOUNTANT_NAV_SECTIONS
-          : isTeacher
-            ? TEACHER_NAV_SECTIONS
-            : isViewer
-              ? VIEWER_NAV_SECTIONS
-              : ADMIN_NAV_SECTIONS;
-
-  // Filter out nav items gated by a module the school hasn't been entitled to.
-  // Items without a `module` field, and everything for platform admins, are always shown.
-  const panelPermissionAny = (key: PanelKey): string[] | null => {
-    switch (key) {
-      case 'students': return ['student:read'];
-      case 'addstudent': return ['student:create'];
-      case 'bulkimport': return ['student:import'];
-      case 'photoimport': return ['student:photo-import'];
-      case 'studentexport': return ['student:export'];
-      case 'attendance': return ['attendance:read'];
-      case 'timetable': return ['timetable:read'];
-      case 'staff': return ['staff:read'];
-      case 'classsetup': return ['school:update'];
-      case 'fees': return ['fee:read', 'payment:read'];
-      case 'feestructure': return ['fee_structure:read', 'fee:read'];
-      case 'catalog': return ['order:read'];
-      case 'orders': return ['order:read'];
-      case 'planning': return ['plan:read', 'order:read'];
-      case 'ff-dashboard': return ['firefighting:read'];
-      case 'ff-new': return ['firefighting:create'];
-      case 'ff-approvals': return ['firefighting:approve'];
-      case 'ff-orders': return ['firefighting:read'];
-      default: return null;
-    }
-  };
-  const panelAllowedByPermission = (key: PanelKey) => {
-    if (isPlatformAdmin) return true;
-    const required = panelPermissionAny(key);
-    return !required || canAny(required);
-  };
-  const entitlementsReady = isPlatformAdmin || activeModules !== null;
-  const resolvedActiveModules = activeModules ?? new Set<string>();
-  const moduleFilteredSections = isPlatformAdmin || !entitlementsReady
-    ? rawNavSections
-    : filterNavSectionsForModules(rawNavSections, resolvedActiveModules);
-  const navSections = isPlatformAdmin
-    ? moduleFilteredSections
-    : moduleFilteredSections
-        .map(section => ({ ...section, items: section.items.filter(item => panelAllowedByPermission(item.key)) }))
-        .filter(section => section.items.length > 0);
-  const allowedPanelKeys = navSections.flatMap(section => section.items.map(item => item.key));
-  const studentSubpanelAllowed = (panel === 'addstudent' || panel === 'bulkimport')
-    && allowedPanelKeys.includes('students')
-    && panelAllowedByPermission(panel);
-  const feeSubpanelAllowed = panel === 'feestructure' && allowedPanelKeys.includes('fees') && panelAllowedByPermission(panel);
-  const panelAllowed = allowedPanelKeys.includes(panel) || studentSubpanelAllowed || feeSubpanelAllowed;
-  useEffect(() => {
-    if (!entitlementsReady || !panelAllowed || panel !== 'orders') return;
-    void loadLiveOrders();
-    if (isPlatformAdmin) void loadPendingApprovalOrders();
-  }, [panel, panelAllowed, entitlementsReady]);
-  const dashboardModuleAccess = {
-    erp: isPlatformAdmin || resolvedActiveModules.has('ERP'),
-    supplyOs: isPlatformAdmin || resolvedActiveModules.has('SUPPLY_OS'),
-  };
-
   const isFire = panel.startsWith('ff-');
-  // liveOrders is a PageResponse envelope; fall back to workspace snapshot for first render
-  const orderRows: any[] = (liveOrders?.content) ?? workspace?.orders ?? [];
-
-  useEffect(() => {
-    if (!entitlementsReady) return;
-    if (!panelAllowed && allowedPanelKeys.length) {
-      setPanel(allowedPanelKeys.includes(defaultPanel) ? defaultPanel : allowedPanelKeys[0], true);
-    } else if (!requestedPanel || !Object.prototype.hasOwnProperty.call(PANEL_TITLES, requestedPanel)) {
-      setPanel(panel, true);
-    }
-  }, [allowedPanelKeys.join('|'), defaultPanel, panel, panelAllowed, entitlementsReady, requestedPanel]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (!workspace && workspaceError) {
@@ -727,22 +373,11 @@ function WorkspaceContent() {
             />
           )}
 
-          {panel === 'orders' && isPlatformAdmin && (
-            <SaOrderApprovalsPanel
-              orders={pendingApprovalOrders}
-              loading={pendingApprovalLoading}
-              notice={approvalNotice}
-              savingId={approvalActionSaving}
-              rejectModalOrderId={rejectModalOrderId}
-              rejectReason={rejectReason}
-              onRefresh={loadPendingApprovalOrders}
-              onApprove={approveOrder}
-              onOpenRejectModal={(id) => { setRejectModalOrderId(id); setRejectReason(''); }}
-              onCloseRejectModal={() => setRejectModalOrderId(null)}
-              onSetRejectReason={setRejectReason}
-              onReject={rejectOrder}
-            />
-          )}
+          <SupplyOrdersPanels
+            panel={panel} panelAllowed={panelAllowed} isPlatformAdmin={isPlatformAdmin}
+            isOperations={isOperations} setPanel={setPanel} snapshotOrders={workspace?.orders}
+            orders={supplyOrders}
+          />
           {panel === 'sa-all-orders' && isPlatformAdmin && (
             <SaAllOrdersPanel onNewOrder={() => setPanel('sa-new-order')} />
           )}
@@ -757,41 +392,9 @@ function WorkspaceContent() {
           {panel === 'sa-revenue' && isPlatformAdmin && <SaRevenuePanel />}
           {panel === 'sa-catalog' && isPlatformAdmin && <SaCatalogPanel />}
 
-          {panelAllowed && panel === 'orders' && isOperations && (
-            <SaAllOrdersPanel onNewOrder={() => setPanel('catalog')} canManage={false} />
-          )}
 
-          {panelAllowed && panel === 'orders' && !isPlatformAdmin && !isOperations && (
-            <AdminOrdersPanel
-              orders={orderRows}
-              stats={liveOrderStats}
-              loading={ordersLoading}
-              notice={catalogNotice}
-              page={ordersPage}
-              totalPages={liveOrders?.totalPages ?? 1}
-              onPageChange={(p) => loadLiveOrders(p)}
-              onNewOrder={() => setPanel('catalog')}
-              onMarkDesignApproved={markDesignApproved}
-              onReorder={async (row) => {
-                try {
-                  await api.post('/catalog/orders', {
-                    category: row.category,
-                    orderData: row.orderData || JSON.stringify({ title: row.description || row.category }),
-                    subtotal: row.subtotal || 0,
-                    gst: row.gst || 0,
-                    totalAmount: row.totalAmount || 0,
-                    requiredByDate: row.requiredByDate || null,
-                    status: 'DRAFT',
-                    ...(schoolScopedParams || {}),
-                  });
-                  setCatalogNotice({ type: 'success', msg: 'Reorder placed as draft.' });
-                  loadLiveOrders(0);
-                } catch (e: any) {
-                  setCatalogNotice({ type: 'error', msg: e?.response?.data?.message || 'Failed to place reorder.' });
-                }
-              }}
-            />
-          )}
+
+
 
           {panelAllowed && panel === 'planning' && workspace && <PlanningPanel workspace={workspace} onRefresh={refresh} setPanel={setPanel} />}
 
@@ -799,7 +402,7 @@ function WorkspaceContent() {
             <FirefightingDashboardPanel
               isSuperAdmin={isPlatformAdmin}
               setPanel={setPanel}
-              onOpenFfDraft={(code) => { setSearchParams({ panel: 'ff-new', request: code }); }}
+              onOpenFfDraft={openFfDraft}
             />
           )}
           {panelAllowed && panel === 'ff-new' && (

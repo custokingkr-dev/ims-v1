@@ -2,6 +2,12 @@ package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
+import com.custoking.ims.schoolcoreservice.application.StudentCommands;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -32,6 +38,8 @@ class StudentOutboxEmissionIntegrationTest {
     static SchoolStructureReadRepository schoolRepo;
     static StudentReadRepository studentRepo;
     static StudentPhotoStorage photoStorage;
+    static StudentCommands commands;
+    static AnnotationConfigApplicationContext context;
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -53,10 +61,19 @@ class StudentOutboxEmissionIntegrationTest {
         schoolRepo = new SchoolStructureReadRepository(jdbc, outbox);
         photoStorage = org.mockito.Mockito.mock(StudentPhotoStorage.class);
         studentRepo = new StudentReadRepository(jdbc, photoStorage, outbox);
+        context = new AnnotationConfigApplicationContext();
+        context.register(TransactionConfiguration.class, StudentCommands.class);
+        context.registerBean(PlatformTransactionManager.class, () -> new DataSourceTransactionManager(dataSource));
+        context.registerBean(com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournal.class,
+                () -> org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournal.class));
+        context.registerBean(StudentReadRepository.class, () -> studentRepo);
+        context.refresh();
+        commands = context.getBean(StudentCommands.class);
     }
 
     @AfterAll
     static void tearDown() {
+        if (context != null) context.close();
         if (PG != null) PG.stop();
     }
 
@@ -111,11 +128,70 @@ class StudentOutboxEmissionIntegrationTest {
         return id;
     }
 
+    @Configuration(proxyBeanMethods = false)
+    @EnableTransactionManagement(proxyTargetClass = true)
+    static class TransactionConfiguration {}
+
+    @Test
+    void managedPersistenceRejectsWritesOutsideTheApplicationTransaction() {
+        assertThatThrownBy(() -> context.getBean(StudentReadRepository.class).createStudent(Map.of()))
+                .isInstanceOf(org.springframework.transaction.IllegalTransactionStateException.class);
+        assertThat(jdbc.sql("SELECT count(*) FROM student.students").query(Long.class).single()).isZero();
+    }
+
+    @Test
+    void commandRollsBackStudentEnrollmentAndGuardianWhenOutboxWriteFails() throws Exception {
+        long schoolId = seedSchool(3, 2);
+        rejectStudentEvents();
+        try {
+            assertThatThrownBy(() -> commands.createStudent(Map.of(
+                    "schoolId", schoolId, "fullName", "Atomic admission",
+                    "admissionNumber", "ADM-ROLLBACK", "gradeLevel", "1", "sectionName", "A",
+                    "fatherName", "Parent", "fatherContact", "9876500000")))
+                    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+            for (String table : new String[]{"students", "student_enrollments", "student_guardians", "guardians"}) {
+                assertThat(jdbc.sql("SELECT count(*) FROM student." + table).query(Long.class).single()).isZero();
+            }
+            assertThat(jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events WHERE aggregate_type = 'Student'")
+                    .query(Long.class).single()).isZero();
+        } finally {
+            allowStudentEvents();
+        }
+    }
+
+    @Test
+    void commandRollsBackUpdateWhenOutboxWriteFails() throws Exception {
+        long schoolId = seedSchool(3, 2);
+        Map<String, Object> created = commands.createStudent(Map.of(
+                "schoolId", schoolId, "fullName", "Original name", "admissionNumber", "ADM-UPDATE-ROLLBACK",
+                "gradeLevel", "1", "sectionName", "A", "phone", "9876500000"));
+        long id = ((Number) created.get("id")).longValue();
+        jdbc.sql("DELETE FROM tenant_school.outbox_events WHERE aggregate_type = 'Student'").update();
+        rejectStudentEvents();
+        try {
+            assertThatThrownBy(() -> commands.updateStudent(id, Map.of(
+                    "schoolId", schoolId, "fullName", "Changed name", "admissionNumber", "ADM-UPDATE-ROLLBACK",
+                    "classId", created.get("classId"), "sectionId", created.get("sectionId"), "phone", "9876500001")))
+                    .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+            assertThat(studentRepo.find(id).orElseThrow().fullName()).isEqualTo("Original name");
+        } finally {
+            allowStudentEvents();
+        }
+    }
+
+    private static void rejectStudentEvents() {
+        jdbc.sql("ALTER TABLE tenant_school.outbox_events ADD CONSTRAINT test_reject_student_events CHECK (aggregate_type <> 'Student')").update();
+    }
+
+    private static void allowStudentEvents() {
+        jdbc.sql("ALTER TABLE tenant_school.outbox_events DROP CONSTRAINT test_reject_student_events").update();
+    }
+
     @Test
     void createStudentEmitsStudentUpsertedInSameTransaction() throws Exception {
         long schoolId = seedSchool(3, 2);
 
-        Map<String, Object> created = studentRepo.createStudent(Map.of(
+        Map<String, Object> created = commands.createStudent(Map.of(
                 "schoolId", schoolId,
                 "fullName", "Jane Doe",
                 "admissionNumber", "ADM-1",
@@ -137,7 +213,7 @@ class StudentOutboxEmissionIntegrationTest {
     @Test
     void updateStudentEmitsStudentUpsertedInSameTransaction() throws Exception {
         long schoolId = seedSchool(3, 2);
-        Map<String, Object> created = studentRepo.createStudent(Map.of(
+        Map<String, Object> created = commands.createStudent(Map.of(
                 "schoolId", schoolId,
                 "fullName", "Jane Doe",
                 "admissionNumber", "ADM-2",
@@ -149,7 +225,7 @@ class StudentOutboxEmissionIntegrationTest {
                 .param("id", id.toString())
                 .update();
 
-        studentRepo.updateStudent(id, Map.of(
+        commands.updateStudent(id, Map.of(
                 "schoolId", schoolId,
                 "fullName", "Jane Updated",
                 "admissionNumber", "ADM-2",
@@ -231,7 +307,7 @@ class StudentOutboxEmissionIntegrationTest {
     @Test
     void profileEditInvalidatesOnlyTheActiveProfileVerification() throws Exception {
         long schoolId = seedSchool(3, 2);
-        Map<String, Object> created = studentRepo.createStudent(Map.of(
+        Map<String, Object> created = commands.createStudent(Map.of(
                 "schoolId", schoolId,
                 "fullName", "Verified Student",
                 "admissionNumber", "ADM-VERIFY-1",
@@ -275,7 +351,7 @@ class StudentOutboxEmissionIntegrationTest {
                 .update();
         jdbc.sql("DELETE FROM tenant_school.outbox_events").update();
 
-        studentRepo.updateStudent(id, Map.of(
+        commands.updateStudent(id, Map.of(
                 "schoolId", schoolId,
                 "fullName", "Updated Student",
                 "admissionNumber", "ADM-VERIFY-1",
@@ -320,7 +396,7 @@ class StudentOutboxEmissionIntegrationTest {
     @SuppressWarnings("unchecked")
     void studentHistoryIncludesFeeAssignmentsAndPaymentsByAcademicYear() throws Exception {
         long schoolId = seedSchool(3, 2);
-        Map<String, Object> created = studentRepo.createStudent(Map.of(
+        Map<String, Object> created = commands.createStudent(Map.of(
                 "schoolId", schoolId,
                 "fullName", "Fee Linked",
                 "admissionNumber", "ADM-FEE-1",
@@ -370,7 +446,7 @@ class StudentOutboxEmissionIntegrationTest {
         assertThat(detailFee.get("assigned")).isEqualTo(true);
         assertThat(detailFee.get("dueAmountPaise")).isEqualTo(375000L);
 
-        assertThatThrownBy(() -> studentRepo.deleteStudent(id, "WRONG-ADM"))
+        assertThatThrownBy(() -> commands.deleteStudent(id, "WRONG-ADM"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("does not match");
         assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE id = :id AND deleted_at IS NULL")
@@ -378,7 +454,7 @@ class StudentOutboxEmissionIntegrationTest {
                 .query(Long.class)
                 .single()).isEqualTo(1L);
 
-        Map<String, Object> deleted = studentRepo.deleteStudent(id, "ADM-FEE-1");
+        Map<String, Object> deleted = commands.deleteStudent(id, "ADM-FEE-1");
 
         assertThat(deleted).containsEntry("deleted", true).containsEntry("permanent", true);
         assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE id = :id")

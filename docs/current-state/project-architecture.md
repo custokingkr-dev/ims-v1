@@ -1,6 +1,6 @@
 # Project Architecture
 
-Source reconciled: 2026-10-11 against the current repository implementation.
+Source reconciled: 2026-10-12 against the current repository implementation.
 
 This document describes source boundaries and deployment behavior. Runtime evidence has its own
 capture date and environment; development implementation does not establish production acceptance.
@@ -68,6 +68,10 @@ Its OAuth allowlist and shared Firestore security state have their own deploymen
   `observability` and, for event producers, `outbox`.
 - Some controllers call repositories directly, and some repositories also orchestrate transactions
   and business validation. Package names do not imply a uniformly strict application-service layer.
+- Canonical and compatibility student controllers route their repository write operations through
+  `application/StudentCommands`. Its 19 command entry points own transactions; managed persistence
+  writes require an existing transaction and cannot start one.
+  Directory/workspace list reads live in `persistence/StudentDirectoryQueries`.
 - Ten intentionally identical infrastructure classes are guarded by
   `scripts/check-duplicate-class-drift.py`. Service-specific variants remain independent.
 
@@ -162,6 +166,11 @@ project reporting dimensions/facts and process notification work with retries an
 Reporting repositories read owned projections rather than joining domain schemas. Dashboards are
 eventually consistent and can lag a successful domain write.
 
+`ReportingReadRepository` retains its API as a facade while delegating invoice lists/metrics to
+`InvoiceReportingQueries` and academic-event/photography reads to `PhotographyReportingQueries`.
+Both components continue querying only platform-owned reporting tables with the existing school
+filters, status handling, pagination and amount calculations.
+
 Private Google-OIDC-authenticated Scheduler calls wake relay/drain endpoints. In-process scheduled
 loops alone do not guarantee progress on scale-to-zero Cloud Run instances.
 See [the event contract](../EVENT-ENVELOPE-CONTRACT.md) and
@@ -172,6 +181,14 @@ See [the event contract](../EVENT-ENVELOPE-CONTRACT.md) and
 Top-level app routes and workspace panels are lazy-loaded. Role/permission/module checks select
 navigation; workspace state tracks drafts and unsaved edits. Access JWTs live in module memory.
 The central API transport coordinates refresh and logout across concurrent requests and browser tabs.
+
+`useWorkspaceNavigation` owns panel URLs, role/permission/module filtering, bookmark fallback and
+urgent-request draft links. `useWorkspaceDrawer` owns responsive modal behavior, focus trapping,
+focus restoration and sidebar preferences. `useSupplyOrders` retains order loading, approval/rejection,
+design confirmation and reorder state across navigation; `SupplyOrdersPanels` wires the relevant
+role-specific panels. `WorkspaceDraftProvider` remains scoped to the current
+user/school/zone and keeps unsaved data in memory across panel navigation. Moving those responsibilities
+out of `UnifiedWorkspacePage` does not turn browser navigation checks into server authorization.
 
 Catalog categories and form definitions drive dynamic forms, alongside older handwritten category
 forms. Trophies use the existing catalog category/order domain, with reference data and image assets
@@ -199,14 +216,28 @@ Outstanding provider, edge, recovery, hardware and other owner gates remain in
 
 ## Guardrails for further maintenance
 
-| Area | Current pressure | Next boundary to separate |
+| Area | Boundary implemented | Further separation |
 | --- | --- | --- |
-| Student repositories | SQL, validation, transactions, exports and erasure orchestration coexist | Application commands/queries with explicit transaction ownership |
-| Reporting repository | Many read models and dashboard queries share one large class | Query components grouped by reporting responsibility |
-| Workspace UI | Navigation, draft state, panel wiring and rendering coexist | Workspace state/navigation hooks and focused panel containers |
-| Gateway server | Transport, auth and quota orchestration remain substantial | Independently testable transport/auth components after routing extraction |
-| Browser contracts | Critical workflows are typed; broader payload coverage is partial | Additional reviewed workflow slices with server/client validation |
+| Student repositories | Application command transaction ownership, mandatory transaction guard, directory queries and shared pure response formatting | Group remaining import/promotion/review/detail persistence by responsibility |
+| Reporting repository | Invoice and academic-event/photography query components behind the existing facade | Group attendance, fee and procurement/dashboard queries |
+| Workspace UI | Navigation/entitlement policy, drawer lifecycle/preferences and supply-order hooks; focused order-panel container; existing draft provider retained | Workspace bootstrap loading and remaining panel groups |
+| Gateway server | Pure ordered routing module and runtime contract verification | Independently testable transport/auth/quota components |
+| Browser contracts | 52 critical canonical operations across 11 generated clients | Additional reviewed workflow slices with server/client validation |
 
 Each refactor must preserve authorization, tenant scope, transaction atomicity, idempotency, uncertain
 outcome handling and unsaved-edit behavior. Applied migrations and dated acceptance evidence retain
 their recorded meaning.
+
+Student command extraction retains the 45-second erasure/reconciliation timeout and the existing
+transaction propagation and rollback behavior. External precommit erasure intents still precede
+mutation and survive rollback; import progress still completes after commit. Offline recovery keeps
+its separately bounded `TransactionTemplate`. New PostgreSQL integration cases verify admission
+and update rollback when an outbox write fails, and reject managed writes outside a transaction.
+
+Local verification for this phase: 440 frontend tests, 498 platform tests, and the 989-test school-core
+suite pass. One Windows symlink-privilege skip is covered by a separate Linux run of all eight asset
+security tests with no skips. Fourteen gateway contract/inventory tests, eleven architecture audits,
+inventory/client freshness checks, duplicate-class checks and the frontend/service builds also pass.
+
+This maintenance branch records source changes and local verification. It does not establish a new
+dev/production deployment or close the operational owner gates linked above.

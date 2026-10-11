@@ -7,6 +7,7 @@ import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -18,8 +19,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -30,20 +29,20 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static com.custoking.ims.schoolcoreservice.persistence.StudentPresentation.*;
+
+/**
+ * Persistence operations for student commands and remaining detail/history reads.
+ * Write callers must use StudentCommands or an explicit recovery/test transaction.
+ * Managed writes require an existing transaction; this repository never starts one.
+ * Directory reads are delegated to StudentDirectoryQueries for API compatibility.
+ */
 @Repository
 public class StudentReadRepository {
 
-    private static final String SELECT = """
-            SELECT id, admission_no, roll_no, board_reg_no, full_name, dob, gender,
-                   father_name, father_contact, mother_name, phone, address,
-                   house_number, street, locality, city, state, pin_code, photo_url,
-                   fee_status, attendance_percent, imported_at, import_batch_id,
-                   created_at, updated_at, school_id, class_id, section_id, academic_year_id,
-                   deleted_at
-            FROM student.students
-            """;
 
     private final JdbcClient jdbc;
+    private final StudentDirectoryQueries directory;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final StudentPhotoStorage photoStorage;
     private final OutboxWriter outbox;
@@ -56,10 +55,17 @@ public class StudentReadRepository {
         this(jdbc, photoStorage, outbox, new StudentReviewInvalidationService(jdbc, outbox));
     }
 
-    @Autowired
     public StudentReadRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox,
                                  StudentReviewInvalidationService reviewInvalidation) {
+        this(jdbc, photoStorage, outbox, reviewInvalidation, new StudentDirectoryQueries(jdbc));
+    }
+
+    @Autowired
+    public StudentReadRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox,
+                                 StudentReviewInvalidationService reviewInvalidation,
+                                 StudentDirectoryQueries directory) {
         this.jdbc = jdbc;
+        this.directory = directory;
         this.photoStorage = photoStorage;
         this.outbox = outbox;
         this.reviewInvalidation = reviewInvalidation;
@@ -77,224 +83,32 @@ public class StudentReadRepository {
     }
 
     public List<StudentRow> list(Long schoolId, String classId, String sectionId, int limit) {
-        StringBuilder sql = new StringBuilder(SELECT).append(" WHERE deleted_at IS NULL");
-        if (schoolId != null) sql.append(" AND school_id = :schoolId");
-        if (classId != null && !classId.isBlank()) sql.append(" AND class_id = :classId");
-        if (sectionId != null && !sectionId.isBlank()) sql.append(" AND section_id = :sectionId");
-        sql.append(" ORDER BY full_name ASC LIMIT :limit");
-
-        var spec = jdbc.sql(sql.toString()).param("limit", Math.max(1, Math.min(limit, 500)));
-        if (schoolId != null) spec = spec.param("schoolId", schoolId);
-        if (classId != null && !classId.isBlank()) spec = spec.param("classId", classId);
-        if (sectionId != null && !sectionId.isBlank()) spec = spec.param("sectionId", sectionId);
-        return spec.query(StudentRow.class).list().stream().map(this::signPhoto).toList();
+        return directory.list(schoolId, classId, sectionId, limit);
     }
 
     public Optional<StudentRow> find(Long id) {
-        return jdbc.sql(SELECT + " WHERE id = :id AND deleted_at IS NULL")
-                .param("id", id)
-                .query(StudentRow.class)
-                .optional()
-                .map(this::signPhoto);
+        return directory.find(id);
     }
 
     /** Replace a stored photo object key with a same-origin lazy media reference. */
-    private StudentRow signPhoto(StudentRow row) {
-        return row.withPhotoUrl(photoReference(row.id(), row.photoUrl()));
-    }
 
     public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
                                                  String feeStatus, int page, int size) {
-        return workspaceStudents(schoolId, className, sectionName, feeStatus, null, page, size);
+        return directory.workspaceStudents(schoolId, className, sectionName, feeStatus, page, size);
     }
 
     public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
                                                  String feeStatus, String search, int page, int size) {
-        int safePage = Math.max(0, page);
-        int safeSize = Math.max(1, Math.min(size, 500));
-        WorkspaceStudentStats stats = workspaceStudentStats(
-                schoolId, className, sectionName, feeStatus, search);
-        List<Map<String, Object>> items = workspaceStudentRowsPage(
-                schoolId, className, sectionName, feeStatus, search,
-                safeSize, (long) safePage * safeSize);
-        return row("items", items,
-                "page", safePage,
-                "size", safeSize,
-                "totalItems", stats.total(),
-                "totalPages", (int) Math.ceil(stats.total() / (double) safeSize),
-                "filteredCount", stats.total(),
-                "filteredSections", stats.sections(),
-                "search", str(search, "").trim(),
-                "filters", row("classes", classesForSchool(schoolId),
-                        "sections", sectionNamesForSchool(schoolId, className),
-                        "feeStatuses", List.of("Paid", "Overdue", "Pending", "Partial")));
+        return directory.workspaceStudents(schoolId, className, sectionName, feeStatus, search, page, size);
     }
 
     public List<Map<String, Object>> workspaceStudentRows(Long schoolId, String className, String sectionName,
                                                           String feeStatus) {
-        return workspaceStudentRowsPage(schoolId, className, sectionName, feeStatus, null, null, 0);
+        return directory.workspaceStudentRows(schoolId, className, sectionName, feeStatus);
     }
 
-    private List<Map<String, Object>> workspaceStudentRowsPage(
-            Long schoolId, String className, String sectionName, String feeStatus,
-            String search, Integer limit, long offset) {
-        String searchTerm = str(search, "").trim().toLowerCase(Locale.ROOT);
-        StringBuilder sql = new StringBuilder("""
-                SELECT s.id, s.full_name, s.admission_no, s.roll_no, s.board_reg_no, s.dob, s.gender,
-                       s.father_name, s.father_contact, s.mother_name, s.phone, s.address,
-                       s.house_number, s.street, s.locality, s.city, s.state, s.pin_code,
-                       s.photo_url, s.fee_status, s.attendance_percent, s.school_id,
-                       sc.id AS class_id, sc.name AS class_name, sc.sort_order,
-                       ss.id AS section_id, ss.name AS section_name,
-                       ay.label AS academic_year_label,
-                       profile_review.status AS profile_verification_status,
-                       photo_review.status AS photo_verification_status
-                FROM student.students s
-                JOIN tenant_school.school_classes sc ON sc.id = s.class_id
-                JOIN tenant_school.school_sections ss ON ss.id = s.section_id
-                JOIN tenant_school.academic_years ay ON ay.id = s.academic_year_id
-                LEFT JOIN LATERAL (
-                    SELECT i.status
-                    FROM student.student_review_items i
-                    JOIN student.student_review_campaigns c ON c.id = i.campaign_id
-                    WHERE i.student_id = s.id AND i.school_id = s.school_id
-                      AND c.review_type = 'PROFILE_VERIFICATION' AND c.status = 'ACTIVE'
-                    ORDER BY i.updated_at DESC NULLS LAST, i.created_at DESC NULLS LAST, i.id DESC
-                    LIMIT 1
-                ) profile_review ON TRUE
-                LEFT JOIN LATERAL (
-                    SELECT i.status
-                    FROM student.student_review_items i
-                    JOIN student.student_review_campaigns c ON c.id = i.campaign_id
-                    WHERE i.student_id = s.id AND i.school_id = s.school_id
-                      AND c.review_type = 'PHOTO_VERIFICATION' AND c.status = 'ACTIVE'
-                    ORDER BY i.updated_at DESC NULLS LAST, i.created_at DESC NULLS LAST, i.id DESC
-                    LIMIT 1
-                ) photo_review ON TRUE
-                WHERE
-                """)
-                .append(" s.deleted_at IS NULL")
-                .append("""
-                  AND s.school_id = :schoolId
-                """);
-        if (!blankOrAll(className)) sql.append(" AND lower(sc.name) = lower(:className)");
-        if (!blankOrAll(sectionName)) sql.append(" AND lower(ss.name) = lower(:sectionName)");
-        if (!blankOrAll(feeStatus)) sql.append(" AND lower(s.fee_status) = lower(:feeStatus)");
-        if (!searchTerm.isBlank()) {
-            sql.append("""
-                     AND (
-                       lower(s.full_name) LIKE :search
-                       OR lower(s.admission_no) LIKE :search
-                       OR lower(COALESCE(s.roll_no, '')) LIKE :search
-                       OR lower(COALESCE(s.board_reg_no, '')) LIKE :search
-                       OR lower(COALESCE(s.father_name, '')) LIKE :search
-                       OR lower(COALESCE(s.father_contact, '')) LIKE :search
-                       OR lower(COALESCE(s.mother_name, '')) LIKE :search
-                       OR lower(COALESCE(s.phone, '')) LIKE :search
-                       OR lower(COALESCE(s.address, '')) LIKE :search
-                       OR lower(COALESCE(s.house_number, '')) LIKE :search
-                       OR lower(COALESCE(s.street, '')) LIKE :search
-                       OR lower(COALESCE(s.locality, '')) LIKE :search
-                       OR lower(COALESCE(s.city, '')) LIKE :search
-                       OR lower(COALESCE(s.state, '')) LIKE :search
-                       OR lower(COALESCE(s.pin_code, '')) LIKE :search
-                       OR lower(sc.name) LIKE :search
-                       OR lower(ss.name) LIKE :search
-                     )
-                    """);
-        }
-        sql.append(" ORDER BY lower(s.full_name), s.id");
-        if (limit != null) sql.append(" LIMIT :limit OFFSET :offset");
 
-        var spec = jdbc.sql(sql.toString()).param("schoolId", schoolId);
-        if (!blankOrAll(className)) spec = spec.param("className", className);
-        if (!blankOrAll(sectionName)) spec = spec.param("sectionName", sectionName);
-        if (!blankOrAll(feeStatus)) spec = spec.param("feeStatus", feeStatus);
-        if (!searchTerm.isBlank()) spec = spec.param("search", "%" + searchTerm + "%");
-        if (limit != null) spec = spec.param("limit", limit).param("offset", Math.max(0, offset));
-        return spec.query((rs, rowNum) -> {
-            String fullName = str(rs.getString("full_name"), "Student");
-            String classLabel = str(rs.getString("class_name"), "");
-            String sectionLabel = str(rs.getString("section_name"), "");
-            Double attendance = rs.getObject("attendance_percent", Double.class);
-            return row("id", rs.getLong("id"),
-                    "name", fullName,
-                    "fullName", fullName,
-                    "avatarInitials", initials(fullName),
-                    "photoUrl", photoReference(rs.getLong("id"), rs.getString("photo_url")),
-                    "className", classLabel,
-                    "sectionName", sectionLabel,
-                    "classSection", classLabel.replace("Class ", "") + (sectionLabel.isBlank() ? "" : "-" + sectionLabel),
-                    "academicYear", rs.getString("academic_year_label"),
-                    "admissionNumber", rs.getString("admission_no"),
-                    "rollNo", rs.getString("roll_no"),
-                    "fatherName", rs.getString("father_name"),
-                    "fatherContact", rs.getString("father_contact"),
-                    "feeStatus", rs.getString("fee_status"),
-                    "profileVerificationStatus", rs.getString("profile_verification_status"),
-                    "photoVerificationStatus", rs.getString("photo_verification_status"),
-                    "attendancePercent", attendance == null ? 0 : round(attendance));
-        }).list();
-    }
 
-    private WorkspaceStudentStats workspaceStudentStats(
-            Long schoolId, String className, String sectionName, String feeStatus,
-            String search) {
-        String searchTerm = str(search, "").trim().toLowerCase(Locale.ROOT);
-        boolean needsStructureJoin = !blankOrAll(className)
-                || !blankOrAll(sectionName)
-                || !searchTerm.isBlank();
-        StringBuilder sql = new StringBuilder("""
-                SELECT COUNT(*) AS total,
-                       COUNT(DISTINCT s.section_id) AS sections
-                FROM student.students s
-                """);
-        if (needsStructureJoin) {
-            sql.append("""
-                    JOIN tenant_school.school_classes sc ON sc.id = s.class_id
-                    JOIN tenant_school.school_sections ss ON ss.id = s.section_id
-                    """);
-        }
-        sql.append(" WHERE")
-                .append(" s.deleted_at IS NULL")
-                .append(" AND s.school_id = :schoolId");
-        if (!blankOrAll(className)) sql.append(" AND lower(sc.name) = lower(:className)");
-        if (!blankOrAll(sectionName)) sql.append(" AND lower(ss.name) = lower(:sectionName)");
-        if (!blankOrAll(feeStatus)) sql.append(" AND lower(s.fee_status) = lower(:feeStatus)");
-        if (!searchTerm.isBlank()) {
-            sql.append("""
-                     AND (
-                       lower(s.full_name) LIKE :search
-                       OR lower(s.admission_no) LIKE :search
-                       OR lower(COALESCE(s.roll_no, '')) LIKE :search
-                       OR lower(COALESCE(s.board_reg_no, '')) LIKE :search
-                       OR lower(COALESCE(s.father_name, '')) LIKE :search
-                       OR lower(COALESCE(s.father_contact, '')) LIKE :search
-                       OR lower(COALESCE(s.mother_name, '')) LIKE :search
-                       OR lower(COALESCE(s.phone, '')) LIKE :search
-                       OR lower(COALESCE(s.address, '')) LIKE :search
-                       OR lower(COALESCE(s.house_number, '')) LIKE :search
-                       OR lower(COALESCE(s.street, '')) LIKE :search
-                       OR lower(COALESCE(s.locality, '')) LIKE :search
-                       OR lower(COALESCE(s.city, '')) LIKE :search
-                       OR lower(COALESCE(s.state, '')) LIKE :search
-                       OR lower(COALESCE(s.pin_code, '')) LIKE :search
-                       OR lower(sc.name) LIKE :search
-                       OR lower(ss.name) LIKE :search
-                     )
-                    """);
-        }
-        var spec = jdbc.sql(sql.toString()).param("schoolId", schoolId);
-        if (!blankOrAll(className)) spec = spec.param("className", className);
-        if (!blankOrAll(sectionName)) spec = spec.param("sectionName", sectionName);
-        if (!blankOrAll(feeStatus)) spec = spec.param("feeStatus", feeStatus);
-        if (!searchTerm.isBlank()) spec = spec.param("search", "%" + searchTerm + "%");
-        return spec.query((rs, rowNum) -> new WorkspaceStudentStats(
-                rs.getLong("total"), rs.getLong("sections"))).single();
-    }
-
-    private record WorkspaceStudentStats(long total, long sections) {
-    }
 
     public Map<String, Object> workspaceStudentDetail(Long id) {
         return jdbc.sql("""
@@ -377,7 +191,7 @@ public class StudentReadRepository {
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> createStudent(Map<String, Object> request) {
         String suppliedPhoto = str(request.get("photoUrl"), "").trim();
         if (!suppliedPhoto.isEmpty() && !suppliedPhoto.matches("(?i)^https?://.*")) {
@@ -471,7 +285,7 @@ public class StudentReadRepository {
         return studentDetail(id);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> updateStudent(Long id, Map<String, Object> request) {
         Map<String, Object> current = jdbc.sql("""
                 SELECT id, school_id, academic_year_id, class_id, section_id, roll_no
@@ -733,7 +547,7 @@ public class StudentReadRepository {
                 .map(photo -> new StudentPhotoContent(photo.data(), photo.contentType()));
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> attachPhoto(Long id, byte[] data, String contentType) {
         String schoolStorageId = jdbc.sql("""
                         SELECT s.school_uid::text
@@ -755,7 +569,7 @@ public class StudentReadRepository {
         return studentDetail(id);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> previewImport(Map<String, Object> request) {
         Long schoolId = longValue(request.get("schoolId"), null);
         if (schoolId == null) throw new IllegalArgumentException("School not found");
@@ -891,7 +705,7 @@ public class StudentReadRepository {
                 "structure", structure);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> confirmImport(Map<String, Object> request) {
         String fileToken = requireText(request.get("fileToken"), "Preview token not found");
         Long schoolId = longValue(request.get("schoolId"), null);
@@ -1127,7 +941,7 @@ public class StudentReadRepository {
         }
     }
 
-    @Transactional(timeout = 45)
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> deleteStudent(Long id, String confirmationAdmissionNumber) {
         return eraseStudent(id, confirmationAdmissionNumber, null);
     }
@@ -1136,7 +950,7 @@ public class StudentReadRepository {
      * Controlled restore/reconciliation entry point. The external RECONCILING epoch and pinned
      * intent are checked before exact incarnation binding; this method is not exposed by REST.
      */
-    @Transactional(timeout = 45)
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> reconcileErasure(StudentErasureJournal.IntentReference reference) {
         if (erasureJournal == null || !erasureJournal.enabled()
                 || !TransactionSynchronizationManager.isActualTransactionActive()) {
@@ -1578,7 +1392,7 @@ public class StudentReadRepository {
         years.putIfAbsent(yearId, str(label, yearId));
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> createPromotionBatch(Map<String, Object> request) {
         Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
         requireSchool(schoolId);
@@ -1661,7 +1475,7 @@ public class StudentReadRepository {
         return promotionBatchDetail(batchId);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> updatePromotionBatchItem(String batchId, String itemId, Map<String, Object> request) {
         requireDraftPromotionBatch(batchId);
         jdbc.sql("""
@@ -1683,7 +1497,7 @@ public class StudentReadRepository {
         return promotionBatchDetail(batchId);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> applyPromotionBatch(String batchId) {
         Map<String, Object> batch = requireDraftPromotionBatch(batchId);
         String targetYear = str(batch.get("targetAcademicYearId"), "");
@@ -1740,7 +1554,7 @@ public class StudentReadRepository {
         return detail;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> initiateIdCardReview(Map<String, Object> request) {
         Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
         Long actorId = longValue(request.get("actorId"), null);
@@ -1782,7 +1596,7 @@ public class StudentReadRepository {
         return idCardStatus(campaignId);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> initiateFullNameVerification(Map<String, Object> request) {
         Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
         Long actorId = longValue(request.get("actorId"), null);
@@ -1825,7 +1639,7 @@ public class StudentReadRepository {
         return fullNameStatus(campaignId);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> initiateProfileVerification(Map<String, Object> request) {
         return initiateStudentVerification(
                 request,
@@ -1834,7 +1648,7 @@ public class StudentReadRepository {
                 "An active Profile Verification campaign already exists for this school");
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> initiatePhotoVerification(Map<String, Object> request) {
         return initiateStudentVerification(
                 request,
@@ -1843,7 +1657,7 @@ public class StudentReadRepository {
                 "An active Photo Verification campaign already exists for this school");
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> verifyStudentProfile(Long studentId, Long schoolId, Long actorId) {
         String itemId = ensureStudentReviewItem(studentId, schoolId, "PROFILE_VERIFICATION", "Profile Verification", actorId);
         return updateReviewItem(itemId, row(
@@ -1859,7 +1673,7 @@ public class StudentReadRepository {
                 "correctionNotes", null));
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> verifyStudentPhoto(Long studentId, Long schoolId, Long actorId) {
         String itemId = ensureStudentReviewItem(studentId, schoolId, "PHOTO_VERIFICATION", "Photo Verification", actorId);
         return updateReviewItem(itemId, row(
@@ -1954,7 +1768,7 @@ public class StudentReadRepository {
         return campaignId;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> updateReviewItem(String itemId, Map<String, Object> request) {
         requireCampaignEditable(itemId);
         Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
@@ -2025,7 +1839,7 @@ public class StudentReadRepository {
         return reviewItemDetail(itemId, schoolId).orElseThrow();
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> verifyFullName(String itemId, Map<String, Object> request) {
         requireCampaignEditable(itemId);
         Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
@@ -2087,7 +1901,7 @@ public class StudentReadRepository {
         return reviewItemDetail(itemId, schoolId).orElseThrow();
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.MANDATORY)
     public Map<String, Object> completeCampaign(String campaignId, Long actorId) {
         Map<String, Object> campaign = jdbc.sql("""
                         SELECT status, school_id, review_type
@@ -3484,78 +3298,13 @@ public class StudentReadRepository {
         return text;
     }
 
-    private List<String> classesForSchool(Long schoolId) {
-        return jdbc.sql("""
-                SELECT sc.name
-                FROM tenant_school.school_sections ss
-                JOIN tenant_school.school_classes sc ON sc.id = ss.school_class_id
-                WHERE ss.school_id = :schoolId
-                  AND ss.active = true
-                GROUP BY sc.name
-                ORDER BY min(sc.sort_order), sc.name
-                """)
-                .param("schoolId", schoolId)
-                .query(String.class)
-                .list();
-    }
 
-    private List<String> sectionNamesForSchool(Long schoolId, String className) {
-        if (blankOrAll(className)) return List.of();
-        return jdbc.sql("""
-                SELECT DISTINCT ss.name
-                FROM tenant_school.school_sections ss
-                JOIN tenant_school.school_classes sc ON sc.id = ss.school_class_id
-                WHERE ss.school_id = :schoolId
-                  AND ss.active = true
-                  AND sc.name = :className
-                ORDER BY ss.name
-                """)
-                .param("schoolId", schoolId)
-                .param("className", className.trim())
-                .query(String.class)
-                .list();
-    }
 
-    private boolean blankOrAll(String value) {
-        return value == null || value.isBlank() || "All".equalsIgnoreCase(value);
-    }
 
-    private String initials(String fullName) {
-        return Arrays.stream(str(fullName, "").split(" "))
-                .filter(value -> !value.isBlank())
-                .limit(2)
-                .map(value -> value.substring(0, 1).toUpperCase(Locale.ROOT))
-                .collect(Collectors.joining());
-    }
 
-    private String photoReference(long studentId, String stored) {
-        if (stored == null || stored.isBlank()) {
-            return null;
-        }
-        String trimmed = stored.trim();
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            return trimmed;
-        }
-        return "/students/" + studentId + "/photo/content?v=" + photoVersion(trimmed);
-    }
 
-    private String photoVersion(String stored) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(stored.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest).substring(0, 16);
-        } catch (Exception ex) {
-            return Integer.toHexString(stored.hashCode());
-        }
-    }
 
-    private double round(double value) {
-        return Math.round(value * 10.0) / 10.0;
-    }
 
-    private String str(Object value, String fallback) {
-        return value == null ? fallback : String.valueOf(value);
-    }
 
     private Long longValue(Object value, Long fallback) {
         if (value == null) return fallback;
@@ -3635,12 +3384,6 @@ public class StudentReadRepository {
         return structured.isBlank() ? str(legacyAddress, "") : structured;
     }
 
-    private Map<String, Object> row(Object... kv) {
-        if (kv.length % 2 != 0) throw new IllegalArgumentException("row requires key/value pairs");
-        LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-        for (int i = 0; i < kv.length; i += 2) map.put(String.valueOf(kv[i]), kv[i + 1]);
-        return map;
-    }
 
     public Long schoolIdForReviewItem(String itemId) {
         return jdbc.sql("SELECT school_id FROM student.student_review_items WHERE id = :itemId")
