@@ -108,3 +108,32 @@ actual browser workflows:
    behavior; run affected CI and independently accept the resulting dev images and public checks.
 
 The detailed boundaries and reasons remain in [the architecture reference](project-architecture.md).
+
+## Later gateway header acceptance
+
+Captured 2026-10-11T21:03:42.938008+00:00. [PR 345](https://github.com/custokingkr-dev/ims-v1/pull/345)
+merged into `dev` as `c44c563ce1299a8b2eda32dfd244fd0cc5ef90c8` and passed its separate
+[dev release](https://github.com/custokingkr-dev/ims-v1/actions/runs/38174071671) and
+[post-merge CodeQL](https://github.com/custokingkr-dev/ims-v1/actions/runs/38174071452).
+Both actual CodeQL uploads report zero results; source CI and release each pass 108 gateway tests.
+
+The gateway is now `custoking-api-gateway-dev-00039-xsz`, with its requested root image and actual child digest bound
+to the release manifest. The other six service revisions and digests match the accepted before snapshot.
+All seven remain Ready at sole untagged 100% traffic; the five database role/migration guards pass.
+The original full security-header and CSP/browser assertions now pass on both exact dev origins,
+including `Permissions-Policy` on the gateway's 401 JSON response and `camera=(self)` for the existing
+photo flow. All 19 public denial cases pass again. This closes the header consistency gap recorded above;
+the earlier captures keep their dates and bytes.
+
+[Header follow-up acceptance and evidence hashes](../security-remediation/acceptance-gateway-permissions-policy-dev.json)
+record the exact scope. The new gateway scan reports zero findings. The retained Java image findings
+remain 24 MEDIUM and eight LOW package rows; they are not new findings from the gateway-only release.
+[All 32 reported package rows and their fix plan](../security-remediation/acceptance-architecture-native-findings-2026-10-12.json)
+retain immutable image bindings, installed versions and raw SARIF hashes. None reports a fixed version;
+that empty scanner field is not a vendor applicability or fix-availability attestation.
+
+[Research checkpoint](../security-remediation/acceptance-architecture-security-research-2026-10-12.json)
+records the primary [camera policy reference](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Permissions-Policy/camera).
+It describes the same-origin default and limited browser support; real device/browser acceptance remains
+open. Two Ubuntu advisory fetches returned internal errors, so no vendor clearance was inferred.
+The eleven owner areas and incremental payload coverage listed above remain open. Production was not changed.

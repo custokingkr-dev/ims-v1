@@ -1,0 +1,510 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-11T21:03:42.938008+00:00",
+  "sourceHeadSha": "c44c563ce1299a8b2eda32dfd244fd0cc5ef90c8",
+  "sourceTree": "bfad9dfc5688565cdcb771721b24b80300569756",
+  "pullRequest": 345,
+  "project": "custoking-dev",
+  "releaseRunId": 38174071671,
+  "postmergeCodeqlRunId": 38174071452,
+  "success": true,
+  "services": [
+    {
+      "service": "api-gateway",
+      "name": "custoking-api-gateway-dev",
+      "revision": "custoking-api-gateway-dev-00039-xsz",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-api-gateway-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:d21ce4aadeb9e89ce4c4fcbfe8700417e74f622ac8062cda60b833673b159e88",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:a9e3314dd1f7d34e630d32b6e274906ae8098670982907818132f5597865f8ce",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:a9e3314dd1f7d34e630d32b6e274906ae8098670982907818132f5597865f8ce",
+      "selectedEnvironment": {
+        "GATEWAY_CORS_ALLOWED_ORIGINS": "https://custoking-frontend-dev-1087017280590.asia-south2.run.app,https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "FRONTEND_UPSTREAM": "https://custoking-frontend-dev-1087017280590.asia-south2.run.app"
+      }
+    },
+    {
+      "service": "billing-service",
+      "name": "custoking-billing-service-dev",
+      "revision": "custoking-billing-service-dev-00031-f9f",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-billing-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a88da3b832d689f758f866edffa33be8719a342b7e9bd75dfa91e67d2d6d1703",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_billing_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_billing_rt"
+      }
+    },
+    {
+      "service": "frontend",
+      "name": "custoking-frontend-dev",
+      "revision": "custoking-frontend-dev-00058-9wc",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:687c200183fad18f8d088b673e2818c9c89a5f743b45e02ae9684ec0043f0c45",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:abcec5ae45bcaee690f2b26f35e797a84b465236c56355ba9267347884ee0b02",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:abcec5ae45bcaee690f2b26f35e797a84b465236c56355ba9267347884ee0b02",
+      "selectedEnvironment": {
+        "API_UPSTREAM": "https://custoking-api-gateway-dev-1087017280590.asia-south2.run.app"
+      }
+    },
+    {
+      "service": "identity-service",
+      "name": "custoking-identity-service-dev",
+      "revision": "custoking-identity-service-dev-00035-vgl",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-identity-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:15a81abee368161451064554a485cfe94dbafd8c5dd5adb72076c87356b25a41",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_identity_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_identity_rt"
+      }
+    },
+    {
+      "service": "operations-service",
+      "name": "custoking-operations-service-dev",
+      "revision": "custoking-operations-service-dev-00032-jbn",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-operations-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:7c5cfb8810446b78f4e07fcb3179dba1eb516ecdcf7d62013ef860cbde0a3327",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_operations_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_operations_rt"
+      }
+    },
+    {
+      "service": "platform-service",
+      "name": "custoking-platform-service-dev",
+      "revision": "custoking-platform-service-dev-00042-cvv",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:2f5cd9d7ec1ad8bcce62b87177602de00fb536bcc294914e37703f80777599b6",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:bd01b334e248f85b414110821e2848ffaf1782ebf885371dca8fd16b9c248074",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:bd01b334e248f85b414110821e2848ffaf1782ebf885371dca8fd16b9c248074",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_platform_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_platform_rt",
+        "MSG91_DRY_RUN": "true",
+        "NOTIFICATION_DELIVERY_PROVIDER": "logging",
+        "BROADCAST_LIVE_ENABLED": "false",
+        "NOTIFICATION_REPORT_RECONCILIATION_ENABLED": "false"
+      }
+    },
+    {
+      "service": "school-core-service",
+      "name": "custoking-school-core-service-dev",
+      "revision": "custoking-school-core-service-dev-00080-hwr",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-school-core-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:de66d4e1340d366cd5dd6280242999740faf195d262b5836a0aa2a24c7d8a4f2",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:df1ef4b7075c5cb6eec99cf98eb5b7299561c6ca937fd1eef2340d319e31f34e",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:df1ef4b7075c5cb6eec99cf98eb5b7299561c6ca937fd1eef2340d319e31f34e",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_school_core_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_school_core_rt",
+        "STUDENT_ERASURE_JOURNAL_ENABLED": "true",
+        "STUDENT_ERASURE_JOURNAL_PROJECT_ID": "custoking-dev",
+        "STUDENT_ERASURE_JOURNAL_BUCKET": "custoking-dev-erasure-journal",
+        "STUDENT_ERASURE_JOURNAL_SOURCE_LINEAGE_ID": "58bc724a-592f-49f1-b22f-0e5f95aa6808",
+        "STUDENT_ERASURE_JOURNAL_RESTORE_EPOCH": "d9c4f31c-3420-48a7-8fbe-7fc26d2065bf",
+        "STUDENT_ERASURE_JOURNAL_EPOCH_GENERATION": "1791384645925940",
+        "STUDENT_ERASURE_JOURNAL_EPOCH_SHA256": "aae5c2aedd259b60e7cdff757508a4a0584bb6ab26def2e5eddd148ede7ab108"
+      }
+    }
+  ],
+  "changedServices": [
+    "api-gateway"
+  ],
+  "retainedServices": [
+    "billing-service",
+    "frontend",
+    "identity-service",
+    "operations-service",
+    "platform-service",
+    "school-core-service"
+  ],
+  "gatewayTests": {
+    "tests": 108,
+    "failures": 0,
+    "skipped": 0,
+    "jobId": 114572646836,
+    "path": "tmp/architecture-release-8b0124284e6149048e17622b0af01495/api-gateway-tests.log",
+    "sha256": "c0a8c2c1a69cc489618542a0c60e48a4cf189211af7af60baaee94e50740a62e"
+  },
+  "scan": {
+    "commit": "c44c563ce1299a8b2eda32dfd244fd0cc5ef90c8",
+    "environment": "dev",
+    "scanner": "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25",
+    "scannedAtUtc": "2026-10-11T20:56:32.2565014Z",
+    "verdictCacheTtlHours": 24.0,
+    "scannedCount": 1,
+    "cachedCount": 0,
+    "services": [
+      {
+        "service": "api-gateway",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:d21ce4aadeb9e89ce4c4fcbfe8700417e74f622ac8062cda60b833673b159e88",
+        "digestKey": "sha256-d21ce4aadeb9e89ce4c4fcbfe8700417e74f622ac8062cda60b833673b159e88",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/api-gateway-sha256-d21ce4aadeb9e89ce4c4fcbfe8700417e74f622ac8062cda60b833673b159e88.table.txt",
+        "sarifEvidence": "release-evidence/trivy/api-gateway-sha256-d21ce4aadeb9e89ce4c4fcbfe8700417e74f622ac8062cda60b833673b159e88.sarif",
+        "passed": true
+      }
+    ]
+  },
+  "scannerFindings": {
+    "api-gateway": {
+      "reportedFindings": 0,
+      "sarifLevels": {},
+      "source": "scanned",
+      "sarifPath": "trivy/api-gateway-sha256-d21ce4aadeb9e89ce4c4fcbfe8700417e74f622ac8062cda60b833673b159e88.sarif"
+    }
+  },
+  "denials": {
+    "capturedAt": "2026-10-11T21:00:26.821022+00:00",
+    "project": "custoking-dev",
+    "requests": 19,
+    "cases": [
+      {
+        "service": "identity-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_internal_machine",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "case": "anonymous_protected_gateway",
+        "status": 401,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "path": "/api/v1/internal/notifications/reports/reconcile",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/internal/notifications/reports/reconcile",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/notification-api/v1/internal/notifications/reports/reconcile",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/pubsub/events",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/reporting-api/v1/pubsub/events",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/students",
+        "status": 401,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/reporting/vendor-dues",
+        "status": 401,
+        "passed": true
+      }
+    ],
+    "success": true,
+    "scope": "Anonymous/forged headers only. Private 403 demonstrates Cloud Run ingress denial; gateway 401/404 demonstrates public user and internal/rewritten-path rejection. No signed caller, authenticated tenant access or live provider delivery is claimed."
+  },
+  "frontendCsp": {
+    "startedAt": "2026-10-11T21:00:14.500Z",
+    "scope": "Anonymous live HTTP/browser smoke",
+    "origins": [
+      {
+        "origin": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "responses": [
+          {
+            "resource": "/login",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/frontend-health",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/index-ddB_H8wq.js",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/missing-security-proof.js",
+            "status": 404,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "synthetic-nonexistent-photo",
+            "status": 401,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none', default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff, nosniff",
+              "x-frame-options": "DENY, DENY",
+              "referrer-policy": "strict-origin-when-cross-origin, no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self), geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload, max-age=31536000"
+            }
+          }
+        ],
+        "browser": {
+          "inlineExecuted": false,
+          "rasterBlobLoaded": true,
+          "violations": [
+            "script-src-elem",
+            "object-src"
+          ]
+        }
+      },
+      {
+        "origin": "https://custoking-api-gateway-dev-hd4wfwk7mq-em.a.run.app",
+        "responses": [
+          {
+            "resource": "/login",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/frontend-health",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/index-ddB_H8wq.js",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/missing-security-proof.js",
+            "status": 404,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "synthetic-nonexistent-photo",
+            "status": 401,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+            }
+          }
+        ],
+        "browser": {
+          "inlineExecuted": false,
+          "rasterBlobLoaded": true,
+          "violations": [
+            "script-src-elem",
+            "object-src"
+          ]
+        }
+      }
+    ],
+    "nonRoot": {
+      "verified": false,
+      "reason": "Public HTTP cannot establish runtime UID; use deployed image config plus existing container proof."
+    },
+    "success": true,
+    "finishedAt": "2026-10-11T21:00:34.746Z"
+  },
+  "configuredImageUsers": {
+    "proofScope": "Digest-bound image configured User only; not observed Cloud Run process UID",
+    "images": {
+      "api-gateway": {
+        "runtimeDigest": "sha256:a9e3314dd1f7d34e630d32b6e274906ae8098670982907818132f5597865f8ce",
+        "configDigest": "sha256:52b882aa3debfaa15ee66b1242ce702fb4303ff75348a68f762814e6ec5664df",
+        "configuredUser": "node",
+        "manifestHashVerified": true,
+        "configHashVerified": true,
+        "nonrootConfiguredUser": true
+      },
+      "frontend": {
+        "runtimeDigest": "sha256:abcec5ae45bcaee690f2b26f35e797a84b465236c56355ba9267347884ee0b02",
+        "configDigest": "sha256:ce5d021bcba3b8be33d38f5848b56500ab6da686d49aa3d8009543bd83976c20",
+        "configuredUser": "nginx",
+        "manifestHashVerified": true,
+        "configHashVerified": true,
+        "nonrootConfiguredUser": true
+      }
+    }
+  },
+  "gatewayJsonPermissionsPolicyGapClosed": true,
+  "operationalOwnerAreasStillOpen": 11,
+  "architectureNativeScannerFindingsStillReported": 32,
+  "broaderPayloadCoverage": "incremental",
+  "evidenceSha256": {
+    "tmp/architecture-dev-runtime-a3e23ca4492f4735ba5fecc88145e3b2.json": "471906f059ec54898810727c9581705f6d32beacc4b7fb486d4943f920ca912d",
+    "tmp/gateway-permissions-ci-1d9417c6052c48ad9e7ace41a2d603ae/proof.json": "a0ddd81c16cd824857cec0d411316cf0e20bb0f7c13cc222181c9cbd6ae22016",
+    "tmp/architecture-dev-closeout-ec920d8939d14a30a5ff235471656bc2.json": "00af2097bc7c5bbf45907015b61ec5ce319eab19a4e1b9fabe08931c6383a25a",
+    "tmp/architecture-native-findings-4e50ed8fa9be422c8483bd4c434d2f3d.json": "fc02e146f223de6f083dc58537e17abf4fca4e049a34d3059ff5ff390417d747",
+    "tmp/architecture-security-research-5136051070d047c5956034e76d818491.json": "aa5a94cf61b2192e1c3e51c69458fda4227f1b1b2b4add6593d990fb3596769f",
+    "tmp/architecture-release-8b0124284e6149048e17622b0af01495/proof.json": "c063d8169e98a1075d3c0bfd4f0c1a48c3da4c65c58806a6d441ae70b001ec67",
+    "tmp/architecture-dev-runtime-a51a2a8326bf48f59cd309eafcb80bc3.json": "30f2ab5fe63c1e7b3356183123542003c86b0fb2905a7c6cb60688a42ee5b0ef",
+    "tmp/architecture-dev-runtime-0cfb55f607634d2285cbcb973901f6bd.json": "f12f10d53c9c36bc545800613b51c3fb146abb42177616c488bf0651e08ea6ab",
+    "tmp/architecture-public-cad611e83e27408ea0546a712a45b5cc/proof.json": "614bcf45f5d4c7b4d94f63865ff9bc442c608f11ec410b4d354e8c37d2d302a6",
+    "tmp/architecture-live-csp-031d2df393094814ba8bdeab25cec8f7.json": "7d1db2e275046bee857a7e4436df9db871f4b950a2c76fc1ba5efdad8b82b13f",
+    "tmp/architecture-image-user-678fcd8a7eea4d499a37124f45a9c9ad/proof.json": "abb4c280a2d6b6c00aa36ddae173ebe4a6ef16f0369f67041113702b3f2e4f56"
+  },
+  "productionChangedByThisWork": false,
+  "scope": "One changed gateway bound to exact release digests, six exact retained runtimes, seven Ready/sole untagged 100% traffic, selected configuration unchanged and five guarded database roles/migrations disabled. Two metadata snapshots bracket 19 public denials and the original full security-header/CSP/browser assertions for two exact dev origins. Camera policy syntax/default checked against MDN; device/browser acceptance is still an owner gate. No atomic drift, exhaustive attack/feature, provider/hardware/full restore or native applicability attestation. Historical failed/pending captures are preserved."
+}
