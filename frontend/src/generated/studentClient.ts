@@ -14,12 +14,89 @@ export type StudentRosterRow = { "id": number; "schoolId": number; "fullName": s
 
 export type UpdateStudentRequest = { "admissionNumber": string; "fullName": string; "schoolId"?: number; "classId": string; "sectionId": string; "gradeLevel"?: string; "className"?: string; "sectionName"?: string; "rollNo"?: string; "boardRegistrationNumber"?: string; "dateOfBirth"?: string; "admissionDate"?: string; "gender"?: string; "fatherName"?: string; "fatherContactNumber"?: string; "fatherContact"?: string; "motherName"?: string; "phone": string; "houseNumber"?: string; "street"?: string; "locality"?: string; "city"?: string; "state"?: string; "pinCode"?: string; "address"?: string; };
 
+export type PreviewImportRequest = { "schoolId"?: number | null; "rows"?: Array<{ [key: string]: string | number | boolean | null; }>; };
+
+export type ConfirmImportRequest = { "fileToken": string; "schoolId"?: number | null; };
+
+export type ImportFileUpload = { "file": Blob; "rowsJson": string; };
+
+export type ImportPreviewRow = { "rowNumber": number; "name": string; "className": string; "sectionName": string; "admissionNo": string; "dateOfBirth": string; "phone": string; "status": string; "statusTone": string; "description": string; "message": string; };
+
+export type ImportStructurePreview = { "currentClassCount": number; "currentSectionCount": number; "requiredClassCount": number; "requiredSectionCount": number; "requiresStructureUpdate": boolean; "missingClasses": Array<string>; "missingSections": Array<string>; "unsupportedClasses": Array<string>; };
+
+export type ImportPreview = { "rows": Array<ImportPreviewRow>; "fileToken": string; "jobId": string; "validCount": number; "errorCount": number; "warningCount": number; "batchId": string; "originalFileStored": boolean; "structure": ImportStructurePreview; };
+
+export type SkippedImportRow = { "rowNumber": number; "name": string | null; "admissionNo": string | null; "className": string | null; "sectionName": string | null; "phone": string | null; "status": string | null; "message": string | null; "reason": string; };
+
+export type ImportConfirmation = { "batchId": string; "jobId": string | null; "schoolId": number; "totalRows": number; "inserted": number; "skipped": number; "done": boolean; "skippedRows": Array<SkippedImportRow>; "insertedStudents": Array<{ "admissionNo": string; "studentId": number; }>; };
+
+export type ImportProgress = { "pct": number; "done": boolean; "inserted": number; "skipped": number; "skippedRows"?: Array<SkippedImportRow>; "jobId"?: string; "batchId"?: string; "status"?: string; "phase"?: string; "totalRows"?: number; "processedRows"?: number; "failed"?: boolean; "message"?: string; "updatedAt"?: string; };
+
+export type CreatePromotionBatchRequest = { "schoolId"?: number | null; "sourceAcademicYearId"?: string; "targetAcademicYearId": string; "sourceClassId"?: string; "sourceSectionId"?: string; "targetClassId"?: string; "targetSectionId"?: string; "notes"?: string; };
+
+export type UpdatePromotionItemRequest = { "targetClassId"?: string | null; "targetSectionId"?: string | null; "reason"?: string | null; "action"?: "PROMOTE" | "HOLD"; };
+
+export type PromotionBatchItem = { "id": string; "studentId": number; "studentName": string; "admissionNumber": string; "sourceClassId": string | null; "sourceClassName": string | null; "sourceSectionId": string | null; "sourceSectionName": string | null; "targetClassId": string | null; "targetClassName": string | null; "targetSectionId": string | null; "targetSectionName": string | null; "reason": string | null; "action": string; "status": string; };
+
+export type PromotionBatch = { "id": string; "schoolId": number; "sourceAcademicYearId": string; "targetAcademicYearId": string; "sourceClassId": string | null; "sourceSectionId": string | null; "status": string; "notes": string | null; "createdBy": number | null; "createdAt": string; "appliedBy": number | null; "appliedAt": string | null; "items": Array<PromotionBatchItem>; "promoted"?: number; "skipped"?: number; };
+
+export type StudentDeletion = { "id": number; "deleted": boolean; "permanent": boolean; };
+
+export type ReviewItemDetail = { "itemId": string; "studentId": number; "studentName": string; "admissionNo": string; "className": string; "sectionName": string; "photoUrl": string | null; "currentFullName": string | null; "suggestedFullName": string | null; "status": "PENDING" | "COMPLETED" | "NEEDS_CORRECTION"; "verifiedPhoto": boolean; "verifiedFullName": boolean; "verifiedAdmissionNo": boolean; "verifiedClassSection": boolean; "verifiedRollNo": boolean; "verifiedFatherName": boolean; "verifiedFatherContact": boolean; "verifiedAddress": boolean; "verifiedBloodGroup": boolean; "parentConfirmed": boolean; "teacherConfirmed": boolean; "correctionRequested": boolean; "correctionNotes": string | null; "completedAt": string | null; };
+
+export type StudentVerificationSummary = { "profile": (ReviewItemDetail | null); "photo": (ReviewItemDetail | null); };
+
+export type ReviewStatus = { "campaignId": string | null; "totalStudents": number; "completed": number; "pending": number; "needsCorrection": number; "completionPercent": number; };
+
+export type IdCardReviewStatus = { "campaignId": string | null; "totalStudents": number; "completed": number; "pending": number; "needsCorrection": number; "completionPercent": number; "classWiseStatus"?: Array<{ [key: string]: unknown; }>; };
+
+export type FullNameReviewStatus = { "campaignId": string | null; "totalStudents": number; "confirmed": number; "correctionRequested": number; "pending": number; "completionPercent": number; };
+
+export type InitiateIdCardReviewRequest = { "schoolId"?: number | null; "actorId"?: number | null; "dueDate"?: string | null; "classIds"?: Array<string> | null; "sectionIds"?: Array<string> | null; "assignedToUserId"?: number | null; };
+
+export type InitiateFullNameReviewRequest = { "schoolId"?: number | null; "actorId"?: number | null; "dueDate"?: string | null; "verifier"?: "TEACHER" | "PARENT" | "BOTH" | null | null; "classIds"?: Array<string> | null; "sectionIds"?: Array<string> | null; };
+
+export type UpdateReviewItemRequest = { "verifiedPhoto"?: boolean | null; "verifiedFullName"?: boolean | null; "verifiedAdmissionNo"?: boolean | null; "verifiedClassSection"?: boolean | null; "verifiedRollNo"?: boolean | null; "verifiedFatherName"?: boolean | null; "verifiedFatherContact"?: boolean | null; "verifiedAddress"?: boolean | null; "verifiedBloodGroup"?: boolean | null; "status"?: string | null; "correctionNotes"?: string | null; };
+
+export type VerifyFullNameRequest = { "confirmed": boolean; "suggestedFullName"?: string | null; "correctionNotes"?: string | null; };
+
+export type ReviewItemPage = { "content": Array<ReviewItemDetail>; "totalElements": number; "page": number; "size": number; };
+
+export type CompletedReviewCampaign = (ReviewStatus | FullNameReviewStatus);
+
+export type PhotoFromUrlRequest = { "url": string; };
+
 export interface StudentClient {
   createStudent(request: CreateStudentRequest): Promise<StudentDetail>;
   uploadStudentPhoto(parameters: { id: number; }, request: PhotoUpload): Promise<StudentDetail>;
   getStudentPhoto(parameters: { id: number; }): Promise<Blob>;
   getRoster(parameters: { classId: string; sectionId: string; schoolId?: number; limit?: number; }): Promise<Array<StudentRosterRow>>;
   updateStudent(parameters: { id: number; }, request: UpdateStudentRequest): Promise<StudentDetail>;
+  deleteStudent(parameters: { id: number; confirmation: string; }): Promise<StudentDeletion>;
+  previewImport(request: PreviewImportRequest): Promise<ImportPreview>;
+  previewImportFile(parameters: { schoolId?: number; }, request: ImportFileUpload): Promise<ImportPreview>;
+  confirmImport(request: ConfirmImportRequest): Promise<ImportConfirmation>;
+  getImportStatus(parameters: { jobId: string; }): Promise<ImportProgress>;
+  createPromotionBatch(request: CreatePromotionBatchRequest): Promise<PromotionBatch>;
+  getPromotionBatch(parameters: { batchId: string; }): Promise<PromotionBatch>;
+  updatePromotionItem(parameters: { batchId: string; itemId: string; }, request: UpdatePromotionItemRequest): Promise<PromotionBatch>;
+  applyPromotionBatch(parameters: { batchId: string; }): Promise<PromotionBatch>;
+  getIdCardReviewStatus(parameters: { schoolId: number; }): Promise<IdCardReviewStatus>;
+  initiateIdCardReview(request: InitiateIdCardReviewRequest): Promise<IdCardReviewStatus>;
+  getFullNameReviewStatus(parameters: { schoolId: number; }): Promise<FullNameReviewStatus>;
+  initiateFullNameReview(request: InitiateFullNameReviewRequest): Promise<FullNameReviewStatus>;
+  getProfileReviewStatus(parameters: { schoolId: number; }): Promise<ReviewStatus>;
+  initiateProfileReview(request: InitiateIdCardReviewRequest): Promise<ReviewStatus>;
+  getPhotoReviewStatus(parameters: { schoolId: number; }): Promise<ReviewStatus>;
+  initiatePhotoReview(request: InitiateIdCardReviewRequest): Promise<ReviewStatus>;
+  getStudentVerification(parameters: { id: number; }): Promise<StudentVerificationSummary>;
+  verifyStudentProfile(parameters: { id: number; }): Promise<ReviewItemDetail>;
+  verifyStudentPhoto(parameters: { id: number; }): Promise<ReviewItemDetail>;
+  updateReviewItem(parameters: { itemId: string; }, request: UpdateReviewItemRequest): Promise<ReviewItemDetail>;
+  verifyFullName(parameters: { itemId: string; }, request: VerifyFullNameRequest): Promise<ReviewItemDetail>;
+  getCampaignItems(parameters: { campaignId: string; schoolId?: number; status?: string; classId?: string; sectionId?: string; page?: number; size?: number; }): Promise<ReviewItemPage>;
+  completeReviewCampaign(parameters: { campaignId: string; }): Promise<CompletedReviewCampaign>;
+  attachStudentPhotoFromUrl(parameters: { id: number; }, request: PhotoFromUrlRequest): Promise<StudentDetail>;
 }
 
 export function createStudentClient(http: AxiosInstance): StudentClient {
@@ -44,6 +121,109 @@ export function createStudentClient(http: AxiosInstance): StudentClient {
     },
     async updateStudent(parameters: { id: number; }, request: UpdateStudentRequest) {
       const response = await http.put<StudentDetail>(`/students/${encodeURIComponent(String(parameters.id))}`, request);
+      return response.data;
+    },
+    async deleteStudent(parameters: { id: number; confirmation: string; }) {
+      const response = await http.delete<StudentDeletion>(`/students/${encodeURIComponent(String(parameters.id))}`, { headers: { "X-Student-Delete-Confirmation": encodeURIComponent(String(parameters.confirmation)) } });
+      return response.data;
+    },
+    async previewImport(request: PreviewImportRequest) {
+      const response = await http.post<ImportPreview>("/students/imports/preview", request);
+      return response.data;
+    },
+    async previewImportFile(parameters: { schoolId?: number; }, request: ImportFileUpload) {
+      const form = new FormData();
+      form.append("file", request.file);
+      form.append("rowsJson", request.rowsJson);
+      const response = await http.post<ImportPreview>("/students/import/upload-preview", form, { params: { schoolId: parameters.schoolId } });
+      return response.data;
+    },
+    async confirmImport(request: ConfirmImportRequest) {
+      const response = await http.post<ImportConfirmation>("/students/imports/confirm", request);
+      return response.data;
+    },
+    async getImportStatus(parameters: { jobId: string; }) {
+      const response = await http.get<ImportProgress>(`/students/imports/status/${encodeURIComponent(String(parameters.jobId))}`);
+      return response.data;
+    },
+    async createPromotionBatch(request: CreatePromotionBatchRequest) {
+      const response = await http.post<PromotionBatch>("/students/promotion-batches", request);
+      return response.data;
+    },
+    async getPromotionBatch(parameters: { batchId: string; }) {
+      const response = await http.get<PromotionBatch>(`/students/promotion-batches/${encodeURIComponent(String(parameters.batchId))}`);
+      return response.data;
+    },
+    async updatePromotionItem(parameters: { batchId: string; itemId: string; }, request: UpdatePromotionItemRequest) {
+      const response = await http.patch<PromotionBatch>(`/students/promotion-batches/${encodeURIComponent(String(parameters.batchId))}/items/${encodeURIComponent(String(parameters.itemId))}`, request);
+      return response.data;
+    },
+    async applyPromotionBatch(parameters: { batchId: string; }) {
+      const response = await http.post<PromotionBatch>(`/students/promotion-batches/${encodeURIComponent(String(parameters.batchId))}/apply`);
+      return response.data;
+    },
+    async getIdCardReviewStatus(parameters: { schoolId: number; }) {
+      const response = await http.get<IdCardReviewStatus>("/students/reviews/id-card/status", { params: { schoolId: parameters.schoolId } });
+      return response.data;
+    },
+    async initiateIdCardReview(request: InitiateIdCardReviewRequest) {
+      const response = await http.post<IdCardReviewStatus>("/students/reviews/id-card/initiate", request);
+      return response.data;
+    },
+    async getFullNameReviewStatus(parameters: { schoolId: number; }) {
+      const response = await http.get<FullNameReviewStatus>("/students/reviews/full-name/status", { params: { schoolId: parameters.schoolId } });
+      return response.data;
+    },
+    async initiateFullNameReview(request: InitiateFullNameReviewRequest) {
+      const response = await http.post<FullNameReviewStatus>("/students/reviews/full-name/initiate", request);
+      return response.data;
+    },
+    async getProfileReviewStatus(parameters: { schoolId: number; }) {
+      const response = await http.get<ReviewStatus>("/students/reviews/profile/status", { params: { schoolId: parameters.schoolId } });
+      return response.data;
+    },
+    async initiateProfileReview(request: InitiateIdCardReviewRequest) {
+      const response = await http.post<ReviewStatus>("/students/reviews/profile/initiate", request);
+      return response.data;
+    },
+    async getPhotoReviewStatus(parameters: { schoolId: number; }) {
+      const response = await http.get<ReviewStatus>("/students/reviews/photo/status", { params: { schoolId: parameters.schoolId } });
+      return response.data;
+    },
+    async initiatePhotoReview(request: InitiateIdCardReviewRequest) {
+      const response = await http.post<ReviewStatus>("/students/reviews/photo/initiate", request);
+      return response.data;
+    },
+    async getStudentVerification(parameters: { id: number; }) {
+      const response = await http.get<StudentVerificationSummary>(`/students/${encodeURIComponent(String(parameters.id))}/verification`);
+      return response.data;
+    },
+    async verifyStudentProfile(parameters: { id: number; }) {
+      const response = await http.post<ReviewItemDetail>(`/students/${encodeURIComponent(String(parameters.id))}/verification/profile/verify`);
+      return response.data;
+    },
+    async verifyStudentPhoto(parameters: { id: number; }) {
+      const response = await http.post<ReviewItemDetail>(`/students/${encodeURIComponent(String(parameters.id))}/verification/photo/verify`);
+      return response.data;
+    },
+    async updateReviewItem(parameters: { itemId: string; }, request: UpdateReviewItemRequest) {
+      const response = await http.post<ReviewItemDetail>(`/students/reviews/items/${encodeURIComponent(String(parameters.itemId))}`, request);
+      return response.data;
+    },
+    async verifyFullName(parameters: { itemId: string; }, request: VerifyFullNameRequest) {
+      const response = await http.post<ReviewItemDetail>(`/students/reviews/items/${encodeURIComponent(String(parameters.itemId))}/full-name-verification`, request);
+      return response.data;
+    },
+    async getCampaignItems(parameters: { campaignId: string; schoolId?: number; status?: string; classId?: string; sectionId?: string; page?: number; size?: number; }) {
+      const response = await http.get<ReviewItemPage>(`/students/review-campaigns/${encodeURIComponent(String(parameters.campaignId))}/items`, { params: { schoolId: parameters.schoolId, status: parameters.status, classId: parameters.classId, sectionId: parameters.sectionId, page: parameters.page, size: parameters.size } });
+      return response.data;
+    },
+    async completeReviewCampaign(parameters: { campaignId: string; }) {
+      const response = await http.post<CompletedReviewCampaign>(`/students/review-campaigns/${encodeURIComponent(String(parameters.campaignId))}/complete`);
+      return response.data;
+    },
+    async attachStudentPhotoFromUrl(parameters: { id: number; }, request: PhotoFromUrlRequest) {
+      const response = await http.post<StudentDetail>(`/students/${encodeURIComponent(String(parameters.id))}/photo-from-url`, request);
       return response.data;
     },
   };

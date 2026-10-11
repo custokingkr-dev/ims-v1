@@ -638,7 +638,9 @@ public class StudentReadController {
         Long itemSchool = students.schoolIdForReviewItem(itemId);
         TenantScope.resolveSchoolId(itemSchool);
         requireStudentModule(itemSchool);
-        return execute(() -> commands.updateReviewItem(itemId, request));
+        Map<String, Object> params = new HashMap<>(request);
+        params.put("schoolId", itemSchool);
+        return execute(() -> commands.updateReviewItem(itemId, params));
     }
 
     @PostMapping("/reviews/items/{itemId}/full-name-verification")
@@ -651,7 +653,9 @@ public class StudentReadController {
         Long itemSchool = students.schoolIdForReviewItem(itemId);
         TenantScope.resolveSchoolId(itemSchool);
         requireStudentModule(itemSchool);
-        return execute(() -> commands.verifyFullName(itemId, request));
+        Map<String, Object> params = new HashMap<>(request);
+        params.put("schoolId", itemSchool);
+        return execute(() -> commands.verifyFullName(itemId, params));
     }
 
     @PostMapping("/review-campaigns/{campaignId}/complete")

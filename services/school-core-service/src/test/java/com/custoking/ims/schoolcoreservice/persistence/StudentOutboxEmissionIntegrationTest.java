@@ -455,6 +455,7 @@ class StudentOutboxEmissionIntegrationTest {
                 .single()).isEqualTo(1L);
 
         Map<String, Object> deleted = commands.deleteStudent(id, "ADM-FEE-1");
+        com.custoking.ims.schoolcoreservice.contracts.StudentLifecycleContractAssertions.assertResponse("StudentDeletion", deleted);
 
         assertThat(deleted).containsEntry("deleted", true).containsEntry("permanent", true);
         assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE id = :id")

@@ -7,6 +7,7 @@ const path = require('node:path');
 const repositoryRoot = path.resolve(__dirname, '..');
 const methods = ['get', 'post', 'put', 'patch', 'delete'];
 const identifier = /^[A-Za-z_$][\w$]*$/;
+const parameterName = (parameter) => parameter['x-ims-client-name'] || parameter.name;
 
 function operations(spec) {
   return Object.entries(spec.paths || {}).flatMap(([url, item]) => methods
@@ -42,13 +43,39 @@ function validateContract(spec, inventory) {
     const variables = [...op.url.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
     const names = new Set();
     for (const parameter of op.parameters) {
-      if (!identifier.test(parameter.name) || names.has(parameter.name) || !['path', 'query'].includes(parameter.in)) throw new Error(`Unsupported or duplicate parameter in ${op.operationId}`);
-      names.add(parameter.name);
+      const clientName = parameterName(parameter);
+      // Browser contracts may express only this user confirmation header. Peer,
+      // authentication and tenant identity headers remain owned by the transport.
+      const confirmation = parameter.in === 'header'
+        && op.method === 'delete' && op.url === '/api/v1/students/{id}'
+        && spec['x-ims-service'] === 'school-core-service'
+        && (op['x-ims-controller'] || spec['x-ims-controller']) === 'StudentReadController'
+        && parameter.name === 'X-Student-Delete-Confirmation'
+        && parameter['x-ims-client-name'] === 'confirmation'
+        && parameter['x-ims-header-encoding'] === 'uri-component'
+        && parameter.required === true && parameter.schema?.type === 'string';
+      if (!identifier.test(clientName) || names.has(clientName)
+        || (parameter.in === 'header' ? !confirmation
+          : !['path', 'query'].includes(parameter.in) || !identifier.test(parameter.name)
+            || parameter['x-ims-client-name'] || parameter['x-ims-header-encoding'])) {
+        throw new Error(`Unsupported or duplicate parameter in ${op.operationId}`);
+      }
+      names.add(clientName);
       if (parameter.in === 'path' && (!variables.includes(parameter.name) || !parameter.required)) throw new Error(`Path parameters must be present and required in ${op.operationId}`);
       typeFor(parameter.schema);
     }
     if (variables.some((name) => !op.parameters.some((p) => p.in === 'path' && p.name === name))) throw new Error(`Missing path parameter in ${op.operationId}`);
-    requestBody(op); successResponse(op);
+    const request = requestBody(op);
+    if (request?.mediaType === 'multipart/form-data') {
+      const schema = request.schema.$ref ? spec.components?.schemas?.[request.schema.$ref.split('/').at(-1)] : request.schema;
+      if (schema?.type !== 'object' || schema.additionalProperties !== false || !Object.keys(schema.properties || {}).length
+        || Object.keys(schema.properties).some((name) => !identifier.test(name))
+        || Object.values(schema.properties).some((field) => field.type !== 'string'
+          || (field.format && field.format !== 'binary'))) {
+        throw new Error(`Multipart generation supports explicit string or binary fields only in ${op.operationId}`);
+      }
+    }
+    successResponse(op);
   }
   if (!ids.size) throw new Error('Contract contains no client operations.');
   const schemas = spec.components?.schemas || {};
@@ -118,7 +145,7 @@ function renderClient(spec, sourceName) {
   for (const [name, schema] of Object.entries(spec.components?.schemas || {})) lines.push(`export type ${name} = ${typeFor(schema)};`, '');
   function signature(op, implementation = false) {
     const required = op.parameters.some((p) => p.required);
-    const params = op.parameters.length ? [`parameters${!required && !implementation && !requestBody(op) ? '?' : ''}: { ${op.parameters.map((p) => `${p.name}${p.required ? '' : '?'}: ${typeFor(p.schema)};`).join(' ')} }${implementation && !required && !requestBody(op) ? ' = {}' : ''}`] : [];
+    const params = op.parameters.length ? [`parameters${!required && !implementation && !requestBody(op) ? '?' : ''}: { ${op.parameters.map((p) => `${parameterName(p)}${p.required ? '' : '?'}: ${typeFor(p.schema)};`).join(' ')} }${implementation && !required && !requestBody(op) ? ' = {}' : ''}`] : [];
     const request = requestBody(op);
     if (request) params.push(`request: ${typeFor(request.schema)}`);
     return params.join(', ');
@@ -138,13 +165,15 @@ function renderClient(spec, sourceName) {
       const schema = body.schema.$ref ? spec.components.schemas[body.schema.$ref.split('/').at(-1)] : body.schema;
       lines.push('      const form = new FormData();');
       for (const [name, field] of Object.entries(schema.properties || {})) {
-        if (field.type !== 'string' || field.format !== 'binary') throw new Error('Multipart generation supports explicit binary fields only.');
+        if (field.type !== 'string' || (field.format && field.format !== 'binary')) throw new Error('Multipart generation supports explicit string or binary fields only.');
         lines.push(`      ${schema.required?.includes(name) ? '' : `if (request.${name} !== undefined) `}form.append(${JSON.stringify(name)}, request.${name});`);
       }
     }
     const options = [];
     const query = op.parameters.filter((p) => p.in === 'query');
     if (query.length) options.push(`params: { ${query.map((p) => `${p.name}: parameters.${p.name}`).join(', ')} }`);
+    const headers = op.parameters.filter((p) => p.in === 'header');
+    if (headers.length) options.push(`headers: { ${headers.map((p) => `${JSON.stringify(p.name)}: encodeURIComponent(String(parameters.${parameterName(p)}))`).join(', ')} }`);
     if (response.binary) options.push("responseType: 'blob'");
     const args = [url];
     if (['post', 'put', 'patch'].includes(op.method) && (body || options.length)) args.push(body ? (body.mediaType === 'multipart/form-data' ? 'form' : 'request') : 'undefined');

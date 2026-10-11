@@ -8,6 +8,8 @@ import api from '../../../services/api';
 vi.mock('../../../services/api');
 
 beforeEach(() => {
+  vi.mocked(api.post).mockReset();
+  vi.mocked(api.get).mockReset();
   // jsdom cannot decode blob URLs. Exercise the original-byte fallback rather
   // than waiting for Image events that this environment never dispatches.
   vi.spyOn(URL, 'createObjectURL').mockImplementation(() => { throw new Error('Image decoding unavailable'); });
@@ -19,6 +21,35 @@ afterEach(() => {
 });
 
 describe('BulkImportPanel Excel format', () => {
+  it('rejects files above the server limit before parsing or uploading', async () => {
+    render(<BulkImportPanel onRefresh={vi.fn()} />);
+    const file = new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'students.csv', { type: 'text/csv' });
+    await userEvent.upload(document.querySelector('input[type=file]') as HTMLInputElement, file);
+    expect(await screen.findByText('Maximum file size is 10 MB.')).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it('stops polling a failed job without retrying confirmation or attaching photos', async () => {
+    const onRefresh = vi.fn();
+    vi.mocked(api.post).mockImplementation((url: string) => {
+      if (url === '/students/import/upload-preview') return Promise.resolve({ data: {
+        fileToken: 'original-token', jobId: 'job-failed', validCount: 1, errorCount: 0, warningCount: 0,
+        rows: [{ rowNumber: 2, name: 'Aya', status: 'Valid', statusTone: 'sg' }],
+      } });
+      if (url === '/students/imports/confirm') return Promise.resolve({ data: { jobId: 'job-failed', insertedStudents: [] } });
+      throw new Error('Unexpected mutation');
+    });
+    vi.mocked(api.get).mockResolvedValue({ data: { done: false, failed: true, message: 'Import rolled back', pct: 0, inserted: 0, skipped: 0 } });
+    render(<BulkImportPanel onRefresh={onRefresh} />);
+    await userEvent.upload(document.querySelector('input[type=file]') as HTMLInputElement,
+      new File(['Name,Class,Section,AdmissionNo\nAya,1,A,A-1'], 'students.csv', { type: 'text/csv' }));
+    await userEvent.click(await screen.findByRole('button', { name: /import 1 valid rows/i }));
+    expect(await screen.findByText('Import rolled back')).toBeInTheDocument();
+    expect(vi.mocked(api.post).mock.calls.filter(([url]) => url === '/students/imports/confirm')).toHaveLength(1);
+    expect(vi.mocked(api.get).mock.calls.filter(([url]) => url === '/students/imports/status/job-failed')).toHaveLength(1);
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
   it('shows the required column headers, an optional PhotoUrl, and the sample-template action', () => {
     render(<BulkImportPanel onRefresh={vi.fn()} />);
 
@@ -59,7 +90,7 @@ describe('BulkImportPanel Excel format', () => {
     const input = document.querySelector('input[type=file]') as HTMLInputElement;
     await userEvent.upload(input, file);
 
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/import/upload-preview', expect.any(FormData), expect.objectContaining({ headers: expect.any(Object) })));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/import/upload-preview', expect.any(FormData), { params: { schoolId: undefined } }));
     const previewCall = vi.mocked(api.post).mock.calls.find(([url]) => url === '/students/import/upload-preview');
     const fd = previewCall?.[1] as FormData;
     expect(JSON.parse(String(fd.get('rowsJson')))).toEqual(expect.arrayContaining([expect.objectContaining({ Name: 'Aya', Class: '1', AdmissionNo: 'A-1' })]));
@@ -162,7 +193,7 @@ describe('BulkImportPanel Excel format', () => {
 
     expect(report.attached).toBe(2);
     // embedded -> multipart to /students/11/photo
-    expect(api.post).toHaveBeenCalledWith('/students/11/photo', expect.any(FormData), expect.objectContaining({ headers: expect.any(Object) }));
+    expect(api.post).toHaveBeenCalledWith('/students/11/photo', expect.any(FormData));
     // link -> /students/22/photo-from-url
     expect(api.post).toHaveBeenCalledWith('/students/22/photo-from-url', { url: 'https://cdn/x.jpg' });
     expect(progress[progress.length - 1]).toEqual({ processed: 2, total: 2, attached: 2, skipped: 0, pct: 100 });
@@ -188,7 +219,7 @@ describe('BulkImportPanel Excel format', () => {
           },
         });
       }
-      if (url === '/students/import/confirm') return confirmPending;
+      if (url === '/students/imports/confirm') return confirmPending;
       return Promise.resolve({ data: {} });
     });
     vi.mocked(api.get).mockResolvedValue({
@@ -202,7 +233,7 @@ describe('BulkImportPanel Excel format', () => {
     );
     await userEvent.click(await screen.findByRole('button', { name: /import 1 valid rows/i }));
 
-    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/students/import/status/job-live'));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/students/imports/status/job-live'));
     const progressbar = screen.getByRole('progressbar', { name: 'Student import progress' });
     expect(progressbar).toHaveAttribute('aria-valuenow', '40');
     expect(progressbar).toHaveAttribute('aria-valuetext', '2 of 5 rows processed');
@@ -228,7 +259,7 @@ describe('BulkImportPanel Excel format', () => {
     vi.mocked(api.post).mockReset();
     vi.mocked(api.post).mockImplementation((url: string) => {
       if (url === '/students/import/upload-preview') return Promise.resolve({ data: { rows: [{ rowNumber: 2, name: 'Aya', className: '1', sectionName: 'A', admissionNo: 'A-URL', phone: '', status: 'Valid', statusTone: 'sg' }], validCount: 1, errorCount: 0, warningCount: 0, fileToken: 't' } });
-      if (url === '/students/import/confirm') return Promise.resolve({ data: { done: true, inserted: 1, skipped: 0, skippedRows: [], insertedStudents: [{ admissionNo: 'A-URL', studentId: 11 }] } });
+      if (url === '/students/imports/confirm') return Promise.resolve({ data: { done: true, inserted: 1, skipped: 0, skippedRows: [], insertedStudents: [{ admissionNo: 'A-URL', studentId: 11 }] } });
       if (url === '/students/11/photo-from-url') return Promise.resolve({ data: { ok: true } });
       return Promise.resolve({ data: {} });
     });
@@ -263,7 +294,7 @@ describe('BulkImportPanel Excel format', () => {
     vi.mocked(api.post).mockReset();
     vi.mocked(api.post).mockImplementation((url: string) => {
       if (url === '/students/import/upload-preview') return Promise.resolve({ data: { rows: [{ rowNumber: 2, name: 'Maryam Awad Balhabak', className: '4', sectionName: 'B', admissionNo: '2166', phone: '7013959554', status: 'Valid', statusTone: 'sg' }], validCount: 1, errorCount: 0, warningCount: 0, fileToken: 't' } });
-      if (url === '/students/import/confirm') return Promise.resolve({ data: { done: true, inserted: 0, skipped: 1, skippedRows: [{ rowNumber: 2, name: 'Maryam Awad Balhabak', admissionNo: '2166', className: '4', sectionName: 'B', status: 'Skipped', reason: 'Duplicate admission number' }], insertedStudents: [] } });
+      if (url === '/students/imports/confirm') return Promise.resolve({ data: { done: true, inserted: 0, skipped: 1, skippedRows: [{ rowNumber: 2, name: 'Maryam Awad Balhabak', admissionNo: '2166', className: '4', sectionName: 'B', status: 'Skipped', reason: 'Duplicate admission number' }], insertedStudents: [] } });
       return Promise.resolve({ data: {} });
     });
 
@@ -291,7 +322,7 @@ describe('BulkImportPanel Excel format', () => {
 
     vi.mocked(api.post).mockImplementation((url: string) => {
       if (url === '/students/import/upload-preview') return Promise.resolve({ data: { rows: [{ rowNumber: 2, name: 'Aya', className: '1', sectionName: 'A', admissionNo: 'A-1', phone: '', status: 'Valid', statusTone: 'sg' }], validCount: 1, errorCount: 0, warningCount: 0, fileToken: 't' } });
-      if (url === '/students/import/confirm') return Promise.resolve({ data: { done: true, inserted: 1, skipped: 0, skippedRows: [], insertedStudents: [{ admissionNo: 'A-1', studentId: 11 }] } });
+      if (url === '/students/imports/confirm') return Promise.resolve({ data: { done: true, inserted: 1, skipped: 0, skippedRows: [], insertedStudents: [{ admissionNo: 'A-1', studentId: 11 }] } });
       if (url === '/students/11/photo') return Promise.resolve({ data: { ok: true } });
       return Promise.resolve({ data: {} });
     });
@@ -301,7 +332,7 @@ describe('BulkImportPanel Excel format', () => {
     await screen.findByRole('button', { name: /import 1 valid rows/i });
     await userEvent.click(screen.getByRole('button', { name: /import 1 valid rows/i }));
 
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/11/photo', expect.any(FormData), expect.any(Object)));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/11/photo', expect.any(FormData)));
     expect((await screen.findAllByText(/1 photo/i)).length).toBeGreaterThan(0);
   });
 });
