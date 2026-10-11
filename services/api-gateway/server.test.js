@@ -393,15 +393,17 @@ test('legacy approvals inbox routes to reporting', () => {
 
 test('security headers are present on responses', async () => {
   const baseUrl = await listen();
-
-  const response = await fetch(`${baseUrl}/gateway-health`);
-  await response.text();
-
-  assert.match(response.headers.get('strict-transport-security') || '', /max-age=\d+/);
-  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
-  assert.equal(response.headers.get('x-frame-options'), 'DENY');
-  assert.equal(response.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
-  assert.match(response.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
+  for (const [path, status] of [['/gateway-health', 200], ['/api/v1/students', 401], ['/api/v1/internal/users', 404]]) {
+    const response = await fetch(`${baseUrl}${path}`);
+    await response.text();
+    assert.equal(response.status, status);
+    assert.match(response.headers.get('strict-transport-security') || '', /max-age=\d+/);
+    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal(response.headers.get('x-frame-options'), 'DENY');
+    assert.equal(response.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
+    assert.equal(response.headers.get('permissions-policy'), 'geolocation=(), microphone=(), camera=(self)');
+    assert.match(response.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
+  }
 });
 
 test('preflight from an allow-listed origin is approved with credentials', async () => {

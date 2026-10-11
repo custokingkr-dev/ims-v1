@@ -45,12 +45,13 @@ test('transport factory rejects spoofed identity and shares its configured servi
     serviceTokens: { student: 'fixture-service-credential' }, CLOUD_RUN_AUTH: 'never', MAX_BODY_BYTES: 8,
     PROXY_TIMEOUT_MS: 1000, EXPORT_TIMEOUT_MS: 3000, AUTH_TIMEOUT_MS: 2000,
     activeSpanContext: () => null, formatTraceparent: () => '', sendJson: () => {},
-    fetchFn: async (target, init) => { seen.push(init); return new Response(null, { status: 204 }); },
+    fetchFn: async (target, init) => { seen.push(init); return new Response(null, { status: 204, headers: { 'Permissions-Policy': 'camera=()' } }); },
   });
   const request = req();
   request.headers['x-authenticated-role'] = 'SUPERADMIN';
   request.headers['x-student-service-token'] = 'forged';
-  const response = { writableFinished: true, setHeader() {}, end() {} };
+  const responseHeaders = new Map([['permissions-policy', 'camera=(self)']]);
+  const response = { writableFinished: true, setHeader(name, value) { responseHeaders.set(name.toLowerCase(), value); }, end() {} };
   await transport.proxyToUrl(request, response, new URL('https://student.example/api/v1/students'), 'trace-request', 'student', { userId: 7, role: 'ADMIN', branchId: 10 });
   assert.equal(seen[0].headers['x-authenticated-role'], 'ADMIN');
   assert.equal(seen[0].headers['x-authenticated-school-id'], '10');
@@ -59,4 +60,5 @@ test('transport factory rejects spoofed identity and shares its configured servi
   assert.equal(seen[0].headers['x-request-id'], 'trace-request');
   assert.equal(transport.proxyDeadline('/api/v1/students/export'), 3000);
   assert.equal(response.statusCode, 204);
+  assert.equal(responseHeaders.get('permissions-policy'), 'camera=()');
 });

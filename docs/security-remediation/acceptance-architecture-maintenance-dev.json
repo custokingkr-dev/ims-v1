@@ -1,0 +1,645 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-11T20:43:25.187994+00:00",
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "sourceHeadSha": "3b2eab5d2a33311947929485625ac1edc2b11b8f",
+  "sourceTree": "c96d875d45801850bacc576f6e04eaf1ad0292a6",
+  "pullRequest": 344,
+  "ciRunId": 38171001465,
+  "sourceCodeqlRunId": 38171001178,
+  "releaseRunId": 38171529887,
+  "postmergeCodeqlRunId": 38171529604,
+  "success": true,
+  "services": [
+    {
+      "service": "api-gateway",
+      "name": "custoking-api-gateway-dev",
+      "revision": "custoking-api-gateway-dev-00038-867",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-api-gateway-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:0aff5bd3ad562f6421cf1c871ef0a5abdf3e910ca6ba4ed0b3aea312b6f6261f",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:a8f980889581e291629835c807a8b34847baadda314367c05803d0e315f4d057",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:a8f980889581e291629835c807a8b34847baadda314367c05803d0e315f4d057",
+      "selectedEnvironment": {
+        "GATEWAY_CORS_ALLOWED_ORIGINS": "https://custoking-frontend-dev-1087017280590.asia-south2.run.app,https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "FRONTEND_UPSTREAM": "https://custoking-frontend-dev-1087017280590.asia-south2.run.app"
+      },
+      "changedFromBaseline": true,
+      "runtimeDigestMatchesManifest": true,
+      "runtimeMatchesBaseline": false
+    },
+    {
+      "service": "billing-service",
+      "name": "custoking-billing-service-dev",
+      "revision": "custoking-billing-service-dev-00031-f9f",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-billing-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a88da3b832d689f758f866edffa33be8719a342b7e9bd75dfa91e67d2d6d1703",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_billing_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_billing_rt"
+      },
+      "changedFromBaseline": false,
+      "runtimeDigestMatchesManifest": null,
+      "runtimeMatchesBaseline": true
+    },
+    {
+      "service": "frontend",
+      "name": "custoking-frontend-dev",
+      "revision": "custoking-frontend-dev-00058-9wc",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:687c200183fad18f8d088b673e2818c9c89a5f743b45e02ae9684ec0043f0c45",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:abcec5ae45bcaee690f2b26f35e797a84b465236c56355ba9267347884ee0b02",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:abcec5ae45bcaee690f2b26f35e797a84b465236c56355ba9267347884ee0b02",
+      "selectedEnvironment": {
+        "API_UPSTREAM": "https://custoking-api-gateway-dev-1087017280590.asia-south2.run.app"
+      },
+      "changedFromBaseline": true,
+      "runtimeDigestMatchesManifest": true,
+      "runtimeMatchesBaseline": false
+    },
+    {
+      "service": "identity-service",
+      "name": "custoking-identity-service-dev",
+      "revision": "custoking-identity-service-dev-00035-vgl",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-identity-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:15a81abee368161451064554a485cfe94dbafd8c5dd5adb72076c87356b25a41",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_identity_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_identity_rt"
+      },
+      "changedFromBaseline": false,
+      "runtimeDigestMatchesManifest": null,
+      "runtimeMatchesBaseline": true
+    },
+    {
+      "service": "operations-service",
+      "name": "custoking-operations-service-dev",
+      "revision": "custoking-operations-service-dev-00032-jbn",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-operations-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:7c5cfb8810446b78f4e07fcb3179dba1eb516ecdcf7d62013ef860cbde0a3327",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_operations_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_operations_rt"
+      },
+      "changedFromBaseline": false,
+      "runtimeDigestMatchesManifest": null,
+      "runtimeMatchesBaseline": true
+    },
+    {
+      "service": "platform-service",
+      "name": "custoking-platform-service-dev",
+      "revision": "custoking-platform-service-dev-00042-cvv",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:2f5cd9d7ec1ad8bcce62b87177602de00fb536bcc294914e37703f80777599b6",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:bd01b334e248f85b414110821e2848ffaf1782ebf885371dca8fd16b9c248074",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:bd01b334e248f85b414110821e2848ffaf1782ebf885371dca8fd16b9c248074",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_platform_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_platform_rt",
+        "MSG91_DRY_RUN": "true",
+        "NOTIFICATION_DELIVERY_PROVIDER": "logging",
+        "BROADCAST_LIVE_ENABLED": "false",
+        "NOTIFICATION_REPORT_RECONCILIATION_ENABLED": "false"
+      },
+      "changedFromBaseline": true,
+      "runtimeDigestMatchesManifest": true,
+      "runtimeMatchesBaseline": false
+    },
+    {
+      "service": "school-core-service",
+      "name": "custoking-school-core-service-dev",
+      "revision": "custoking-school-core-service-dev-00080-hwr",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-school-core-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:de66d4e1340d366cd5dd6280242999740faf195d262b5836a0aa2a24c7d8a4f2",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:df1ef4b7075c5cb6eec99cf98eb5b7299561c6ca937fd1eef2340d319e31f34e",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:df1ef4b7075c5cb6eec99cf98eb5b7299561c6ca937fd1eef2340d319e31f34e",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_school_core_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_school_core_rt",
+        "STUDENT_ERASURE_JOURNAL_ENABLED": "true",
+        "STUDENT_ERASURE_JOURNAL_PROJECT_ID": "custoking-dev",
+        "STUDENT_ERASURE_JOURNAL_BUCKET": "custoking-dev-erasure-journal",
+        "STUDENT_ERASURE_JOURNAL_SOURCE_LINEAGE_ID": "58bc724a-592f-49f1-b22f-0e5f95aa6808",
+        "STUDENT_ERASURE_JOURNAL_RESTORE_EPOCH": "d9c4f31c-3420-48a7-8fbe-7fc26d2065bf",
+        "STUDENT_ERASURE_JOURNAL_EPOCH_GENERATION": "1791384645925940",
+        "STUDENT_ERASURE_JOURNAL_EPOCH_SHA256": "aae5c2aedd259b60e7cdff757508a4a0584bb6ab26def2e5eddd148ede7ab108"
+      },
+      "changedFromBaseline": true,
+      "runtimeDigestMatchesManifest": true,
+      "runtimeMatchesBaseline": false
+    }
+  ],
+  "sourceTests": {
+    "school-core-service": {
+      "tests": 990,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "jobId": 114563461856,
+      "path": "tmp/architecture-ci-af38caef891e4396b35c5c8396604e31/school-core-service.log",
+      "sha256": "658d2419a6eb06263276e3ef949177b3dd41a5e583124aadcbff106b0d04f4da"
+    },
+    "platform-service": {
+      "tests": 506,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "jobId": 114563461872,
+      "path": "tmp/architecture-ci-af38caef891e4396b35c5c8396604e31/platform-service.log",
+      "sha256": "cacbf627efd88586db5c486e11156a26783b2d87b970fa09e6472b8663afbece"
+    },
+    "frontend": {
+      "tests": 450,
+      "authenticatedBrowserTests": 116,
+      "authenticatedBrowserStepPassed": true,
+      "jobId": 114563461891,
+      "path": "tmp/architecture-ci-af38caef891e4396b35c5c8396604e31/frontend.log",
+      "sha256": "33c4dc148142c04351c033944da9eef2c02f54b4aec2222a9660d00383e585bf"
+    },
+    "api-gateway": {
+      "tests": 108,
+      "failures": 0,
+      "skipped": 0,
+      "jobId": 114563461883,
+      "path": "tmp/architecture-ci-af38caef891e4396b35c5c8396604e31/api-gateway.log",
+      "sha256": "1024ef7b453c32a14c44d7c53093357e70823beaef6b0bbd4765857bfc7c8f50"
+    }
+  },
+  "releaseTests": {
+    "platform-service": {
+      "tests": 506,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "jobId": 114565029757,
+      "path": "tmp/architecture-release-ae3f18118a3449aaa993e1ac9ed4659c/platform-service-tests.log",
+      "sha256": "566c7f4d66f1f0fe8d95ff4d32a6f11b07a3a795af495fb85b71ae4c03f40a7a"
+    },
+    "school-core-service": {
+      "tests": 990,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "jobId": 114565029749,
+      "path": "tmp/architecture-release-ae3f18118a3449aaa993e1ac9ed4659c/school-core-service-tests.log",
+      "sha256": "df62789cdbc69a1765acd8b4db72029330c54efc0af744c61693892d7913c237"
+    },
+    "frontend": {
+      "tests": 450,
+      "authenticatedBrowserTests": 116,
+      "jobId": 114565029807,
+      "path": "tmp/architecture-release-ae3f18118a3449aaa993e1ac9ed4659c/frontend-tests.log",
+      "sha256": "38636c3555ecf5355b16ebefabfc1385faa36ae05b028498c653854d3c5261a6"
+    },
+    "api-gateway": {
+      "tests": 108,
+      "failures": 0,
+      "skipped": 0,
+      "jobId": 114565029802,
+      "path": "tmp/architecture-release-ae3f18118a3449aaa993e1ac9ed4659c/api-gateway-tests.log",
+      "sha256": "b1835937a489e6377290be38ce0fd589202af4e457d011df78fbc5c20bb4cbdc"
+    }
+  },
+  "scan": {
+    "commit": "3b2eab5d2a33311947929485625ac1edc2b11b8f",
+    "environment": "dev",
+    "scanner": "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25",
+    "scannedAtUtc": "2026-10-11T20:30:17.9255040Z",
+    "verdictCacheTtlHours": 24.0,
+    "scannedCount": 4,
+    "cachedCount": 0,
+    "services": [
+      {
+        "service": "school-core-service",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:de66d4e1340d366cd5dd6280242999740faf195d262b5836a0aa2a24c7d8a4f2",
+        "digestKey": "sha256-de66d4e1340d366cd5dd6280242999740faf195d262b5836a0aa2a24c7d8a4f2",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/school-core-service-sha256-de66d4e1340d366cd5dd6280242999740faf195d262b5836a0aa2a24c7d8a4f2.table.txt",
+        "sarifEvidence": "release-evidence/trivy/school-core-service-sha256-de66d4e1340d366cd5dd6280242999740faf195d262b5836a0aa2a24c7d8a4f2.sarif",
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:2f5cd9d7ec1ad8bcce62b87177602de00fb536bcc294914e37703f80777599b6",
+        "digestKey": "sha256-2f5cd9d7ec1ad8bcce62b87177602de00fb536bcc294914e37703f80777599b6",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/platform-service-sha256-2f5cd9d7ec1ad8bcce62b87177602de00fb536bcc294914e37703f80777599b6.table.txt",
+        "sarifEvidence": "release-evidence/trivy/platform-service-sha256-2f5cd9d7ec1ad8bcce62b87177602de00fb536bcc294914e37703f80777599b6.sarif",
+        "passed": true
+      },
+      {
+        "service": "frontend",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:687c200183fad18f8d088b673e2818c9c89a5f743b45e02ae9684ec0043f0c45",
+        "digestKey": "sha256-687c200183fad18f8d088b673e2818c9c89a5f743b45e02ae9684ec0043f0c45",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/frontend-sha256-687c200183fad18f8d088b673e2818c9c89a5f743b45e02ae9684ec0043f0c45.table.txt",
+        "sarifEvidence": "release-evidence/trivy/frontend-sha256-687c200183fad18f8d088b673e2818c9c89a5f743b45e02ae9684ec0043f0c45.sarif",
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:0aff5bd3ad562f6421cf1c871ef0a5abdf3e910ca6ba4ed0b3aea312b6f6261f",
+        "digestKey": "sha256-0aff5bd3ad562f6421cf1c871ef0a5abdf3e910ca6ba4ed0b3aea312b6f6261f",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/api-gateway-sha256-0aff5bd3ad562f6421cf1c871ef0a5abdf3e910ca6ba4ed0b3aea312b6f6261f.table.txt",
+        "sarifEvidence": "release-evidence/trivy/api-gateway-sha256-0aff5bd3ad562f6421cf1c871ef0a5abdf3e910ca6ba4ed0b3aea312b6f6261f.sarif",
+        "passed": true
+      }
+    ]
+  },
+  "scannerFindings": {
+    "api-gateway": {
+      "reportedFindings": 0,
+      "sarifLevels": {},
+      "source": "scanned",
+      "sarifPath": "trivy/api-gateway-sha256-0aff5bd3ad562f6421cf1c871ef0a5abdf3e910ca6ba4ed0b3aea312b6f6261f.sarif"
+    },
+    "frontend": {
+      "reportedFindings": 0,
+      "sarifLevels": {},
+      "source": "scanned",
+      "sarifPath": "trivy/frontend-sha256-687c200183fad18f8d088b673e2818c9c89a5f743b45e02ae9684ec0043f0c45.sarif"
+    },
+    "platform-service": {
+      "reportedFindings": 16,
+      "sarifLevels": {
+        "warning": 12,
+        "note": 4
+      },
+      "source": "scanned",
+      "sarifPath": "trivy/platform-service-sha256-2f5cd9d7ec1ad8bcce62b87177602de00fb536bcc294914e37703f80777599b6.sarif"
+    },
+    "school-core-service": {
+      "reportedFindings": 16,
+      "sarifLevels": {
+        "warning": 12,
+        "note": 4
+      },
+      "source": "scanned",
+      "sarifPath": "trivy/school-core-service-sha256-de66d4e1340d366cd5dd6280242999740faf195d262b5836a0aa2a24c7d8a4f2.sarif"
+    }
+  },
+  "publicDenials": {
+    "capturedAt": "2026-10-11T20:36:42.648513+00:00",
+    "project": "custoking-dev",
+    "requests": 19,
+    "cases": [
+      {
+        "service": "identity-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_internal_machine",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "case": "anonymous_protected_gateway",
+        "status": 401,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "path": "/api/v1/internal/notifications/reports/reconcile",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/internal/notifications/reports/reconcile",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/notification-api/v1/internal/notifications/reports/reconcile",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/pubsub/events",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/reporting-api/v1/pubsub/events",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/students",
+        "status": 401,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/reporting/vendor-dues",
+        "status": 401,
+        "passed": true
+      }
+    ],
+    "success": true,
+    "scope": "Anonymous/forged headers only. Private 403 demonstrates Cloud Run ingress denial; gateway 401/404 demonstrates public user and internal/rewritten-path rejection. No signed caller, authenticated tenant access or live provider delivery is claimed."
+  },
+  "frontendCsp": {
+    "startedAt": "2026-10-11T20:41:11.122Z",
+    "scope": "Anonymous live CSP/HTTP/browser smoke; gateway JSON Permissions-Policy omission recorded separately for the queued header fix",
+    "origins": [
+      {
+        "origin": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "responses": [
+          {
+            "resource": "/login",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/frontend-health",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/index-ddB_H8wq.js",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/missing-security-proof.js",
+            "status": 404,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "synthetic-nonexistent-photo",
+            "status": 401,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none', default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff, nosniff",
+              "x-frame-options": "DENY, DENY",
+              "referrer-policy": "strict-origin-when-cross-origin, no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload, max-age=31536000"
+            }
+          }
+        ],
+        "browser": {
+          "inlineExecuted": false,
+          "rasterBlobLoaded": true,
+          "violations": [
+            "script-src-elem",
+            "object-src"
+          ]
+        }
+      },
+      {
+        "origin": "https://custoking-api-gateway-dev-hd4wfwk7mq-em.a.run.app",
+        "responses": [
+          {
+            "resource": "/login",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/frontend-health",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/index-ddB_H8wq.js",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/missing-security-proof.js",
+            "status": 404,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "synthetic-nonexistent-photo",
+            "status": 401,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "permissions-policy": null,
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+            }
+          }
+        ],
+        "browser": {
+          "inlineExecuted": false,
+          "rasterBlobLoaded": true,
+          "violations": [
+            "script-src-elem",
+            "object-src"
+          ]
+        },
+        "gatewayJsonPermissionsPolicyMissing": true
+      }
+    ],
+    "nonRoot": {
+      "verified": false,
+      "reason": "Public HTTP cannot establish runtime UID; use deployed image config plus existing container proof."
+    },
+    "success": true,
+    "finishedAt": "2026-10-11T20:41:13.164Z"
+  },
+  "configuredImageUsers": {
+    "proofScope": "Digest-bound image configured User only; not observed Cloud Run process UID",
+    "images": {
+      "api-gateway": {
+        "runtimeDigest": "sha256:a8f980889581e291629835c807a8b34847baadda314367c05803d0e315f4d057",
+        "configDigest": "sha256:6b2cff9a287889c9750095aa86ce4d8cb80f64fa1c46a45d4b76c6f4be42c2b2",
+        "configuredUser": "node",
+        "manifestHashVerified": true,
+        "configHashVerified": true,
+        "nonrootConfiguredUser": true
+      },
+      "frontend": {
+        "runtimeDigest": "sha256:abcec5ae45bcaee690f2b26f35e797a84b465236c56355ba9267347884ee0b02",
+        "configDigest": "sha256:ce5d021bcba3b8be33d38f5848b56500ab6da686d49aa3d8009543bd83976c20",
+        "configuredUser": "nginx",
+        "manifestHashVerified": true,
+        "configHashVerified": true,
+        "nonrootConfiguredUser": true
+      }
+    }
+  },
+  "gatewayJsonPermissionsPolicyGap": {
+    "observed": true,
+    "stateAtCapture": "Separate source fix prepared; its CI and dev release remain pending",
+    "scope": "Missing Permissions-Policy on gateway-generated JSON denials; browser documents have the frontend policy and all CSP/browser assertions passed."
+  },
+  "evidenceSha256": {
+    "tmp/architecture-ci-af38caef891e4396b35c5c8396604e31/proof.json": "05a015b836d625d5ff7816e86e7cf902477045f91c0b0a2e4442ca39633f2375",
+    "tmp/architecture-dev-runtime-feb54aa1e61c434f82df6a4ec547541e.json": "bdb9017c5000078d3b97e1e9cc02f3261a01680484e3388e8e7e1fa9d3b3b051",
+    "tmp/architecture-release-ae3f18118a3449aaa993e1ac9ed4659c/proof.json": "e1a98f8ef96ea920831fa0269d96866464736267fe0269c7f0adc7e248ff50a4",
+    "tmp/architecture-dev-runtime-b2ed17226d814880b012c967faf0b407.json": "707b83fc817052e8d17e4b717dc204afba802bb3206116bed9491ed1efbd8cbb",
+    "tmp/architecture-dev-runtime-a3e23ca4492f4735ba5fecc88145e3b2.json": "471906f059ec54898810727c9581705f6d32beacc4b7fb486d4943f920ca912d",
+    "tmp/architecture-public-da4027ede5494c209c8d7c804be7d957/proof.json": "d2ab191ebe1c76c325843265bc36ed2414e57b5d9e0c5c0ba5e0275621e4aa71",
+    "tmp/architecture-live-csp-4d952c58ddcc47bc857c5e6422884e9b.json": "4b8add6d70f6a9eaeb864371ea2a88afd9bf0df8efcb5274a731c672d06dc876",
+    "tmp/architecture-image-user-51e4523a7b0a4d37a29d55ce57a44d5e/proof.json": "3f5353888f43d19a97bffe7adb42dc1546b639dfe855e9bd0e7066001797a48d"
+  },
+  "operationalOwnerAreasStillOpen": 11,
+  "browserContractOperations": 58,
+  "broaderPayloadCoverage": "incremental",
+  "productionChangedByThisWork": false,
+  "scope": "Four changed manifest-bound runtimes and three retained baseline runtimes, seven Ready at sole untagged 100% traffic, selected configuration unchanged, five dedicated DB roles and disabled runtime migrations. Two matching post-release metadata snapshots bracket 19 public denial cases and frontend/gateway-origin CSP/browser checks. Digest-bound image User is configured nonroot; no Cloud Run process UID claim. No hard atomic drift guarantee, exhaustive feature/attack matrix, new provider/hardware/full-restore or owner acceptance."
+}

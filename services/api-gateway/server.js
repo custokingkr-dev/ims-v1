@@ -41,6 +41,8 @@ const CSP = process.env.GATEWAY_CSP
   + "frame-ancestors 'none'";
 const HSTS = process.env.GATEWAY_HSTS || 'max-age=63072000; includeSubDomains; preload';
 const REFERRER_POLICY = process.env.GATEWAY_REFERRER_POLICY || 'strict-origin-when-cross-origin';
+// Match the frontend policy, including its same-origin student photo capture.
+const PERMISSIONS_POLICY = 'geolocation=(), microphone=(), camera=(self)';
 
 // Max request body size in bytes (0 disables the check). Default 8 MiB to allow
 // 5 MiB file uploads plus multipart envelope overhead.
@@ -332,6 +334,7 @@ function setSecurityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', REFERRER_POLICY);
+  res.setHeader('Permissions-Policy', PERMISSIONS_POLICY);
   res.setHeader('Content-Security-Policy', CSP);
 }
 
