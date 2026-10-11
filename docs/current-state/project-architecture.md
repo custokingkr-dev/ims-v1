@@ -268,5 +268,7 @@ tests pass separately in Linux with no skips, including that symlink case. The g
 regressions pass 16 tests. Twelve architecture audits, inventory/client freshness, ten guarded-class
 comparisons, the frontend and Java builds, and eight non-root gateway-image HTTP smoke checks pass.
 
-This maintenance branch records source changes and local verification. It does not establish a new
-dev/production deployment or close the operational owner gates linked above.
+The planned responsibility refactors and their scoped dev delivery are accepted in
+[the release closeout and remaining fix plan](architecture-maintenance-release-2026-10-12.md).
+That acceptance includes exact-image/runtime binding, Linux/browser tests and bounded public checks.
+The operational owner gates and incremental payload coverage remain open; production was not changed.
