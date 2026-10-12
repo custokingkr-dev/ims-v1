@@ -63,6 +63,8 @@ class StudentImportProgressStoreIntegrationTest {
     void persistsExactRowProgressAndCompletion() {
         progress.start("job-live", "batch-live", 101L, 5);
         progress.update("job-live", 101L, 5, 2, 1, 1);
+        assertThat(progress.status("job-live", null)).containsEntry("status", "RUNNING");
+        assertThat(progress.status("job-live", 102L)).isNull();
 
         assertThat(progress.status("job-live", 101L))
                 .containsEntry("status", "RUNNING")

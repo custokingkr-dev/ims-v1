@@ -14,7 +14,7 @@ export type StudentRosterRow = { "id": number; "schoolId": number; "fullName": s
 
 export type UpdateStudentRequest = { "admissionNumber": string; "fullName": string; "schoolId"?: number; "classId": string; "sectionId": string; "gradeLevel"?: string; "className"?: string; "sectionName"?: string; "rollNo"?: string; "boardRegistrationNumber"?: string; "dateOfBirth"?: string; "admissionDate"?: string; "gender"?: string; "fatherName"?: string; "fatherContactNumber"?: string; "fatherContact"?: string; "motherName"?: string; "phone": string; "houseNumber"?: string; "street"?: string; "locality"?: string; "city"?: string; "state"?: string; "pinCode"?: string; "address"?: string; };
 
-export type PreviewImportRequest = { "schoolId"?: number | null; "rows"?: Array<{ [key: string]: string | number | boolean | null; }>; };
+export type PreviewImportRequest = { "schoolId"?: number | null; "rows"?: Array<{ [key: string]: string | number | boolean | null; }> | null; };
 
 export type ConfirmImportRequest = { "fileToken": string; "schoolId"?: number | null; };
 
@@ -66,11 +66,53 @@ export type CompletedReviewCampaign = (ReviewStatus | FullNameReviewStatus);
 
 export type PhotoFromUrlRequest = { "url": string; };
 
+export type StudentDirectoryRow = { "id": number; "name": string; "fullName": string; "avatarInitials": string; "className": string; "sectionName": string; "classSection": string; "academicYear": string; "admissionNumber": string; "photoUrl": string | null; "rollNo": string | null; "fatherName": string | null; "fatherContact": string | null; "feeStatus": string | null; "profileVerificationStatus": string | null; "photoVerificationStatus": string | null; "attendancePercent": number; };
+
+export type StudentDirectory = { "items": Array<StudentDirectoryRow>; "page": number; "size": number; "totalItems": number; "totalPages": number; "filteredCount": number; "filteredSections": number; "search": string; "filters": { "classes": Array<string>; "sections": Array<string>; "feeStatuses": Array<string>; }; };
+
+export type StudentAddress = { "houseNumber": string | null; "street": string | null; "locality": string | null; "city": string | null; "state": string | null; "pinCode": string | null; "full": string | null; };
+
+export type StudentAssignedFee = { "assigned": true; "assignmentId": string; "academicYearId": string | null; "academicYear": string | null; "bandId": string | null; "planName": string | null; "schedule": string | null; "netPayablePaise": number; "paidAmountPaise": number; "dueAmountPaise": number; "status": string; };
+
+export type StudentUnassignedFee = { "assigned": false; "status": string; };
+
+export type StudentCurrentFee = (StudentAssignedFee | StudentUnassignedFee);
+
+export type StudentWorkspaceDetail = { "id": number; "name": string; "fullName": string; "avatarInitials": string; "className": string; "sectionName": string; "classSection": string; "academicYear": string; "admissionNumber": string; "photoUrl": string | null; "rollNo": string | null; "fatherName": string | null; "fatherContact": string | null; "feeStatus": string | null; "profileVerificationStatus": string | null; "photoVerificationStatus": string | null; "attendancePercent": number; "schoolId": number; "classId": string; "sectionId": string; "dateOfBirth": string | null; "admissionDate": string | null; "gender": string | null; "boardRegistrationNumber": string | null; "motherName": string | null; "phone": string | null; "address": StudentAddress; "fee": StudentCurrentFee; };
+
+export type StudentHistoryIdentity = { "id": number; "schoolId": number; "admissionNumber": string; "fullName": string; };
+
+export type StudentEnrollmentHistory = { "id": string; "academicYearId": string | null; "academicYear": string | null; "classId": string | null; "className": string | null; "sectionId": string | null; "sectionName": string | null; "rollNo": string | null; "status": string | null; "reason": string | null; "sourceType": string | null; "sourceId": string | null; "effectiveFrom": string | null; "effectiveTo": string | null; "createdBy": number | null; "createdAt": string | null; };
+
+export type StudentImportHistory = { "batchId": string; "rowNumber": number; "status": string | null; "message": string | null; "appliedAt": string | null; "fileName": string | null; "createdAt": string | null; };
+
+export type StudentPromotionHistory = { "batchId": string; "action": string | null; "status": string | null; "reason": string | null; "sourceAcademicYearId": string | null; "sourceAcademicYear": string | null; "targetAcademicYearId": string | null; "targetAcademicYear": string | null; "createdAt": string | null; "appliedAt": string | null; };
+
+export type StudentFeeAssignmentHistory = { "id": string; "assignmentId": string; "academicYearId": string | null; "academicYear": string | null; "bandId": string | null; "planName": string | null; "schedule": string | null; "bandDiscountPercent": number; "manualDiscountPercent": number; "surchargePercent": number; "netPayablePaise": number; "paidAmountPaise": number; "dueAmountPaise": number; "status": string; "assignedBy": number | null; "assignedAt": string | null; "updatedBy": number | null; "updatedAt": string | null; };
+
+export type StudentFeePaymentHistory = { "id": string; "paymentId": string; "assignmentId": string | null; "academicYearId": string | null; "academicYear": string | null; "bandId": string | null; "planName": string | null; "mode": string | null; "notes": string | null; "receiptNumber": string | null; "amountPaise": number; "paidAt": string | null; "recordedBy": number | null; "createdAt": string | null; };
+
+export type StudentHistory = { "student": StudentHistoryIdentity; "enrollments": Array<StudentEnrollmentHistory>; "imports": Array<StudentImportHistory>; "promotions": Array<StudentPromotionHistory>; "feeAssignments": Array<StudentFeeAssignmentHistory>; "feePayments": Array<StudentFeePaymentHistory>; "historyYears": Array<{ "id": string; "label": string; }>; "completedAcademicYears": number; };
+
+export type StudentRecord = { "id": number; "admissionNo": string | null; "rollNo": string | null; "boardRegNo": string | null; "fullName": string; "dob": string | null; "gender": string | null; "fatherName": string | null; "fatherContact": string | null; "motherName": string | null; "phone": string | null; "address": string | null; "houseNumber": string | null; "street": string | null; "locality": string | null; "city": string | null; "state": string | null; "pinCode": string | null; "photoUrl": string | null; "feeStatus": string | null; "attendancePercent": number | null; "importedAt": string | null; "importBatchId": string | null; "createdAt": string | null; "updatedAt": string | null; "schoolId": number; "classId": string | null; "sectionId": string | null; "academicYearId": string | null; "deletedAt": string | null; };
+
+export type StudentImportBatch = { "id": string; "fileToken": string; "jobId": string | null; "totalRows": number | null; "validCount": number | null; "errorCount": number | null; "warningCount": number | null; "status": string | null; "pct": number | null; "inserted": number | null; "skipped": number | null; "skippedJson": string | null; "createdAt": string | null; "completedAt": string | null; };
+
+export type StudentImportEvidenceRow = { "id": string; "rowNo": number | null; "name": string | null; "className": string | null; "sectionName": string | null; "admissionNo": string | null; "phone": string | null; "status": string | null; "message": string | null; "rawJson": string | null; "normalizedJson": string | null; "batchId": string; };
+
+export type StudentImportUsage = { "schoolId": number; "usageDate": string; "previewedBatches": number; "completedBatches": number; "unfinishedBatches": number; "attemptedRows": number; "insertedRows": number; "skippedRows": number; "sourceBytes": number; };
+
+export type StudentReviewCampaign = { "id": string; "schoolId": number; "academicYearId": string | null; "reviewType": string; "title": string | null; "status": string; "verifier": string | null; "initiatedBy": number | null; "initiatedAt": string | null; "dueDate": string | null; "createdAt": string | null; "updatedAt": string | null; };
+
+export type StudentReviewEvidenceRow = { "id": string; "campaignId": string; "studentId": number; "schoolId": number; "assignedToUserId": number | null; "status": string; "verifiedPhoto": boolean | null; "verifiedFullName": boolean | null; "verifiedAdmissionNo": boolean | null; "verifiedClassSection": boolean | null; "verifiedRollNo": boolean | null; "verifiedFatherName": boolean | null; "verifiedFatherContact": boolean | null; "verifiedAddress": boolean | null; "verifiedBloodGroup": boolean | null; "currentFullName": string | null; "suggestedFullName": string | null; "parentConfirmed": boolean | null; "teacherConfirmed": boolean | null; "correctionRequested": boolean | null; "correctionNotes": string | null; "completedAt": string | null; "createdAt": string | null; "updatedAt": string | null; };
+
 export interface StudentClient {
+  getStudentDirectory(parameters?: { schoolId?: number; class?: string; section?: string; feeStatus?: string; q?: string; search?: string; page?: number; size?: number; }): Promise<StudentDirectory>;
   createStudent(request: CreateStudentRequest): Promise<StudentDetail>;
   uploadStudentPhoto(parameters: { id: number; }, request: PhotoUpload): Promise<StudentDetail>;
   getStudentPhoto(parameters: { id: number; }): Promise<Blob>;
   getRoster(parameters: { classId: string; sectionId: string; schoolId?: number; limit?: number; }): Promise<Array<StudentRosterRow>>;
+  getStudent(parameters: { id: number; }): Promise<StudentRecord>;
   updateStudent(parameters: { id: number; }, request: UpdateStudentRequest): Promise<StudentDetail>;
   deleteStudent(parameters: { id: number; confirmation: string; }): Promise<StudentDeletion>;
   previewImport(request: PreviewImportRequest): Promise<ImportPreview>;
@@ -97,10 +139,22 @@ export interface StudentClient {
   getCampaignItems(parameters: { campaignId: string; schoolId?: number; status?: string; classId?: string; sectionId?: string; page?: number; size?: number; }): Promise<ReviewItemPage>;
   completeReviewCampaign(parameters: { campaignId: string; }): Promise<CompletedReviewCampaign>;
   attachStudentPhotoFromUrl(parameters: { id: number; }, request: PhotoFromUrlRequest): Promise<StudentDetail>;
+  getSchoolStudentDirectory(parameters: { schoolId: number; className?: string; sectionName?: string; feeStatus?: string; q?: string; search?: string; page?: number; size?: number; }): Promise<StudentDirectory>;
+  getStudentWorkspace(parameters: { id: number; }): Promise<StudentWorkspaceDetail>;
+  getStudentHistory(parameters: { id: number; }): Promise<StudentHistory>;
+  getImportBatches(parameters?: { limit?: number; }): Promise<Array<StudentImportBatch>>;
+  getImportEvidenceRows(parameters?: { batchId?: string; status?: string; limit?: number; }): Promise<Array<StudentImportEvidenceRow>>;
+  getImportUsage(parameters?: { days?: number; limit?: number; }): Promise<Array<StudentImportUsage>>;
+  getReviewCampaigns(parameters?: { schoolId?: number; reviewType?: string; status?: string; limit?: number; }): Promise<Array<StudentReviewCampaign>>;
+  getReviewEvidenceItems(parameters?: { campaignId?: string; schoolId?: number; status?: string; limit?: number; }): Promise<Array<StudentReviewEvidenceRow>>;
 }
 
 export function createStudentClient(http: AxiosInstance): StudentClient {
   return {
+    async getStudentDirectory(parameters: { schoolId?: number; class?: string; section?: string; feeStatus?: string; q?: string; search?: string; page?: number; size?: number; } = {}) {
+      const response = await http.get<StudentDirectory>("/students", { params: { schoolId: parameters.schoolId, class: parameters.class, section: parameters.section, feeStatus: parameters.feeStatus, q: parameters.q, search: parameters.search, page: parameters.page, size: parameters.size } });
+      return response.data;
+    },
     async createStudent(request: CreateStudentRequest) {
       const response = await http.post<StudentDetail>("/students", request);
       return response.data;
@@ -117,6 +171,10 @@ export function createStudentClient(http: AxiosInstance): StudentClient {
     },
     async getRoster(parameters: { classId: string; sectionId: string; schoolId?: number; limit?: number; }) {
       const response = await http.get<Array<StudentRosterRow>>("/students/roster", { params: { classId: parameters.classId, sectionId: parameters.sectionId, schoolId: parameters.schoolId, limit: parameters.limit } });
+      return response.data;
+    },
+    async getStudent(parameters: { id: number; }) {
+      const response = await http.get<StudentRecord>(`/students/${encodeURIComponent(String(parameters.id))}`);
       return response.data;
     },
     async updateStudent(parameters: { id: number; }, request: UpdateStudentRequest) {
@@ -224,6 +282,38 @@ export function createStudentClient(http: AxiosInstance): StudentClient {
     },
     async attachStudentPhotoFromUrl(parameters: { id: number; }, request: PhotoFromUrlRequest) {
       const response = await http.post<StudentDetail>(`/students/${encodeURIComponent(String(parameters.id))}/photo-from-url`, request);
+      return response.data;
+    },
+    async getSchoolStudentDirectory(parameters: { schoolId: number; className?: string; sectionName?: string; feeStatus?: string; q?: string; search?: string; page?: number; size?: number; }) {
+      const response = await http.get<StudentDirectory>("/students/workspace", { params: { schoolId: parameters.schoolId, className: parameters.className, sectionName: parameters.sectionName, feeStatus: parameters.feeStatus, q: parameters.q, search: parameters.search, page: parameters.page, size: parameters.size } });
+      return response.data;
+    },
+    async getStudentWorkspace(parameters: { id: number; }) {
+      const response = await http.get<StudentWorkspaceDetail>(`/students/${encodeURIComponent(String(parameters.id))}/workspace`);
+      return response.data;
+    },
+    async getStudentHistory(parameters: { id: number; }) {
+      const response = await http.get<StudentHistory>(`/students/${encodeURIComponent(String(parameters.id))}/history`);
+      return response.data;
+    },
+    async getImportBatches(parameters: { limit?: number; } = {}) {
+      const response = await http.get<Array<StudentImportBatch>>("/students/imports/batches", { params: { limit: parameters.limit } });
+      return response.data;
+    },
+    async getImportEvidenceRows(parameters: { batchId?: string; status?: string; limit?: number; } = {}) {
+      const response = await http.get<Array<StudentImportEvidenceRow>>("/students/imports/rows", { params: { batchId: parameters.batchId, status: parameters.status, limit: parameters.limit } });
+      return response.data;
+    },
+    async getImportUsage(parameters: { days?: number; limit?: number; } = {}) {
+      const response = await http.get<Array<StudentImportUsage>>("/students/imports/usage", { params: { days: parameters.days, limit: parameters.limit } });
+      return response.data;
+    },
+    async getReviewCampaigns(parameters: { schoolId?: number; reviewType?: string; status?: string; limit?: number; } = {}) {
+      const response = await http.get<Array<StudentReviewCampaign>>("/students/review-campaigns", { params: { schoolId: parameters.schoolId, reviewType: parameters.reviewType, status: parameters.status, limit: parameters.limit } });
+      return response.data;
+    },
+    async getReviewEvidenceItems(parameters: { campaignId?: string; schoolId?: number; status?: string; limit?: number; } = {}) {
+      const response = await http.get<Array<StudentReviewEvidenceRow>>("/students/review-items", { params: { campaignId: parameters.campaignId, schoolId: parameters.schoolId, status: parameters.status, limit: parameters.limit } });
       return response.data;
     },
   };

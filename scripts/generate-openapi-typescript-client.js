@@ -198,7 +198,7 @@ function validateJavaRecordSchema(schema, schemaName) {
   if (binding.requireAll && fields.some((field) => !schema.required?.includes(field[2]))) throw new Error(`${schemaName} serialized properties must remain required.`);
   for (const [, javaType, name] of fields) {
     const actual = typeFor(schema.properties[name]);
-    const expected = javaType === 'String' ? 'string' : /^(Long|Integer|int|long|Double|double|BigDecimal|java.math.BigDecimal)$/.test(javaType) ? 'number' : /^(Boolean|boolean)$/.test(javaType) ? 'boolean' : /^List<String>$/.test(javaType) ? 'Array<string>' : /^List<Long>$/.test(javaType) ? 'Array<number>' : null;
+    const expected = /^(String|LocalDate|OffsetDateTime|Instant)$/.test(javaType) ? 'string' : /^(Long|Integer|int|long|Double|double|BigDecimal|java.math.BigDecimal)$/.test(javaType) ? 'number' : /^(Boolean|boolean)$/.test(javaType) ? 'boolean' : /^List<String>$/.test(javaType) ? 'Array<string>' : /^List<Long>$/.test(javaType) ? 'Array<number>' : null;
     if (expected && !actual.split(' | ').includes(expected) && !schema.properties[name].enum) throw new Error(`${schemaName}.${name} type drifted from Java ${javaType}.`);
   }
 }

@@ -353,7 +353,8 @@ public class StudentImportPersistence {
                           AND (:schoolId IS NULL OR school_id = :schoolId)
                         """)
                 .param("jobId", jobId)
-                .param("schoolId", schoolId)
+                // Fleet reads intentionally bind a null scope; PostgreSQL still needs its SQL type.
+                .param("schoolId", schoolId, java.sql.Types.BIGINT)
                 .query(ImportBatchRow.class)
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Import job not found"));
@@ -502,7 +503,7 @@ public class StudentImportPersistence {
         if (status != null && !status.isBlank()) sql.append(" AND r.status = :status");
         sql.append(" ORDER BY r.row_no ASC LIMIT :limit");
         var spec = jdbc.sql(sql.toString())
-                .param("schoolId", schoolId)
+                .param("schoolId", schoolId, java.sql.Types.BIGINT)
                 .param("limit", Math.max(1, Math.min(limit, 1000)));
         if (batchId != null && !batchId.isBlank()) spec = spec.param("batchId", batchId);
         if (status != null && !status.isBlank()) spec = spec.param("status", status);

@@ -46,10 +46,19 @@ class StudentImportPhotoIntegrationTest {
         contract("ImportConfirmation", students.confirmImport(Map.of("schoolId", schoolId, "fileToken", preview.get("fileToken"))));
         contract("ImportProgress", students.importStatus(String.valueOf(preview.get("jobId")), schoolId));
         long id = jdbc.sql("SELECT id FROM student.students WHERE admission_no='CONTRACT-1'").query(Long.class).single();
+        contract("StudentDirectory", students.workspaceStudents(schoolId, null, null, null, "Contract Student", 0, 37));
+        contract("StudentWorkspaceDetail", students.workspaceStudentDetail(id));
+        contract("StudentRecord", students.find(id).orElseThrow());
+        contract("StudentHistory", students.studentHistory(id));
+        students.importBatches(schoolId, 37).forEach(row -> contract("StudentImportBatch", row));
+        students.importRows(schoolId, String.valueOf(preview.get("batchId")), null, 37)
+                .forEach(row -> contract("StudentImportEvidenceRow", row));
+        students.importUsageDaily(schoolId, 30, 37).forEach(row -> contract("StudentImportUsage", row));
 
         contract("IdCardReviewStatus", students.idCardReviewStatus(schoolId));
         contract("FullNameReviewStatus", students.fullNameVerificationStatus(schoolId));
         contract("StudentVerificationSummary", students.studentVerificationSummary(id, schoolId));
+
         var idCard = students.initiateIdCardReview(Map.of("schoolId", schoolId, "actorId", 77L));
         contract("IdCardReviewStatus", idCard);
         var page = students.campaignReviewItems(schoolId, String.valueOf(idCard.get("campaignId")), null, null, null, 0, 17);
@@ -70,6 +79,12 @@ class StudentImportPhotoIntegrationTest {
         contract("ReviewItemDetail", students.verifyStudentProfile(id, schoolId, 77L));
         contract("ReviewItemDetail", students.verifyStudentPhoto(id, schoolId, 77L));
         contract("StudentVerificationSummary", students.studentVerificationSummary(id, schoolId));
+        var campaigns = students.reviewCampaigns(schoolId, null, null, 37);
+        var reviewItems = students.reviewItems(null, schoolId, null, 37);
+        assertThat(campaigns).isNotEmpty();
+        assertThat(reviewItems).isNotEmpty();
+        campaigns.forEach(row -> contract("StudentReviewCampaign", row));
+        reviewItems.forEach(row -> contract("StudentReviewEvidenceRow", row));
 
         jdbc.sql("INSERT INTO tenant_school.academic_years(id,label,active) VALUES ('ay-next','2026-27',false)").update();
         var promotion = students.createPromotionBatch(Map.of("schoolId", schoolId, "sourceClassId", "c1", "targetAcademicYearId", "ay-next"));
@@ -80,6 +95,7 @@ class StudentImportPhotoIntegrationTest {
         contract("PromotionBatch", students.updatePromotionBatchItem(batchId, promotionItem, Map.of("action", "HOLD", "reason", "Reviewed hold")));
         contract("PromotionBatch", students.applyPromotionBatch(batchId));
         assertThat(students.promotionBatchDetail(batchId).get("status")).isEqualTo("APPLIED");
+        contract("StudentHistory", students.studentHistory(id));
     }
 
     private static void contract(String schema, Object value) {

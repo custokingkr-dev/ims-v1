@@ -432,6 +432,8 @@ class StudentOutboxEmissionIntegrationTest {
         }
 
         Map<String, Object> history = studentRepo.studentHistory(id);
+        com.custoking.ims.schoolcoreservice.contracts.StudentLifecycleContractAssertions.assertResponse("StudentHistory", history);
+        com.custoking.ims.schoolcoreservice.contracts.StudentLifecycleContractAssertions.assertResponse("StudentWorkspaceDetail", studentRepo.workspaceStudentDetail(id));
         Map<String, Object> assignment = ((java.util.List<Map<String, Object>>) history.get("feeAssignments")).get(0);
         Map<String, Object> payment = ((java.util.List<Map<String, Object>>) history.get("feePayments")).get(0);
         Map<String, Object> detailFee = (Map<String, Object>) studentRepo.workspaceStudentDetail(id).get("fee");

@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Custoking student admission, imports, promotions, reviews and erasure",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -57,6 +57,111 @@
                 "$ref": "#/components/schemas/CreateStudentRequest"
               }
             }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getStudentDirectory",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "class",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "section",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "feeStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized student data; private, no-store",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentDirectory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "404": {
+            "description": "Student unavailable"
           }
         }
       }
@@ -312,6 +417,55 @@
           },
           "409": {
             "description": "Conflicting state"
+          }
+        }
+      },
+      "get": {
+        "operationId": "getStudent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized student data; private, no-store",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentRecord"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "404": {
+            "description": "Student unavailable"
           }
         }
       }
@@ -1436,6 +1590,557 @@
           }
         }
       }
+    },
+    "/api/v1/students/workspace": {
+      "get": {
+        "operationId": "getSchoolStudentDirectory",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "className",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionName",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "feeStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized student data; private, no-store",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentDirectory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "404": {
+            "description": "Student unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/students/{id}/workspace": {
+      "get": {
+        "operationId": "getStudentWorkspace",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized student data; private, no-store",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentWorkspaceDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "404": {
+            "description": "Student unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/students/{id}/history": {
+      "get": {
+        "operationId": "getStudentHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized student data; private, no-store",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentHistory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "404": {
+            "description": "Student unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/students/imports/batches": {
+      "get": {
+        "operationId": "getImportBatches",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized student data; private, no-store",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudentImportBatch"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "404": {
+            "description": "Student unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/students/imports/rows": {
+      "get": {
+        "operationId": "getImportEvidenceRows",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized student data; private, no-store",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudentImportEvidenceRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "404": {
+            "description": "Student unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/students/imports/usage": {
+      "get": {
+        "operationId": "getImportUsage",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized student data; private, no-store",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudentImportUsage"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "404": {
+            "description": "Student unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/students/review-campaigns": {
+      "get": {
+        "operationId": "getReviewCampaigns",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "reviewType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized student data; private, no-store",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudentReviewCampaign"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "404": {
+            "description": "Student unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/students/review-items": {
+      "get": {
+        "operationId": "getReviewEvidenceItems",
+        "parameters": [
+          {
+            "name": "campaignId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized student data; private, no-store",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Vary": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudentReviewEvidenceRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed query"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "404": {
+            "description": "Student unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1730,7 +2435,10 @@
             "description": "Ignored on the browser endpoint; the authenticated actor supplies attribution."
           },
           "rows": {
-            "type": "array",
+            "type": [
+              "array",
+              "null"
+            ],
             "items": {
               "type": "object",
               "additionalProperties": {
@@ -2929,6 +3637,1771 @@
           "url": {
             "type": "string"
           }
+        }
+      },
+      "StudentDirectoryRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "avatarInitials": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "classSection": {
+            "type": "string"
+          },
+          "academicYear": {
+            "type": "string"
+          },
+          "admissionNumber": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rollNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fatherName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fatherContact": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "feeStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "profileVerificationStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photoVerificationStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attendancePercent": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "fullName",
+          "avatarInitials",
+          "className",
+          "sectionName",
+          "classSection",
+          "academicYear",
+          "admissionNumber",
+          "photoUrl",
+          "rollNo",
+          "fatherName",
+          "fatherContact",
+          "feeStatus",
+          "profileVerificationStatus",
+          "photoVerificationStatus",
+          "attendancePercent"
+        ]
+      },
+      "StudentDirectory": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentDirectoryRow"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalItems": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          },
+          "filteredCount": {
+            "type": "integer"
+          },
+          "filteredSections": {
+            "type": "integer"
+          },
+          "search": {
+            "type": "string"
+          },
+          "filters": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "classes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "sections": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "feeStatuses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "classes",
+              "sections",
+              "feeStatuses"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "totalItems",
+          "totalPages",
+          "filteredCount",
+          "filteredSections",
+          "search",
+          "filters"
+        ]
+      },
+      "StudentAddress": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "houseNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "locality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pinCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "full": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "houseNumber",
+          "street",
+          "locality",
+          "city",
+          "state",
+          "pinCode",
+          "full"
+        ]
+      },
+      "StudentAssignedFee": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assigned": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "assignmentId": {
+            "type": "string"
+          },
+          "academicYearId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "academicYear": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bandId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schedule": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "netPayablePaise": {
+            "type": "integer"
+          },
+          "paidAmountPaise": {
+            "type": "integer"
+          },
+          "dueAmountPaise": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assigned",
+          "assignmentId",
+          "academicYearId",
+          "academicYear",
+          "bandId",
+          "planName",
+          "schedule",
+          "netPayablePaise",
+          "paidAmountPaise",
+          "dueAmountPaise",
+          "status"
+        ]
+      },
+      "StudentUnassignedFee": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assigned": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assigned",
+          "status"
+        ]
+      },
+      "StudentCurrentFee": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/StudentAssignedFee"
+          },
+          {
+            "$ref": "#/components/schemas/StudentUnassignedFee"
+          }
+        ]
+      },
+      "StudentWorkspaceDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "avatarInitials": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "classSection": {
+            "type": "string"
+          },
+          "academicYear": {
+            "type": "string"
+          },
+          "admissionNumber": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rollNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fatherName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fatherContact": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "feeStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "profileVerificationStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photoVerificationStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attendancePercent": {
+            "type": "number"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "sectionId": {
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "admissionDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "gender": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "boardRegistrationNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "motherName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "$ref": "#/components/schemas/StudentAddress"
+          },
+          "fee": {
+            "$ref": "#/components/schemas/StudentCurrentFee"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "fullName",
+          "avatarInitials",
+          "className",
+          "sectionName",
+          "classSection",
+          "academicYear",
+          "admissionNumber",
+          "photoUrl",
+          "rollNo",
+          "fatherName",
+          "fatherContact",
+          "feeStatus",
+          "profileVerificationStatus",
+          "photoVerificationStatus",
+          "attendancePercent",
+          "schoolId",
+          "classId",
+          "sectionId",
+          "dateOfBirth",
+          "admissionDate",
+          "gender",
+          "boardRegistrationNumber",
+          "motherName",
+          "phone",
+          "address",
+          "fee"
+        ]
+      },
+      "StudentHistoryIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "admissionNumber": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "schoolId",
+          "admissionNumber",
+          "fullName"
+        ]
+      },
+      "StudentEnrollmentHistory": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "academicYearId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "academicYear": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "className": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sectionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sectionName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rollNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effectiveFrom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "effectiveTo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "createdBy": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "academicYearId",
+          "academicYear",
+          "classId",
+          "className",
+          "sectionId",
+          "sectionName",
+          "rollNo",
+          "status",
+          "reason",
+          "sourceType",
+          "sourceId",
+          "effectiveFrom",
+          "effectiveTo",
+          "createdBy",
+          "createdAt"
+        ]
+      },
+      "StudentImportHistory": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "batchId": {
+            "type": "string"
+          },
+          "rowNumber": {
+            "type": "integer"
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "appliedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "fileName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "batchId",
+          "rowNumber",
+          "status",
+          "message",
+          "appliedAt",
+          "fileName",
+          "createdAt"
+        ]
+      },
+      "StudentPromotionHistory": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "batchId": {
+            "type": "string"
+          },
+          "action": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceAcademicYearId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceAcademicYear": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetAcademicYearId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "targetAcademicYear": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "appliedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "batchId",
+          "action",
+          "status",
+          "reason",
+          "sourceAcademicYearId",
+          "sourceAcademicYear",
+          "targetAcademicYearId",
+          "targetAcademicYear",
+          "createdAt",
+          "appliedAt"
+        ]
+      },
+      "StudentFeeAssignmentHistory": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "assignmentId": {
+            "type": "string"
+          },
+          "academicYearId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "academicYear": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bandId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schedule": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bandDiscountPercent": {
+            "type": "number"
+          },
+          "manualDiscountPercent": {
+            "type": "number"
+          },
+          "surchargePercent": {
+            "type": "number"
+          },
+          "netPayablePaise": {
+            "type": "integer"
+          },
+          "paidAmountPaise": {
+            "type": "integer"
+          },
+          "dueAmountPaise": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "assignedBy": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "assignedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "assignmentId",
+          "academicYearId",
+          "academicYear",
+          "bandId",
+          "planName",
+          "schedule",
+          "bandDiscountPercent",
+          "manualDiscountPercent",
+          "surchargePercent",
+          "netPayablePaise",
+          "paidAmountPaise",
+          "dueAmountPaise",
+          "status",
+          "assignedBy",
+          "assignedAt",
+          "updatedBy",
+          "updatedAt"
+        ]
+      },
+      "StudentFeePaymentHistory": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "paymentId": {
+            "type": "string"
+          },
+          "assignmentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "academicYearId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "academicYear": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bandId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "planName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "receiptNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amountPaise": {
+            "type": "integer"
+          },
+          "paidAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "recordedBy": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "paymentId",
+          "assignmentId",
+          "academicYearId",
+          "academicYear",
+          "bandId",
+          "planName",
+          "mode",
+          "notes",
+          "receiptNumber",
+          "amountPaise",
+          "paidAt",
+          "recordedBy",
+          "createdAt"
+        ]
+      },
+      "StudentHistory": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "student": {
+            "$ref": "#/components/schemas/StudentHistoryIdentity"
+          },
+          "enrollments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentEnrollmentHistory"
+            }
+          },
+          "imports": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentImportHistory"
+            }
+          },
+          "promotions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentPromotionHistory"
+            }
+          },
+          "feeAssignments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentFeeAssignmentHistory"
+            }
+          },
+          "feePayments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StudentFeePaymentHistory"
+            }
+          },
+          "historyYears": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "label"
+              ]
+            }
+          },
+          "completedAcademicYears": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "student",
+          "enrollments",
+          "imports",
+          "promotions",
+          "feeAssignments",
+          "feePayments",
+          "historyYears",
+          "completedAcademicYears"
+        ]
+      },
+      "StudentRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "admissionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rollNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "boardRegNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "dob": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "gender": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fatherName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fatherContact": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "motherName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "houseNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "locality": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pinCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "feeStatus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attendancePercent": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "importedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "importBatchId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "classId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sectionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "academicYearId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "admissionNo",
+          "rollNo",
+          "boardRegNo",
+          "fullName",
+          "dob",
+          "gender",
+          "fatherName",
+          "fatherContact",
+          "motherName",
+          "phone",
+          "address",
+          "houseNumber",
+          "street",
+          "locality",
+          "city",
+          "state",
+          "pinCode",
+          "photoUrl",
+          "feeStatus",
+          "attendancePercent",
+          "importedAt",
+          "importBatchId",
+          "createdAt",
+          "updatedAt",
+          "schoolId",
+          "classId",
+          "sectionId",
+          "academicYearId",
+          "deletedAt"
+        ],
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/StudentReadRepository.java",
+          "name": "StudentRow",
+          "requireAll": true
+        }
+      },
+      "StudentImportBatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fileToken": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalRows": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "validCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "errorCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "warningCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pct": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "inserted": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "skipped": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "skippedJson": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "fileToken",
+          "jobId",
+          "totalRows",
+          "validCount",
+          "errorCount",
+          "warningCount",
+          "status",
+          "pct",
+          "inserted",
+          "skipped",
+          "skippedJson",
+          "createdAt",
+          "completedAt"
+        ],
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/StudentReadRepository.java",
+          "name": "ImportBatchRow",
+          "requireAll": true
+        }
+      },
+      "StudentImportEvidenceRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "rowNo": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "className": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sectionName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "admissionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rawJson": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "normalizedJson": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "batchId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "rowNo",
+          "name",
+          "className",
+          "sectionName",
+          "admissionNo",
+          "phone",
+          "status",
+          "message",
+          "rawJson",
+          "normalizedJson",
+          "batchId"
+        ],
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/StudentReadRepository.java",
+          "name": "ImportRow",
+          "requireAll": true
+        }
+      },
+      "StudentImportUsage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schoolId": {
+            "type": "integer"
+          },
+          "usageDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "previewedBatches": {
+            "type": "integer"
+          },
+          "completedBatches": {
+            "type": "integer"
+          },
+          "unfinishedBatches": {
+            "type": "integer"
+          },
+          "attemptedRows": {
+            "type": "integer"
+          },
+          "insertedRows": {
+            "type": "integer"
+          },
+          "skippedRows": {
+            "type": "integer"
+          },
+          "sourceBytes": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schoolId",
+          "usageDate",
+          "previewedBatches",
+          "completedBatches",
+          "unfinishedBatches",
+          "attemptedRows",
+          "insertedRows",
+          "skippedRows",
+          "sourceBytes"
+        ],
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/StudentReadRepository.java",
+          "name": "ImportUsageDailyRow",
+          "requireAll": true
+        }
+      },
+      "StudentReviewCampaign": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "academicYearId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewType": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "verifier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "initiatedBy": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "initiatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "dueDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "schoolId",
+          "academicYearId",
+          "reviewType",
+          "title",
+          "status",
+          "verifier",
+          "initiatedBy",
+          "initiatedAt",
+          "dueDate",
+          "createdAt",
+          "updatedAt"
+        ],
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/StudentReadRepository.java",
+          "name": "ReviewCampaignRow",
+          "requireAll": true
+        }
+      },
+      "StudentReviewEvidenceRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "campaignId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "integer"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "assignedToUserId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "verifiedPhoto": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedFullName": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedAdmissionNo": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedClassSection": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedRollNo": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedFatherName": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedFatherContact": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedAddress": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "verifiedBloodGroup": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "currentFullName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "suggestedFullName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "parentConfirmed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "teacherConfirmed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "correctionRequested": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "correctionNotes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "campaignId",
+          "studentId",
+          "schoolId",
+          "assignedToUserId",
+          "status",
+          "verifiedPhoto",
+          "verifiedFullName",
+          "verifiedAdmissionNo",
+          "verifiedClassSection",
+          "verifiedRollNo",
+          "verifiedFatherName",
+          "verifiedFatherContact",
+          "verifiedAddress",
+          "verifiedBloodGroup",
+          "currentFullName",
+          "suggestedFullName",
+          "parentConfirmed",
+          "teacherConfirmed",
+          "correctionRequested",
+          "correctionNotes",
+          "completedAt",
+          "createdAt",
+          "updatedAt"
+        ],
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/StudentReadRepository.java",
+          "name": "ReviewItemRow",
+          "requireAll": true
         }
       }
     }

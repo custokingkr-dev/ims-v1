@@ -8,6 +8,41 @@ function transport() {
 }
 
 describe('student lifecycle transport', () => {
+  it('preserves directory filters without concatenating them into the URL', async () => {
+    const { http, client } = transport();
+    const data = { items: [], filters: { classes: [], sections: [], feeStatuses: [] } };
+    http.get.mockResolvedValue({ data });
+    expect(await client.getStudentDirectory({ schoolId: 7, class: 'Class 1', section: 'A', q: 'Name&schoolId=99', page: 2, size: 37 })).toBe(data);
+    expect(http.get).toHaveBeenCalledWith('/students', { params: {
+      schoolId: 7, class: 'Class 1', section: 'A', feeStatus: undefined, q: 'Name&schoolId=99', search: undefined, page: 2, size: 37,
+    } });
+  });
+
+  it('returns distinct rich detail and history envelopes without rebuilding nulls or dates', async () => {
+    const { http, client } = transport();
+    const detail = { id: 7, admissionDate: null, fee: { assigned: false, status: 'Pending' } };
+    const history = { student: { id: 7 }, enrollments: [{ effectiveTo: null }], feePayments: [{ paidAt: '2026-10-12T00:00:00Z' }] };
+    http.get.mockResolvedValueOnce({ data: detail }).mockResolvedValueOnce({ data: history });
+    expect(await client.getStudentWorkspace({ id: 7 })).toBe(detail);
+    expect(await client.getStudentHistory({ id: 7 })).toBe(history);
+    expect(http.get.mock.calls.map(call => call[0])).toEqual(['/students/7/workspace', '/students/7/history']);
+  });
+
+  it('keeps import evidence scope server-owned and passes only declared filters', async () => {
+    const { http, client } = transport();
+    const rows = [{ id: 'row1', rawJson: null, normalizedJson: null }];
+    http.get.mockResolvedValue({ data: rows });
+    expect(await client.getImportEvidenceRows({ batchId: 'b/%', status: 'Valid', limit: 37 })).toBe(rows);
+    expect(http.get).toHaveBeenCalledWith('/students/imports/rows', { params: { batchId: 'b/%', status: 'Valid', limit: 37 } });
+  });
+
+  it('rejects a denied history read without returning an empty success or retrying', async () => {
+    const { http, client } = transport();
+    const denial = { response: { status: 403 } };
+    http.get.mockRejectedValue(denial);
+    await expect(client.getStudentHistory({ id: 7 })).rejects.toBe(denial);
+    expect(http.get).toHaveBeenCalledExactlyOnceWith('/students/7/history');
+  });
   it('encodes admission confirmation once without putting it in the URL or body', async () => {
     const { http, client } = transport();
     http.delete.mockResolvedValue({ data: { id: 7, deleted: true, permanent: true } });

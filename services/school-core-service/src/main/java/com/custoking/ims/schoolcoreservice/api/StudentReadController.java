@@ -16,6 +16,7 @@ import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +27,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -96,6 +98,12 @@ public class StudentReadController {
 
     // The Students workspace grid + its class/section filter dropdowns consume this response's
     // {items, filters:{classes,sections,feeStatuses}, ...}. The frontend sends class/section/feeStatus.
+    @ModelAttribute
+    public void preventStudentResponseCaching(HttpServletResponse response) {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
+        response.addHeader(HttpHeaders.VARY, HttpHeaders.AUTHORIZATION);
+    }
+
     @GetMapping
     public Map<String, Object> list(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,

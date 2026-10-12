@@ -4,7 +4,7 @@ Last reconciled: 2026-10-12 against source controllers, the generated route inve
 Java DTOs, and browser contracts.
 
 The gateway route inventory records controller ownership and compatibility use.
-OpenAPI adds payload schemas for **83 canonical operations across 11 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
+OpenAPI adds payload schemas for **93 canonical operations across 11 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
 from 95. Static source coverage is not production traffic telemetry, and retained
 aliases can still have external consumers.
 
@@ -14,7 +14,7 @@ aliases can still have external consumers.
 | --- | ---: | --- |
 | Identity | 13 | Login, refresh, logout, password reset, MFA and passkey enrollment/authentication/recovery |
 | Fees | 6 | Stable-key collection, JSON/PDF receipt, collection/overdue reports, reminders |
-| Students | 30 | Create/update/roster/photos, import preview/confirmation/progress, promotions, reviews and confirmed erasure |
+| Students | 40 | Directory/detail/history, create/update/roster/photos, import preview/confirmation/progress/evidence, promotions, reviews and confirmed erasure |
 | Attendance | 3 | Read/save register and submit section |
 | Billing | 1 | Complete invoice statistics and reporting period |
 | Broadcasts | 8 | Draft/list, capabilities, policy preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
