@@ -29,7 +29,7 @@ subsequently strengthened database tests passed another 17-test run, including n
 review evidence serialization and nullable progress lookup. Gateway tests passed 108 tests;
 the strengthened upstream cache-policy test passed its three-test module. Eleven client-generator
 tests passed. Inventory and generated-client freshness checks passed for 449 mappings and
-93 canonical operations. CI and exact dev rollout acceptance are recorded below once verified.
+93 canonical operations. Exact source CI and dev rollout acceptance passed and are recorded below.
 
 The tests use synthetic fixtures. Generated TypeScript is not a production response validator.
 No permission, RLS predicate, business transaction owner or production deployment is changed.
@@ -49,6 +49,39 @@ does not close advisory applicability. Keep the private snapshot custody review 
 
 ## Dev acceptance
 
-Pending exact source CI, release artifact/digest binding, fresh runtime readback and bounded
-live dev checks. Prior [student lifecycle acceptance](student-lifecycle-contracts-dev-2026-10-12.md)
-remains historical and is not evidence for this source.
+[PR 349](https://github.com/custokingkr-dev/ims-v1/pull/349) deployed application source
+`037e770de9a0507f8897bec9ba68164dc79888a1`, tree
+`2f937a2f55c25e1fc1042fd3cb60b0acea1d8bc5`. The [source CI](https://github.com/custokingkr-dev/ims-v1/actions/runs/38208629887)
+and [dev release](https://github.com/custokingkr-dev/ims-v1/actions/runs/38209076760) each passed
+1,001 school tests with zero failures/errors/skips, 469 frontend tests, 116 authenticated
+browser checks and 108 gateway tests. Both actual language uploads in
+[source CodeQL](https://github.com/custokingkr-dev/ims-v1/actions/runs/38208629606) and
+[post-merge CodeQL](https://github.com/custokingkr-dev/ims-v1/actions/runs/38209076610)
+report zero findings. The server-hash-bound release archive, source/tree, image manifests,
+exact-digest scans, test logs and runtime readbacks passed independent binding checks.
+
+| Changed service | Ready revision | Traffic |
+| --- | --- | ---: |
+| Gateway | `custoking-api-gateway-dev-00041-bzf` | 100% |
+| Frontend | `custoking-frontend-dev-00060-45b` | 100% |
+| School-core | `custoking-school-core-service-dev-00082-pbv` | 100% |
+
+The other four services retain their exact previous revisions, images and selected
+configuration. All seven are Ready with sole untagged 100% traffic. Five runtime database
+roles and disabled runtime migrations remain guarded. Matching independent metadata
+snapshots bracket 19 anonymous/forged denial requests, full CSP/header/browser checks on
+both exact dev origins and six cache checks. Anonymous student reads return 401 with
+`private, no-store`; content-hashed assets retain `public, max-age=31536000, immutable`.
+Both frontend/gateway manifest and config hashes verify configured nonroot image users.
+This image configuration proof does not observe the process UID.
+
+Fresh changed-image scans report gateway 0, frontend 0 and school-core 16 findings:
+12 MEDIUM, 4 LOW, ten unique CVEs. Every package/version/CVE row is saved in
+[the acceptance evidence](../security-remediation/acceptance-student-directory-dev-2026-10-12.json).
+Blank scanner fixed-version fields do not prove vendor fix availability or applicability.
+The retained platform image keeps its separate dated native findings and owner review.
+The native fix plan and eleven owner acceptance areas above remain open.
+
+Authenticated mutations were checked against synthetic local/CI fixtures; live dev checks
+used anonymous requests and nonexistent resource identifiers. Production was not deployed.
+Prior [student lifecycle acceptance](student-lifecycle-contracts-dev-2026-10-12.md) remains historical.
