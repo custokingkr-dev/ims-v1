@@ -1,3 +1,4 @@
+import { photoImportClient } from '../../../services/photoImportApi';
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field, PanelMessage, Stat } from '../ui';
@@ -185,8 +186,8 @@ export function SaSchoolsPanel() {
 
   const retryDriveProvisioning = async (school: any) => {
     try {
-      const response = await api.post(`/student-photo-imports/folders/${school.id}/provision`);
-      setToast(response.data?.status === 'READY' ? `${school.name} Drive folder is ready` : `${school.name} Drive status: ${response.data?.status || 'unknown'}`);
+      const result = await photoImportClient.provisionFolder({ schoolId: school.id });
+      setToast(result.status === 'READY' ? `${school.name} Drive folder is ready` : `${school.name} Drive status: ${result.status || 'unknown'}`);
       await loadSaSchools();
     } catch (e: any) {
       setToast(e?.response?.data?.message || `Drive provisioning failed for ${school.name}`);

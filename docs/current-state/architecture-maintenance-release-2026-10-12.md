@@ -168,3 +168,8 @@ acceptance and remaining scope are tracked in [the directory record](student-dir
 PR 349 application source `037e770de9a0507f8897bec9ba68164dc79888a1` passed exact-source CI and dev release: 1,001 school, 469 frontend, 116 authenticated browser and 108 gateway tests, with both language CodeQL uploads clean before and after merge. Gateway, frontend and school-core changed; four exact runtimes were retained. Seven Ready services, five guarded runtime roles, 19 public denials, both-origin CSP, private student/error cache controls and preserved immutable asset caching passed. Fresh scans report 16 school-core findings (12 MEDIUM, 4 LOW), all retained in [the new acceptance evidence](../security-remediation/acceptance-student-directory-dev-2026-10-12.json).
 
 Current browser coverage is 93 canonical operations, including 40 student operations. See [the directory findings and fix plan](student-directory-contracts-dev-2026-10-12.md) for reproduced races/nullable-query failures and implemented fixes. Broader payload coverage and the eleven owner acceptance areas remain open. Earlier dated acceptance in this document is unchanged; production was not deployed.
+
+
+## Drive photo-import continuation, 2026-10-12
+
+The next phase adds the fifteen-operation canonical photo-import client and lifecycle guards that stop execution/recovery scheduling after the panel closes. It preserves timeout, cancellation, progress and private binary handling, adds server cache controls, and checks permission/school boundaries. Its findings, validation and dev acceptance are tracked in [the photo-import record](photo-import-contracts-dev-2026-10-12.md). Earlier acceptance remains historical.

@@ -21,6 +21,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,6 +44,12 @@ public class StudentPhotoImportController {
     private static final String X_CONTENT_TYPE_OPTIONS = "X-Content-Type-Options";
     private final PhotoImportService service;
     private final String studentToken;
+
+    @ModelAttribute
+    public void preventPhotoImportResponseCaching(HttpServletResponse response) {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
+        response.addHeader(HttpHeaders.VARY, "Authorization");
+    }
 
     public StudentPhotoImportController(
             PhotoImportService service,
@@ -184,6 +192,7 @@ public class StudentPhotoImportController {
         requireToken(token, "student:read");
         byte[] csv = service.resultCsv(id).getBytes(StandardCharsets.UTF_8);
         return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=student-photo-import-" + id + ".csv")
                 .header(X_CONTENT_TYPE_OPTIONS, "nosniff")
