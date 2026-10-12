@@ -397,6 +397,7 @@ test('security headers are present on responses', async () => {
     const response = await fetch(`${baseUrl}${path}`);
     await response.text();
     assert.equal(response.status, status);
+    assert.equal(response.headers.get('cache-control'), 'private, no-store');
     assert.match(response.headers.get('strict-transport-security') || '', /max-age=\d+/);
     assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
     assert.equal(response.headers.get('x-frame-options'), 'DENY');

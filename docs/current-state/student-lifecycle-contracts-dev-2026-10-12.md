@@ -82,3 +82,10 @@ The eleven owner acceptance areas in the [saved owner-action plan](../security-r
 remain open. They require their recorded configuration, account, device, recovery, workload,
 vendor-advisory or custody inputs. No production deployment, provider send, physical restore,
 infrastructure provisioning or destructive cleanup is included in this continuation.
+
+
+## Student directory continuation, 2026-10-12
+
+The next phase adds directory/detail/history and import/review evidence contracts, stale-response
+guards, cache controls and nullable PostgreSQL binding fixes. Its findings, validation, dev
+acceptance and remaining scope are tracked in [the directory record](student-directory-contracts-dev-2026-10-12.md). Earlier acceptance in this file remains historical.

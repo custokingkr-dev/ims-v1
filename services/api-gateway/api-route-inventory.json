@@ -4316,7 +4316,7 @@
       "path": "/api/v1/students",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 99
+      "line": 107
     },
     {
       "service": "school-core-service",
@@ -4325,7 +4325,7 @@
       "path": "/api/v1/students",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 224
+      "line": 232
     },
     {
       "service": "school-core-service",
@@ -4334,7 +4334,7 @@
       "path": "/api/v1/students/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 284
+      "line": 292
     },
     {
       "service": "school-core-service",
@@ -4343,7 +4343,7 @@
       "path": "/api/v1/students/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 155
+      "line": 163
     },
     {
       "service": "school-core-service",
@@ -4352,7 +4352,7 @@
       "path": "/api/v1/students/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 135
+      "line": 143
     },
     {
       "service": "school-core-service",
@@ -4361,7 +4361,7 @@
       "path": "/api/v1/students/{id}/history",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 298
+      "line": 306
     },
     {
       "service": "school-core-service",
@@ -4370,7 +4370,7 @@
       "path": "/api/v1/students/{id}/photo",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 265
+      "line": 273
     },
     {
       "service": "school-core-service",
@@ -4379,7 +4379,7 @@
       "path": "/api/v1/students/{id}/photo-from-url",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 310
+      "line": 318
     },
     {
       "service": "school-core-service",
@@ -4388,7 +4388,7 @@
       "path": "/api/v1/students/{id}/photo/content",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 206
+      "line": 214
     },
     {
       "service": "school-core-service",
@@ -4397,7 +4397,7 @@
       "path": "/api/v1/students/{id}/verification",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 593
+      "line": 601
     },
     {
       "service": "school-core-service",
@@ -4406,7 +4406,7 @@
       "path": "/api/v1/students/{id}/verification/photo/verify",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 618
+      "line": 626
     },
     {
       "service": "school-core-service",
@@ -4415,7 +4415,7 @@
       "path": "/api/v1/students/{id}/verification/profile/verify",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 605
+      "line": 613
     },
     {
       "service": "school-core-service",
@@ -4424,7 +4424,7 @@
       "path": "/api/v1/students/{id}/workspace",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 194
+      "line": 202
     },
     {
       "service": "school-core-service",
@@ -4505,7 +4505,7 @@
       "path": "/api/v1/students/import/confirm",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 401
+      "line": 409
     },
     {
       "service": "school-core-service",
@@ -4514,7 +4514,7 @@
       "path": "/api/v1/students/import/preview",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 343
+      "line": 351
     },
     {
       "service": "school-core-service",
@@ -4523,7 +4523,7 @@
       "path": "/api/v1/students/import/status/{jobId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 419
+      "line": 427
     },
     {
       "service": "school-core-service",
@@ -4532,7 +4532,7 @@
       "path": "/api/v1/students/import/template",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 426
+      "line": 434
     },
     {
       "service": "school-core-service",
@@ -4541,7 +4541,7 @@
       "path": "/api/v1/students/import/upload-preview",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 350
+      "line": 358
     },
     {
       "service": "school-core-service",
@@ -4550,7 +4550,7 @@
       "path": "/api/v1/students/imports/batches",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 674
+      "line": 682
     },
     {
       "service": "school-core-service",
@@ -4559,7 +4559,7 @@
       "path": "/api/v1/students/imports/confirm",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 387
+      "line": 395
     },
     {
       "service": "school-core-service",
@@ -4568,7 +4568,7 @@
       "path": "/api/v1/students/imports/preview",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 329
+      "line": 337
     },
     {
       "service": "school-core-service",
@@ -4577,7 +4577,7 @@
       "path": "/api/v1/students/imports/rows",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 685
+      "line": 693
     },
     {
       "service": "school-core-service",
@@ -4586,7 +4586,7 @@
       "path": "/api/v1/students/imports/status/{jobId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 408
+      "line": 416
     },
     {
       "service": "school-core-service",
@@ -4595,7 +4595,7 @@
       "path": "/api/v1/students/imports/usage",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 698
+      "line": 706
     },
     {
       "service": "school-core-service",
@@ -4604,7 +4604,7 @@
       "path": "/api/v1/students/promotion-batches",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 437
+      "line": 445
     },
     {
       "service": "school-core-service",
@@ -4613,7 +4613,7 @@
       "path": "/api/v1/students/promotion-batches/{batchId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 449
+      "line": 457
     },
     {
       "service": "school-core-service",
@@ -4622,7 +4622,7 @@
       "path": "/api/v1/students/promotion-batches/{batchId}/apply",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 475
+      "line": 483
     },
     {
       "service": "school-core-service",
@@ -4631,7 +4631,7 @@
       "path": "/api/v1/students/promotion-batches/{batchId}/items/{itemId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 461
+      "line": 469
     },
     {
       "service": "school-core-service",
@@ -4640,7 +4640,7 @@
       "path": "/api/v1/students/review-campaigns",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 710
+      "line": 718
     },
     {
       "service": "school-core-service",
@@ -4649,7 +4649,7 @@
       "path": "/api/v1/students/review-campaigns/{campaignId}/complete",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 661
+      "line": 669
     },
     {
       "service": "school-core-service",
@@ -4658,7 +4658,7 @@
       "path": "/api/v1/students/review-campaigns/{campaignId}/items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 738
+      "line": 746
     },
     {
       "service": "school-core-service",
@@ -4667,7 +4667,7 @@
       "path": "/api/v1/students/review-items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 724
+      "line": 732
     },
     {
       "service": "school-core-service",
@@ -4676,7 +4676,7 @@
       "path": "/api/v1/students/reviews/full-name/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 516
+      "line": 524
     },
     {
       "service": "school-core-service",
@@ -4685,7 +4685,7 @@
       "path": "/api/v1/students/reviews/full-name/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 534
+      "line": 542
     },
     {
       "service": "school-core-service",
@@ -4694,7 +4694,7 @@
       "path": "/api/v1/students/reviews/id-card/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 487
+      "line": 495
     },
     {
       "service": "school-core-service",
@@ -4703,7 +4703,7 @@
       "path": "/api/v1/students/reviews/id-card/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 505
+      "line": 513
     },
     {
       "service": "school-core-service",
@@ -4712,7 +4712,7 @@
       "path": "/api/v1/students/reviews/items/{itemId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 631
+      "line": 639
     },
     {
       "service": "school-core-service",
@@ -4721,7 +4721,7 @@
       "path": "/api/v1/students/reviews/items/{itemId}/full-name-verification",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 646
+      "line": 654
     },
     {
       "service": "school-core-service",
@@ -4730,7 +4730,7 @@
       "path": "/api/v1/students/reviews/photo/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 569
+      "line": 577
     },
     {
       "service": "school-core-service",
@@ -4739,7 +4739,7 @@
       "path": "/api/v1/students/reviews/photo/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 582
+      "line": 590
     },
     {
       "service": "school-core-service",
@@ -4748,7 +4748,7 @@
       "path": "/api/v1/students/reviews/profile/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 545
+      "line": 553
     },
     {
       "service": "school-core-service",
@@ -4757,7 +4757,7 @@
       "path": "/api/v1/students/reviews/profile/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 558
+      "line": 566
     },
     {
       "service": "school-core-service",
@@ -4766,7 +4766,7 @@
       "path": "/api/v1/students/roster",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 121
+      "line": 129
     },
     {
       "service": "school-core-service",
@@ -4775,7 +4775,7 @@
       "path": "/api/v1/students/workspace",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 168
+      "line": 176
     },
     {
       "service": "school-core-service",

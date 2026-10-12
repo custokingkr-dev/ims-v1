@@ -330,6 +330,10 @@ if (require.main === module) {
 }
 
 function setSecurityHeaders(res) {
+  // Private API/error responses must not become reusable browser cache entries.
+  // The transport retains explicit upstream policies for content-hashed assets
+  // and other deliberately cacheable representations.
+  res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Strict-Transport-Security', HSTS);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');

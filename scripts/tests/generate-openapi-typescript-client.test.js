@@ -122,3 +122,15 @@ test('import multipart text is explicit and complex form fields fail closed', ()
     assert.throws(() => validateContract(spec, inventory), /Multipart generation supports explicit string or binary fields/);
   }
 });
+
+test('serialized student dates, nullable record fields and property additions cannot drift silently', () => {
+  const original = read('studentClient.v1.openapi.json');
+  for (const [schema, field] of [['StudentRecord', 'dob'], ['StudentImportBatch', 'completedAt'], ['StudentImportUsage', 'usageDate']]) {
+    const spec = structuredClone(original);
+    spec.components.schemas[schema].properties[field] = { type: 'integer' };
+    assert.throws(() => validateContract(spec, inventory), /type drifted from Java/);
+  }
+  const spec = structuredClone(original);
+  delete spec.components.schemas.StudentImportEvidenceRow.properties.rawJson;
+  assert.throws(() => validateContract(spec, inventory), /properties drifted/);
+});

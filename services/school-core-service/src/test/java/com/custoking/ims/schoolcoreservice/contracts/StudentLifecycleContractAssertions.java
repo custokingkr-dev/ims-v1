@@ -33,6 +33,12 @@ public final class StudentLifecycleContractAssertions {
         check(JSON.readTree(value), CONTRACT.path("components").path("schemas").path(schema), schema);
     }
 
+    public static void assertEndpointResponse(String templatePath, String method, String value) {
+        JsonNode schema = CONTRACT.path("paths").path(templatePath).path(method).path("responses")
+                .path("200").path("content").path("application/json").path("schema");
+        check(JSON.readTree(value), schema, method + " " + templatePath);
+    }
+
     private static void check(JsonNode value, JsonNode schema, String location) {
         assertThat(schema.isMissingNode()).as("schema exists: %s", location).isFalse();
         if (schema.has("$ref")) {

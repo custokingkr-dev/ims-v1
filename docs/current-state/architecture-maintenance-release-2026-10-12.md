@@ -154,3 +154,10 @@ passed independent metadata acceptance, 19 public denials and two-origin CSP che
 [student lifecycle record](student-lifecycle-contracts-dev-2026-10-12.md) saves findings, fixes,
 scanner rows, source/run links and the next uncovered workflow groups. All eleven owner
 acceptance areas remain open; broader payload coverage is still incremental.
+
+
+## Student directory continuation, 2026-10-12
+
+The next phase adds directory/detail/history and import/review evidence contracts, stale-response
+guards, cache controls and nullable PostgreSQL binding fixes. Its findings, validation, dev
+acceptance and remaining scope are tracked in [the directory record](student-directory-contracts-dev-2026-10-12.md). Earlier acceptance in this file remains historical.

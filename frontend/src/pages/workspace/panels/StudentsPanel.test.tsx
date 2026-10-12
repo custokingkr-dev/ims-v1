@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within, cleanup } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StudentsPanel } from './StudentsPanel';
 import api from '../../../services/api';
@@ -80,6 +80,73 @@ describe('StudentsPanel', () => {
     });
   });
 
+  it('keeps the newly selected student when a closed modal detail request resolves late', async () => {
+    const original = vi.mocked(api.get).getMockImplementation()!;
+    let finishFirst!: (value: { data: Record<string, unknown> }) => void;
+    const first = new Promise<{ data: Record<string, unknown> }>(resolve => { finishFirst = resolve; });
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/students/101/workspace') return first;
+      if (url === '/students/102/workspace') return { data: { id: 102, fullName: 'New selection', admissionNumber: 'ADM-102', address: {} } };
+      const response = await original(url) as { data: { items: Array<Record<string, unknown>> } };
+      if (url === '/students') response.data.items.push({ ...response.data.items[0], id: 102, fullName: 'New selection', admissionNumber: 'ADM-102' });
+      return response;
+    });
+    render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
+    fireEvent.click(await screen.findByText('Aarav Sharma'));
+    fireEvent.click(screen.getByRole('button', { name: 'Close student details' }));
+    fireEvent.click(screen.getByText('New selection'));
+    const dialog = screen.getByRole('dialog', { name: 'Student details' });
+    await waitFor(() => expect(within(dialog).getByText('New selection')).toBeInTheDocument());
+    await act(async () => { finishFirst({ data: { id: 101, fullName: 'Old late response', admissionNumber: 'ADM-101', address: {} } }); await first; });
+    expect(within(dialog).getByText('New selection')).toBeInTheDocument();
+    expect(within(dialog).queryByText('Old late response')).not.toBeInTheDocument();
+  });
+
+  it('does not enable a verification panel from a superseded modal request', async () => {
+    const original = vi.mocked(api.get).getMockImplementation()!;
+    let finishFirst!: (value: { data: Record<string, unknown> }) => void;
+    const first = new Promise<{ data: Record<string, unknown> }>(resolve => { finishFirst = resolve; });
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/students/101/workspace') return first;
+      return original(url);
+    });
+    render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Verify details for Aarav Sharma' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close student details' }));
+    await act(async () => { finishFirst({ data: { id: 101, fullName: 'Aarav Sharma', address: {} } }); await first; });
+    expect(screen.queryByRole('dialog', { name: 'Student details' })).not.toBeInTheDocument();
+    expect(vi.mocked(api.get).mock.calls.some(([url]) => url === '/students/101/verification')).toBe(false);
+  });
+
+  it('discards history from the closed selection after a different student is opened', async () => {
+    const original = vi.mocked(api.get).getMockImplementation()!;
+    let finishHistory!: (value: { data: Record<string, unknown> }) => void;
+    const pending = new Promise<{ data: Record<string, unknown> }>(resolve => { finishHistory = resolve; });
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/students/101/history') return pending;
+      if (url === '/students/102/workspace') return { data: { id: 102, fullName: 'Second student', admissionNumber: 'ADM-102', address: {} } };
+      const response = await original(url) as { data: { items: Array<Record<string, unknown>> } };
+      if (url === '/students') response.data.items.push({ ...response.data.items[0], id: 102, fullName: 'Second student', admissionNumber: 'ADM-102' });
+      return response;
+    });
+    render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
+    fireEvent.click(await screen.findByText('Aarav Sharma'));
+    const firstDialog = screen.getByRole('dialog', { name: 'Student details' });
+    fireEvent.click(await within(firstDialog).findByRole('button', { name: 'History' }));
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/students/101/history'));
+    fireEvent.click(screen.getByRole('button', { name: 'Close student details' }));
+    fireEvent.click(screen.getByText('Second student'));
+    const secondDialog = screen.getByRole('dialog', { name: 'Student details' });
+    await waitFor(() => expect(within(secondDialog).getByText('Second student')).toBeInTheDocument());
+    await act(async () => {
+      finishHistory({ data: { student: { id: 101 }, historyYears: [], enrollments: [], promotions: [], feeAssignments: [], feePayments: [],
+        imports: [{ rowNumber: 2, status: 'Imported', fileName: 'Old private history', message: 'Old private history' }], completedAcademicYears: 0 } });
+      await pending;
+    });
+    expect(within(secondDialog).queryByText('Old private history')).not.toBeInTheDocument();
+    expect(within(secondDialog).getByRole('button', { name: 'History' })).toBeInTheDocument();
+  });
+
   it('shows father contact only in the father contact column', async () => {
     render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
 
@@ -89,7 +156,7 @@ describe('StudentsPanel', () => {
 
     await waitFor(() => expect(api.get).toHaveBeenCalledWith(
       '/students',
-      { params: { page: 0, size: 50, schoolId: 7 } },
+      { params: expect.objectContaining({ page: 0, size: 50, schoolId: 7 }) },
     ));
     const cells = within(row as HTMLTableRowElement).getAllByRole('cell');
     expect(cells[2]).toHaveTextContent('Ravi Sharma');

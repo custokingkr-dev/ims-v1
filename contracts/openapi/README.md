@@ -5,13 +5,13 @@ and `node scripts/generate-openapi-typescript-client.js --check` in verification
 The route inventory must first be current (`node scripts/generate-api-route-inventory.js`).
 The always-run CI architecture job checks generation and the generator/routing tests.
 
-Current coverage is **83 canonical operations across 11 contract files/clients**:
+Current coverage is **93 canonical operations across 11 contract files/clients**:
 
 | Contract | Operations | Covered workflow |
 | --- | ---: | --- |
 | Identity | 13 | Login, refresh, logout, password reset, MFA and passkey enrollment/authentication/recovery |
 | Fees | 6 | Idempotent payment, receipt JSON/PDF, collection/overdue reports, reminders |
-| Students | 30 | Admission/profile/roster/photos, file preview and confirmation/progress, promotion batches, four review campaigns/items/verification, confirmed erasure |
+| Students | 40 | Directory/detail/history, admission/profile/roster/photos, file preview/confirmation/progress/evidence, promotion batches, review campaigns/items/verification, confirmed erasure |
 | Attendance | 3 | Read/save register, submit section |
 | Billing | 1 | Complete invoice statistics; Java-bound payment DTO exported with exact compatibility-route binding |
 | Broadcasts | 8 | Draft/list, capabilities, preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
