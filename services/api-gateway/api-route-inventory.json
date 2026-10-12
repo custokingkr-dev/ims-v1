@@ -4172,7 +4172,7 @@
       "path": "/api/v1/student-photo-imports",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 76
+      "line": 84
     },
     {
       "service": "school-core-service",
@@ -4181,7 +4181,7 @@
       "path": "/api/v1/student-photo-imports",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 60
+      "line": 68
     },
     {
       "service": "school-core-service",
@@ -4190,7 +4190,7 @@
       "path": "/api/v1/student-photo-imports/{batchId}/rows/{rowId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 108
+      "line": 116
     },
     {
       "service": "school-core-service",
@@ -4199,7 +4199,7 @@
       "path": "/api/v1/student-photo-imports/{batchId}/rows/{rowId}/preview",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 167
+      "line": 175
     },
     {
       "service": "school-core-service",
@@ -4208,7 +4208,7 @@
       "path": "/api/v1/student-photo-imports/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 84
+      "line": 92
     },
     {
       "service": "school-core-service",
@@ -4217,7 +4217,7 @@
       "path": "/api/v1/student-photo-imports/{id}/access-revoked",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 134
+      "line": 142
     },
     {
       "service": "school-core-service",
@@ -4226,7 +4226,7 @@
       "path": "/api/v1/student-photo-imports/{id}/cancel",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 126
+      "line": 134
     },
     {
       "service": "school-core-service",
@@ -4235,7 +4235,7 @@
       "path": "/api/v1/student-photo-imports/{id}/execute",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 142
+      "line": 150
     },
     {
       "service": "school-core-service",
@@ -4244,7 +4244,7 @@
       "path": "/api/v1/student-photo-imports/{id}/freeze",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 100
+      "line": 108
     },
     {
       "service": "school-core-service",
@@ -4253,7 +4253,7 @@
       "path": "/api/v1/student-photo-imports/{id}/recover",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 150
+      "line": 158
     },
     {
       "service": "school-core-service",
@@ -4262,7 +4262,7 @@
       "path": "/api/v1/student-photo-imports/{id}/recovery-progress",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 159
+      "line": 167
     },
     {
       "service": "school-core-service",
@@ -4271,7 +4271,7 @@
       "path": "/api/v1/student-photo-imports/{id}/result",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 180
+      "line": 188
     },
     {
       "service": "school-core-service",
@@ -4280,7 +4280,7 @@
       "path": "/api/v1/student-photo-imports/{id}/scan",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 92
+      "line": 100
     },
     {
       "service": "school-core-service",
@@ -4289,7 +4289,7 @@
       "path": "/api/v1/student-photo-imports/context",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 53
+      "line": 61
     },
     {
       "service": "school-core-service",
@@ -4298,7 +4298,7 @@
       "path": "/api/v1/student-photo-imports/folders/{schoolId}/provision",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
-      "line": 68
+      "line": 76
     },
     {
       "service": "school-core-service",

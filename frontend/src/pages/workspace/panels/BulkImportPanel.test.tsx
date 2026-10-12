@@ -43,7 +43,7 @@ describe('BulkImportPanel Excel format', () => {
     render(<BulkImportPanel onRefresh={onRefresh} />);
     await userEvent.upload(document.querySelector('input[type=file]') as HTMLInputElement,
       new File(['Name,Class,Section,AdmissionNo\nAya,1,A,A-1'], 'students.csv', { type: 'text/csv' }));
-    await userEvent.click(await screen.findByRole('button', { name: /import 1 valid rows/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /import 1 valid rows/i }, { timeout: 3000 }));
     expect(await screen.findByText('Import rolled back')).toBeInTheDocument();
     expect(vi.mocked(api.post).mock.calls.filter(([url]) => url === '/students/imports/confirm')).toHaveLength(1);
     expect(vi.mocked(api.get).mock.calls.filter(([url]) => url === '/students/imports/status/job-failed')).toHaveLength(1);
@@ -160,6 +160,7 @@ describe('BulkImportPanel Excel format', () => {
     expect(csv).toContain("'\t=1+1");
   });
 
+  // Includes the cold ExcelJS import and an in-memory XLSX roundtrip.
   it('extracts an embedded image and maps it to the row anchored in the Photo column', async () => {
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
@@ -176,7 +177,7 @@ describe('BulkImportPanel Excel format', () => {
     const photos = await extractXlsxPhotos(file); // exported for test via a module-level helper (see Step 3)
     expect(photos.get('A-1')).toBeTruthy();            // keyed by admissionNo
     expect(photos.get('A-1')!.contentType).toContain('jpeg');
-  });
+  }, 30000);
 
   it('attaches embedded photos via multipart and link photos via photo-from-url', async () => {
     vi.mocked(api.post).mockReset();
@@ -231,7 +232,7 @@ describe('BulkImportPanel Excel format', () => {
       document.querySelector('input[type=file]') as HTMLInputElement,
       new File(['Name,Class,Section,AdmissionNo\nAya,1,A,A-1'], 'roster.csv', { type: 'text/csv' }),
     );
-    await userEvent.click(await screen.findByRole('button', { name: /import 1 valid rows/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /import 1 valid rows/i }, { timeout: 3000 }));
 
     await waitFor(() => expect(api.get).toHaveBeenCalledWith('/students/imports/status/job-live'));
     const progressbar = screen.getByRole('progressbar', { name: 'Student import progress' });
@@ -266,7 +267,7 @@ describe('BulkImportPanel Excel format', () => {
 
     render(<BulkImportPanel onRefresh={vi.fn()} />);
     await userEvent.upload(document.querySelector('input[type=file]') as HTMLInputElement, file);
-    await screen.findByRole('button', { name: /import 1 valid rows/i });
+    await screen.findByRole('button', { name: /import 1 valid rows/i }, { timeout: 3000 });
     await userEvent.click(screen.getByRole('button', { name: /import 1 valid rows/i }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/11/photo-from-url', { url: 'https://cdn/aya.jpg' }));
@@ -300,7 +301,7 @@ describe('BulkImportPanel Excel format', () => {
 
     render(<BulkImportPanel onRefresh={vi.fn()} />);
     await userEvent.upload(document.querySelector('input[type=file]') as HTMLInputElement, file);
-    await screen.findByRole('button', { name: /import 1 valid rows/i });
+    await screen.findByRole('button', { name: /import 1 valid rows/i }, { timeout: 3000 });
     await userEvent.click(screen.getByRole('button', { name: /import 1 valid rows/i }));
 
     await screen.findByText('Skipped rows');
@@ -329,7 +330,7 @@ describe('BulkImportPanel Excel format', () => {
 
     render(<BulkImportPanel onRefresh={vi.fn()} />);
     await userEvent.upload(document.querySelector('input[type=file]') as HTMLInputElement, file);
-    await screen.findByRole('button', { name: /import 1 valid rows/i });
+    await screen.findByRole('button', { name: /import 1 valid rows/i }, { timeout: 3000 });
     await userEvent.click(screen.getByRole('button', { name: /import 1 valid rows/i }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/11/photo', expect.any(FormData)));

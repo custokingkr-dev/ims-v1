@@ -5,13 +5,14 @@ and `node scripts/generate-openapi-typescript-client.js --check` in verification
 The route inventory must first be current (`node scripts/generate-api-route-inventory.js`).
 The always-run CI architecture job checks generation and the generator/routing tests.
 
-Current coverage is **93 canonical operations across 11 contract files/clients**:
+Current coverage is **108 canonical operations across 12 contract files/clients**:
 
 | Contract | Operations | Covered workflow |
 | --- | ---: | --- |
 | Identity | 13 | Login, refresh, logout, password reset, MFA and passkey enrollment/authentication/recovery |
 | Fees | 6 | Idempotent payment, receipt JSON/PDF, collection/overdue reports, reminders |
 | Students | 40 | Directory/detail/history, admission/profile/roster/photos, file preview/confirmation/progress/evidence, promotion batches, review campaigns/items/verification, confirmed erasure |
+| Drive photo-import | 15 | Scoped context/batches, creation/provisioning, reviewed scan/freeze/execute/cancel, row review, recovery/progress, private JPEG and CSV |
 | Attendance | 3 | Read/save register, submit section |
 | Billing | 1 | Complete invoice statistics; Java-bound payment DTO exported with exact compatibility-route binding |
 | Broadcasts | 8 | Draft/list, capabilities, preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
@@ -81,3 +82,5 @@ source file, with school scope in query parameters. The UI and server use the sa
 Generated types and these test assertions do not introduce a production response
 validator or replace server-side validation/RLS. The full controller inventory still
 has broader payload work beyond these 83 operations.
+
+The photo-import client opts into bounded request options: signal, timeout and onDownloadProgress. Generation rejects other options; runtime calls select only these fields so caller config cannot override paths, authentication headers, query scope or Blob handling. The panel and school-folder retry share the authenticated Axios transport. See [the photo-import findings and fix plan](../../docs/current-state/photo-import-contracts-dev-2026-10-12.md).

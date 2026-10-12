@@ -12,7 +12,7 @@ import {
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
-import api from '../../../services/api';
+import { photoImportClient } from '../../../services/photoImportApi';
 import { ModuleShell } from '../ui';
 import { PhotoImportDialogs } from './photo-import/PhotoImportDialogs';
 import {
@@ -60,6 +60,32 @@ export function PhotoImportPanel() {
   const executionPauseRequestedRef = useRef(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const scopeRef = useRef({ schoolId, controller: new AbortController() });
+  const mounted = useRef(true);
+  const lifecycleController = useRef(new AbortController());
+  const contextRequestId = useRef(0);
+  const listRequestId = useRef(0);
+  const detailRequestId = useRef(0);
+  const selectedBatchId = useRef<string | null>(null);
+  const batchEpoch = useRef(0);
+  const previewRequestId = useRef(0);
+  useEffect(() => {
+    mounted.current = true;
+    lifecycleController.current = new AbortController();
+    return () => {
+      mounted.current = false;
+      lifecycleController.current.abort();
+      scopeRef.current.controller.abort();
+      contextRequestId.current += 1;
+      previewRequestId.current += 1;
+    };
+  }, []);
+  const captureScope = (id?: string) => {
+    const scope = scopeRef.current;
+    const epoch = batchEpoch.current;
+    return { scope, current: () => mounted.current && scope === scopeRef.current
+      && !scope.controller.signal.aborted
+      && (!id || (selectedBatchId.current === id && batchEpoch.current === epoch)) };
+  };
 
   const batch = loadedBatch?.schoolId === schoolId ? loadedBatch : null;
   const schoolBatches = batches.filter(item => item.schoolId === schoolId);
@@ -78,6 +104,10 @@ export function PhotoImportPanel() {
   );
 
   const resetWorkspace = () => {
+    selectedBatchId.current = null;
+    batchEpoch.current += 1;
+    detailRequestId.current += 1;
+    previewRequestId.current += 1;
     setBatch(null);
     setRows([]);
     setAccess(null);
@@ -94,6 +124,7 @@ export function PhotoImportPanel() {
     if (nextSchoolId === scopeRef.current.schoolId) return;
     // Invalidate synchronously: a response may settle before the school effect runs.
     scopeRef.current.controller.abort();
+    scopeRef.current = { schoolId: nextSchoolId, controller: new AbortController() };
     resetWorkspace();
     setBatches([]);
     setDriveFolderUrl('');
@@ -102,16 +133,20 @@ export function PhotoImportPanel() {
   };
 
   const loadContext = async () => {
+    const requestId = ++contextRequestId.current;
+    const current = () => mounted.current && requestId === contextRequestId.current;
     setBusy('context');
     try {
-      const response = await api.get<ImportContext>('/student-photo-imports/context', PHOTO_IMPORT_REQUEST_CONFIG);
-      setContext(response.data);
-      const firstSchool = response.data.schools[0];
+      const data = await photoImportClient.getContext({ ...PHOTO_IMPORT_REQUEST_CONFIG, signal: lifecycleController.current.signal });
+      if (!current()) return;
+      setContext(data);
+      const firstSchool = data.schools[0];
       if (firstSchool && !scopeRef.current.schoolId) changeSchool(firstSchool.id);
     } catch (error) {
+      if (!current()) return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
-      setBusy('');
+      if (current()) setBusy('');
     }
   };
 
@@ -119,57 +154,52 @@ export function PhotoImportPanel() {
     const scope = scopeRef.current;
     const { signal } = scope.controller;
     if (signal.aborted || selectedId !== scope.schoolId) return;
+    const requestId = ++listRequestId.current;
+    const current = () => mounted.current && !signal.aborted && scope === scopeRef.current
+      && requestId === listRequestId.current;
     try {
-      const response = await api.get<ImportBatch[]>('/student-photo-imports', {
-        ...PHOTO_IMPORT_REQUEST_CONFIG,
-        signal,
-        params: { schoolId: selectedId },
-      });
-      if (signal.aborted) return;
-      setBatches((response.data || []).filter(item => item.schoolId === selectedId));
+      const data = await photoImportClient.listBatches({ schoolId: selectedId }, { ...PHOTO_IMPORT_REQUEST_CONFIG, signal });
+      if (!current()) return;
+      setBatches((data || []).filter(item => item.schoolId === selectedId));
     } catch (error) {
-      if (signal.aborted || (error as { code?: string })?.code === 'ERR_CANCELED') return;
+      if (!current() || (error as { code?: string })?.code === 'ERR_CANCELED') return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
     }
   };
 
   const refreshDetail = async (id: string, options: { resetFilter?: boolean; showBusy?: boolean; showError?: boolean } = {}) => {
-    const scope = scopeRef.current;
+    const { scope, current: selectionCurrent } = captureScope(id);
     const { signal } = scope.controller;
-    if (signal.aborted) return null;
+    if (!selectionCurrent()) return null;
+    const requestId = ++detailRequestId.current;
+    const current = () => selectionCurrent() && requestId === detailRequestId.current;
     if (options.showBusy) setBusy('detail');
     try {
-      const response = await api.get<{
-        batch: ImportBatch;
-        rows: ImportRow[];
-        access: AccessState;
-        recoveryProgress?: RecoveryProgress;
-      }>(
-        `/student-photo-imports/${id}`,
-        { ...PHOTO_IMPORT_REQUEST_CONFIG, signal },
-      );
-      if (signal.aborted) return null;
-      if (response.data.batch.schoolId !== scope.schoolId || response.data.batch.id !== id) {
+      const data = await photoImportClient.getBatch({ id }, { ...PHOTO_IMPORT_REQUEST_CONFIG, signal });
+      if (!current()) return null;
+      if (data.batch.schoolId !== scope.schoolId || data.batch.id !== id) {
         throw new Error('This import does not match the selected school. Select the school again and reopen its batch.');
       }
-      setBatch(response.data.batch);
-      setRows(response.data.rows || []);
-      setAccess(response.data.access || null);
-      if (response.data.recoveryProgress !== undefined) {
-        setRecoveryProgress(response.data.recoveryProgress || null);
+      setBatch(data.batch);
+      setRows(data.rows || []);
+      setAccess(data.access || null);
+      if (data.recoveryProgress !== undefined) {
+        setRecoveryProgress(data.recoveryProgress || null);
       }
       if (options.resetFilter) setFilter('ALL');
-      return response.data.batch;
+      return data.batch;
     } catch (error) {
-      if (signal.aborted || (error as { code?: string })?.code === 'ERR_CANCELED') return null;
+      if (!current() || (error as { code?: string })?.code === 'ERR_CANCELED') return null;
       if (options.showError !== false) setNotice({ tone: 'bad', text: errorMessage(error) });
       throw error;
     } finally {
-      if (options.showBusy && !signal.aborted) setBusy('');
+      if (options.showBusy && current()) setBusy('');
     }
   };
 
   const loadDetail = async (id: string) => {
+    resetWorkspace();
+    selectedBatchId.current = id;
     setRecoveryProgress(null);
     setOperationProgress(null);
     try {
@@ -188,10 +218,12 @@ export function PhotoImportPanel() {
   }, [preview?.url]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    scopeRef.current = { schoolId, controller };
+    if (scopeRef.current.schoolId !== schoolId || scopeRef.current.controller.signal.aborted) {
+      scopeRef.current = { schoolId, controller: new AbortController() };
+    }
+    const controller = scopeRef.current.controller;
     if (schoolId) void loadBatches(Number(schoolId));
-    return () => scopeRef.current.controller.abort();
+    return () => controller.abort();
   }, [schoolId]);
 
   useEffect(() => {
@@ -217,6 +249,7 @@ export function PhotoImportPanel() {
     if (!selectedSchool) return;
     const managedReady = selectedSchool.driveFolderStatus === 'READY';
     if (!managedReady && !driveFolderUrl.trim()) return;
+    const { scope, current } = captureScope();
     setBusy('create');
     setNotice(null);
     try {
@@ -229,44 +262,50 @@ export function PhotoImportPanel() {
         academicYearId: selectedSchool.academicYearId,
       };
       if (!managedReady) payload.driveFolderUrl = driveFolderUrl.trim();
-      const response = await api.post<ImportBatch>('/student-photo-imports', { ...payload }, PHOTO_IMPORT_REQUEST_CONFIG);
-      setBatch(response.data);
+      const data = await photoImportClient.createBatch(payload, { ...PHOTO_IMPORT_REQUEST_CONFIG, signal: scope.controller.signal });
+      if (!current()) return;
+      if (data.schoolId !== scope.schoolId) throw new Error('The created import does not match the selected school.');
+      selectedBatchId.current = data.id;
+      batchEpoch.current += 1;
+      setBatch(data);
       setRows([]);
       setAccess(null);
       setRecoveryProgress(null);
       setOperationProgress(null);
       setDriveFolderUrl('');
       await loadBatches(selectedSchool.id);
+      if (!current()) return;
       setNotice({ tone: 'ok', text: 'Managed Drive folder bound. The batch is ready to scan.' });
     } catch (error) {
+      if (!current()) return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
-      setBusy('');
+      if (current()) setBusy('');
     }
   };
 
   const provisionFolder = async () => {
     if (!selectedSchool) return;
+    const { scope, current } = captureScope();
     setBusy('provision');
     setNotice(null);
     try {
-      const response = await api.post(
-        `/student-photo-imports/folders/${selectedSchool.id}/provision`,
-        undefined,
-        PHOTO_IMPORT_REQUEST_CONFIG,
-      );
+      const data = await photoImportClient.provisionFolder({ schoolId: selectedSchool.id }, { ...PHOTO_IMPORT_REQUEST_CONFIG, signal: scope.controller.signal });
+      if (!current()) return;
       await loadContext();
-      const ready = response.data?.status === 'READY';
+      if (!current()) return;
+      const ready = data?.status === 'READY';
       setNotice({
         tone: ready ? 'ok' : 'bad',
         text: ready
           ? 'The school and academic-year Drive folders are ready.'
-          : response.data?.error || 'The Drive folder could not be provisioned.',
+          : data?.error || 'The Drive folder could not be provisioned.',
       });
     } catch (error) {
+      if (!current()) return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
-      setBusy('');
+      if (current()) setBusy('');
     }
   };
 
@@ -287,6 +326,8 @@ export function PhotoImportPanel() {
       executionPauseRequestedRef.current = false;
       setExecutionPauseRequested(false);
     }
+    const { scope, current: active } = captureScope(batch.id);
+    if (!active()) return;
     setBusy(action);
     setNotice(null);
     setOperationProgress(action === 'execute'
@@ -298,39 +339,47 @@ export function PhotoImportPanel() {
             : 'Confirming the reviewed files have not changed…',
         });
     try {
-      const postAction = () => api.post<ImportBatch>(
-        `/student-photo-imports/${batch.id}/${action}`,
-        undefined,
-        action === 'execute' ? PHOTO_IMPORT_REQUEST_CONFIG : undefined,
-      );
+      const postAction = () => photoImportClient[`${action}Batch`]({ id: batch.id }, {
+        ...(action === 'execute' ? PHOTO_IMPORT_REQUEST_CONFIG : {}), signal: scope.controller.signal,
+      });
       let current: ImportBatch | null;
       try {
-        current = (await postAction()).data;
+        current = await postAction();
+        if (!active()) return;
       } catch (error) {
+        if (!active()) return;
         if (action !== 'execute' || !isTimeoutError(error)) throw error;
         current = await refreshDetail(batch.id, { showError: false });
+        if (!active()) return;
       }
-      if (!current) return;
+      if (!active() || !current) return;
+      if (current.id !== batch.id || current.schoolId !== scope.schoolId) throw new Error('The import response does not match the selected batch.');
       if (action === 'execute') setOperationProgress(executionOperationProgress(current));
       while (
-        action === 'execute'
+        active()
+        && action === 'execute'
         && current.status === 'EXECUTING'
         && !executionPauseRequestedRef.current
       ) {
         setBatch(current);
         try {
-          current = (await postAction()).data;
+          current = await postAction();
+          if (!active()) return;
         } catch (error) {
+          if (!active()) return;
           if (!isTimeoutError(error)) throw error;
           current = await refreshDetail(batch.id, { showError: false });
+          if (!active()) return;
         }
-        if (!current) return;
+        if (!active() || !current) return;
+        if (current.id !== batch.id || current.schoolId !== scope.schoolId) throw new Error('The import response does not match the selected batch.');
         setOperationProgress(executionOperationProgress(current));
       }
       const executionPaused = action === 'execute'
         && current.status === 'EXECUTING'
         && executionPauseRequestedRef.current;
       await refreshDetail(batch.id, { resetFilter: true });
+      if (!active()) return;
       if (action === 'execute') {
         setOperationProgress(executionPaused
           ? {
@@ -344,6 +393,7 @@ export function PhotoImportPanel() {
           : executionOperationProgress(current));
       }
       await loadBatches(batch.schoolId);
+      if (!active()) return;
       setNotice({
         tone: 'ok',
         text: executionPaused
@@ -367,9 +417,11 @@ export function PhotoImportPanel() {
         });
       }
     } catch (error) {
+      if (!active()) return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
       if (action === 'execute') {
         await refreshDetail(batch.id, { showError: false }).catch(() => undefined);
+        if (!active()) return;
       }
       setOperationProgress(current => current ? {
         ...current,
@@ -377,53 +429,67 @@ export function PhotoImportPanel() {
         tone: 'error',
       } : null);
     } finally {
-      if (action === 'execute') setExecutionPauseRequested(false);
-      setBusy('');
+      if (active() && action === 'execute') setExecutionPauseRequested(false);
+      if (active()) setBusy('');
     }
   };
 
   const cancelBatch = async () => {
     if (!batch || !window.confirm('Cancel this import? Applied photos are not rolled back.')) return;
+    const { scope, current: active } = captureScope(batch.id);
+    if (!active()) return;
     setBusy('cancel');
     setNotice(null);
     try {
-      const response = await api.post<ImportBatch>(`/student-photo-imports/${batch.id}/cancel`);
-      setBatch(response.data);
+      const data = await photoImportClient.cancelBatch({ id: batch.id }, { signal: scope.controller.signal });
+      if (!active()) return;
+      if (data.id !== batch.id || data.schoolId !== scope.schoolId) throw new Error('The import response does not match the selected batch.');
+      setBatch(data);
       await refreshDetail(batch.id, { resetFilter: true });
+      if (!active()) return;
       await loadBatches(batch.schoolId);
+      if (!active()) return;
       setNotice({ tone: 'ok', text: 'Import cancelled. The intake folder can be used for a new job.' });
     } catch (error) {
+      if (!active()) return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
-      setBusy('');
+      if (active()) setBusy('');
     }
   };
 
   const markAccessRevoked = async () => {
     if (!batch) return;
+    const { scope, current: active } = captureScope(batch.id);
+    if (!active()) return;
     setBusy('revoke');
     try {
-      const response = await api.post<AccessState>(`/student-photo-imports/${batch.id}/access-revoked`);
-      setAccess(response.data);
+      const data = await photoImportClient.markAccessRevoked({ id: batch.id }, { signal: scope.controller.signal });
+      if (!active()) return;
+      setAccess(data);
       setNotice({ tone: 'ok', text: 'Photographer Drive access recorded as revoked.' });
     } catch (error) {
+      if (!active()) return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
-      setBusy('');
+      if (active()) setBusy('');
     }
   };
 
   const downloadResult = async () => {
     if (!batch) return;
+    const { scope, current: active } = captureScope(batch.id);
+    if (!active()) return;
     setBusy('result');
     setOperationProgress({
       label: 'Downloading reconciliation result',
       detail: 'Preparing the batch CSV…',
     });
     try {
-      const response = await api.get(`/student-photo-imports/${batch.id}/result`, {
-        responseType: 'blob',
+      const data = await photoImportClient.downloadResult({ id: batch.id }, {
+        signal: scope.controller.signal,
         onDownloadProgress: event => {
+          if (!active()) return;
           const value = event.total ? (event.loaded / event.total) * 100 : undefined;
           setOperationProgress({
             label: 'Downloading reconciliation result',
@@ -435,7 +501,8 @@ export function PhotoImportPanel() {
           });
         },
       });
-      const url = URL.createObjectURL(response.data);
+      if (!active()) return;
+      const url = URL.createObjectURL(data);
       const link = document.createElement('a');
       link.href = url;
       link.download = `student-photo-import-${batch.id}.csv`;
@@ -449,6 +516,7 @@ export function PhotoImportPanel() {
         tone: 'complete',
       });
     } catch (error) {
+      if (!active()) return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
       setOperationProgress({
         label: 'Result download stopped',
@@ -456,7 +524,7 @@ export function PhotoImportPanel() {
         tone: 'error',
       });
     } finally {
-      setBusy('');
+      if (active()) setBusy('');
     }
   };
 
@@ -468,6 +536,8 @@ export function PhotoImportPanel() {
     );
     if (!confirmed) return;
 
+    const { scope, current: active } = captureScope(batch.id);
+    if (!active()) return;
     setBusy('recover');
     setNotice(null);
     setOperationProgress(null);
@@ -491,21 +561,19 @@ export function PhotoImportPanel() {
         failed: 0,
       };
       for (let offset = 0; offset < appliedRows.length; offset += PHOTO_RECOVERY_CHUNK_SIZE) {
+        if (!active()) return;
         const rowIds = appliedRows
           .slice(offset, offset + PHOTO_RECOVERY_CHUNK_SIZE)
           .map(row => row.id);
-        const response = await api.post<RecoveryBatchResult>(
-          `/student-photo-imports/${batch.id}/recover`,
-          { rowIds },
-          PHOTO_IMPORT_REQUEST_CONFIG,
-        );
-        totals.recovered += response.data.recoveredCount;
-        totals.alreadyRecovered += response.data.alreadyRecoveredCount;
-        totals.inProgress += response.data.inProgressCount;
-        totals.protected += response.data.protectedCount || 0;
-        totals.failed += response.data.failedCount;
+        const data = await photoImportClient.recoverPhotos({ id: batch.id }, { rowIds }, { ...PHOTO_IMPORT_REQUEST_CONFIG, signal: scope.controller.signal });
+        if (!active()) return;
+        totals.recovered += data.recoveredCount;
+        totals.alreadyRecovered += data.alreadyRecoveredCount;
+        totals.inProgress += data.inProgressCount;
+        totals.protected += data.protectedCount || 0;
+        totals.failed += data.failedCount;
         const locallyProcessed = Math.min(offset + rowIds.length, appliedRows.length);
-        setRecoveryProgress(response.data.progress || {
+        setRecoveryProgress(data.progress || {
           totalCount: appliedRows.length,
           processedCount: locallyProcessed,
           recoveredCount: totals.recovered + totals.alreadyRecovered,
@@ -519,6 +587,7 @@ export function PhotoImportPanel() {
       }
 
       await refreshDetail(batch.id, { showError: false });
+      if (!active()) return;
       const successful = totals.recovered + totals.alreadyRecovered;
       const requiresAttention = totals.failed + totals.inProgress;
       setNotice({
@@ -535,10 +604,11 @@ export function PhotoImportPanel() {
               : 'No newer photo changes were overwritten.'),
       });
     } catch (error) {
+      if (!active()) return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
       setRecoveryProgress(current => current ? { ...current, resumable: true } : current);
     } finally {
-      setBusy('');
+      if (active()) setBusy('');
     }
   };
 
@@ -557,10 +627,12 @@ export function PhotoImportPanel() {
 
   const saveRowReview = async (previewAfterSave = false) => {
     if (!batch || !editing) return;
+    const { scope, current: active } = captureScope(batch.id);
+    if (!active()) return;
     setBusy(`edit:${editing.row.id}`);
     try {
-      const response = await api.post<{ batch: ImportBatch; row: ImportRow }>(
-        `/student-photo-imports/${batch.id}/rows/${editing.row.id}`,
+      const data = await photoImportClient.reviewRow(
+        { batchId: batch.id, rowId: editing.row.id },
         {
           admissionNo: editing.admissionNo,
           imageNo: editing.imageNo,
@@ -568,40 +640,50 @@ export function PhotoImportPanel() {
           cropX: editing.cropX,
           cropY: editing.cropY,
         },
+        { signal: scope.controller.signal },
       );
-      setBatch(response.data.batch);
-      setRows(current => current.map(row => row.id === response.data.row.id ? response.data.row : row));
+      if (!active()) return;
+      if (data.batch.id !== batch.id || data.batch.schoolId !== scope.schoolId || data.row.id !== editing.row.id) {
+        throw new Error('The row review does not match the selected batch.');
+      }
+      setBatch(data.batch);
+      setRows(current => current.map(row => row.id === data.row.id ? data.row : row));
       setEditing(null);
       setNotice({ tone: 'ok', text: 'Row review saved and batch totals recalculated.' });
-      if (previewAfterSave && response.data.row.driveFileName) {
-        await openPreview(response.data.row);
+      if (previewAfterSave && data.row.driveFileName) {
+        await openPreview(data.row);
       }
     } catch (error) {
+      if (!active()) return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
-      setBusy('');
+      if (active()) setBusy('');
     }
   };
 
   const openPreview = async (row: ImportRow) => {
     if (!batch || !row.driveFileName) return;
+    const { scope, current: active } = captureScope(batch.id);
+    if (!active()) return;
+    const requestId = ++previewRequestId.current;
+    const currentPreview = () => active() && requestId === previewRequestId.current;
     setBusy(`preview:${row.id}`);
     try {
-      const response = await api.get(`/student-photo-imports/${batch.id}/rows/${row.id}/preview`, {
-        responseType: 'blob',
-      });
-      if (preview) URL.revokeObjectURL(preview.url);
-      setPreview({ row, url: URL.createObjectURL(response.data) });
+      const data = await photoImportClient.getPreview({ batchId: batch.id, rowId: row.id }, { signal: scope.controller.signal });
+      if (!currentPreview()) return;
+      setPreview({ row, url: URL.createObjectURL(data) });
     } catch (error) {
+      if (!currentPreview()) return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
-      setBusy('');
+      if (currentPreview()) setBusy('');
     }
   };
 
   const closePreview = () => {
-    if (preview) URL.revokeObjectURL(preview.url);
+    previewRequestId.current += 1;
     setPreview(null);
+    setBusy(current => current.startsWith('preview:') ? '' : current);
   };
 
   return (

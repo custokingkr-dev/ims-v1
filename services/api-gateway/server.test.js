@@ -770,6 +770,9 @@ test('actual loopback routing learns budgets only after introspection and preser
   const baseUrl = await listen(); const originalFetch = global.fetch;
   const agent = new http.Agent({ keepAlive: true, maxSockets: 16 });
   let introspections = 0; let revoked = false;
+  // Exercise a burst, not the host's ability to send 160 requests before refill.
+  const originalNow = Date.now; const burstTime = originalNow();
+  Date.now = () => burstTime;
   const request = (token) => new Promise((resolve, reject) => {
     const outgoing = http.get(`${baseUrl}/api/v1/students`, { agent, headers: { authorization: `Bearer ${token}` } }, (response) => {
       response.resume(); response.on('end', () => resolve(response.statusCode));
@@ -795,7 +798,7 @@ test('actual loopback routing learns budgets only after introspection and preser
     revoked = true;
     assert.equal(await request('shared-valid-user-902'), 401);
     assert.equal(introspections, beforeRevocation + 1);
-  } finally { global.fetch = originalFetch; agent.destroy(); }
+  } finally { Date.now = originalNow; global.fetch = originalFetch; agent.destroy(); }
 });
 
 test('outbound headers strip client-supplied authenticated and service-token headers', () => {

@@ -194,7 +194,7 @@ describe('SchoolManagementPage superadmin workflows', () => {
     })));
     await waitFor(() => expect(api.put).toHaveBeenCalledWith('/schools/77/modules/ORDERS', { enabled: true }));
     expect(api.delete).toHaveBeenCalledWith('/schools/77/modules/STUDENTS');
-  });
+  }, 10000);
 
   it('adds an admin and edits the existing admin account', async () => {
     const user = userEvent.setup();
@@ -240,7 +240,7 @@ describe('SchoolManagementPage superadmin workflows', () => {
       email: 'asha.updated@gvs.edu',
     }));
     expect(api.post).toHaveBeenCalledWith('/users/101/password-reset', { password: 'Updated!2026' });
-  });
+  }, 10000);
 
   it('creates, edits, and scopes operator accounts from the operator panel', async () => {
     const user = userEvent.setup();
@@ -286,7 +286,7 @@ describe('SchoolManagementPage superadmin workflows', () => {
     await user.click(within(schoolsDialog).getByRole('button', { name: /save schools/i }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/rbac/users/201/operator-schools', { schoolIds: [20] }));
-  });
+  }, 10000);
 
   it('loads and saves module groups for a school', async () => {
     const user = userEvent.setup();

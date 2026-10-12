@@ -134,3 +134,24 @@ test('serialized student dates, nullable record fields and property additions ca
   delete spec.components.schemas.StudentImportEvidenceRow.properties.rawJson;
   assert.throws(() => validateContract(spec, inventory), /properties drifted/);
 });
+
+
+test('only bounded transport options enter a client and cannot replace its wire contract', () => {
+  const spec = read('photoImportClient.v1.openapi.json');
+  validateContract(spec, inventory);
+  const generated = renderClient(spec, 'photoImportClient.v1.openapi.json');
+  assert.match(generated, /Pick<AxiosRequestConfig, "signal" \| "timeout" \| "onDownloadProgress">/);
+  assert.match(generated, /signal: requestOptions\?\.signal/);
+  assert.doesNotMatch(generated, /\.\.\.requestOptions/);
+  for (const options of [['headers'], ['baseURL'], ['url'], ['params'], ['responseType'], ['timeout', 'timeout'], false, null]) {
+    assert.throws(() => validateContract({ ...spec, 'x-ims-request-options': options }, inventory), /Request options/);
+  }
+  spec.components.schemas.PhotoImportClientRequestOptions = { type: 'string' };
+  assert.throws(() => validateContract(spec, inventory), /Reserved request options type/);
+});
+
+test('UUID record type changes fail the photo contract gate', () => {
+  const spec = read('photoImportClient.v1.openapi.json');
+  spec.components.schemas.PhotoImportBatch.properties.id = { type: 'integer' };
+  assert.throws(() => validateContract(spec, inventory), /type drifted from Java UUID/);
+});
