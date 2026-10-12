@@ -49,7 +49,7 @@ and the gateway loopback burst test. The gateway test now freezes only its fixtu
 budget exhaustion does not depend on network throughput outrunning token refill. Longer UI
 flows and cold spreadsheet-codec setup have explicit bounded test waits, retaining every
 behavior/security assertion. Production admission limits and file-processing policies are unchanged.
-Full regression results and exact dev acceptance are recorded below once verified. Tests use
+The full local frontend suite passed all 476 tests with zero pending tests; gateway passed all 108 tests, TypeScript/build passed, and exact source CI/dev acceptance are recorded below. Tests use
 synthetic fixtures; no real Drive scan, folder provisioning, photo application/recovery or
 provider send is performed by this acceptance work. Generated TypeScript is not a runtime
 response validator.
@@ -68,6 +68,47 @@ target/credential/device/policy approvals remain separate. Production is outside
 
 ## Dev acceptance
 
-Pending exact source CI, dev release artifact/digest binding, independent seven-service
-readbacks, configured image-user proof and bounded anonymous security/header/browser checks.
+[PR 351](https://github.com/custokingkr-dev/ims-v1/pull/351) deployed application source
+`669330109a4bd64b529252a0600550462b34cdea`, tree
+`b800cc2a459e1b4d5b51ed3a71b5772f0875d60e`. Both
+[source CI](https://github.com/custokingkr-dev/ims-v1/actions/runs/38216234676) and
+[dev release](https://github.com/custokingkr-dev/ims-v1/actions/runs/38216907722) passed
+1,008 school tests with no failures/errors/skips, 476 frontend tests, 116 authenticated
+browser checks and 108 gateway tests. Both actual language uploads in
+[source CodeQL](https://github.com/custokingkr-dev/ims-v1/actions/runs/38216234358) and
+[post-merge CodeQL](https://github.com/custokingkr-dev/ims-v1/actions/runs/38216907337)
+report zero findings. Independent verification bound the source/tree, server-hash-verified
+release archive, image manifests, exact-digest scan evidence and runtime readbacks.
+
+| Changed service | Ready revision | Traffic |
+| --- | --- | ---: |
+| Gateway | `custoking-api-gateway-dev-00042-dbg` | 100% |
+| Frontend | `custoking-frontend-dev-00061-txj` | 100% |
+| School-core | `custoking-school-core-service-dev-00083-8vk` | 100% |
+
+Four exact prior runtimes, images and selected configurations were retained. All seven services
+are Ready with sole untagged 100% traffic; five runtime roles and disabled migrations remain
+guarded. An intermediate school-core readiness/traffic rejection during rollout was retained
+as an unaccepted checkpoint. Final matching snapshots bracket 19 existing anonymous/forged
+negative requests, twelve photo-import read/write/preview/download denials, full two-origin
+CSP/header/browser checks and six cache checks. Anonymous photo requests returned 401 JSON
+with private/no-store; hashed assets retain their immutable cache policy. Digest/config hashes
+verify configured nonroot frontend/gateway image users, without claiming an observed process UID.
+
+Fresh scans report gateway 0, frontend 0 and school-core 16 findings: 12 MEDIUM and 4 LOW,
+ten unique CVEs. Every package/version/CVE row and evidence hash is saved in
+[the acceptance evidence](../security-remediation/acceptance-photo-import-dev-2026-10-12.json).
+Blank scanner fixed versions do not establish vendor fix availability or application applicability.
+The retained platform image keeps its separate dated native record.
+
+Partial vendor follow-up: Ubuntu's [CVE-2026-18374 record](https://ubuntu.com/security/CVE-2026-18374)
+was retrieved through primary search content (direct open timed out), and its
+[CVE-2026-89092 record](https://ubuntu.com/security/CVE-2026-89092) was opened directly.
+Both listed Ubuntu 24.04 glibc as vulnerable. The first concerns a caller-controlled native
+file-opening mode; the second requires nscd and hostile DNS responses. These descriptions
+identify checks for the applicability review; they do not establish deployed distribution,
+daemon state or reachable native call paths. This is a partial review and closes no advisory.
+
+The eleven owner areas and broader payload coverage remain open. No real dev student mutation,
+Drive operation, system restore or production deployment was performed by this acceptance work.
 The [prior directory acceptance](student-directory-contracts-dev-2026-10-12.md) remains historical.
