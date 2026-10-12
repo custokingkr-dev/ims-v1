@@ -173,3 +173,10 @@ Current browser coverage is 93 canonical operations, including 40 student operat
 ## Drive photo-import continuation, 2026-10-12
 
 The next phase adds the fifteen-operation canonical photo-import client and lifecycle guards that stop execution/recovery scheduling after the panel closes. It preserves timeout, cancellation, progress and private binary handling, adds server cache controls, and checks permission/school boundaries. Its findings, validation and dev acceptance are tracked in [the photo-import record](photo-import-contracts-dev-2026-10-12.md). Earlier acceptance remains historical.
+
+
+## Drive photo-import dev acceptance, 2026-10-12
+
+PR 351 application source `669330109a4bd64b529252a0600550462b34cdea` passed exact-source CI and dev release: 1,008 school, 476 frontend, 116 authenticated browser and 108 gateway tests. Actual CodeQL uploads are clean before and after merge. Three changed/four retained runtimes, seven Ready services, five guarded runtime roles, 19 general denials, twelve photo-import denials, both-origin CSP and cache checks passed. All sixteen school-core findings and partial primary-vendor follow-up are saved in [the new acceptance evidence](../security-remediation/acceptance-photo-import-dev-2026-10-12.json).
+
+Current browser coverage is 108 operations across twelve clients, including fifteen photo-import and forty student operations. See [the workflow findings and fix plan](photo-import-contracts-dev-2026-10-12.md). School/guardian/consent and other payload contracts, plus eleven owner acceptance areas, remain open. Previous acceptance records are historical and unchanged; production was not deployed.
