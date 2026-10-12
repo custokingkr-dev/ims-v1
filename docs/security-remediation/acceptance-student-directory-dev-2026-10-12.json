@@ -1,0 +1,962 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-12T05:59:50.495065+00:00",
+  "sourceHeadSha": "037e770de9a0507f8897bec9ba68164dc79888a1",
+  "sourceTree": "2f937a2f55c25e1fc1042fd3cb60b0acea1d8bc5",
+  "pullRequest": 349,
+  "project": "custoking-dev",
+  "releaseRunId": 38209076760,
+  "postmergeCodeqlRunId": 38209076610,
+  "success": true,
+  "services": [
+    {
+      "service": "api-gateway",
+      "name": "custoking-api-gateway-dev",
+      "revision": "custoking-api-gateway-dev-00041-bzf",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-api-gateway-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:d638b2cb27418f908f57636feb3a4cb569fc8bd5944b6099ba946dc1c23238bc",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:c5ca5b5507f61809b7f70876b6ae48d43c3b2072badfaacab4bd4acd3760d5c6",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:c5ca5b5507f61809b7f70876b6ae48d43c3b2072badfaacab4bd4acd3760d5c6",
+      "selectedEnvironment": {
+        "GATEWAY_CORS_ALLOWED_ORIGINS": "https://custoking-frontend-dev-1087017280590.asia-south2.run.app,https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "FRONTEND_UPSTREAM": "https://custoking-frontend-dev-1087017280590.asia-south2.run.app"
+      }
+    },
+    {
+      "service": "billing-service",
+      "name": "custoking-billing-service-dev",
+      "revision": "custoking-billing-service-dev-00031-f9f",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-billing-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a88da3b832d689f758f866edffa33be8719a342b7e9bd75dfa91e67d2d6d1703",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_billing_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_billing_rt"
+      }
+    },
+    {
+      "service": "frontend",
+      "name": "custoking-frontend-dev",
+      "revision": "custoking-frontend-dev-00060-45b",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:ee68a1a399be7ee44350b60f7d7a1d446b321e506773cfe2eb730346439f1f52",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a3187d3b78d0752c56645fa85fe43beb19c180439827666c901f9f1a04dc8ecf",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a3187d3b78d0752c56645fa85fe43beb19c180439827666c901f9f1a04dc8ecf",
+      "selectedEnvironment": {
+        "API_UPSTREAM": "https://custoking-api-gateway-dev-1087017280590.asia-south2.run.app"
+      }
+    },
+    {
+      "service": "identity-service",
+      "name": "custoking-identity-service-dev",
+      "revision": "custoking-identity-service-dev-00035-vgl",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-identity-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:15a81abee368161451064554a485cfe94dbafd8c5dd5adb72076c87356b25a41",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_identity_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_identity_rt"
+      }
+    },
+    {
+      "service": "operations-service",
+      "name": "custoking-operations-service-dev",
+      "revision": "custoking-operations-service-dev-00032-jbn",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-operations-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:7c5cfb8810446b78f4e07fcb3179dba1eb516ecdcf7d62013ef860cbde0a3327",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_operations_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_operations_rt"
+      }
+    },
+    {
+      "service": "platform-service",
+      "name": "custoking-platform-service-dev",
+      "revision": "custoking-platform-service-dev-00042-cvv",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:2f5cd9d7ec1ad8bcce62b87177602de00fb536bcc294914e37703f80777599b6",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:bd01b334e248f85b414110821e2848ffaf1782ebf885371dca8fd16b9c248074",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:bd01b334e248f85b414110821e2848ffaf1782ebf885371dca8fd16b9c248074",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_platform_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_platform_rt",
+        "MSG91_DRY_RUN": "true",
+        "NOTIFICATION_DELIVERY_PROVIDER": "logging",
+        "BROADCAST_LIVE_ENABLED": "false",
+        "NOTIFICATION_REPORT_RECONCILIATION_ENABLED": "false"
+      }
+    },
+    {
+      "service": "school-core-service",
+      "name": "custoking-school-core-service-dev",
+      "revision": "custoking-school-core-service-dev-00082-pbv",
+      "ready": true,
+      "trafficPercent": 100,
+      "desiredTrafficMatches": true,
+      "url": "https://custoking-school-core-service-dev-hd4wfwk7mq-em.a.run.app",
+      "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+      "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:d5af82184bcdfafa8f2d78791d86754be6d9f682778d32138e4158af45de6df1",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:d5af82184bcdfafa8f2d78791d86754be6d9f682778d32138e4158af45de6df1",
+      "selectedEnvironment": {
+        "APP_MIGRATIONS_ENABLED": "false",
+        "RUNTIME_DB_ROLE": "ims_school_core_rt",
+        "SPRING_DATASOURCE_USERNAME": "ims_school_core_rt",
+        "STUDENT_ERASURE_JOURNAL_ENABLED": "true",
+        "STUDENT_ERASURE_JOURNAL_PROJECT_ID": "custoking-dev",
+        "STUDENT_ERASURE_JOURNAL_BUCKET": "custoking-dev-erasure-journal",
+        "STUDENT_ERASURE_JOURNAL_SOURCE_LINEAGE_ID": "58bc724a-592f-49f1-b22f-0e5f95aa6808",
+        "STUDENT_ERASURE_JOURNAL_RESTORE_EPOCH": "d9c4f31c-3420-48a7-8fbe-7fc26d2065bf",
+        "STUDENT_ERASURE_JOURNAL_EPOCH_GENERATION": "1791384645925940",
+        "STUDENT_ERASURE_JOURNAL_EPOCH_SHA256": "aae5c2aedd259b60e7cdff757508a4a0584bb6ab26def2e5eddd148ede7ab108"
+      }
+    }
+  ],
+  "changedServices": [
+    "api-gateway",
+    "frontend",
+    "school-core-service"
+  ],
+  "retainedServices": [
+    "billing-service",
+    "identity-service",
+    "operations-service",
+    "platform-service"
+  ],
+  "tests": {
+    "school-core-service": {
+      "tests": 1001,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "jobId": 114679105984,
+      "path": "tmp/student-directory-release-b6f382219d7d49e9b16760567877ce3d/school-core-service-tests.log",
+      "sha256": "439c3c08b7744a1d5c23a52f21c435c0e3401926ad8b532d041044c5474267b5"
+    },
+    "frontend": {
+      "tests": 469,
+      "authenticatedBrowserTests": 116,
+      "jobId": 114679105884,
+      "path": "tmp/student-directory-release-b6f382219d7d49e9b16760567877ce3d/frontend-tests.log",
+      "sha256": "6f6a5cdc61ae8da6189dc66c4c0877b5be3da24efd688148a77c4257c4ed51ef"
+    },
+    "api-gateway": {
+      "tests": 108,
+      "failures": 0,
+      "skipped": 0,
+      "jobId": 114679105819,
+      "path": "tmp/student-directory-release-b6f382219d7d49e9b16760567877ce3d/api-gateway-tests.log",
+      "sha256": "f59cbbda7f7aca3790047fe42aec0128d7f24f137d2f99bc9eb360c0f2e41e68"
+    }
+  },
+  "codeqlUploads": [
+    {
+      "ref": "refs/heads/dev",
+      "commit_sha": "037e770de9a0507f8897bec9ba68164dc79888a1",
+      "analysis_key": ".github/workflows/codeql-analysis.yml:analyze",
+      "environment": "{\"build-mode\":\"none\",\"language\":\"java-kotlin\"}",
+      "category": "/language:java-kotlin",
+      "error": "",
+      "created_at": "2026-10-12T05:46:12Z",
+      "results_count": 0,
+      "rules_count": 120,
+      "id": 1934068581,
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/code-scanning/analyses/1934068581",
+      "sarif_id": "3b383c0a-c600-11f1-8d02-064de5a013f4",
+      "tool": {
+        "name": "CodeQL",
+        "guid": null,
+        "version": "2.27.2"
+      },
+      "deletable": true,
+      "warning": ""
+    },
+    {
+      "ref": "refs/heads/dev",
+      "commit_sha": "037e770de9a0507f8897bec9ba68164dc79888a1",
+      "analysis_key": ".github/workflows/codeql-analysis.yml:analyze",
+      "environment": "{\"build-mode\":\"none\",\"language\":\"javascript-typescript\"}",
+      "category": "/language:javascript-typescript",
+      "error": "",
+      "created_at": "2026-10-12T05:43:19Z",
+      "results_count": 0,
+      "rules_count": 103,
+      "id": 1934057157,
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/code-scanning/analyses/1934057157",
+      "sarif_id": "d3cfba48-c5ff-11f1-99d3-8072afa7b57a",
+      "tool": {
+        "name": "CodeQL",
+        "guid": null,
+        "version": "2.27.2"
+      },
+      "deletable": true,
+      "warning": ""
+    }
+  ],
+  "scan": {
+    "commit": "037e770de9a0507f8897bec9ba68164dc79888a1",
+    "environment": "dev",
+    "scanner": "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25",
+    "scannedAtUtc": "2026-10-12T05:54:43.7327757Z",
+    "verdictCacheTtlHours": 24.0,
+    "scannedCount": 3,
+    "cachedCount": 0,
+    "services": [
+      {
+        "service": "school-core-service",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "digestKey": "sha256-481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/school-core-service-sha256-481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71.table.txt",
+        "sarifEvidence": "release-evidence/trivy/school-core-service-sha256-481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71.sarif",
+        "passed": true
+      },
+      {
+        "service": "frontend",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:ee68a1a399be7ee44350b60f7d7a1d446b321e506773cfe2eb730346439f1f52",
+        "digestKey": "sha256-ee68a1a399be7ee44350b60f7d7a1d446b321e506773cfe2eb730346439f1f52",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/frontend-sha256-ee68a1a399be7ee44350b60f7d7a1d446b321e506773cfe2eb730346439f1f52.table.txt",
+        "sarifEvidence": "release-evidence/trivy/frontend-sha256-ee68a1a399be7ee44350b60f7d7a1d446b321e506773cfe2eb730346439f1f52.sarif",
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:d638b2cb27418f908f57636feb3a4cb569fc8bd5944b6099ba946dc1c23238bc",
+        "digestKey": "sha256-d638b2cb27418f908f57636feb3a4cb569fc8bd5944b6099ba946dc1c23238bc",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/api-gateway-sha256-d638b2cb27418f908f57636feb3a4cb569fc8bd5944b6099ba946dc1c23238bc.table.txt",
+        "sarifEvidence": "release-evidence/trivy/api-gateway-sha256-d638b2cb27418f908f57636feb3a4cb569fc8bd5944b6099ba946dc1c23238bc.sarif",
+        "passed": true
+      }
+    ]
+  },
+  "scannerFindings": {
+    "api-gateway": {
+      "reportedFindings": 0,
+      "sarifLevels": {},
+      "source": "scanned",
+      "sarifPath": "trivy/api-gateway-sha256-d638b2cb27418f908f57636feb3a4cb569fc8bd5944b6099ba946dc1c23238bc.sarif"
+    },
+    "frontend": {
+      "reportedFindings": 0,
+      "sarifLevels": {},
+      "source": "scanned",
+      "sarifPath": "trivy/frontend-sha256-ee68a1a399be7ee44350b60f7d7a1d446b321e506773cfe2eb730346439f1f52.sarif"
+    },
+    "school-core-service": {
+      "reportedFindings": 16,
+      "sarifLevels": {
+        "warning": 12,
+        "note": 4
+      },
+      "source": "scanned",
+      "sarifPath": "trivy/school-core-service-sha256-481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71.sarif"
+    }
+  },
+  "denials": {
+    "capturedAt": "2026-10-12T05:58:13.028934+00:00",
+    "project": "custoking-dev",
+    "requests": 19,
+    "cases": [
+      {
+        "service": "identity-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_internal_machine",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "case": "anonymous_protected_gateway",
+        "status": 401,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "path": "/api/v1/internal/notifications/reports/reconcile",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/internal/notifications/reports/reconcile",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/notification-api/v1/internal/notifications/reports/reconcile",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/pubsub/events",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/reporting-api/v1/pubsub/events",
+        "status": 404,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/students",
+        "status": 401,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "path": "/api/v1/reporting/vendor-dues",
+        "status": 401,
+        "passed": true
+      }
+    ],
+    "success": true,
+    "scope": "Anonymous/forged headers only. Private 403 demonstrates Cloud Run ingress denial; gateway 401/404 demonstrates public user and internal/rewritten-path rejection. No signed caller, authenticated tenant access or live provider delivery is claimed."
+  },
+  "frontendCsp": {
+    "startedAt": "2026-10-12T05:58:09.904Z",
+    "scope": "Anonymous live HTTP/browser smoke",
+    "origins": [
+      {
+        "origin": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "responses": [
+          {
+            "resource": "/login",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/frontend-health",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/index-BKHBuDJd.js",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/missing-security-proof.js",
+            "status": 404,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "synthetic-nonexistent-photo",
+            "status": 401,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none', default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff, nosniff",
+              "x-frame-options": "DENY, DENY",
+              "referrer-policy": "strict-origin-when-cross-origin, no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self), geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload, max-age=31536000"
+            }
+          }
+        ],
+        "browser": {
+          "inlineExecuted": false,
+          "rasterBlobLoaded": true,
+          "violations": [
+            "script-src-elem",
+            "object-src"
+          ]
+        }
+      },
+      {
+        "origin": "https://custoking-api-gateway-dev-hd4wfwk7mq-em.a.run.app",
+        "responses": [
+          {
+            "resource": "/login",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/frontend-health",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/index-BKHBuDJd.js",
+            "status": 200,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "/assets/missing-security-proof.js",
+            "status": 404,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "no-referrer",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=31536000"
+            }
+          },
+          {
+            "resource": "synthetic-nonexistent-photo",
+            "status": 401,
+            "headers": {
+              "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+              "x-content-type-options": "nosniff",
+              "x-frame-options": "DENY",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload"
+            }
+          }
+        ],
+        "browser": {
+          "inlineExecuted": false,
+          "rasterBlobLoaded": true,
+          "violations": [
+            "script-src-elem",
+            "object-src"
+          ]
+        }
+      }
+    ],
+    "nonRoot": {
+      "verified": false,
+      "reason": "Public HTTP cannot establish runtime UID; use deployed image config plus existing container proof."
+    },
+    "success": true,
+    "finishedAt": "2026-10-12T05:58:22.397Z"
+  },
+  "configuredImageUsers": {
+    "proofScope": "Digest-bound image configured User only; not observed Cloud Run process UID",
+    "images": {
+      "api-gateway": {
+        "runtimeDigest": "sha256:c5ca5b5507f61809b7f70876b6ae48d43c3b2072badfaacab4bd4acd3760d5c6",
+        "configDigest": "sha256:59a088f66ac1eda524606a1e7757a13bed944495c90cc38c87823fbb681dc27c",
+        "configuredUser": "node",
+        "manifestHashVerified": true,
+        "configHashVerified": true,
+        "nonrootConfiguredUser": true
+      },
+      "frontend": {
+        "runtimeDigest": "sha256:a3187d3b78d0752c56645fa85fe43beb19c180439827666c901f9f1a04dc8ecf",
+        "configDigest": "sha256:d1ae60c011363a0dbc633e3e09929865f8b675bd6fb0946bedac7f1d88cea7fa",
+        "configuredUser": "nginx",
+        "manifestHashVerified": true,
+        "configHashVerified": true,
+        "nonrootConfiguredUser": true
+      }
+    }
+  },
+  "liveCacheControls": {
+    "capturedAt": "2026-10-12T05:58:07.461Z",
+    "origins": [
+      {
+        "origin": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "login": {
+          "status": 200,
+          "cacheControl": "no-store, no-cache, must-revalidate"
+        },
+        "asset": {
+          "path": "/assets/index-BKHBuDJd.js",
+          "status": 200,
+          "cacheControl": "public, max-age=31536000, immutable"
+        },
+        "anonymousStudentRead": {
+          "status": 401,
+          "cacheControl": "private, no-store"
+        }
+      },
+      {
+        "origin": "https://custoking-api-gateway-dev-hd4wfwk7mq-em.a.run.app",
+        "login": {
+          "status": 200,
+          "cacheControl": "no-store, no-cache, must-revalidate"
+        },
+        "asset": {
+          "path": "/assets/index-BKHBuDJd.js",
+          "status": 200,
+          "cacheControl": "public, max-age=31536000, immutable"
+        },
+        "anonymousStudentRead": {
+          "status": 401,
+          "cacheControl": "private, no-store"
+        }
+      }
+    ],
+    "success": true,
+    "scope": "Bounded anonymous dev cache controls and hashed-asset policy. No authenticated student records or cloud mutations.",
+    "completedAt": "2026-10-12T05:58:08.820Z"
+  },
+  "canonicalBrowserOperations": 93,
+  "studentOperations": 40,
+  "operationalOwnerAreasStillOpen": 11,
+  "evidenceSha256": {
+    "tmp/architecture-dev-runtime-c7cb44f2f7c84ef18aa27281c1ef5cfe.json": "d58e18009db5e37591d86341447c6eeb833d1dd35f2a28e9620e82d92699f56c",
+    "tmp/student-directory-ci-0964e8fe4b8b4f2a8a1b2cf4fee71391/proof.json": "3fe03af003b16b80561884a02a1e7a05a6780679b16ff21553cc53a68b04b50a",
+    "tmp/student-directory-release-b6f382219d7d49e9b16760567877ce3d/proof.json": "e67ce50fbaa54e7dc3e983b1630134d71978bb839fceef7fd75ed3cb53b097f1",
+    "tmp/architecture-dev-runtime-0929e130e2b14441b01aaad3035c1241.json": "cacf1dd25426dbb02a6e34208e91295ce000caba9c3b6e383f4091553db125f5",
+    "tmp/architecture-dev-runtime-fc636375f6044d00b32e29afff65d608.json": "07101695f66c7ab4ce0dc5e389f44a29d279024eb8192a7dfd1c19d498e10038",
+    "tmp/architecture-public-57c7104418c64bf58dcf53b2beabd5c4/proof.json": "4844ca75abb87dd0a52f768811a13bbcd67d2435097b0d605bfc4e03a7148ded",
+    "tmp/student-directory-live-csp-3502f002954e4de9bf57f17b9de0c6ed.json": "89f610a3eb4cbc218504544431506bd4476675d85750303e7a92c11daf536792",
+    "tmp/student-directory-image-user-95881e32f2a148369803b5fcca4bc195.json": "a6a4d1425205e6f397c31f525acad2c529625688cef4e1abb34dbd135f3f3a8d",
+    "tmp/student-directory-live-cache-b87669096a7e427ca244e584a19adec8.json": "975af916d6a76dd07e144816231a125e34d7b8d3a1b73f3cb53baf22d2e911b5",
+    "tmp/student-directory-dev-closeout-5460094d81364001bf6d7ae69bdefcea.json": "cc94cc59721f5b8ef3b569ff7371132c1fff86156245bb0500b9128bf2935731",
+    "tmp/student-directory-native-findings-656696e93d81466bb2a895a57aa7cbe6.json": "940584c1200ade783c044612c2b7a3618fbca3ce5c36f5d9a155128e3b7f7628",
+    "tmp/student-directory-local-validation-d1e208cacd6d44e0bbc2939ab2d94446.json": "2218031a816990ef000b9df83a11fb5303053f677783e0720335826a9deba23b"
+  },
+  "productionChangedByThisWork": false,
+  "scope": "Three changed images bound to the accepted source/tree and exact digests; four exact retained runtimes. Two metadata snapshots bracket public negative checks and full two-origin CSP assertions. Seven Ready services with sole untagged 100% traffic, unchanged selected configuration and five guarded runtime roles with migrations disabled. Image User means configured nonroot identity, not process UID. Anonymous HTTP acceptance does not establish signed-caller, authenticated tenant mutation, provider delivery, physical device, restoration, native advisory applicability or production acceptance.",
+  "nativeFindings": {
+    "capturedAt": "2026-10-12T05:59:50.217509+00:00",
+    "source": "037e770de9a0507f8897bec9ba68164dc79888a1",
+    "counts": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 12,
+      "LOW": 4,
+      "UNKNOWN": 0
+    },
+    "records": [
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-18374",
+        "package": "libc-bin",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-18374",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-89092",
+        "package": "libc-bin",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-89092",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-18374",
+        "package": "libc6",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-18374",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-89092",
+        "package": "libc6",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-89092",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2025-66382",
+        "package": "libexpat1",
+        "installedVersion": "2.6.1-2ubuntu0.6",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2025-66382",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-86145",
+        "package": "libpcre2-8-0",
+        "installedVersion": "10.42-4ubuntu2.1",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-86145",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-89161",
+        "package": "libpcre2-8-0",
+        "installedVersion": "10.42-4ubuntu2.1",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-89161",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-40228",
+        "package": "libsystemd0",
+        "installedVersion": "255.4-1ubuntu8.17",
+        "severity": "LOW",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-40228",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-40228",
+        "package": "libudev1",
+        "installedVersion": "255.4-1ubuntu8.17",
+        "severity": "LOW",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-40228",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-18374",
+        "package": "locales",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-18374",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-89092",
+        "package": "locales",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-89092",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2024-56433",
+        "package": "login",
+        "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+        "severity": "LOW",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2024-56433",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2024-56433",
+        "package": "passwd",
+        "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+        "severity": "LOW",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2024-56433",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-18477",
+        "package": "tar",
+        "installedVersion": "1.35+dfsg-3ubuntu0.4",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-18477",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-18508",
+        "package": "tar",
+        "installedVersion": "1.35+dfsg-3ubuntu0.4",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-18508",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      },
+      {
+        "service": "school-core-service",
+        "cve": "CVE-2026-85091",
+        "package": "zlib1g",
+        "installedVersion": "1:1.3.dfsg-3.1ubuntu2.2",
+        "severity": "MEDIUM",
+        "scannerReportedFixedVersion": null,
+        "scannerLink": "https://avd.aquasec.com/nvd/cve-2026-85091",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:481244bd4da982d3854722444923dfd74b5e1da8455624afc601e3398a59aa71",
+        "sarifSha256": "678a8e2db8fd0728160c432ef3fa11e40bc4ed16e971285fe951fe35f140b1f0"
+      }
+    ],
+    "uniqueCves": [
+      "CVE-2024-56433",
+      "CVE-2025-66382",
+      "CVE-2026-18374",
+      "CVE-2026-18477",
+      "CVE-2026-18508",
+      "CVE-2026-40228",
+      "CVE-2026-85091",
+      "CVE-2026-86145",
+      "CVE-2026-89092",
+      "CVE-2026-89161"
+    ],
+    "scope": "Fresh exact-image scanner rows. Blank fixed versions do not establish vendor fix availability or runtime applicability. Owner review remains open."
+  },
+  "sourceCi": {
+    "pullRequest": 349,
+    "sourceHead": "a9178450aba97b096544fb0a7d24e9567b3bbdb1",
+    "baseHead": "c74b32cd10947c27c55d9c826f29fa88d922d43f",
+    "tree": "2f937a2f55c25e1fc1042fd3cb60b0acea1d8bc5",
+    "syntheticMerge": "1a906042f2a20dad4aa17ce59f622190c81f42e6",
+    "tests": {
+      "school-core-service": {
+        "tests": 1001,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "jobId": 114677652668,
+        "path": "tmp/student-directory-ci-0964e8fe4b8b4f2a8a1b2cf4fee71391/school-core-service.log",
+        "sha256": "87f5ec55371aca3e69bc21c5011cdf86606e54f328acbd14139366de7dfb043f"
+      },
+      "frontend": {
+        "tests": 469,
+        "authenticatedBrowserTests": 116,
+        "authenticatedBrowserStepPassed": true,
+        "jobId": 114677652719,
+        "path": "tmp/student-directory-ci-0964e8fe4b8b4f2a8a1b2cf4fee71391/frontend.log",
+        "sha256": "733611eaec7f462adbeb4b6b4692c819fdd6152d426e316998918b34e7224a8c"
+      },
+      "api-gateway": {
+        "tests": 108,
+        "failures": 0,
+        "skipped": 0,
+        "jobId": 114677652717,
+        "path": "tmp/student-directory-ci-0964e8fe4b8b4f2a8a1b2cf4fee71391/api-gateway.log",
+        "sha256": "2aa34c2f4b6e74c78c6dc5ade4d7e061ff1a2e3ac90ea07c2a086a001a549587"
+      }
+    },
+    "codeqlUploads": [
+      {
+        "ref": "refs/pull/349/merge",
+        "commit_sha": "1a906042f2a20dad4aa17ce59f622190c81f42e6",
+        "analysis_key": ".github/workflows/codeql-analysis.yml:analyze",
+        "environment": "{\"build-mode\":\"none\",\"language\":\"java-kotlin\"}",
+        "category": "/language:java-kotlin",
+        "error": "",
+        "created_at": "2026-10-12T05:40:02Z",
+        "results_count": 0,
+        "rules_count": 120,
+        "id": 1934046073,
+        "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/code-scanning/analyses/1934046073",
+        "sarif_id": "5e7f0550-c5ff-11f1-8091-4150966f3a69",
+        "tool": {
+          "name": "CodeQL",
+          "guid": null,
+          "version": "2.27.2"
+        },
+        "deletable": true,
+        "warning": ""
+      },
+      {
+        "ref": "refs/pull/349/merge",
+        "commit_sha": "1a906042f2a20dad4aa17ce59f622190c81f42e6",
+        "analysis_key": ".github/workflows/codeql-analysis.yml:analyze",
+        "environment": "{\"build-mode\":\"none\",\"language\":\"javascript-typescript\"}",
+        "category": "/language:javascript-typescript",
+        "error": "",
+        "created_at": "2026-10-12T05:37:16Z",
+        "results_count": 0,
+        "rules_count": 103,
+        "id": 1934037784,
+        "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/code-scanning/analyses/1934037784",
+        "sarif_id": "fae5b214-c5fe-11f1-8d81-ea421d4f251d",
+        "tool": {
+          "name": "CodeQL",
+          "guid": null,
+          "version": "2.27.2"
+        },
+        "deletable": true,
+        "warning": ""
+      }
+    ],
+    "workflowRuns": {
+      "ci": 38208629887,
+      "codeql": 38208629606
+    }
+  },
+  "localValidation": {
+    "capturedAt": "2026-10-12T05:36:38.521829+00:00",
+    "sourceHead": "a9178450aba97b096544fb0a7d24e9567b3bbdb1",
+    "sourceTree": "2f937a2f55c25e1fc1042fd3cb60b0acea1d8bc5",
+    "frontend": {
+      "tests": 469,
+      "failed": 0,
+      "pending": 0
+    },
+    "focusedSchoolTests": 44,
+    "strengthenedFixtureRerunTests": 17,
+    "reproducedBeforeFix": [
+      "stale detail replaced selected student",
+      "cancelled verification launch continued read",
+      "nullable fleet import query failed PostgreSQL 42P18"
+    ],
+    "evidenceSha256": {
+      "tmp/student-directory-frontend-full-20261012-01.json": "a1ed3fb770df81c772f52239c207bbac1af85f15ec8c197c286375b7505e1721",
+      "tmp/student-directory-school-focused-20261012-01.log": "564c83b10121817f8826ac724be5c4877983446959035b7ca8a7390e002750f2",
+      "tmp/student-directory-school-focused-20261012-02.log": "06acf374d1d7624dbd9ef8ffb3a0c54276bdb95fcc24ab6d713b228111bf8c62",
+      "tmp/student-directory-rls-before-20261012.log": "62166c9aa83369222b5419c28d83f2294a340e71d188bad70728dc3dea149646",
+      "tmp/student-directory-rls-after-20261012-01.log": "333bab8ae65ab6c53e6bb4b84380347a8d8c09ca619133dfc2f0149ad011b89d",
+      "tmp/student-directory-race-before-20261012.json": "d8b9cedc423db9efcad7e528b0351962638df22211edcca167b0a8130259313a",
+      "tmp/student-directory-race-after-20261012-01.json": "4999a57bfe2f1cd6cb24b075ba061b84d3fdfea23a03f643c0eabde3a1f56e2e",
+      "tmp/student-directory-build-20261012-01.log": "b317f2da49b6da6c373fc1de9eb2ea44ec893e3659683b3c98ed27fc3f6a6b3c"
+    },
+    "scope": "Local synthetic validation; full Linux CI and dev runtime acceptance are separate."
+  },
+  "historicalNativeEvidence": "docs/security-remediation/acceptance-architecture-native-findings-2026-10-12.json"
+}
