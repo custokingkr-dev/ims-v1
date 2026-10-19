@@ -6,7 +6,7 @@ import type { AxiosInstance } from 'axios';
 
 export type LoginRequest = { "email": string; "password": string; };
 
-export type AuthResponse = { "accessToken": string; "userId": number; "fullName": string; "email": string; "role": "SUPERADMIN" | "ZONE_ADMIN" | "ADMIN" | "SCHOOL_ADMIN" | "OPERATIONS" | "ACCOUNTANT" | "TEACHER" | "VIEWER"; "branchId": number | null; "branchName": string | null; "zoneId": number | null; "zoneName": string | null; "roles": Array<string>; "permissions": Array<string>; "operatorSchools": Array<number>; "sessionId": string | null; "stepUpExpiresAt": string | null; };
+export type AuthResponse = { "accessToken": string; "userId": number; "fullName": string; "email": string; "role": "SUPERADMIN" | "ZONE_ADMIN" | "ADMIN" | "SCHOOL_ADMIN" | "OPERATIONS" | "ACCOUNTANT" | "TEACHER" | "VIEWER"; "branchId": number | null; "branchName": string | null; "zoneId": number | null; "zoneName": string | null; "roles": Array<string>; "permissions": Array<string>; "operatorSchools": Array<number>; "operatorScopes": Array<string>; "sessionId": string | null; "stepUpExpiresAt": string | null; };
 
 export type Problem = { "message"?: string; [key: string]: unknown; };
 

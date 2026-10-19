@@ -48,6 +48,22 @@ public final class TenantScope {
     }
 
     /**
+     * Read scope for ONE catalogue order. Like {@link #resolvePlatformReadScope} but an operator is also admitted when
+     * scoped to this order's catalogue item at the school. It is deliberately not folded into the platform scope, which
+     * guards students, fees and the like: an item-specific operator gains nothing outside the catalogue.
+     */
+    public static void requireCatalogOrderReadScope(Long schoolId, String catalogCategory) {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isOperations()) {
+            if (!ctx.operatesItem(schoolId, catalogCategory)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "school not in operator scope");
+            }
+            return;
+        }
+        resolvePlatformReadScope(schoolId);
+    }
+
+    /**
      * Resolve a school for an Operations/Superadmin write. The school is always explicit:
      * Operations is restricted to its assigned set and Superadmin may choose any school.
      */

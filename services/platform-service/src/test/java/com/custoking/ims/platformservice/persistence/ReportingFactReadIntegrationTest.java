@@ -176,6 +176,43 @@ class ReportingFactReadIntegrationTest {
         assertEquals(2, ((List<?>) dues.get("items")).size());
     }
 
+    private void seedNotebook(String id, long schoolId, String status) {
+        seedCatalogOrder(id, schoolId, "NOTEBOOKS", status, 1000L);
+        jdbcClient.sql("UPDATE reporting.fact_catalog_order SET form_version = 2 WHERE id = :id").param("id", id).update();
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void aNotebookIsInProgressWhileItsTrackerRunsAndNotBeforeOrAfter() {
+        seedActiveYear("ay_2025_26");
+        seedNotebook("nb-1", 100L, "ORDER_DETAILS");
+        seedNotebook("nb-2", 100L, "PRINTING_PRESS");
+        seedNotebook("nb-3", 100L, "DELIVERY_INVOICING");
+        seedNotebook("nb-4", 100L, "COMPLETED");
+        seedNotebook("nb-5", 100L, "DRAFT");
+        seedNotebook("nb-6", 100L, "CANCELLED");
+        seedCatalogOrder("old-1", 100L, "NOTEBOOKS", "PRINTING_PRESS", 1L);   // a legacy notebook (form 1) is not a tracker order
+        seedCatalogOrder("oth-1", 100L, "UNIFORMS", "PRINTING_PRESS", 1L);    // another category never follows a tracker
+        Map<String, Object> summary = reporting.commandCenterSummary(100L, false);
+        List<Map<String, Object>> kpis = (List<Map<String, Object>>) summary.get("kpis");
+        assertEquals("3", kpiValue(kpis, "orders_in_progress"));
+    }
+
+    @Test
+    void aCompletedNotebookCountsTowardReorderSignalsAndAnOpenOneDoesNot() {
+        seedNotebook("nb-1", 100L, "PRINTING_PRESS");
+        assertEquals(0, ((List<?>) reporting.reorderSignals(100L).get("items")).size());
+        seedNotebook("nb-2", 100L, "COMPLETED");
+        assertEquals(1, ((List<?>) reporting.reorderSignals(100L).get("items")).size());
+    }
+
+    @Test
+    void aTrackerNotebookIsNeverAVendorDue() {
+        seedNotebook("nb-1", 100L, "COMPLETED");
+        seedNotebook("nb-2", 100L, "DELIVERY_INVOICING");
+        assertEquals(0L, reporting.vendorDues(100L).get("catalogOrderCount"));
+    }
+
     @Test
     void reorderSignals_readsFactCatalogOnly() {
         seedCatalogOrder("ord-1", 100L, "BOOKS", "APPROVED", 5000L);

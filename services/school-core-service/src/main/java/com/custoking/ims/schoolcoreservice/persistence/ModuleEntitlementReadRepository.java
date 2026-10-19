@@ -98,9 +98,14 @@ public class ModuleEntitlementReadRepository {
         }
         TenantContext context = TenantContext.get();
         if (context.isOperations()) {
-            TenantScope.resolvePlatformReadScope(schoolId);
+            // An operator scoped to one catalogue item reads the ORDERS entitlement of that school and nothing else, so an
+            // item scope never opens the ERP modules.
+            boolean ordersOnly = moduleCodes.stream().allMatch(code -> "ORDERS".equalsIgnoreCase(code));
+            java.util.Set<Long> admitted = new java.util.LinkedHashSet<>(context.operatorSchools());
+            if (ordersOnly) admitted.addAll(context.scopedSchools());
+            if (!admitted.contains(schoolId)) TenantScope.resolvePlatformReadScope(schoolId);
             jdbc.sql("SELECT set_config('app.operator_schools', :schools, true)")
-                    .param("schools", String.join(",", context.operatorSchools().stream().map(String::valueOf).toList()))
+                    .param("schools", String.join(",", admitted.stream().map(String::valueOf).toList()))
                     .query(String.class).single();
         }
         List<String> normalizedCodes = moduleCodes.stream()

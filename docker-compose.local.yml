@@ -1,0 +1,35 @@
+# Overlay for running the full stack on a developer machine so it behaves like dev for the notebook order work.
+# It changes nothing in docker-compose.yml, which stays as the shared baseline.
+#
+#   * SPRING_PROFILES_ACTIVE=local   the baseline uses `prod`, whose machine-caller filter rejects the gateway's
+#                                    forwarded principal headers (403 PRINCIPAL_CARRIER_REJECTED) because nothing on a
+#                                    laptop signs them with a Cloud Run identity token.
+#   * OTEL_SDK_DISABLED=false        every service's RequestCorrelationFilter is built around a BatchSpanProcessor, which
+#                                    exists only while the SDK is enabled; with the baseline's `true` the service does not start.
+#                                    The baseline keeps OTEL_TRACES_EXPORTER=none and MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED=false,
+#                                    so spans are collected but not exported.
+#   * CATALOG_PRODUCT_FORM_ENABLED   turns on the structured product order form (the notebook form and its tracker).
+#
+# Usage: docker compose -f docker-compose.yml -f docker-compose.local.yml --profile full up -d --build
+services:
+  identity-service:
+    environment:
+      OTEL_SDK_DISABLED: "false"
+      SPRING_PROFILES_ACTIVE: local
+  school-core-service:
+    environment:
+      OTEL_SDK_DISABLED: "false"
+      SPRING_PROFILES_ACTIVE: local
+      CATALOG_PRODUCT_FORM_ENABLED: "true"
+  billing-service:
+    environment:
+      OTEL_SDK_DISABLED: "false"
+      SPRING_PROFILES_ACTIVE: local
+  operations-service:
+    environment:
+      OTEL_SDK_DISABLED: "false"
+      SPRING_PROFILES_ACTIVE: local
+  platform-service:
+    environment:
+      OTEL_SDK_DISABLED: "false"
+      SPRING_PROFILES_ACTIVE: local

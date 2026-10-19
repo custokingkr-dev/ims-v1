@@ -114,6 +114,16 @@ public class CatalogReadRepository {
 
     @Transactional(readOnly = true)
     public Optional<CatalogOrderRow> order(String id) {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isOperations() && !ctx.scopedSchools().isEmpty()) {
+            // An operator scoped to a catalogue item reads exactly that item at its school: row-level security admits the
+            // school, and the item is checked here once the order is read. School-wide operators are unaffected.
+            java.util.Set<Long> admitted = new java.util.LinkedHashSet<>(ctx.operatorSchools());
+            admitted.addAll(ctx.scopedSchools());
+            jdbc.sql("SELECT set_config('app.operator_schools', :csv, true)")
+                    .param("csv", String.join(",", admitted.stream().map(String::valueOf).toList())).query(String.class).single();
+            return orderQuery(id).filter(row -> ctx.operatesItem(row.schoolId(), row.category()));
+        }
         allowCrossSchoolReadForOperations();
         return orderQuery(id);
     }
@@ -158,7 +168,8 @@ public class CatalogReadRepository {
         // "active" = placed and still in-flight: not a draft, not rejected/returned, and not yet
         // DELIVERED (APPROVED is now active/awaiting-delivery; DELIVERED is the real fulfilled
         // state). termSpend = value of everything placed (non-draft), in paise.
-        String activePred = "UPPER(status) NOT IN ('DRAFT','REJECTED','RETURNED','DELIVERED')";
+        // A completed notebook tracker is the notebook equivalent of DELIVERED.
+        String activePred = "UPPER(status) NOT IN ('DRAFT','REJECTED','RETURNED','DELIVERED','COMPLETED')";
         if (schoolId == null) {
             Map<String, Object> stats = new LinkedHashMap<>();
             stats.put("totalOrders", count("SELECT count(*) FROM catalog.catalog_orders"));
@@ -169,7 +180,7 @@ public class CatalogReadRepository {
             stats.put("activeOrders", count("SELECT count(*) FROM catalog.catalog_orders WHERE " + activePred));
             stats.put("termSpend", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders WHERE UPPER(status) <> 'DRAFT'"));
             stats.put("activeServices", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(category) IN ('HOUSEKEEPING','HEALTH') AND " + activePred));
-            stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(status) = 'DELIVERED'"));
+            stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(status) IN ('DELIVERED','COMPLETED')"));
             return stats;
         }
         Map<String, Object> stats = new LinkedHashMap<>();
@@ -181,7 +192,7 @@ public class CatalogReadRepository {
         stats.put("activeOrders", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND " + activePred, schoolId));
         stats.put("termSpend", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) <> 'DRAFT'", schoolId));
         stats.put("activeServices", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(category) IN ('HOUSEKEEPING','HEALTH') AND " + activePred, schoolId));
-        stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) = 'DELIVERED'", schoolId));
+        stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) IN ('DELIVERED','COMPLETED')", schoolId));
         return stats;
     }
 

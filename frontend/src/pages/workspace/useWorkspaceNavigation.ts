@@ -92,6 +92,7 @@ export function useWorkspaceNavigation({ role, activeModules, can, canAny }: Wor
       case 'feestructure': return ['fee_structure:read', 'fee:read'];
       case 'catalog': return ['order:read'];
       case 'orders': return ['order:read'];
+      case 'nb-work': return ['workflow:read'];
       case 'planning': return ['plan:read', 'order:read'];
       case 'ff-dashboard': return ['firefighting:read'];
       case 'ff-new': return ['firefighting:create'];

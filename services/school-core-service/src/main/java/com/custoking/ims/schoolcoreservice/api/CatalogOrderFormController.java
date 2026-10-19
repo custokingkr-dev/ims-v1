@@ -3,6 +3,7 @@ package com.custoking.ims.schoolcoreservice.api;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogOrderFormService;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -33,12 +34,20 @@ public class CatalogOrderFormController {
     private final CatalogOrderFormService forms;
     private final CatalogReadRepository orders;
     private final String token;
+    private final String machineToken;
 
+    @Autowired
     public CatalogOrderFormController(CatalogOrderFormService forms, CatalogReadRepository orders,
-                                      @Value("${catalog.read-token:}") String token) {
+                                      @Value("${catalog.read-token:}") String token,
+                                      @Value("${catalog.tracker.machine-token:}") String machineToken) {
         this.forms = forms;
         this.orders = orders;
         this.token = token == null ? "" : token.trim();
+        this.machineToken = machineToken == null ? "" : machineToken.trim();
+    }
+
+    public CatalogOrderFormController(CatalogOrderFormService forms, CatalogReadRepository orders, String token) {
+        this(forms, orders, token, "");
     }
 
     @GetMapping("/{id}/form")
@@ -63,6 +72,43 @@ public class CatalogOrderFormController {
         TenantScope.requireSuperAdmin();
         forms.quote(id, request);
         return detailResponse(id);
+    }
+
+    /** Creates the tracker for a placed notebook order whose tracker could not be created at placement. */
+    @PostMapping("/{id}/tracker/ensure")
+    public Map<String, Object> ensureTracker(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+                                             @PathVariable String id) {
+        requireToken(token, "order:update");
+        return forms.ensureTracker(id);
+    }
+
+    /** Header data for the notebook order tracker: lines, quantity, delivery date and the school's notes. */
+    @GetMapping("/{id}/tracker-summary")
+    public Map<String, Object> trackerSummary(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+                                              @PathVariable String id) {
+        requireToken(token, "order:read");
+        return forms.trackerSummary(id);
+    }
+
+    /**
+     * Machine endpoints for the notebook order tracker. The token is not injected by the gateway, which also strips it
+     * from client requests, so only operations-service can call them.
+     */
+    @GetMapping("/{id}/draft-images")
+    public List<Map<String, Object>> draftImages(@RequestHeader(value = "X-Notebook-Tracker-Service-Token", required = false) String machine,
+                                                 @PathVariable String id) {
+        requireMachineToken(machine);
+        return forms.draftImagesForTracker(id);
+    }
+
+    public record TrackerStatusRequest(String status) { }
+
+    @PutMapping("/{id}/tracker-status")
+    public ResponseEntity<Void> trackerStatus(@RequestHeader(value = "X-Notebook-Tracker-Service-Token", required = false) String machine,
+                                              @PathVariable String id, @RequestBody TrackerStatusRequest request) {
+        requireMachineToken(machine);
+        forms.applyTrackerStatus(id, request == null ? null : request.status());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/assets")
@@ -109,6 +155,13 @@ public class CatalogOrderFormController {
         Map<String, Object> result = forms.detail(id);
         result.put("order", orders.order(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found")));
         return result;
+    }
+
+    private void requireMachineToken(String supplied) {
+        if (machineToken.isBlank() || supplied == null || !java.security.MessageDigest.isEqual(
+                machineToken.getBytes(java.nio.charset.StandardCharsets.UTF_8), supplied.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid notebook tracker service token");
+        }
     }
 
     private void requireToken(String supplied, String permission) {

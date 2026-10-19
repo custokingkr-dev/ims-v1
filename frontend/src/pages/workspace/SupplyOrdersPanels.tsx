@@ -3,6 +3,7 @@ import type { PanelKey } from './config';
 import type { useSupplyOrders } from './useSupplyOrders';
 
 const SaOrderApprovalsPanel = lazy(() => import('./panels/SaOrderApprovalsPanel').then(module => ({ default: module.SaOrderApprovalsPanel })));
+const NotebookWorklistPanel = lazy(() => import('./panels/NotebookWorklistPanel').then(module => ({ default: module.NotebookWorklistPanel })));
 const AdminOrdersPanel = lazy(() => import('./panels/AdminOrdersPanel').then(module => ({ default: module.AdminOrdersPanel })));
 const SaAllOrdersPanel = lazy(() => import('./panels/SaAllOrdersPanel').then(module => ({ default: module.SaAllOrdersPanel })));
 
@@ -36,6 +37,7 @@ export function SupplyOrdersPanels({ panel, panelAllowed, isPlatformAdmin, isOpe
         onReject={orders.rejectOrder}
       />
     )}
+    {panel === 'nb-work' && (isPlatformAdmin || (panelAllowed && isOperations)) && <NotebookWorklistPanel />}
     {panelAllowed && panel === 'orders' && isOperations && (
       <SaAllOrdersPanel onNewOrder={() => setPanel('catalog')} canManage={false} />
     )}

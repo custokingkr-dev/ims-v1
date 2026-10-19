@@ -9,6 +9,11 @@ vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () 
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: auth }) }));
 beforeEach(() => { vi.clearAllMocks(); auth.role = 'SUPERADMIN'; URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
 afterEach(cleanup);
+// The quote, approval and delivery screens still serve every category except notebooks, which the order tracker runs.
+const legacy = (...args: Parameters<typeof savedNotebook>) => {
+  const detail = savedNotebook(...args);
+  return { ...detail, formDefinition: { ...detail.formDefinition, category: { ...detail.formDefinition.category, code: 'UNIFORMS' } } };
+};
 it('shows trophy model/size and quantity instead of notebook fields for placed orders', async () => {
   const detail = { ...savedNotebook('PROCESSING', false), formDefinition: trophyDefinition, orderSelections: {},
     lines: [{ id: 101, lineNo: 1, optionSelections: { VARIANT: { code: 'T_WM001_B', label: 'WM001 / Size B' } }, requestedBookCount: 3, bookCount: 3, requestedPageCount: 1, pageCount: 1, unitPricePaise: null, lineTotalPaise: null }] };
@@ -21,7 +26,7 @@ it('shows trophy model/size and quantity instead of notebook fields for placed o
   expect(screen.getByText('No design approval required')).toBeInTheDocument();
 });
 it('quotes persisted lines in paise, refreshes computed totals, and gates approval on the quote', async () => {
-  let detail = savedNotebook('PROCESSING', false);
+  let detail = legacy('PROCESSING', false);
   vi.mocked(api.get).mockImplementation(async () => ({ data: detail }));
   vi.mocked(api.put).mockImplementation(async () => {
     detail = { ...detail, version: 1, pricingStatus: 'QUOTED', order: { ...detail.order, subtotal: 4550000, gst: 12000, totalAmount: 4562000 }, lines: detail.lines.map((line) => ({ ...line, unitPricePaise: 4550, lineTotalPaise: 4550000 })) };
@@ -40,6 +45,18 @@ it('quotes persisted lines in paise, refreshes computed totals, and gates approv
   expect(screen.getByRole('button', { name: 'Approve order' })).toBeEnabled();
   expect(screen.getByText('Rs. 45,620.00')).toBeInTheDocument();
 });
+it.each(['DESIGN_APPROVAL', 'PROCESSING', 'APPROVED'])('offers no quote, approval or delivery for a %s notebook order, which the tracker runs', async (status) => {
+  const detail = savedNotebook(status);
+  expect(detail.formDefinition.category.code).toBe('NOTEBOOKS');
+  vi.mocked(api.get).mockResolvedValue({ data: detail });
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByRole('row', { name: 'Order line 1' })).toBeInTheDocument();
+  for (const name of ['Save quote', 'Approve order', 'Approve design', 'Mark delivered']) expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+  expect(screen.queryByText('Pending pricing')).not.toBeInTheDocument();
+  expect(screen.queryByText('Quoted')).not.toBeInTheDocument();
+  expect(screen.queryByText(/Design approval (pending|completed)/)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Unit price for line 1')).not.toBeInTheDocument();
+});
 it('hides design and quote actions from school administrators, while keeping uploaded artwork readable', async () => {
   auth.role = 'ADMIN';
   const detail = savedNotebook('DESIGN_APPROVAL');
@@ -53,7 +70,7 @@ it('hides design and quote actions from school administrators, while keeping upl
   expect(api.get).toHaveBeenCalledWith('/supply/orders/ORD-42/assets/1/content', { responseType: 'blob' });
 });
 it('uploads the later pre-delivery photo on the same order and enables delivery after refresh', async () => {
-  let detail = savedNotebook('APPROVED');
+  let detail = legacy('APPROVED');
   vi.mocked(api.get).mockImplementation(async (url) => ({ data: String(url).endsWith('/content') ? new Blob(['photo'], { type: 'image/png' }) : detail }));
   vi.mocked(api.post).mockImplementation(async () => { detail = { ...detail, version: 1, assets: [{ id: 5, assetKind: 'PRE_DELIVERY_PHOTO', contentType: 'image/png', sizeBytes: 10, originalFilename: 'delivery.png', contentUrl: '/supply/orders/ORD-42/assets/5/content', uploadedAt: '2026-09-15T12:00:00Z' }] }; return { data: detail.assets[0] }; });
   const { container } = render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);

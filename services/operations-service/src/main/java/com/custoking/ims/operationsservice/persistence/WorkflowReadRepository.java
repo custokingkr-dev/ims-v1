@@ -18,6 +18,9 @@ import java.util.Optional;
 @Repository
 public class WorkflowReadRepository {
 
+    /** Entity type of notebook order trackers; see {@code NotebookTrackerRepository}. */
+    public static final String NOTEBOOK_TRACKER_ENTITY = "NOTEBOOK_ORDER";
+
     private final JdbcClient jdbc;
     private final String definitionsTable;
     private final String stepsTable;
@@ -97,6 +100,7 @@ public class WorkflowReadRepository {
     public Map<String, Object> createOrGetInstance(Map<String, Object> request) {
         requireActor();
         String entityType = requireText(request.get("entityType"), "entityType is required");
+        rejectTrackerEntity(entityType);
         requireCreationAuthority(entityType);
         String entityId = requireText(request.get("entityId"), "entityId is required");
         Long schoolId = TenantScope.resolveSchoolId(longValue(request.get("schoolId"), null));
@@ -292,7 +296,18 @@ public class WorkflowReadRepository {
                 .param("id", id).query((rs, rowNum) -> instanceRowMap(rs)).optional()
                 .orElseThrow(() -> new IllegalArgumentException("Workflow instance not found"));
         requireTenant(instance);
+        rejectTrackerEntity(String.valueOf(instance.get("entityType")));
         return instance;
+    }
+
+    /**
+     * Notebook order trackers move only through the tracker API, which enforces step order, roles and gates. The
+     * generic submit/approve/reject/cancel/complete endpoints must never touch them, even for superadmin.
+     */
+    private void rejectTrackerEntity(String entityType) {
+        if (NOTEBOOK_TRACKER_ENTITY.equalsIgnoreCase(entityType)) {
+            throw new IllegalArgumentException("Notebook order trackers are managed through the notebook order tracker API");
+        }
     }
 
     private void requireTenant(Map<String, Object> instance) {

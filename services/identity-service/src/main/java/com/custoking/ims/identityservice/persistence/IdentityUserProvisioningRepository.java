@@ -42,6 +42,12 @@ public class IdentityUserProvisioningRepository {
         String email = requiredString(body, "email").toLowerCase(Locale.ROOT);
         String temporaryPassword = validatedTemporaryPassword(body);
         Long assignedBy = optionalLong(body.get("assignedBy"));
+        // An operator may be scoped to one catalogue item at this school; only operators can carry that scope.
+        String catalogCategory = com.custoking.ims.identityservice.application.CatalogScope.normalize(
+                body.get("catalogCategory") == null ? null : String.valueOf(body.get("catalogCategory")));
+        if (catalogCategory != null && !"OPERATIONS".equals(normalizedRole)) {
+            throw new IllegalArgumentException("catalogCategory applies to operators only");
+        }
         String branchName = tenantSchool.school(schoolId).name();
 
         ExistingUser existing = activeUserByEmail(email);
@@ -54,15 +60,16 @@ public class IdentityUserProvisioningRepository {
         } else {
             userId = createSchoolUser(fullName, email, temporaryPassword, normalizedRole, schoolId, branchName);
         }
-        assignScopedRole(userId, normalizedRole, schoolId, null, assignedBy);
+        assignScopedRole(userId, normalizedRole, schoolId, null, assignedBy, catalogCategory);
 
-        return Map.of(
-                "userId", userId,
-                "fullName", fullName,
-                "email", email,
-                "branchId", schoolId,
-                "branchName", branchName
-        );
+        Map<String, Object> created = new java.util.LinkedHashMap<>();
+        created.put("userId", userId);
+        created.put("fullName", fullName);
+        created.put("email", email);
+        created.put("branchId", schoolId);
+        created.put("branchName", branchName);
+        if (catalogCategory != null) created.put("catalogCategory", catalogCategory);
+        return created;
     }
 
     @Transactional
@@ -169,29 +176,34 @@ public class IdentityUserProvisioningRepository {
     }
 
     private void assignScopedRole(Long userId, String roleName, Long schoolId, Long zoneId, Long assignedBy) {
+        assignScopedRole(userId, roleName, schoolId, zoneId, assignedBy, null);
+    }
+
+    private void assignScopedRole(Long userId, String roleName, Long schoolId, Long zoneId, Long assignedBy, String catalogCategory) {
         Long roleId = jdbc.sql("SELECT id FROM identity.roles WHERE UPPER(name) = :roleName")
                 .param("roleName", roleName)
                 .query(Long.class)
                 .optional()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "role not found"));
-        if (activeAssignmentExists(userId, roleId, schoolId, zoneId)) {
+        if (activeAssignmentExists(userId, roleId, schoolId, zoneId, catalogCategory)) {
             return;
         }
         jdbc.sql("""
                         INSERT INTO identity.user_role_assignments
-                            (user_id, role_id, school_id, zone_id, assigned_at, assigned_by, active, valid_from)
+                            (user_id, role_id, school_id, zone_id, catalog_category, assigned_at, assigned_by, active, valid_from)
                         VALUES
-                            (:userId, :roleId, :schoolId, :zoneId, now(), :assignedBy, true, now())
+                            (:userId, :roleId, :schoolId, :zoneId, :catalogCategory, now(), :assignedBy, true, now())
                         """)
                 .param("userId", userId)
                 .param("roleId", roleId)
                 .param("schoolId", schoolId)
                 .param("zoneId", zoneId)
+                .param("catalogCategory", catalogCategory)
                 .param("assignedBy", assignedBy)
                 .update();
     }
 
-    private boolean activeAssignmentExists(Long userId, Long roleId, Long schoolId, Long zoneId) {
+    private boolean activeAssignmentExists(Long userId, Long roleId, Long schoolId, Long zoneId, String catalogCategory) {
         return Boolean.TRUE.equals(jdbc.sql("""
                         SELECT EXISTS (
                             SELECT 1
@@ -202,6 +214,7 @@ public class IdentityUserProvisioningRepository {
                               AND revoked_at IS NULL
                               AND school_id IS NOT DISTINCT FROM :schoolId
                               AND zone_id IS NOT DISTINCT FROM :zoneId
+                              AND catalog_category IS NOT DISTINCT FROM :catalogCategory
                               AND (valid_from IS NULL OR valid_from <= now())
                               AND (valid_until IS NULL OR valid_until > now())
                         )
@@ -210,6 +223,7 @@ public class IdentityUserProvisioningRepository {
                 .param("roleId", roleId)
                 .param("schoolId", schoolId)
                 .param("zoneId", zoneId)
+                .param("catalogCategory", catalogCategory)
                 .query(Boolean.class)
                 .single());
     }

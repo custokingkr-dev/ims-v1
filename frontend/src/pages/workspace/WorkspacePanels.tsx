@@ -27,6 +27,7 @@ const SaErpPanel = lazy(() => import('./panels/SaErpPanel').then((module) => ({ 
 const SaRevenuePanel = lazy(() => import('./panels/SaRevenuePanel').then((module) => ({ default: module.SaRevenuePanel })));
 const SaCatalogPanel = lazy(() => import('./panels/SaCatalogPanel').then((module) => ({ default: module.SaCatalogPanel })));
 const SaAllOrdersPanel = lazy(() => import('./panels/SaAllOrdersPanel').then((module) => ({ default: module.SaAllOrdersPanel })));
+const NotebookAdminPanel = lazy(() => import('./panels/NotebookAdminPanel').then((module) => ({ default: module.NotebookAdminPanel })));
 const SaNewOrderPanel = lazy(() => import('./panels/SaNewOrderPanel').then((module) => ({ default: module.SaNewOrderPanel })));
 const SaSchoolsPanel = lazy(() => import('./panels/SaSchoolsPanel').then((module) => ({ default: module.SaSchoolsPanel })));
 const SaInvoicesPanel = lazy(() => import('./panels/SaInvoicesPanel').then((module) => ({ default: module.SaInvoicesPanel })));
@@ -107,6 +108,7 @@ export function PlatformWorkspacePanels({ panel, isPlatformAdmin, setPanel, setS
     {panel === 'sa-all-orders' && isPlatformAdmin && (
       <SaAllOrdersPanel onNewOrder={() => setPanel('sa-new-order')} />
     )}
+    {panel === 'sa-nb-admin' && isPlatformAdmin && <NotebookAdminPanel />}
     {panel === 'sa-new-order' && isPlatformAdmin && (
       <SaNewOrderPanel onOrderCreated={() => setPanel('sa-all-orders')} />
     )}

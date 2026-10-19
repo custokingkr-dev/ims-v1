@@ -73,6 +73,8 @@ function createAuthentication({ LOCAL_JWT_VERIFY, APP_JWT_SECRET, upstreams, tok
       zoneId: claims.zid ?? null,
       permissions: Array.isArray(claims.perms) ? claims.perms : [],
       operatorSchools: Array.isArray(claims.ops_schools) ? claims.ops_schools : [],
+      // Item-specific operator scopes as 'schoolId:CATEGORY'; operatorSchools stays school-wide only.
+      operatorScopes: Array.isArray(claims.ops_scopes) ? claims.ops_scopes : [],
     };
   }
 

@@ -101,6 +101,13 @@ docker compose --profile core up -d --build
 docker compose --profile full up -d --build
 ```
 
+On a developer machine, add the local overlay to run the services with the `local` profile and the structured order form enabled
+(the baseline's `prod` profile rejects the gateway's forwarded principal, and its disabled OpenTelemetry SDK stops the services starting):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile full up -d --build
+```
+
 Local service ports:
 gateway `80`, identity `8083`, school-core `8084`, operations `8089`, platform `8091`,
 billing `8092`, postgres `5432`.

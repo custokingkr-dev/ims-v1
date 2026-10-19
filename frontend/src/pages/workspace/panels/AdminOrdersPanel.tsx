@@ -10,8 +10,9 @@ const ORDER_STAGES = [
   { label: 'Draft',       statuses: ['DRAFT'] },
   { label: 'Submitted',   statuses: ['SUBMITTED', 'AWAITING_APPROVAL'] },
   { label: 'Approval',    statuses: ['DESIGN_APPROVAL', 'DESIGN_APPROVED_PROCESSING', 'APPROVED'] },
-  { label: 'Processing',  statuses: ['PROCESSING'] },
-  { label: 'Delivered',   statuses: ['DELIVERED', 'FULFILLED'] },
+  // A notebook order's status is its tracker step; every step is processing, and the finished tracker is delivered.
+  { label: 'Processing',  statuses: ['PROCESSING', 'ORDER_DETAILS', 'DESIGNING_ACTIVITY', 'HEAD_APPROVAL', 'CDR_CONVERSION', 'PRODUCTION_PLANNING', 'BOARD_PROCUREMENT', 'PRINTING_PRESS', 'PRE_PRINT_QUALITY_GATE', 'FACTORY_HANDOVER', 'PRODUCTION_FOLLOW_UP', 'VALIDATION_COUNT', 'DELIVERY_INVOICING'] },
+  { label: 'Delivered',   statuses: ['DELIVERED', 'FULFILLED', 'COMPLETED'] },
 ] as const;
 
 function resolveStageIdx(status: string): number {
@@ -20,7 +21,7 @@ function resolveStageIdx(status: string): number {
 }
 
 function orderStatusClass(status: string): string {
-  if (['DELIVERED', 'FULFILLED'].includes(status)) return 'spaid';
+  if (['DELIVERED', 'FULFILLED', 'COMPLETED'].includes(status)) return 'spaid';
   if (status === 'APPROVED' || status === 'CUSTOKING_APPROVED') return 'sapproved';
   if (status === 'PROCESSING') return 'spending';
   if (status.includes('DESIGN')) return 'spartial';

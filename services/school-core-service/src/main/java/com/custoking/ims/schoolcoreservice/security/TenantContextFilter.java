@@ -28,7 +28,8 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 parseLong(request.getHeader("X-Authenticated-School-Id")),
                 parseLong(request.getHeader("X-Authenticated-Zone-Id")),
                 parseLongSet(request.getHeader("X-Authenticated-Operator-Schools")),
-                parseStringSet(request.getHeader("X-Authenticated-Permissions"))));
+                parseStringSet(request.getHeader("X-Authenticated-Permissions")),
+                parseStringSet(request.getHeader("X-Authenticated-Operator-Scopes"))));
         try {
             filterChain.doFilter(request, response);
         } finally {

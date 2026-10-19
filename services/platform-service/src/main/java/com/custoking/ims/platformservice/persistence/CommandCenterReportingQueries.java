@@ -170,9 +170,12 @@ public class CommandCenterReportingQueries {
                 SELECT count(*)
                 FROM reporting.fact_catalog_order
                 WHERE school_id = :schoolId
-                  AND status IN ('SUBMITTED', 'AWAITING_APPROVAL', 'IN_TRANSIT',
-                                 'AWAITING_DESIGN_APPROVAL', 'DESIGN_APPROVED', 'PROCESSING',
-                                 'DESIGN_APPROVAL', 'DESIGN_APPROVED_PROCESSING')
+                  AND (status IN ('SUBMITTED', 'AWAITING_APPROVAL', 'IN_TRANSIT',
+                                  'AWAITING_DESIGN_APPROVAL', 'DESIGN_APPROVED', 'PROCESSING',
+                                  'DESIGN_APPROVAL', 'DESIGN_APPROVED_PROCESSING')
+                       -- A structured notebook order's status is its tracker step, so it is in progress until the tracker ends.
+                       OR (UPPER(category) = 'NOTEBOOKS' AND form_version >= 2
+                           AND status NOT IN ('DRAFT', 'CANCELLED', 'COMPLETED')))
                 """, schoolId);
         long attendanceSections = yearId == null ? 0L : scalars.count("""
                 SELECT count(*)

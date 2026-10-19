@@ -51,11 +51,13 @@ export function ProductOrderDetail({ orderId, onBack, onChanged }: { orderId: st
   const currentAssets = detail?.assets.filter((a) => !a.supersededAt) || [];
   const design = currentAssets.find((asset) => asset.assetKind === 'DESIGN');
   const designApproved = customization !== 'CUSTOMIZED' || (!!detail?.approvedDesignAssetId && detail.approvedDesignAssetId === design?.id);
-  const quoted = detail?.pricingStatus === 'QUOTED';
+  // A notebook order is run by the order tracker: it is never quoted, design-approved or delivered from this screen.
+  const notebook = detail?.formDefinition.category.code === 'NOTEBOOKS';
+  const quoted = !notebook && detail?.pricingStatus === 'QUOTED';
   const final = ['APPROVED', 'CUSTOKING_APPROVED', 'DELIVERED', 'FULFILLED', 'CANCELLED'].includes(status);
-  const canQuote = superadmin && can('catalog:quote') && status !== 'DRAFT' && !final;
-  const waitingDesign = status === 'DESIGN_APPROVAL';
-  const readyForApproval = ['DESIGN_APPROVED_PROCESSING', 'PROCESSING', 'IN_PROGRESS', 'AWAITING_APPROVAL'].includes(status);
+  const canQuote = !notebook && superadmin && can('catalog:quote') && status !== 'DRAFT' && !final;
+  const waitingDesign = !notebook && status === 'DESIGN_APPROVAL';
+  const readyForApproval = !notebook && ['DESIGN_APPROVED_PROCESSING', 'PROCESSING', 'IN_PROGRESS', 'AWAITING_APPROVAL'].includes(status);
   const missingDeliveryAsset = detail?.formDefinition.rules.some((rule) => rule.active !== false && rule.ruleType === 'REQUIRE_ASSET' && rule.params.stage === 'BEFORE_DELIVERY' && detail.lines.some((line) => matches(rule.matchOptions, { ...selectionCodes(line.optionSelections), ...selectionCodes(detail.orderSelections) })) && !currentAssets.some((asset) => asset.assetKind === rule.params.assetKind));
   const pricing = (paise: number) => `Rs. ${formatMoney(Number(paise || 0) / 100)}`;
   const paged = detail?.formDefinition.category.paged !== false;
@@ -66,9 +68,9 @@ export function ProductOrderDetail({ orderId, onBack, onChanged }: { orderId: st
     {error && <div className="ck-alert ck-alert-re" role="alert">{error}</div>}
     {notice && <div className="ck-alert ck-alert-g" role="status">{notice}</div>}
     {loading ? <p role="status">Loading order...</p> : detail && (status === 'DRAFT' ? <ProductFormBuilder key={`${orderId}-${detail.version}`} definition={detail.formDefinition} initialOrder={detail} onSaved={(next, placed) => { setDetail(next); onChanged?.(); if (placed) void load(); }} /> : <>
-      <div className="ck-product-section-head"><h2>{detail.formDefinition.category.label}</h2><span className={`ck-status ${quoted ? 'sg' : 'sam'}`}>{quoted ? 'Quoted' : 'Pending pricing'}</span></div>
+      <div className="ck-product-section-head"><h2>{detail.formDefinition.category.label}</h2>{!notebook && <span className={`ck-status ${quoted ? 'sg' : 'sam'}`}>{quoted ? 'Quoted' : 'Pending pricing'}</span>}</div>
       <p>{selectionLabel(detail.orderSelections, 'CUSTOMIZATION')}{detail.order.requiredByDate ? ` | Required by ${detail.order.requiredByDate}` : ''}</p>
-      <p className="ck-product-muted">{customization !== 'CUSTOMIZED' ? 'No design approval required' : designApproved ? 'Design approval completed' : 'Design approval pending'}</p>
+      {!notebook && <p className="ck-product-muted">{customization !== 'CUSTOMIZED' ? 'No design approval required' : designApproved ? 'Design approval completed' : 'Design approval pending'}</p>}
       <div className="ck-product-table-scroll"><table className="ck-product-order-lines"><thead><tr>
         {paged ? <><th scope="col">Size</th><th scope="col">Ruling</th></> : lineGroups.map((group) => <th scope="col" key={group.code}>{group.label}</th>)}
         <th scope="col">{paged ? 'Books' : 'Quantity'}</th>{paged && <th scope="col">Printed pages</th>}{(canQuote || quoted) && <><th scope="col">Unit price (Rs.)</th><th scope="col">Line total</th></>}</tr></thead><tbody>
@@ -87,7 +89,7 @@ export function ProductOrderDetail({ orderId, onBack, onChanged }: { orderId: st
       <div className="ck-product-actions">
         {canOperate && waitingDesign && can('order:update') && <button className="ck-btn ck-btn-ghost" disabled={busy || !design} onClick={() => void mutate(() => api.post(`/catalog/orders/${orderId}/design-approved`, { assetId: design?.id }), 'Design approved.')}><Check size={16} />Approve design</button>}
         {superadmin && can('order:approve') && readyForApproval && <><span className="ck-product-muted">{quoted ? 'Pricing complete' : 'Quote required before approval'}{customization === 'CUSTOMIZED' ? designApproved ? ' | Design approval completed' : ' | Design approval required' : ''}</span><button className="ck-btn ck-btn-g" disabled={busy || !quoted || !designApproved} onClick={() => void mutate(() => api.post(`/catalog/orders/${orderId}/superadmin-approve`), 'Order approved.')}><Check size={16} />Approve order</button></>}
-        {canOperate && (can('order:fulfill') || can('order:update')) && ['APPROVED', 'CUSTOKING_APPROVED'].includes(status) && <>{missingDeliveryAsset && <span className="ck-product-muted">Pre-delivery photo required</span>}<button className="ck-btn ck-btn-g" disabled={busy || missingDeliveryAsset} onClick={() => void mutate(() => catalogClient.markDelivered({ id: orderId }), 'Order marked delivered.')}><Truck size={16} />Mark delivered</button></>}
+        {!notebook && canOperate && (can('order:fulfill') || can('order:update')) && ['APPROVED', 'CUSTOKING_APPROVED'].includes(status) && <>{missingDeliveryAsset && <span className="ck-product-muted">Pre-delivery photo required</span>}<button className="ck-btn ck-btn-g" disabled={busy || missingDeliveryAsset} onClick={() => void mutate(() => catalogClient.markDelivered({ id: orderId }), 'Order marked delivered.')}><Truck size={16} />Mark delivered</button></>}
       </div>
     </>)}
   </div></div>;

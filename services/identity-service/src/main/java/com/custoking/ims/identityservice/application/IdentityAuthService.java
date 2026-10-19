@@ -174,8 +174,9 @@ public class IdentityAuthService {
         // Derive the operator school set from the user's active OPERATIONS assignments, not the
         // display-only legacy `role` column. operatorSchoolIds returns [] for non-operators.
         List<Long> opsSchools = rbacRead.operatorSchoolIds(user.getId());
-        List<String> permissions = loginPermissions(user, opsSchools);
-        String accessToken = jwtService.generateAccessToken(snapshot, permissions, opsSchools);
+        List<String> opsScopes = rbacRead.operatorScopeKeys(user.getId());
+        List<String> permissions = loginPermissions(user, opsSchools, opsScopes);
+        String accessToken = jwtService.generateAccessToken(snapshot, permissions, opsSchools, opsScopes);
         String refreshToken = jwtService.generateRefreshToken(snapshot);
         AuthSessionEntity session = new AuthSessionEntity();
         session.setId(UUID.randomUUID().toString());
@@ -196,7 +197,8 @@ public class IdentityAuthService {
         // Resolve current assignments on every introspection so removed school access cannot
         // survive until an enriched JWT expires.
         List<Long> operatorSchools = rbacRead.operatorSchoolIds(user.getId());
-        List<String> permissions = loginPermissions(user, operatorSchools);
+        List<String> operatorScopes = rbacRead.operatorScopeKeys(user.getId());
+        List<String> permissions = loginPermissions(user, operatorSchools, operatorScopes);
         AuthSessionEntity session = sessions.findByAccessTokenHash(tokenDigest(accessToken)).orElse(null);
         OffsetDateTime stepUp = null;
         if (jdbc != null && session != null) {
@@ -219,7 +221,7 @@ public class IdentityAuthService {
                 user.getZoneName(),
                 roles,
                 permissions,
-                operatorSchools, session == null ? null : session.getId(), stepUp);
+                operatorSchools, operatorScopes, session == null ? null : session.getId(), stepUp);
     }
 
     /**
@@ -235,9 +237,9 @@ public class IdentityAuthService {
      * school-level scope is enforced separately via {@code ops_schools}, so unioning them in here
      * is safe and keeps operators from losing all access.
      */
-    private List<String> loginPermissions(AppUserEntity user, List<Long> operatorSchools) {
+    private List<String> loginPermissions(AppUserEntity user, List<Long> operatorSchools, List<String> operatorScopes) {
         var codes = new TreeSet<>(rbacRead.effectivePermissions(user.getId(), user.getBranchId(), user.getZoneId()));
-        if (!operatorSchools.isEmpty()) {
+        if (!operatorSchools.isEmpty() || !operatorScopes.isEmpty()) {
             codes.addAll(rbacRead.permissionCodesForRole("OPERATIONS"));
         }
         return new ArrayList<>(codes);
@@ -288,11 +290,22 @@ public class IdentityAuthService {
             String zoneName,
             List<String> roles,
             List<String> permissions,
-            List<Long> operatorSchools, String sessionId, OffsetDateTime stepUpExpiresAt) {
+            List<Long> operatorSchools, List<String> operatorScopes, String sessionId, OffsetDateTime stepUpExpiresAt) {
         public AuthResponse(String accessToken, Long userId, String fullName, String email, String role,
                 Long branchId, String branchName, Long zoneId, String zoneName,
                 List<String> roles, List<String> permissions, List<Long> operatorSchools) {
-            this(accessToken,userId,fullName,email,role,branchId,branchName,zoneId,zoneName,roles,permissions,operatorSchools,null,null);
+            this(accessToken,userId,fullName,email,role,branchId,branchName,zoneId,zoneName,roles,permissions,operatorSchools,List.of(),null,null);
+        }
+
+        public AuthResponse(String accessToken, Long userId, String fullName, String email, String role,
+                Long branchId, String branchName, Long zoneId, String zoneName,
+                List<String> roles, List<String> permissions, List<Long> operatorSchools,
+                String sessionId, OffsetDateTime stepUpExpiresAt) {
+            this(accessToken,userId,fullName,email,role,branchId,branchName,zoneId,zoneName,roles,permissions,operatorSchools,List.of(),sessionId,stepUpExpiresAt);
+        }
+
+        public AuthResponse {
+            operatorScopes = operatorScopes == null ? List.of() : List.copyOf(operatorScopes);
         }
     }
 

@@ -5,7 +5,7 @@ and `node scripts/generate-openapi-typescript-client.js --check` in verification
 The route inventory must first be current (`node scripts/generate-api-route-inventory.js`).
 The always-run CI architecture job checks generation and the generator/routing tests.
 
-Current coverage is **108 canonical operations across 12 contract files/clients**:
+Current coverage is **130 canonical operations across 13 contract files/clients**:
 
 | Contract | Operations | Covered workflow |
 | --- | ---: | --- |
@@ -21,6 +21,7 @@ Current coverage is **108 canonical operations across 12 contract files/clients*
 | Reporting | 7 | Workspace, command-center dashboard, fee defaulters, low-attendance sections/students, vendor dues and reorder signals |
 | Firefighting creation | 2 | Stable-key request and quotation creation |
 | Workflow decisions | 3 | Read versioned instance, approve and reject with required reviewed expectedVersion |
+| Notebook order tracker | 22 | Worklist and tracker read, step drafts/stage notes/complete/reopen/sign-off, assignment, follow-ups, design send/approve/request-changes, vendor/designer/internal notes, designers and per-school time slots. Request and response schemas bind to the Java records; the browser sends `expectedVersion` from the loaded step. The two machine-only endpoints (tracker creation and design-image access) are deliberately not in a browser contract. |
 
 These are critical browser contracts, not a claim of complete coverage of every
 controller. Legacy report row extensions and receipt detail fields remain explicit

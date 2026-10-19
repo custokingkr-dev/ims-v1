@@ -99,7 +99,7 @@ public class ProcurementReportingQueries {
                 SELECT category, created_at
                 FROM reporting.fact_catalog_order
                 WHERE school_id = :schoolId
-                  AND status IN ('APPROVED', 'FULFILLED')
+                  AND status IN ('APPROVED', 'FULFILLED', 'COMPLETED')
                   AND created_at IS NOT NULL
                 ORDER BY created_at ASC
                 """)

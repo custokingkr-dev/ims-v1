@@ -5,7 +5,7 @@ import { ModuleShell, Field, Info, PanelMessage, Stat } from '../ui';
 import { formatIsoDay, formatMoney, todayIso } from '../utils';
 import { getDisplayStatus } from '../../../shared/display/status';
 import { useCategoryLabel } from '../../../features/catalog/useCategoryLabel';
-import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
+import { OrderDetailEntry } from '../../../features/tracker/OrderDetailEntry';
 
 interface Props {
   onNewOrder: () => void;
@@ -194,7 +194,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     }
   };
 
-  if (notebookOrderId) return <ProductOrderDetail orderId={notebookOrderId} onBack={() => setNotebookOrderId(null)} onChanged={() => void load()} />;
+  if (notebookOrderId) return <OrderDetailEntry orderId={notebookOrderId} onBack={() => setNotebookOrderId(null)} onChanged={() => void load()} />;
   return (
     <>
       <ModuleShell title="All orders" subtitle="All catalog orders across all schools" actions={canManage ? <button className="ck-btn ck-btn-g" onClick={onNewOrder}>+ New order request</button> : undefined}>

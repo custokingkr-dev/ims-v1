@@ -62,6 +62,8 @@ function createProxyTransport({ upstreams, tokenHeaders, serviceTokens, CLOUD_RU
         Array.isArray(principal.permissions) ? principal.permissions.join(',') : '';
       headers['x-authenticated-operator-schools'] =
         Array.isArray(principal.operatorSchools) ? principal.operatorSchools.join(',') : '';
+      headers['x-authenticated-operator-scopes'] =
+        Array.isArray(principal.operatorScopes) ? principal.operatorScopes.join(',') : '';
     }
     await addCloudRunAuthorization(headers, target, Boolean(principal));
 

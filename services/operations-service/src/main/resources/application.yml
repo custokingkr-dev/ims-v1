@@ -66,6 +66,9 @@ management:
 
 workflow:
   read-token: ${WORKFLOW_READ_TOKEN:}
+  # Only school-core sends this when it creates a notebook order tracker at placement. The gateway strips every
+  # inbound *-service-token header and never injects this one, so it cannot be reached from a browser. Blank = disabled.
+  tracker-create-token: ${WORKFLOW_TRACKER_CREATE_TOKEN:}
   db:
     schema: ${WORKFLOW_DB_SCHEMA:workflow}
 
@@ -78,9 +81,16 @@ firefighting:
     schema: ${FIREFIGHTING_DB_SCHEMA:firefighting}
 
 operations:
+  identity:
+    # Operator directory: asks identity whether a user may be assigned notebook tracker work. Blank = assignment is refused.
+    base-url: ${OPERATIONS_IDENTITY_BASE_URL:}
+    operator-directory-token: ${OPERATIONS_IDENTITY_OPERATOR_DIRECTORY_TOKEN:}
+    cloud-run-auth: ${OPERATIONS_IDENTITY_CLOUD_RUN_AUTH:auto}
   tenant-school:
     base-url: ${OPERATIONS_TENANT_SCHOOL_BASE_URL:}
     token: ${OPERATIONS_TENANT_SCHOOL_TOKEN:}
+    # Machine token for school-core's notebook tracker endpoints (draft images, order status). Blank = they are refused.
+    tracker-token: ${OPERATIONS_TENANT_SCHOOL_TRACKER_TOKEN:}
     cloud-run-auth: ${OPERATIONS_TENANT_SCHOOL_CLOUD_RUN_AUTH:auto}
     module-cache-ttl-ms: ${OPERATIONS_TENANT_SCHOOL_MODULE_CACHE_TTL_MS:60000}
   outbox:

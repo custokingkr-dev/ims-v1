@@ -135,7 +135,7 @@ class CatalogOrderFormIntegrationTest {
     void savesRequestedAndNormalizedCountsWithSnapshotAndCompatibilityItems() {
         var created = create(true, 400, 600);
         assertThat(created.formVersion()).isEqualTo(2);
-        assertThat(created.pricingStatus()).isEqualTo("PENDING_PRICING");
+        assertThat(created.pricingStatus()).as("notebook orders are not quoted").isEqualTo("NOT_APPLICABLE");
         assertThat(created.totalAmount()).isZero();
         assertThat(created.orderData()).contains("items", "Long", "Jumbo Long", "196 printed pages");
         var detail = tx(() -> forms.detail(created.id()));
@@ -150,7 +150,7 @@ class CatalogOrderFormIntegrationTest {
         assertThat(String.valueOf(line.get("appliedRules"))).contains("FLOOR_VALUE");
         assertThat(detailLines(detail).get(1).get("bookCount")).isEqualTo(1000);
         upload(created.id(), "DESIGN", 1);
-        assertThat(tx(() -> orders.placeOrder(created.id(), 7L)).status()).isEqualTo("DESIGN_APPROVAL");
+        assertThat(tx(() -> orders.placeOrder(created.id(), 7L)).status()).isEqualTo("ORDER_DETAILS");
     }
 
     @Test
@@ -165,51 +165,37 @@ class CatalogOrderFormIntegrationTest {
     }
 
     @Test
-    void nonCustomizedSkipsDesignButRequiresQuoteAndTrustedSuperadmin() {
+    void notebookOrdersAreNeitherQuotedApprovedNorDeliveredAndStartAtTheFirstTrackerStep() {
         var created = create(false, 25, 30);
         var placed = tx(() -> orders.placeOrder(created.id(), 7L));
-        assertThat(placed.status()).isEqualTo("PROCESSING");
+        assertThat(placed.status()).isEqualTo("ORDER_DETAILS");
         assertThat(placed.designStatus()).isEqualTo("NOT_REQUIRED");
-        assertThatThrownBy(() -> tx(() -> { forms.quote(created.id(), quote(created.id(), 125, 90)); return null; }))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+        assertThat(placed.pricingStatus()).isEqualTo("NOT_APPLICABLE");
         superadmin();
+        assertThatThrownBy(() -> tx(() -> { forms.quote(created.id(), quote(created.id(), 125, 90)); return null; }))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("not quoted");
         assertThatThrownBy(() -> tx(() -> orders.approveBySuperadmin(created.id())))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("quote");
-        tx(() -> { forms.quote(created.id(), quote(created.id(), 125, 90)); return null; });
-        var quoted = tx(() -> orders.order(created.id()).orElseThrow());
-        assertThat(quoted.totalAmount()).isEqualTo(55 * 125 + 90);
-        assertThat(quoted.pricingStatus()).isEqualTo("QUOTED");
-        assertThat(jdbc.sql("SELECT quoted_by FROM catalog.catalog_orders WHERE id = :id").param("id", created.id()).query(Long.class).single()).isEqualTo(99);
-        var event = jdbc.sql("SELECT payload::text FROM tenant_school.outbox_events WHERE event_type = 'catalog-order.upserted.v1' ORDER BY id DESC LIMIT 1").query(String.class).single();
-        assertThat(event).contains("QUOTED", "formVersion", "version", "6965");
-        tx(() -> orders.approveBySuperadmin(created.id()));
-        assertThat(tx(() -> orders.markDelivered(created.id(), 99L)).status()).isEqualTo("DELIVERED");
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("tracker");
+        assertThatThrownBy(() -> tx(() -> orders.markDelivered(created.id(), 99L)))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("tracker");
+        assertThatThrownBy(() -> tx(() -> { forms.returnOrder(created.id(), "again"); return null; }))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).status()).isEqualTo("ORDER_DETAILS");
     }
 
     @Test
-    void replacingArtworkInvalidatesApprovalAndPhotoBlocksDelivery() {
+    void replacingTheSampleDesignAfterPlacementNeverMovesANotebookOrderBackIntoApproval() {
         var created = create(true, 400, 600);
         var design = upload(created.id(), "DESIGN", 1);
-        assertThat(upload(created.id(), "DESIGN", 1).get("id")).isEqualTo(design.get("id"));
+        assertThat(upload(created.id(), "DESIGN", 1).get("id")).as("the same file is not stored twice").isEqualTo(design.get("id"));
         tx(() -> orders.placeOrder(created.id(), 7L));
-        superadmin();
-        tx(() -> orders.markDesignApproved(created.id()));
-        tx(() -> { forms.quote(created.id(), quote(created.id(), 120, 0)); return null; });
         var replacement = upload(created.id(), "DESIGN", 2);
         assertThat(replacement.get("id")).isNotEqualTo(design.get("id"));
         assertThat(tx(() -> forms.assetHistory(created.id()))).hasSize(2);
         assertThat(tx(() -> forms.content(created.id(), ((Number) design.get("id")).longValue())).bytes()).isNotEmpty();
-        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).status()).isEqualTo("DESIGN_APPROVAL");
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).status()).isEqualTo("ORDER_DETAILS");
         assertThat(tx(() -> forms.detail(created.id())).get("approvedDesignAssetId")).isNull();
-        assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "APPROVED"))).isInstanceOf(ResponseStatusException.class);
-        tx(() -> orders.markDesignApproved(created.id()));
-        tx(() -> orders.approveBySuperadmin(created.id()));
-        assertThatThrownBy(() -> upload(created.id(), "DESIGN", 3)).isInstanceOf(ResponseStatusException.class);
-        assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "DELIVERED"))).isInstanceOf(ProductFormValidationException.class);
-        upload(created.id(), "PRE_DELIVERY_PHOTO", 3);
-        assertThat(tx(() -> orders.updateOrderStatus(created.id(), "DELIVERED")).status()).isEqualTo("DELIVERED");
-        assertThatThrownBy(() -> tx(() -> { forms.removeAsset(created.id(), ((Number) replacement.get("id")).longValue()); return null; }))
-                .isInstanceOf(ResponseStatusException.class);
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).designStatus()).isEqualTo("NOT_REQUIRED");
     }
 
     @Test
@@ -228,14 +214,19 @@ class CatalogOrderFormIntegrationTest {
         var created = create(true, 400, 600);
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "PROCESSING"))).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "APPROVED"))).isInstanceOf(ResponseStatusException.class);
-        // DESIGN_APPROVAL is a real transition for a customised order and no longer waits on artwork.
-        assertThat(tx(() -> orders.updateOrderStatus(created.id(), "DESIGN_APPROVAL")).status()).isEqualTo("DESIGN_APPROVAL");
+        // A notebook order is placed with the place action only; the old DESIGN_APPROVAL alias no longer places it.
+        assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "DESIGN_APPROVAL")))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("place action");
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).status()).isEqualTo("DRAFT");
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "FULFILLED"))).isInstanceOf(ResponseStatusException.class);
     }
 
     @Test
     void quoteCoverageAndVersionConflictsRollBackPricesAndTotals() {
-        var created = create(false, 1, 2);
+        // Notebooks are no longer quoted, so the quote rules are exercised on a category that still is.
+        var data = Map.of("orderSelections", Map.of(), "lines", List.of(
+                Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 1, "pageCount", 1)));
+        var created = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", data)));
         tx(() -> orders.placeOrder(created.id(), 7L));
         superadmin();
         Map<String, Object> old = quote(created.id(), 100, 0);
@@ -243,10 +234,10 @@ class CatalogOrderFormIntegrationTest {
         assertThatThrownBy(() -> tx(() -> { forms.quote(created.id(), old); return null; }))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
         var invalid = new LinkedHashMap<>(quote(created.id(), 200, 0));
-        invalid.put("lines", List.of(Map.of("id", detailLines(tx(() -> forms.detail(created.id()))).getFirst().get("id"), "unitPricePaise", 200)));
+        invalid.put("lines", List.of());
         assertThatThrownBy(() -> tx(() -> { forms.quote(created.id(), invalid); return null; })).isInstanceOf(ResponseStatusException.class);
-        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).totalAmount()).isEqualTo(300);
-        assertThatThrownBy(() -> tx(() -> { forms.updateDraft(created.id(), Map.of("version", 0, "orderData", data(false, 2, 3))); return null; }))
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).totalAmount()).isEqualTo(100);
+        assertThatThrownBy(() -> tx(() -> { forms.updateDraft(created.id(), Map.of("version", 0, "orderData", data)); return null; }))
                 .isInstanceOf(ResponseStatusException.class);
     }
 
@@ -325,7 +316,7 @@ class CatalogOrderFormIntegrationTest {
             ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "png", output);
             var asset = actualForms.upload(created.id(), "DESIGN", output.toByteArray(), "design.png");
             assertThat(actualForms.content(created.id(), ((Number) asset.get("id")).longValue()).bytes()).isEqualTo(output.toByteArray());
-            assertThat(actualOrders.placeOrder(created.id(), 8L).status()).isEqualTo("DESIGN_APPROVAL");
+            assertThat(actualOrders.placeOrder(created.id(), 8L).status()).isEqualTo("ORDER_DETAILS");
             var trophyData = Map.of("orderSelections", Map.of(), "lines", List.of(
                     Map.of("selections", Map.of("VARIANT", "T_A_3_B"), "bookCount", 10, "pageCount", 1)));
             var trophyOrder = actualOrders.createOrder(Map.of("schoolId", 1, "category", "TROPHIES", "orderData", trophyData));

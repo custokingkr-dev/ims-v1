@@ -1,12 +1,18 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.catalog.domain.DesignDraftRules;
 import com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormRuleEngine;
 import com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormRuleEngine.NormalisationResult;
 import com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorage;
+import com.custoking.ims.schoolcoreservice.infrastructure.OperatorResolver;
+import com.custoking.ims.schoolcoreservice.infrastructure.TrackerGateway;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -35,6 +41,14 @@ public class CatalogOrderFormService {
     private final CatalogOrderAssetStorage storage;
     private final OutboxWriter outbox;
     private final ModuleEntitlementGuard moduleGuard;
+    private TrackerGateway tracker;
+    private OperatorResolver operators;
+
+    private static final Logger LOG = LoggerFactory.getLogger(CatalogOrderFormService.class);
+    /** Notebook orders skip the approval, quote and delivery flow; their progress comes from the notebook order tracker. */
+    private static final String NOTEBOOKS = "NOTEBOOKS";
+    /** The first tracker step, which is the status of a freshly placed notebook order. */
+    static final String FIRST_TRACKER_STATUS = "ORDER_DETAILS";
 
     public CatalogOrderFormService(JdbcClient jdbc, ProductCatalogRepository products, ProductFormRuleEngine rules,
                                    CatalogOrderAssetStorage storage, OutboxWriter outbox, ModuleEntitlementGuard moduleGuard) {
@@ -44,6 +58,13 @@ public class CatalogOrderFormService {
         this.storage = storage;
         this.outbox = outbox;
         this.moduleGuard = moduleGuard;
+    }
+
+    /** Optional: without these the service behaves as before and notebook placement starts no tracker (unit tests). */
+    @Autowired(required = false)
+    public void configureTracker(TrackerGateway tracker, OperatorResolver operators) {
+        this.tracker = tracker;
+        this.operators = operators;
     }
 
     public boolean handlesCreation(String category) {
@@ -84,11 +105,12 @@ public class CatalogOrderFormService {
                 VALUES (:id, :school, :category, :data, 0, 0, 0, 'DRAFT', :date, :notes,
                     CASE WHEN :category = 'NOTEBOOKS' THEN '1-2 weeks' ELSE NULL END,
                     :design, 'NOT_SUBMITTED', :cover, 'SCHOOL', 'NO', now(), :actor,
-                    2, CAST(:selections AS jsonb), CAST(:snapshot AS jsonb), 'PENDING_PRICING', CAST(:aggregate AS jsonb))
+                    2, CAST(:selections AS jsonb), CAST(:snapshot AS jsonb),
+                    CASE WHEN :category = 'NOTEBOOKS' THEN 'NOT_APPLICABLE' ELSE 'PENDING_PRICING' END, CAST(:aggregate AS jsonb))
                 """).param("id", id).param("school", schoolId).param("category", categoryCode)
                 .param("data", Json.write(compatibility(result, definition)))
                 .param("date", date(request.get("requiredByDate"))).param("notes", notes(request.get("notes")))
-                .param("design", custom ? "PENDING" : "NOT_REQUIRED").param("cover", custom ? "YES" : "NO")
+                .param("design", custom && !NOTEBOOKS.equals(categoryCode) ? "PENDING" : "NOT_REQUIRED").param("cover", custom ? "YES" : "NO")
                 .param("actor", actorString()).param("selections", Json.write(result.orderSelections()))
                 .param("snapshot", Json.write(definition)).param("aggregate", Json.write(result.aggregateResults())).update();
         saveLines(id, schoolId, result);
@@ -141,7 +163,7 @@ public class CatalogOrderFormService {
                 .param("selections", Json.write(result.orderSelections()))
                 .param("date", request.containsKey("requiredByDate") ? date(request.get("requiredByDate")) : order.get("required_by_date"))
                 .param("notes", request.containsKey("notes") ? notes(request.get("notes")) : order.get("notes"))
-                .param("design", customized(result.orderSelections()) ? "PENDING" : "NOT_REQUIRED")
+                .param("design", customized(result.orderSelections()) && !isNotebook(order) ? "PENDING" : "NOT_REQUIRED")
                 .param("cover", customized(result.orderSelections()) ? "YES" : "NO")
                 .param("aggregate", Json.write(aggregateWithLineIds(id, result.aggregateResults())))
                 .param("actor", actorString()).update();
@@ -153,6 +175,10 @@ public class CatalogOrderFormService {
         Map<String, Object> order = load(id, true);
         requireV2(order);
         boolean custom = customized(map(order.get("order_selections")));
+        boolean notebook = isNotebook(order);
+        if (notebook && !"PLACE".equals(action)) {
+            throw bad("Notebook orders move through the notebook order tracker, not through approval or delivery");
+        }
         String nextStatus;
         String design = string(order.get("design_status"));
         String approval = string(order.get("superadmin_approval_status"));
@@ -162,9 +188,9 @@ public class CatalogOrderFormService {
                 TenantScope.requirePermissionIfAuthenticated("order:create");
                 requireStatus(order, "DRAFT");
                 requireStage(order, "ON_PLACE");
-                nextStatus = custom ? "DESIGN_APPROVAL" : "PROCESSING";
-                design = custom ? "PENDING" : "NOT_REQUIRED";
-                approval = custom ? "NOT_SUBMITTED" : "PENDING";
+                nextStatus = notebook ? FIRST_TRACKER_STATUS : custom ? "DESIGN_APPROVAL" : "PROCESSING";
+                design = custom && !notebook ? "PENDING" : "NOT_REQUIRED";
+                approval = notebook ? approval : custom ? "NOT_SUBMITTED" : "PENDING";
             }
             case "DESIGN_APPROVED" -> {
                 TenantScope.requireOperationsOrSuperAdmin();
@@ -210,12 +236,14 @@ public class CatalogOrderFormService {
                 """).param("id", id).param("status", nextStatus).param("design", design).param("approval", approval)
                 .param("asset", approvedAsset).param("placing", "PLACE".equals(action)).param("delivering", "DELIVERED".equals(action))
                 .param("actor", TenantContext.get().userId()).param("actorString", actorString()).update();
+        if (notebook && "PLACE".equals(action)) startTracker(id);
     }
 
     @Transactional
     public void updateStatus(String id, String status) {
         String normalized = string(status).trim().toUpperCase(Locale.ROOT);
         Map<String, Object> order = load(id, true);
+        if (isNotebook(order)) throw bad("Place a notebook order with the place action; after that it follows the notebook order tracker");
         String action = switch (normalized) {
             case "DESIGN_APPROVAL" -> "PLACE";
             case "PROCESSING" -> {
@@ -235,6 +263,7 @@ public class CatalogOrderFormService {
         TenantScope.requireSuperAdmin();
         Map<String, Object> order = load(id, true);
         requireV2(order);
+        if (isNotebook(order)) throw bad("Notebook orders are not returned for design approval");
         requireStatus(order, "PROCESSING", "DESIGN_APPROVED_PROCESSING");
         boolean custom = customized(map(order.get("order_selections")));
         jdbc.sql("""
@@ -252,6 +281,7 @@ public class CatalogOrderFormService {
         TenantScope.requirePermissionIfAuthenticated("catalog:quote");
         Map<String, Object> order = load(id, true);
         requireV2(order);
+        if (isNotebook(order)) throw bad("Notebook orders are not quoted");
         requireVersion(order, request.get("version"));
         requireStatus(order, "DESIGN_APPROVAL", "DESIGN_APPROVED_PROCESSING", "PROCESSING");
         List<Map<String, Object>> persisted = lines(id);
@@ -306,12 +336,14 @@ public class CatalogOrderFormService {
 
     private List<Map<String, Object>> assetList(String id, boolean includeSuperseded) {
         load(id, false);
+        // Design drafts are internal to superadmin and operators; the school never sees them.
+        boolean internal = TenantContext.get().isSuperAdmin() || TenantContext.get().isOperations();
         return jdbc.sql("""
                 SELECT id, asset_kind AS "assetKind", content_type AS "contentType", size_bytes AS "sizeBytes",
                     checksum_sha256 AS "checksumSha256", original_filename AS "originalFilename",
                     uploaded_by AS "uploadedBy", uploaded_at AS "uploadedAt", superseded_at AS "supersededAt"
                 FROM catalog.catalog_order_assets WHERE order_id = :id
-                """ + (includeSuperseded ? "" : " AND superseded_at IS NULL") + " ORDER BY uploaded_at, id")
+                """ + (includeSuperseded ? "" : " AND superseded_at IS NULL") + (internal ? "" : " AND asset_kind <> 'DESIGN_DRAFT'") + " ORDER BY uploaded_at, id")
                 .param("id", id).query((rs, rowNum) -> {
                     Map<String, Object> asset = new LinkedHashMap<>();
                     for (String field : List.of("id", "assetKind", "contentType", "sizeBytes", "checksumSha256", "originalFilename", "uploadedBy", "uploadedAt", "supersededAt")) {
@@ -343,12 +375,16 @@ public class CatalogOrderFormService {
         Map<String, Object> order = load(id, true);
         requireV2(order);
         String kind = string(assetKind).toUpperCase(Locale.ROOT);
-        if (!Set.of("DESIGN", "PRE_DELIVERY_PHOTO", "PRINT_REFERENCE").contains(kind)) throw bad("Select a valid attachment kind");
+        if (!Set.of("DESIGN", "PRE_DELIVERY_PHOTO", "PRINT_REFERENCE", DesignDraftRules.KIND).contains(kind)) throw bad("Select a valid attachment kind");
+        boolean draft = DesignDraftRules.KIND.equals(kind);
+        if (draft) requireDraftUploadAllowed(order);
         requireAssetEditable(order, kind);
         var validated = storage.validate(bytes, filename, kind, maxUploadBytes(string(order.get("category")), kind));
         for (Map<String, Object> current : assets(id)) {
             if (kind.equals(current.get("assetKind")) && validated.checksumSha256().equals(current.get("checksumSha256"))) return current;
         }
+        int draftsBefore = draft ? currentDrafts(id) : 0;
+        if (draft && !DesignDraftRules.hasRoom(draftsBefore)) throw new ResponseStatusException(HttpStatus.CONFLICT, DesignDraftRules.LIMIT_MESSAGE);
         String key = storage.store(number(order.get("school_id")), id, validated);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -359,7 +395,7 @@ public class CatalogOrderFormService {
         }
         // A design or delivery photo is replaced by the next one; print references accumulate, because
         // the prototypes let a school share several images for the same order.
-        if (!"PRINT_REFERENCE".equals(kind)) {
+        if (!"PRINT_REFERENCE".equals(kind) && !draft) {
             jdbc.sql("UPDATE catalog.catalog_order_assets SET superseded_at = now() WHERE order_id = :id AND asset_kind = :kind AND superseded_at IS NULL")
                     .param("id", id).param("kind", kind).update();
         }
@@ -370,6 +406,12 @@ public class CatalogOrderFormService {
                 """).param("id", id).param("school", order.get("school_id")).param("kind", kind).param("key", key)
                 .param("type", validated.contentType()).param("bytes", bytes.length).param("checksum", validated.checksumSha256())
                 .param("filename", validated.filename()).param("actor", TenantContext.get().userId()).query(Long.class).single();
+        if (draft && DesignDraftRules.emailIntentDue(draftsBefore, draftsBefore + 1)) {
+            // Recorded for a future sender; recipients are every active superadmin, resolved when it is sent.
+            jdbc.sql("INSERT INTO catalog.order_design_email_intents (order_id, school_id, image_count, created_by) VALUES (:id, :school, :count, :actor)")
+                    .param("id", id).param("school", order.get("school_id")).param("count", draftsBefore + 1)
+                    .param("actor", TenantContext.get().userId()).update();
+        }
         assetChanged(order, kind);
         emit(id);
         return assets(id).stream().filter(asset -> number(asset.get("id")) == assetId).findFirst().orElseThrow();
@@ -382,6 +424,7 @@ public class CatalogOrderFormService {
         requireV2(order);
         Map<String, Object> asset = asset(id, assetId);
         String kind = string(asset.get("asset_kind"));
+        if (DesignDraftRules.KIND.equals(kind)) requireDraftUploadAllowed(order);
         requireAssetEditable(order, kind);
         jdbc.sql("UPDATE catalog.catalog_order_assets SET superseded_at = now() WHERE id = :asset AND order_id = :id")
                 .param("asset", assetId).param("id", id).update();
@@ -389,18 +432,122 @@ public class CatalogOrderFormService {
         emit(id);
     }
 
+    /**
+     * Creates the tracker for a placed notebook order when placement could not (the tracker was unreachable). Idempotent:
+     * the tracker ignores a second create. Superadmin and the order's operators only.
+     */
+    @Transactional
+    public Map<String, Object> ensureTracker(String id) {
+        TenantScope.requireOperationsOrSuperAdmin();
+        Map<String, Object> order = load(id, true);
+        requireV2(order);
+        if (!isNotebook(order) || "DRAFT".equals(order.get("status"))) throw bad("Only a placed notebook order has a tracker");
+        startTracker(id);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("trackerPending", Boolean.TRUE.equals(map(load(id, false).get("attributes")).get("trackerPending")));
+        return result;
+    }
+
+    /**
+     * What the tracker's header needs about the order: size and page lines, quantity, delivery date and the school's
+     * placement notes (shown as school feedback). Only superadmin and operators scoped to this item may read it.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> trackerSummary(String id) {
+        TenantScope.requireOperationsOrSuperAdmin();
+        Map<String, Object> order = load(id, false);
+        requireV2(order);
+        if (!isNotebook(order)) throw bad("Only a notebook order has a tracker");
+        List<Map<String, Object>> orderLines = lines(id);
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("orderId", id);
+        summary.put("schoolId", order.get("school_id"));
+        summary.put("schoolName", jdbc.sql("SELECT name FROM tenant_school.schools WHERE id = :id").param("id", order.get("school_id"))
+                .query(String.class).optional().orElse(null));
+        // The school's contact is the one given at onboarding and nothing else (spec v4); blank means none was given.
+        Map<String, Object> contact = jdbc.sql("SELECT contact_email, contact_phone FROM tenant_school.schools WHERE id = :id")
+                .param("id", order.get("school_id")).query().listOfRows().stream().findFirst().orElse(Map.of());
+        summary.put("schoolContactEmail", string(contact.get("contact_email")).isBlank() ? null : string(contact.get("contact_email")).trim());
+        summary.put("schoolContactPhone", string(contact.get("contact_phone")).isBlank() ? null : string(contact.get("contact_phone")).trim());
+        summary.put("status", order.get("status"));
+        summary.put("customised", customized(map(order.get("order_selections"))));
+        summary.put("requiredByDate", order.get("required_by_date") == null ? null : String.valueOf(order.get("required_by_date")));
+        summary.put("placedAt", timestamp(order.get("placed_at")));
+        summary.put("schoolNotes", order.get("notes"));
+        summary.put("orderedCount", orderLines.stream().mapToInt(line -> ((Number) line.get("bookCount")).intValue()).sum());
+        summary.put("lines", orderLines.stream().map(line -> {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("lineNo", line.get("lineNo"));
+            row.put("selections", line.get("optionSelections"));
+            row.put("bookCount", line.get("bookCount"));
+            row.put("pageCount", line.get("pageCount"));
+            return row;
+        }).toList());
+        summary.put("trackerPending", Boolean.TRUE.equals(map(order.get("attributes")).get("trackerPending")));
+        return summary;
+    }
+
+    /**
+     * Machine read for the tracker: the order's current design drafts, so a design is only sent or approved against
+     * images that exist. There is no user, so the read is explicitly privileged for this one order.
+     */
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> draftImagesForTracker(String id) {
+        jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
+        Map<String, Object> order = jdbc.sql("SELECT category, form_version FROM catalog.catalog_orders WHERE id = :id").param("id", id)
+                .query().listOfRows().stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if (!NOTEBOOKS.equals(string(order.get("category")))) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        return jdbc.sql("""
+                SELECT id, content_type AS "contentType", original_filename AS "originalFilename", uploaded_at AS "uploadedAt"
+                FROM catalog.catalog_order_assets
+                WHERE order_id = :id AND asset_kind = 'DESIGN_DRAFT' AND superseded_at IS NULL ORDER BY uploaded_at, id
+                """).param("id", id).query((rs, n) -> {
+                    Map<String, Object> draft = new LinkedHashMap<>();
+                    draft.put("id", rs.getLong("id"));
+                    draft.put("contentType", rs.getString("contentType"));
+                    draft.put("originalFilename", rs.getString("originalFilename"));
+                    draft.put("uploadedAt", timestamp(rs.getObject("uploadedAt")));
+                    return draft;
+                }).list();
+    }
+
+    /**
+     * Machine write from the tracker: the order's status shows the current tracker step. Draft orders keep "Draft" and a
+     * cancelled order keeps "Cancelled"; only a placed notebook order follows the tracker.
+     */
+    @Transactional
+    public void applyTrackerStatus(String id, String status) {
+        String next = string(status).trim().toUpperCase(Locale.ROOT);
+        if (!next.matches("[A-Z][A-Z0-9_]{1,40}")) throw bad("A tracker status is an upper-case code such as PRINTING_PRESS");
+        jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
+        Map<String, Object> order = jdbc.sql("SELECT * FROM catalog.catalog_orders WHERE id = :id FOR UPDATE").param("id", id)
+                .query().listOfRows().stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if (!isNotebook(order) || !Integer.valueOf(2).equals(order.get("form_version"))) throw bad("Only a structured notebook order follows a tracker");
+        String current = string(order.get("status"));
+        if ("DRAFT".equals(current) || "CANCELLED".equals(current)) throw new ResponseStatusException(HttpStatus.CONFLICT, "A " + current.toLowerCase(Locale.ROOT) + " order has no tracker status");
+        if (next.equals(current)) return;
+        jdbc.sql("UPDATE catalog.catalog_orders SET status = :status, version = version + 1 WHERE id = :id").param("id", id).param("status", next).update();
+        order.put("status", next);
+        order.put("version", number(order.get("version")) + 1);
+        emitOrder(order);
+    }
+
     @Transactional(readOnly = true)
     public AssetContent content(String id, long assetId) {
         TenantScope.requirePermissionIfAuthenticated("order:read");
         load(id, false);
         Map<String, Object> asset = asset(id, assetId, true);
+        if (DesignDraftRules.KIND.equals(string(asset.get("asset_kind")))
+                && !TenantContext.get().isSuperAdmin() && !TenantContext.get().isOperations()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Attachment not found");
+        }
         return new AssetContent(storage.read(string(asset.get("storage_key"))), string(asset.get("content_type")),
                 string(asset.get("original_filename")));
     }
 
     private void assetChanged(Map<String, Object> order, String kind) {
         boolean invalidate = "DESIGN".equals(kind) && customized(map(order.get("order_selections")))
-                && !"DRAFT".equals(order.get("status"));
+                && !"DRAFT".equals(order.get("status")) && !isNotebook(order);
         jdbc.sql("""
                 UPDATE catalog.catalog_orders SET version = version + 1, updated_by = :actor,
                     approved_design_asset_id = CASE WHEN :invalidate THEN NULL ELSE approved_design_asset_id END,
@@ -520,7 +667,7 @@ public class CatalogOrderFormService {
         Map<String, Object> order = jdbc.sql("SELECT * FROM catalog.catalog_orders WHERE id = :id" + (lock ? " FOR UPDATE" : ""))
                 .param("id", id).query().listOfRows().stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
         long schoolId = number(order.get("school_id"));
-        TenantScope.resolvePlatformReadScope(schoolId);
+        TenantScope.requireCatalogOrderReadScope(schoolId, string(order.get("category")));
         requireModule(schoolId);
         return order;
     }
@@ -531,13 +678,22 @@ public class CatalogOrderFormService {
 
     private void scope() {
         TenantContext ctx = TenantContext.get();
-        if (ctx.isOperations()) jdbc.sql("SELECT set_config('app.operator_schools', :schools, true)")
-                .param("schools", String.join(",", ctx.operatorSchools().stream().map(String::valueOf).toList()))
-                .query(String.class).single();
+        if (ctx.isOperations()) {
+            // The row-level policy works per school; the catalogue item is checked in load() once the order is read.
+            java.util.Set<Long> admitted = new java.util.LinkedHashSet<>(ctx.operatorSchools());
+            admitted.addAll(ctx.scopedSchools());
+            jdbc.sql("SELECT set_config('app.operator_schools', :schools, true)")
+                    .param("schools", String.join(",", admitted.stream().map(String::valueOf).toList()))
+                    .query(String.class).single();
+        }
     }
 
     private void emit(String id) {
-        Map<String, Object> order = load(id, false);
+        emitOrder(load(id, false));
+    }
+
+    private void emitOrder(Map<String, Object> order) {
+        String id = string(order.get("id"));
         Map<String, Object> payload = new LinkedHashMap<>();
         for (String[] entry : new String[][]{{"id","id"},{"schoolId","school_id"},{"category","category"},{"status","status"},
                 {"totalAmount","total_amount"},{"superadminApprovalStatus","superadmin_approval_status"},{"vendorPaidAt","vendor_paid_at"},
@@ -585,6 +741,83 @@ public class CatalogOrderFormService {
         if (version == null || positiveInteger(version, "Version", true) != number(order.get("version"))) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "The order changed. Reload it before saving");
         }
+    }
+
+    private static boolean isNotebook(Map<String, Object> order) {
+        return NOTEBOOKS.equals(string(order.get("category")));
+    }
+
+    private int currentDrafts(String id) {
+        return jdbc.sql("SELECT count(*) FROM catalog.catalog_order_assets WHERE order_id = :id AND asset_kind = 'DESIGN_DRAFT' AND superseded_at IS NULL")
+                .param("id", id).query(Integer.class).single();
+    }
+
+    /**
+     * Drafts exist only for placed, customised notebook orders, and only superadmin and operators may touch them. The
+     * tracker decides whether this user may do so right now (the assigned operator in step 2, or after a change request).
+     */
+    private void requireDraftUploadAllowed(Map<String, Object> order) {
+        TenantContext ctx = TenantContext.get();
+        if (!isNotebook(order) || !customized(map(order.get("order_selections"))) || "DRAFT".equals(order.get("status"))) {
+            throw bad("Design drafts apply to placed customised notebook orders only");
+        }
+        if (!ctx.isSuperAdmin() && !ctx.isOperations()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Design drafts are managed by superadmin and operators");
+        }
+        if (tracker == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "The notebook order tracker is not available");
+        TrackerGateway.ImageAccess access;
+        try {
+            access = tracker.imageAccess(string(order.get("id")), ctx.userId() == null ? 0 : ctx.userId(), ctx.role());
+        } catch (IllegalStateException unavailable) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "The notebook order tracker is not available");
+        }
+        if (!access.allowed()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, access.reason() == null ? "Design drafts cannot be changed now" : access.reason());
+        }
+    }
+
+    /**
+     * Creates the tracker for a freshly placed notebook order. The order is placed either way: when the tracker cannot be
+     * reached the order is marked so the tracker is created on the next attempt ({@link #ensureTracker}). When no
+     * operator can be chosen the tracker is created unassigned and superadmin assigns it.
+     */
+    private void startTracker(String id) {
+        if (tracker == null) return;
+        Map<String, Object> order = load(id, false);
+        long schoolId = number(order.get("school_id"));
+        Long assignee = null;
+        try {
+            OperatorResolver.Resolution picked = operators == null ? null : operators.resolve(schoolId, NOTEBOOKS);
+            if (picked != null && picked.userId() != null
+                    && ("ITEM_SPECIFIC".equals(picked.outcome()) || "SCHOOL_WIDE".equals(picked.outcome()))) assignee = picked.userId();
+        } catch (IllegalStateException unavailable) {
+            LOG.warn("Order {} placed without an automatic operator: {}", id, unavailable.getMessage());
+        }
+        try {
+            tracker.create(new TrackerGateway.NewTracker(id, schoolId, customized(map(order.get("order_selections"))),
+                    lines(id).stream().mapToInt(line -> ((Number) line.get("bookCount")).intValue()).sum(), placedAt(order),
+                    jdbc.sql("SELECT time_zone FROM tenant_school.schools WHERE id = :id").param("id", schoolId).query(String.class).single(),
+                    TenantContext.get().userId(), assignee,
+                    jdbc.sql("SELECT name FROM tenant_school.schools WHERE id = :id").param("id", schoolId).query(String.class).optional().orElse(null)));
+            setTrackerPending(id, false);
+        } catch (IllegalStateException unavailable) {
+            LOG.warn("Order {} placed but its tracker could not be created yet: {}", id, unavailable.getMessage());
+            setTrackerPending(id, true);
+        }
+    }
+
+    private void setTrackerPending(String id, boolean pending) {
+        jdbc.sql(pending
+                ? "UPDATE catalog.catalog_orders SET attributes = jsonb_set(attributes, '{trackerPending}', 'true') WHERE id = :id"
+                : "UPDATE catalog.catalog_orders SET attributes = attributes - 'trackerPending' WHERE id = :id")
+                .param("id", id).update();
+    }
+
+    private static java.time.OffsetDateTime placedAt(Map<String, Object> order) {
+        Object value = order.get("placed_at");
+        if (value instanceof java.time.OffsetDateTime offset) return offset;
+        if (value instanceof java.sql.Timestamp timestamp) return timestamp.toInstant().atOffset(java.time.ZoneOffset.UTC);
+        throw new IllegalStateException("A placed order has no placement time");
     }
 
     private static boolean customized(Map<String, Object> selections) {
