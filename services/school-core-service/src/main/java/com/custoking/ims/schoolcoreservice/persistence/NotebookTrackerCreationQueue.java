@@ -11,6 +11,8 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -61,21 +63,32 @@ public class NotebookTrackerCreationQueue {
      */
     public boolean attempt(String orderId) {
         try {
-            return Boolean.TRUE.equals(outsideTransaction.execute(status -> claim(orderId).map(this::create).orElse(false)));
+            return Boolean.TRUE.equals(outsideTransaction.execute(status -> claim(orderId, new ArrayList<>()).map(this::create).orElse(false)));
         } catch (RuntimeException failure) {
             LOG.warn("Tracker for order {} stays queued for the relay: {}", orderId, failure.toString());
             return false;
         }
     }
 
-    /** Works up to {@code max} due orders; returns how many trackers were created. */
+    /**
+     * Works up to {@code max} due orders; returns how many trackers were created. One order's failure never ends the
+     * batch: that order is skipped until the next drain and the drain moves on to the next due order.
+     */
     public int drain(int max) {
         Integer created = outsideTransaction.execute(status -> {
             int count = 0;
+            List<String> claimed = new ArrayList<>();
             for (int i = 0; i < max; i++) {
-                Optional<Claim> claim = claim(null);
-                if (claim.isEmpty()) break;
-                if (create(claim.get())) count++;
+                int before = claimed.size();
+                try {
+                    Optional<Claim> claim = claim(null, claimed);
+                    if (claim.isEmpty()) break;
+                    if (create(claim.get())) count++;
+                } catch (RuntimeException failure) {
+                    // Nothing was picked, so the queue itself is failing (the database, say): the trigger fails too.
+                    if (claimed.size() == before) throw failure;
+                    LOG.warn("Tracker for order {} failed and waits for the next drain: {}", claimed.getLast(), failure.toString());
+                }
             }
             return count;
         });
@@ -86,15 +99,19 @@ public class NotebookTrackerCreationQueue {
      * Claims one due row (this order's, or any) and reads what the tracker needs, in a short transaction of its own.
      * Moving the next attempt out by the backoff at claim time doubles as the lease: a concurrent drain skips the row
      * while this attempt's calls are in flight, and an attempt that dies midway is retried after the backoff.
+     * {@code claimed} excludes orders already tried in this drain and receives the picked order id before anything else
+     * can fail, so the caller can skip it.
      */
-    private Optional<Claim> claim(String orderId) {
+    private Optional<Claim> claim(String orderId, List<String> claimed) {
         Optional<Claim> result = step.execute(status -> {
             jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
             Optional<Due> due;
             try {
                 var select = jdbc.sql("SELECT order_id, school_id FROM catalog.notebook_tracker_creation_queue WHERE next_attempt_at <= now()"
-                        + (orderId == null ? "" : " AND order_id = :order") + " ORDER BY next_attempt_at, order_id LIMIT 1 FOR UPDATE SKIP LOCKED");
+                        + (orderId == null ? "" : " AND order_id = :order") + (claimed.isEmpty() ? "" : " AND order_id NOT IN (:claimed)")
+                        + " ORDER BY next_attempt_at, order_id LIMIT 1 FOR UPDATE SKIP LOCKED");
                 if (orderId != null) select = select.param("order", orderId);
+                if (!claimed.isEmpty()) select = select.param("claimed", List.copyOf(claimed));
                 due = select.query((rs, n) -> new Due(rs.getString("order_id"), rs.getLong("school_id"))).optional();
             } finally {
                 jdbc.sql("SELECT set_config('app.bypass_rls', 'off', true)").query(String.class).single();
@@ -102,10 +119,12 @@ public class NotebookTrackerCreationQueue {
             if (due.isEmpty()) return Optional.<Claim>empty();
             String order = due.get().orderId();
             long school = due.get().schoolId();
+            claimed.add(order);
             scopeTo(school);
+            // The exponent is capped too: 2^1024 overflows float8, and a row failing that long must still be claimable.
             int attempts = jdbc.sql("""
                     UPDATE catalog.notebook_tracker_creation_queue SET attempts = attempts + 1,
-                        next_attempt_at = now() + make_interval(mins => LEAST(power(2, attempts + 1), 60)::int)
+                        next_attempt_at = now() + make_interval(mins => LEAST(power(2, LEAST(attempts + 1, 6)), 60)::int)
                     WHERE order_id = :order AND school_id = :school RETURNING attempts
                     """).param("order", order).param("school", school).query(Integer.class).single();
             TrackerGateway.NewTracker facts = jdbc.sql("""

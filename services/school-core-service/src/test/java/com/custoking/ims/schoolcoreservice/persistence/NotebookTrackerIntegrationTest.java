@@ -98,13 +98,16 @@ class NotebookTrackerIntegrationTest {
         String outcome = "NONE";
         Long userId;
         boolean down;
+        /** A school whose resolution fails with an unexpected exception (not the client's IllegalStateException). */
+        Long brokenSchool;
         final List<Boolean> resolvedInTransaction = new ArrayList<>();
         @Override public Resolution resolve(long schoolId, String catalogCategory) {
             resolvedInTransaction.add(TransactionSynchronizationManager.isActualTransactionActive());
             if (down) throw new IllegalStateException("identity down");
+            if (brokenSchool != null && brokenSchool == schoolId) throw new UnsupportedOperationException("unexpected resolver failure");
             return new Resolution(outcome, userId);
         }
-        void reset() { outcome = "NONE"; userId = null; down = false; resolvedInTransaction.clear(); }
+        void reset() { outcome = "NONE"; userId = null; down = false; brokenSchool = null; resolvedInTransaction.clear(); }
     }
 
     @BeforeAll
@@ -281,6 +284,57 @@ class NotebookTrackerIntegrationTest {
         assertThat(queue.drain(5)).isZero();
         assertThat(minutesToNextAttempt(order)).isCloseTo(60.0, within(0.2));
         assertThat(pending(order)).isTrue();
+    }
+
+    @Test
+    void aRowThatHasFailedForWeeksIsStillClaimedAndWaitsAtMostAnHour() {
+        TRACKER.failCreate = true;
+        var order = notebook(false);
+        tx(() -> orders.placeOrder(order, 7L));
+        TenantContext.clear();
+        // About six weeks at the hourly cap: 2^1101 minutes would overflow PostgreSQL's float8.
+        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 1100 WHERE order_id = :id").param("id", order).update();
+        due(order);
+
+        assertThat(queue.drain(5)).isZero();
+        assertThat(attempts(order)).isEqualTo(1101);
+        assertThat(minutesToNextAttempt(order)).isCloseTo(60.0, within(0.2));
+        assertThat(lastError(order)).contains("tracker down");
+    }
+
+    @Test
+    void oneFailingRowNeverStopsTheDrainFromReachingTheNextDueRow() {
+        TRACKER.failCreate = true;
+        var refusedAtClaim = notebook(false);
+        tx(() -> orders.placeOrder(refusedAtClaim, 7L));
+        school(2);
+        var failsWhileCreating = tx(() -> orders.createOrder(Map.of("schoolId", 2, "category", "NOTEBOOKS", "orderData", data(false, 30, 30)))).id();
+        tx(() -> orders.placeOrder(failsWhileCreating, 7L));
+        var healthy = notebook(false);
+        tx(() -> orders.placeOrder(healthy, 7L));
+        TenantContext.clear();
+        TRACKER.failCreate = false;
+        OPERATORS.brokenSchool = 2L;
+        // Oldest first, so both broken rows come before the healthy one.
+        for (var row : List.of(Map.entry(refusedAtClaim, 30), Map.entry(failsWhileCreating, 20), Map.entry(healthy, 10))) {
+            jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET next_attempt_at = now() - make_interval(secs => :ago) WHERE order_id = :id")
+                    .param("ago", row.getValue()).param("id", row.getKey()).update();
+        }
+        jdbc.sql("CREATE FUNCTION catalog.test_refuse_claim() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'claim refused'; END $$").update();
+        jdbc.sql("CREATE TRIGGER test_refuse_claim BEFORE UPDATE ON catalog.notebook_tracker_creation_queue FOR EACH ROW WHEN (OLD.order_id = '"
+                + refusedAtClaim + "') EXECUTE FUNCTION catalog.test_refuse_claim()").update();
+        try {
+            assertThat(queue.drain(5)).as("the healthy order behind two failing ones still gets its tracker").isEqualTo(1);
+        } finally {
+            jdbc.sql("DROP TRIGGER test_refuse_claim ON catalog.notebook_tracker_creation_queue").update();
+            jdbc.sql("DROP FUNCTION catalog.test_refuse_claim()").update();
+        }
+        assertThat(TRACKER.created).extracting(TrackerGateway.NewTracker::orderId).containsExactly(healthy);
+        assertThat(queued(healthy)).isZero();
+        assertThat(attempts(refusedAtClaim)).as("its claim rolled back").isEqualTo(1);
+        assertThat(attempts(failsWhileCreating)).as("claimed, then failed while creating").isEqualTo(2);
+        assertThat(pending(refusedAtClaim)).isTrue();
+        assertThat(pending(failsWhileCreating)).isTrue();
     }
 
     @Test
