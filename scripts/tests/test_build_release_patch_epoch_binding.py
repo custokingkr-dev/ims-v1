@@ -87,6 +87,24 @@ function docker {
 }
 function cosign { $global:LASTEXITCODE = 0 }
 '''
+            if step == "Resolve immutable release images":
+                # Execute the workflow's real parallel resolver and worker; only
+                # external CLIs and source metadata are replaced in this fixture.
+                for name in ["resolve-release-images.ps1", "resolve-release-image-worker.ps1"]:
+                    shutil.copy2(ROOT / "scripts" / name, scripts / name)
+                mock_bin = fixture / "bin"
+                mock_bin.mkdir()
+                (mock_bin / "gcloud.ps1").write_text(
+                    '$global:LASTEXITCODE=0\n$env:TEST_EPOCH_DIGEST\n', encoding="utf-8")
+                (mock_bin / "cosign.ps1").write_text('$global:LASTEXITCODE=0\n', encoding="utf-8")
+                (mock_bin / "docker.ps1").write_text(
+                    '$global:LASTEXITCODE=0\n'
+                    '@{schemaVersion=2;mediaType="application/vnd.oci.image.index.v1+json";'
+                    'manifests=@(@{platform=@{os="linux";architecture="amd64"};'
+                    'mediaType="application/vnd.oci.image.manifest.v1+json";'
+                    'digest=$env:TEST_EPOCH_DIGEST})}|ConvertTo-Json -Depth 5 -Compress\n',
+                    encoding="utf-8")
+                prefix = '$env:PATH = (Join-Path $PSScriptRoot "bin") + [IO.Path]::PathSeparator + $env:PATH\n'
             script = fixture / "workflow.ps1"
             script.write_text(prefix + '\ntry {\n' + body + '\n} catch { Write-Error $_; exit 1 }\n', encoding="utf-8")
             matrix = {"include": [{"name": "frontend", "image": "custoking-frontend",

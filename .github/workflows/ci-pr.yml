@@ -59,7 +59,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: "24"
       - name: Verify API route inventory is current
@@ -88,6 +88,12 @@ jobs:
         run: node --test scripts/tests/signed_transport_probe.test.cjs
       - name: Test immutable GitHub governance check verification
         run: python3 -m unittest scripts.tests.test_verify_github_governance_checks
+      - name: Test bounded Cloud Deploy dependency groups
+        shell: pwsh
+        run: ./scripts/tests/clouddeploy-rollout-groups-test.ps1
+      - name: Test parallel image promotion trust boundaries
+        shell: pwsh
+        run: ./scripts/tests/resolve-release-images-test.ps1
       - name: Test explicit dashboard release target and publication controls without Docker
         run: python3 -m unittest scripts.tests.dashboard_release_test
       - name: Test offline GCP governance audits
@@ -169,7 +175,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
         with:
           terraform_wrapper: false
       - name: Validate dev edge and mock-provider acceptance
@@ -261,8 +267,8 @@ jobs:
           }
           $versionText = $versionOutput -join [Environment]::NewLine
           $versionText
-          if ($versionText -notmatch '(?m)^Apache Maven 3\.9\.16(?:\s|$)') {
-            throw "Expected Apache Maven 3.9.16 from the wrapper."
+          if ($versionText -notmatch '(?m)^Apache Maven 3\.10\.0(?:\s|$)') {
+            throw "Expected Apache Maven 3.10.0 from the wrapper."
           }
       - name: Run representative reactor tests through the wrapper
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -291,7 +297,7 @@ jobs:
           distribution: temurin
           java-version: "25"
           cache: maven
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         if: ${{ matrix.tool != 'maven' }}
         with:
           node-version: "24"
@@ -323,17 +329,19 @@ jobs:
         # Release file whose hashes don't match its index (seen repeatedly, not a
         # transient blip). Playwright's own Chromium download comes from Microsoft's
         # CDN, not this apt repo, so removing the source list has no effect on what the
-        # tests need — Chrome itself (already installed) is untouched. Do not delete
+        # tests need â€” Chrome itself (already installed) is untouched. Do not delete
         # this step; without it, --with-deps deterministically fails apt-get update.
         if: ${{ matrix.tool == 'npm' }}
         run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list
       - name: Install Playwright Chromium
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps --only-shell chromium
       - name: Run authenticated frontend browser tests
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
+        env:
+          PLAYWRIGHT_USE_PREBUILT: "1"
         run: npm run test:e2e
 
   docker-build:

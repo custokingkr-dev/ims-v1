@@ -66,6 +66,9 @@ $scriptTriggers = @(
   "scripts/microservice-build-catalog.ps1",
   "scripts/verify-microservice-migration.ps1",
   "scripts/resolve-image-source-id.ps1",
+  "scripts/resolve-release-images.ps1",
+  "scripts/resolve-release-image-worker.ps1",
+  "scripts/wait-clouddeploy-rollout-group.ps1",
   "scripts/invoke-direct-cloudrun-release.ps1",
   "scripts/invoke-clouddeploy-release.ps1",
   "scripts/invoke-service-migration-job.ps1",
@@ -113,6 +116,8 @@ foreach ($file in $changedFiles) {
     $deploymentReconciliationRequired = $true
   }
   if ($file.StartsWith("deploy/cloudrun/") -or
+      $file -eq "scripts/invoke-clouddeploy-release.ps1" -or
+      $file -eq "scripts/wait-clouddeploy-rollout-group.ps1" -or
       $file -eq "infra/terraform/cicd/migration_jobs.tf" -or
       $file -eq "deploy/clouddeploy/delivery-pipelines.yaml" -or
       $file -eq "deploy/skaffold.yaml" -or

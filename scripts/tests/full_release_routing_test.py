@@ -24,11 +24,11 @@ class FullReleaseRoutingTest(unittest.TestCase):
             with self.subTest(environment=environment,changed=changed,force=force):
                 serial=environment=='prod' or changed or force is True
                 self.assertEqual(not serial,self.evaluate('Fast dev deployment',environment,changed,force))
-                self.assertEqual(serial,self.evaluate('Create and serially promote Cloud Deploy releases',environment,changed,force))
+                self.assertEqual(serial,self.evaluate('Create and promote Cloud Deploy dependency groups',environment,changed,force))
                 self.assertEqual(serial,self.evaluate('Confirm Cloud Deploy rollouts',environment,changed,force))
     def test_serial_step_preserves_wait_and_readiness_verification(self):
         source=(ROOT/'.github/workflows/build-release.yml').read_text()
-        block=source.split('- name: Create and serially promote Cloud Deploy releases',1)[1].split('- name: Confirm Cloud Deploy rollouts',1)[0]
+        block=source.split('- name: Create and promote Cloud Deploy dependency groups',1)[1].split('- name: Confirm Cloud Deploy rollouts',1)[0]
         self.assertIn('WaitForRollout = $true',block)
         self.assertIn('./scripts/invoke-clouddeploy-release.ps1 @arguments',block)
         self.assertIn('- name: Verify changed Cloud Run services',source)

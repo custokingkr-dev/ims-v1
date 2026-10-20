@@ -58,7 +58,8 @@ async function park(page: Page) {
 async function openPanel(page: Page, label: string) {
   await page.setViewportSize({ width: 1280, height: 900 });
   const item = page.locator('button.ck-nav-item').filter({ hasText: label }).first();
-  await item.scrollIntoViewIfNeeded();
+  // click() scrolls and re-resolves the locator if workspace loading replaces
+  // the navigation; a separate scroll can race with that replacement.
   await item.click();
   await park(page);
 }

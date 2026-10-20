@@ -50,9 +50,15 @@ test('the type scale is rem-based and floored at 12px', async ({ page }) => {
     };
   });
 
-  expect(scale.xs).toBe('0.75rem');
-  expect(scale.base).toBe('0.875rem');
-  expect(scale.md).toBe('1rem');
+  // Production CSS removes optional leading zeros. Keep the rem unit and
+  // exact scale values under test without depending on minifier formatting.
+  const remValue = (value: string) => {
+    expect(value).toMatch(/^(?:\d+(?:\.\d+)?|\.\d+)rem$/);
+    return Number(value.slice(0, -3));
+  };
+  expect(remValue(scale.xs)).toBe(0.75);
+  expect(remValue(scale.base)).toBe(0.875);
+  expect(remValue(scale.md)).toBe(1);
 });
 
 test('body sets an accessible base size and line height', async ({ page }) => {
