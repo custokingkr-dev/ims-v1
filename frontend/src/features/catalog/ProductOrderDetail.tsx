@@ -1,5 +1,5 @@
 import { catalogClient } from '../../services/catalogApi';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Check, RefreshCw, Save, Truck } from 'lucide-react';
 import api from '../../services/api';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -12,7 +12,13 @@ import { selectionCodes, selectionLabel, selectionSpec, type AssetKind, type For
 import { matches } from './productFormRules';
 import './product-form.css';
 
-export function ProductOrderDetail({ orderId, onBack, onChanged }: { orderId: string; onBack: () => void; onChanged?: () => void }) {
+/**
+ * `onTrackerManaged` is called whenever the loaded order says the notebook order tracker runs it, so a host that opened this
+ * screen from a stale list row (an order placed after the list loaded, or placed here) can open the tracker instead.
+ */
+export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManaged }: {
+  orderId: string; onBack: () => void; onChanged?: () => void; onTrackerManaged?: () => void;
+}) {
   const { can } = usePermissions();
   const { user } = useAuth();
   const superadmin = user?.role === 'SUPERADMIN';
@@ -24,6 +30,9 @@ export function ProductOrderDetail({ orderId, onBack, onChanged }: { orderId: st
   const [busy, setBusy] = useState(false);
   const [prices, setPrices] = useState<Record<number, string>>({});
   const [gst, setGst] = useState('0');
+  const reportTracker = useRef(onTrackerManaged);
+  reportTracker.current = onTrackerManaged;
+  useEffect(() => { if (detail?.order.trackerManaged === true) reportTracker.current?.(); }, [detail?.order.trackerManaged]);
   const load = async () => {
     const next = await getFormOrder(orderId); setDetail(next);
     setPrices(Object.fromEntries(next.lines.map((line) => [line.id, line.unitPricePaise === null ? '' : String(line.unitPricePaise / 100)])));

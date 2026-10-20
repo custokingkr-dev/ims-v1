@@ -18,7 +18,15 @@ vi.mock('./api', async (importOriginal) => {
     setDesigner: vi.fn(), addFollowUp: vi.fn(), summary: vi.fn(), startTracker: vi.fn(),
   } };
 });
-vi.mock('../catalog/ProductOrderDetail', () => ({ ProductOrderDetail: () => <div>ordinary order detail</div> }));
+// The order detail reports, once it has loaded the order, when the server says the tracker runs it.
+const loadedOrder = vi.hoisted(() => ({ trackerManaged: false }));
+vi.mock('../catalog/ProductOrderDetail', async () => {
+  const { useEffect } = await import('react');
+  return { ProductOrderDetail: ({ onTrackerManaged }: { onTrackerManaged?: () => void }) => {
+    useEffect(() => { if (loadedOrder.trackerManaged) onTrackerManaged?.(); }, [onTrackerManaged]);
+    return <div>ordinary order detail</div>;
+  } };
+});
 
 const can = (over: Partial<TrackerStep['can']> = {}): TrackerStep['can'] => ({ canEditDetails: false, canEditStageNote: false, canComplete: false, canReopen: false, ...over });
 const step = (n: number, title: string, over: Partial<TrackerStep> = {}): TrackerStep => ({
@@ -58,7 +66,7 @@ const draft = (id: number, name: string, contentType = 'image/png') => ({ id, as
 const operator = (userId: number, fullName: string, catalogCategory: string | null = 'NOTEBOOKS') => ({ assignmentId: userId, userId, fullName, email: `op${userId}@x.test`, schoolId: 7, catalogCategory });
 
 beforeEach(() => {
-  vi.clearAllMocks(); auth.user = { role: 'OPERATIONS', userId: 42 };
+  vi.clearAllMocks(); auth.user = { role: 'OPERATIONS', userId: 42 }; loadedOrder.trackerManaged = false;
   vi.mocked(trackerApi.summary).mockResolvedValue(summary());
   vi.mocked(trackerApi.designers).mockResolvedValue([]); vi.mocked(trackerApi.operators).mockResolvedValue([]);
   vi.mocked(trackerApi.draftImages).mockResolvedValue([]);
@@ -449,6 +457,30 @@ describe('OrderDetailEntry', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Start tracker' }));
     expect(await screen.findByText(/could not be reached/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start tracker' })).toBeEnabled();
+  });
+  it('opens the tracker when the order turns out to be on it, though the list row said otherwise', async () => {
+    // Placed after the list was loaded, or placed from the order screen itself: the list row is stale, the order is not.
+    loadedOrder.trackerManaged = true;
+    vi.mocked(trackerApi.get).mockResolvedValue(tracker());
+    render(<OrderDetailEntry orderId="CK-1" trackerManaged={false} onBack={vi.fn()} />);
+    expect(await screen.findByText(/Step 5 · Production Planning/)).toBeInTheDocument();
+    expect(trackerApi.get).toHaveBeenCalledWith('CK-1');
+    expect(screen.queryByText('ordinary order detail')).not.toBeInTheDocument();
+  });
+  it('offers to start the tracker for an order found on it whose tracker is still being created', async () => {
+    loadedOrder.trackerManaged = true;
+    vi.mocked(trackerApi.get).mockRejectedValue({ response: { status: 404 } });
+    vi.mocked(trackerApi.summary).mockResolvedValue(summary({ trackerPending: true }));
+    render(<OrderDetailEntry orderId="CK-1" trackerManaged={false} onBack={vi.fn()} />);
+    expect(await screen.findByRole('button', { name: 'Start tracker' })).toBeInTheDocument();
+    expect(screen.getByText('ordinary order detail')).toBeInTheDocument();
+  });
+  it('keeps a school administrator on the order screen even when the order is on the tracker', async () => {
+    auth.user = { role: 'SCHOOL_ADMIN', userId: 5 };
+    loadedOrder.trackerManaged = true;
+    render(<OrderDetailEntry orderId="CK-1" trackerManaged={false} onBack={vi.fn()} />);
+    expect(await screen.findByText('ordinary order detail')).toBeInTheDocument();
+    expect(trackerApi.get).not.toHaveBeenCalled();
   });
   it('never asks a school administrator for a tracker', async () => {
     auth.user = { role: 'SCHOOL_ADMIN', userId: 5 };

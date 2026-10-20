@@ -4,7 +4,7 @@ import api from '../../services/api';
 import { ProductOrderDetail } from './ProductOrderDetail';
 import { savedNotebook, trophyDefinition } from './catalogTestFixtures';
 const auth = vi.hoisted(() => ({ role: 'SUPERADMIN' }));
-vi.mock('../../services/api', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn() } }));
+vi.mock('../../services/api', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), patch: vi.fn() } }));
 vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: auth }) }));
 beforeEach(() => { vi.clearAllMocks(); auth.role = 'SUPERADMIN'; URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
@@ -58,6 +58,34 @@ it.each(['DESIGN_APPROVAL', 'PROCESSING', 'APPROVED'])('offers no quote, approva
   expect(screen.queryByText(/Design approval (pending|completed)/)).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Unit price for line 1')).not.toBeInTheDocument();
 });
+// The host may have opened this screen from a stale list row; the loaded order is what says whether the tracker runs it.
+it('tells its host when the loaded order turns out to be on the tracker, and stays quiet for any other order', async () => {
+  const onTrackerManaged = vi.fn();
+  vi.mocked(api.get).mockResolvedValue({ data: savedNotebook('PROCESSING') });
+  const { unmount } = render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} onTrackerManaged={onTrackerManaged} />);
+  expect(await screen.findByRole('row', { name: 'Order line 1' })).toBeInTheDocument();
+  expect(onTrackerManaged).not.toHaveBeenCalled();
+  unmount();
+  vi.mocked(api.get).mockResolvedValue({ data: onTracker('ORDER_DETAILS') });
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} onTrackerManaged={onTrackerManaged} />);
+  await waitFor(() => expect(onTrackerManaged).toHaveBeenCalledTimes(1));
+});
+
+it('tells its host once an order placed from this screen lands on the tracker', async () => {
+  const onTrackerManaged = vi.fn();
+  let detail = savedNotebook('DRAFT', false);
+  vi.mocked(api.get).mockImplementation(async () => ({ data: detail }));
+  vi.mocked(api.patch).mockImplementation(async () => ({ data: detail }));
+  vi.mocked(api.post).mockImplementation(async (url) => {
+    if (String(url).endsWith('/place')) detail = { ...savedNotebook('ORDER_DETAILS', false), order: { ...savedNotebook('ORDER_DETAILS', false).order, trackerManaged: true } };
+    return { data: {} };
+  });
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} onTrackerManaged={onTrackerManaged} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Place order' }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledWith('/catalog/orders/ORD-42/place'));
+  await waitFor(() => expect(onTrackerManaged).toHaveBeenCalled());
+});
+
 // Owner decision D1: a notebook order placed before the tracker keeps the quote, approve and deliver flow it started in.
 it('keeps quoting, design approval, order approval and delivery for a notebook order placed before the tracker', async () => {
   const quoted = { ...savedNotebook('PROCESSING'), pricingStatus: 'QUOTED', approvedDesignAssetId: 1,

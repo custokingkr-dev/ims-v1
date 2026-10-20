@@ -28,7 +28,11 @@ export function OrderDetailEntry({ orderId, trackerManaged, onBack, onChanged }:
   orderId: string; trackerManaged: boolean; onBack: () => void; onChanged?: () => void;
 }) {
   const { user } = useAuth();
-  const onTracker = trackerManaged && (user?.role === 'SUPERADMIN' || user?.role === 'OPERATIONS');
+  const staff = user?.role === 'SUPERADMIN' || user?.role === 'OPERATIONS';
+  // The caller's list row can be stale: an order placed after the list loaded, or placed from the order screen below. The
+  // order screen reports what the server says, and the tracker opens then.
+  const [foundOnTracker, setFoundOnTracker] = useState<string | null>(null);
+  const onTracker = staff && (trackerManaged || foundOnTracker === orderId);
   const [state, setState] = useState<EntryState>({ kind: 'loading' });
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState('');
@@ -59,7 +63,9 @@ export function OrderDetailEntry({ orderId, trackerManaged, onBack, onChanged }:
     } catch (e) { setStartError(errorMessage(e, 'Unable to start the tracker.')); } finally { setStarting(false); }
   };
 
-  if (!onTracker) return <ProductOrderDetail orderId={orderId} onBack={onBack} onChanged={onChanged} />;
+  if (!onTracker) {
+    return <ProductOrderDetail orderId={orderId} onBack={onBack} onChanged={onChanged} onTrackerManaged={staff ? () => setFoundOnTracker(orderId) : undefined} />;
+  }
   if (state.kind === 'loading') return <p className="ck-product-muted" role="status">Loading order…</p>;
   if (state.kind === 'tracker') return <NotebookTracker orderId={orderId} initial={state.tracker} onBack={onBack} onChanged={onChanged} />;
   if (state.kind === 'error') {
