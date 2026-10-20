@@ -40,17 +40,20 @@
 
 **Files:** `scripts/resolve-release-image-worker.ps1`, `scripts/tests/resolve-release-images-test.ps1`.
 
-- [ ] Reproduce warning-bearing valid stdout failures.
-- [ ] Separate stdout/stderr and retain explicit error classification.
-- [ ] Run positive and fail-closed regression scenarios on supported platforms.
-- [ ] Review and integrate the verified commit into the combined PR.
+- [x] Reproduce warning-bearing valid stdout failures.
+- [x] Separate stdout/stderr and retain explicit error classification.
+- [x] Run positive and fail-closed regression scenarios on supported platforms.
+- [x] Review and integrate the verified commit into the combined PR.
 
 ## Task 3: Acceptance refresh
 
 **Files:** new dated report/evidence under `docs/security-remediation`; stale checklist references where warranted.
 
-- [ ] Read current owner-state metadata using explicit dev scope and inspect previous closeouts.
-- [ ] Complete available bounded read-only checks and reconcile previously completed revision cleanup.
-- [ ] Identify concrete remaining implementation work and owner inputs; ask for required inputs while independent work continues.
-- [ ] Record exact evidence and limitations without claiming unavailable live acceptance.
-- [ ] Integrate sanitized evidence and report all unresolved dependencies accurately.
+- [x] Read current owner-state metadata using explicit dev scope and inspect previous closeouts.
+- [x] Complete available bounded read-only checks and reconcile previously completed revision cleanup.
+- [x] Identify concrete remaining implementation work and owner inputs; ask for required inputs while independent work continues.
+- [x] Record exact evidence and limitations without claiming unavailable live acceptance.
+- [x] Integrate sanitized evidence and report all unresolved dependencies accurately.
+
+The owner-dependent live acceptance itself remains open; the checked steps above
+record completed preparation and validation, not completion of the nine groups.
