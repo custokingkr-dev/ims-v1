@@ -1,0 +1,806 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-20T13:39:47.559035+00:00",
+  "completedAtUtc": "2026-10-20T13:40:19.676646+00:00",
+  "sourceCommit": "c1e65cf5090b6243d093c7e3ff1d62b4d355701f",
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "scope": "Read-only projected repository/dev cloud metadata and exact known local object/ref presence; no resource mutations, workloads, provider traffic or secret payload access.",
+  "records": [
+    {
+      "scope": "repository-permissions",
+      "observedAtUtc": "2026-10-20T13:39:47.579316+00:00",
+      "command": [
+        "C:\\Program Files\\GitHub CLI\\gh.EXE",
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1",
+        "--jq",
+        "{permissions:.permissions,defaultBranch:.default_branch}"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "7c82e8091e89bb92d54fec5edde0fefc9c8c536649541500ad58ced3375fbd67",
+      "status": "READ",
+      "metadata": {
+        "defaultBranch": "main",
+        "permissions": {
+          "admin": false,
+          "maintain": false,
+          "pull": true,
+          "push": true,
+          "triage": true
+        }
+      }
+    },
+    {
+      "scope": "dev-branch",
+      "observedAtUtc": "2026-10-20T13:39:47.579316+00:00",
+      "command": [
+        "C:\\Program Files\\GitHub CLI\\gh.EXE",
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1/branches/dev",
+        "--jq",
+        "{name:.name,protected:.protected,sha:.commit.sha}"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "d773c5c3ce08e487d689431dfba13d984575c927c15926e731f1f8f312ad9a9e",
+      "status": "READ",
+      "metadata": {
+        "name": "dev",
+        "protected": false,
+        "sha": "c1e65cf5090b6243d093c7e3ff1d62b4d355701f"
+      }
+    },
+    {
+      "scope": "dev-classic-protection",
+      "observedAtUtc": "2026-10-20T13:39:47.579846+00:00",
+      "command": [
+        "C:\\Program Files\\GitHub CLI\\gh.EXE",
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1/branches/dev/protection",
+        "--jq",
+        "{required_status_checks:.required_status_checks,enforce_admins:.enforce_admins,required_pull_request_reviews:.required_pull_request_reviews,required_conversation_resolution:.required_conversation_resolution,allow_force_pushes:.allow_force_pushes,allow_deletions:.allow_deletions}"
+      ],
+      "exitCode": 1,
+      "projectedResponseSha256": "75c603659be44328a1f22ab62601fcc15ab614458ee7c15edcc683798d9877a9",
+      "status": "NOT_FOUND",
+      "errorTextRetained": false
+    },
+    {
+      "scope": "repository-rulesets",
+      "observedAtUtc": "2026-10-20T13:39:47.580389+00:00",
+      "command": [
+        "C:\\Program Files\\GitHub CLI\\gh.EXE",
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1/rulesets?includes_parents=true",
+        "--jq",
+        "[.[]|{id,name,enforcement,target,source_type}]"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "status": "READ",
+      "metadata": []
+    },
+    {
+      "scope": "dev-effective-rules",
+      "observedAtUtc": "2026-10-20T13:39:48.215064+00:00",
+      "command": [
+        "C:\\Program Files\\GitHub CLI\\gh.EXE",
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1/rules/branches/dev"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "status": "READ",
+      "metadata": []
+    },
+    {
+      "scope": "dev-environment",
+      "observedAtUtc": "2026-10-20T13:39:48.231634+00:00",
+      "command": [
+        "C:\\Program Files\\GitHub CLI\\gh.EXE",
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1/environments/dev",
+        "--jq",
+        "{name:.name,ruleTypes:[.protection_rules[].type],deploymentBranchPolicy:.deployment_branch_policy}"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "4ceea684cf8f765575f32e35893205f877cf5c6041fb189eacadb1592c3dc8a1",
+      "status": "READ",
+      "metadata": {
+        "deploymentBranchPolicy": {
+          "custom_branch_policies": true,
+          "protected_branches": false
+        },
+        "name": "dev",
+        "ruleTypes": [
+          "branch_policy"
+        ]
+      }
+    },
+    {
+      "scope": "dev-environment-branches",
+      "observedAtUtc": "2026-10-20T13:39:48.265461+00:00",
+      "command": [
+        "C:\\Program Files\\GitHub CLI\\gh.EXE",
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1/environments/dev/deployment-branch-policies",
+        "--jq",
+        "{total_count,branch_policies:[.branch_policies[]|{name,type}]}"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "94fdb2ee141dc49f10a4139dd9612d889db6f887eba5d1601b3f476ffe47a71e",
+      "status": "READ",
+      "metadata": {
+        "branch_policies": [
+          {
+            "name": "dev",
+            "type": "branch"
+          }
+        ],
+        "total_count": 1
+      }
+    },
+    {
+      "scope": "cleanup-pr353",
+      "observedAtUtc": "2026-10-20T13:39:48.326816+00:00",
+      "command": [
+        "C:\\Program Files\\GitHub CLI\\gh.EXE",
+        "api",
+        "--method",
+        "GET",
+        "repos/custokingkr-dev/ims-v1/pulls/353",
+        "--jq",
+        "{number,state,merged,merged_at,merge_commit_sha,html_url,title}"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "dd06e5cbd0fe7d293e240682a99a5c8f841e371c5d52bd0652a36e15d675b274",
+      "status": "READ",
+      "metadata": {
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/pull/353",
+        "merge_commit_sha": "8cb87e5b8478c6990189a1ea3ed09f6c3e7cf691",
+        "merged": true,
+        "merged_at": "2026-10-12T09:26:41Z",
+        "number": 353,
+        "state": "closed",
+        "title": "docs(dev): record database and obsolete infrastructure cleanup"
+      }
+    },
+    {
+      "scope": "dashboard-oauth-secret",
+      "observedAtUtc": "2026-10-20T13:39:48.836027+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "secrets",
+        "describe",
+        "dashboard-oauth-client-secret",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,createTime)"
+      ],
+      "exitCode": 1,
+      "projectedResponseSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "NOT_FOUND",
+      "errorTextRetained": false
+    },
+    {
+      "scope": "dashboard-service",
+      "observedAtUtc": "2026-10-20T13:39:48.914906+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "run",
+        "services",
+        "describe",
+        "custoking-dashboard-dev",
+        "--region=asia-south2",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(metadata.name,status.latestReadyRevisionName,status.conditions)"
+      ],
+      "exitCode": 1,
+      "projectedResponseSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "status": "READ_ERROR",
+      "errorTextRetained": false
+    },
+    {
+      "scope": "dashboard-database",
+      "observedAtUtc": "2026-10-20T13:39:48.939641+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "firestore",
+        "databases",
+        "describe",
+        "--database=ims-dashboard-dev",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,locationId,type,deleteProtectionState)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "7818a99467093e0468c400edb0eea329365578dc6954096acd0eecffc129d958",
+      "status": "READ",
+      "metadata": {
+        "deleteProtectionState": "DELETE_PROTECTION_ENABLED",
+        "locationId": "asia-south2",
+        "name": "projects/custoking-dev/databases/ims-dashboard-dev",
+        "type": "FIRESTORE_NATIVE"
+      }
+    },
+    {
+      "scope": "dashboard-ttl",
+      "observedAtUtc": "2026-10-20T13:39:49.085605+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "firestore",
+        "fields",
+        "ttls",
+        "list",
+        "--database=ims-dashboard-dev",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,ttlConfig)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "3e60a833661319e0e10371357782fbee2ca8446f6160336e16bd0827e4c6d12e",
+      "status": "READ",
+      "metadata": [
+        {
+          "name": "projects/custoking-dev/databases/ims-dashboard-dev/collectionGroups/dashboardSecurityState/fields/expiresAt",
+          "ttlConfig": {
+            "state": "ACTIVE"
+          }
+        }
+      ]
+    },
+    {
+      "scope": "dev-services",
+      "observedAtUtc": "2026-10-20T13:39:52.736256+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "run",
+        "services",
+        "list",
+        "--region=asia-south2",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(metadata.name,status.latestReadyRevisionName,status.latestCreatedRevisionName,status.conditions,status.traffic,metadata.annotations,spec.template.metadata.annotations,spec.template.spec.containers.env.name,spec.template.spec.containers.env.valueFrom)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "1f82d7d477e92c559f102f18d1ac7ac07f88225f00bd6bffa2ab667ea54fd018",
+      "status": "READ",
+      "metadata": [
+        {
+          "name": "custoking-api-gateway-dev",
+          "latestReadyRevision": "custoking-api-gateway-dev-mvgoq2uo",
+          "latestCreatedRevision": "custoking-api-gateway-dev-mvgoq2uo",
+          "ready": true,
+          "traffic": [
+            {
+              "latestRevision": true,
+              "percent": 100,
+              "revisionName": "custoking-api-gateway-dev-mvgoq2uo"
+            }
+          ],
+          "ingress": "all",
+          "network": {}
+        },
+        {
+          "name": "custoking-billing-service-dev",
+          "latestReadyRevision": "custoking-billing-service-dev-mvgp1svd",
+          "latestCreatedRevision": "custoking-billing-service-dev-mvgp1svd",
+          "ready": true,
+          "traffic": [
+            {
+              "latestRevision": true,
+              "percent": 100,
+              "revisionName": "custoking-billing-service-dev-mvgp1svd"
+            }
+          ],
+          "ingress": "all",
+          "network": {
+            "run.googleapis.com/network-interfaces": "[{\"network\":\"default\",\"subnetwork\":\"default\"}]",
+            "run.googleapis.com/vpc-access-egress": "private-ranges-only"
+          }
+        },
+        {
+          "name": "custoking-frontend-dev",
+          "latestReadyRevision": "custoking-frontend-dev-mvgous7c",
+          "latestCreatedRevision": "custoking-frontend-dev-mvgous7c",
+          "ready": true,
+          "traffic": [
+            {
+              "latestRevision": true,
+              "percent": 100,
+              "revisionName": "custoking-frontend-dev-mvgous7c"
+            }
+          ],
+          "ingress": "all",
+          "network": {}
+        },
+        {
+          "name": "custoking-identity-service-dev",
+          "latestReadyRevision": "custoking-identity-service-dev-mvgosi8y",
+          "latestCreatedRevision": "custoking-identity-service-dev-mvgosi8y",
+          "ready": true,
+          "traffic": [
+            {
+              "latestRevision": true,
+              "percent": 100,
+              "revisionName": "custoking-identity-service-dev-mvgosi8y"
+            }
+          ],
+          "ingress": "all",
+          "network": {
+            "run.googleapis.com/network-interfaces": "[{\"network\":\"default\",\"subnetwork\":\"default\"}]",
+            "run.googleapis.com/vpc-access-egress": "private-ranges-only"
+          }
+        },
+        {
+          "name": "custoking-operations-service-dev",
+          "latestReadyRevision": "custoking-operations-service-dev-mvgp0mif",
+          "latestCreatedRevision": "custoking-operations-service-dev-mvgp0mif",
+          "ready": true,
+          "traffic": [
+            {
+              "latestRevision": true,
+              "percent": 100,
+              "revisionName": "custoking-operations-service-dev-mvgp0mif"
+            }
+          ],
+          "ingress": "all",
+          "network": {
+            "run.googleapis.com/network-interfaces": "[{\"network\":\"default\",\"subnetwork\":\"default\"}]",
+            "run.googleapis.com/vpc-access-egress": "private-ranges-only"
+          }
+        },
+        {
+          "name": "custoking-platform-service-dev",
+          "latestReadyRevision": "custoking-platform-service-dev-mvgp4ms2",
+          "latestCreatedRevision": "custoking-platform-service-dev-mvgp4ms2",
+          "ready": true,
+          "traffic": [
+            {
+              "latestRevision": true,
+              "percent": 100,
+              "revisionName": "custoking-platform-service-dev-mvgp4ms2"
+            }
+          ],
+          "ingress": "all",
+          "network": {
+            "run.googleapis.com/network-interfaces": "[{\"network\":\"default\",\"subnetwork\":\"default\"}]",
+            "run.googleapis.com/vpc-access-egress": "private-ranges-only"
+          }
+        },
+        {
+          "name": "custoking-school-core-service-dev",
+          "latestReadyRevision": "custoking-school-core-service-dev-mvgoxgrd",
+          "latestCreatedRevision": "custoking-school-core-service-dev-mvgoxgrd",
+          "ready": true,
+          "traffic": [
+            {
+              "latestRevision": true,
+              "percent": 100,
+              "revisionName": "custoking-school-core-service-dev-mvgoxgrd"
+            }
+          ],
+          "ingress": "all",
+          "network": {
+            "run.googleapis.com/network-interfaces": "[{\"network\":\"default\",\"subnetwork\":\"default\"}]",
+            "run.googleapis.com/vpc-access-egress": "private-ranges-only"
+          }
+        }
+      ],
+      "curation": "Retain readiness, traffic, ingress and VPC metadata only. Literal environment values were excluded by original CLI projection."
+    },
+    {
+      "scope": "dev-revisions",
+      "observedAtUtc": "2026-10-20T13:39:52.762103+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "run",
+        "revisions",
+        "list",
+        "--region=asia-south2",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(metadata.name,metadata.labels.service,status.conditions,status.imageDigest)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "1ac51c20af05ba977ad7abeca41324006331b8dc3d4b9811f6321da67bbea237",
+      "status": "READ",
+      "metadata": {
+        "inventoryCount": 135,
+        "latestReadyRevisionImages": [
+          {
+            "revision": "custoking-platform-service-dev-mvgp4ms2",
+            "imageDigest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:bd01b334e248f85b414110821e2848ffaf1782ebf885371dca8fd16b9c248074"
+          },
+          {
+            "revision": "custoking-billing-service-dev-mvgp1svd",
+            "imageDigest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9"
+          },
+          {
+            "revision": "custoking-operations-service-dev-mvgp0mif",
+            "imageDigest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded"
+          },
+          {
+            "revision": "custoking-school-core-service-dev-mvgoxgrd",
+            "imageDigest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:2962b28d113c1970251b28a4f6b056c8c92d989e35111ba72bf78dba6aa98877"
+          },
+          {
+            "revision": "custoking-frontend-dev-mvgous7c",
+            "imageDigest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:dd0d6cff1037c667c4b258e7a5fef7e2bd94f86e6f38d80e709cb75314b00bd4"
+          },
+          {
+            "revision": "custoking-identity-service-dev-mvgosi8y",
+            "imageDigest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096"
+          },
+          {
+            "revision": "custoking-api-gateway-dev-mvgoq2uo",
+            "imageDigest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:d2f0a2a4f84918331f8f6223af6dff106a132e83f5de8c1e4441c3bb0d4dc365"
+          }
+        ]
+      },
+      "curation": "Full projected inventory was compared against all 198 exact deletion names; retained selected current images and count. Hash refers to original projected CLI response."
+    },
+    {
+      "scope": "dev-jobs",
+      "observedAtUtc": "2026-10-20T13:39:52.776136+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "run",
+        "jobs",
+        "list",
+        "--region=asia-south2",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(metadata.name)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "5abaf0a8872ac880068e81d02735222efcb231567b3d5a4662a372982bd52418",
+      "status": "READ",
+      "metadata": [
+        {
+          "metadata": {
+            "name": "ims-cost-metric-dev"
+          }
+        },
+        {
+          "metadata": {
+            "name": "ims-direct-service-smoke"
+          }
+        },
+        {
+          "metadata": {
+            "name": "ims-gateway-smoke-sql-dev"
+          }
+        }
+      ]
+    },
+    {
+      "scope": "dev-sql-instances",
+      "observedAtUtc": "2026-10-20T13:39:53.716624+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "sql",
+        "instances",
+        "list",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,region,state,databaseVersion,settings.backupConfiguration)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "1adc7e94bdb71fcc703188055be07f8e2e77ad8f9b8c4ea375b35e9740698596",
+      "status": "READ",
+      "metadata": [
+        {
+          "databaseVersion": "POSTGRES_16",
+          "name": "custoking-db-dev",
+          "region": "asia-south2",
+          "settings": {
+            "backupConfiguration": {
+              "backupRetentionSettings": {
+                "retainedBackups": 7,
+                "retentionUnit": "COUNT"
+              },
+              "backupTier": "STANDARD",
+              "enabled": true,
+              "kind": "sql#backupConfiguration",
+              "pointInTimeRecoveryEnabled": true,
+              "replicationLogArchivingEnabled": true,
+              "startTime": "00:00",
+              "transactionLogRetentionDays": 7,
+              "transactionalLogStorageState": "CLOUD_STORAGE"
+            }
+          },
+          "state": "RUNNABLE"
+        }
+      ]
+    },
+    {
+      "scope": "edge-domain-mappings",
+      "observedAtUtc": "2026-10-20T13:39:58.591475+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "beta",
+        "run",
+        "domain-mappings",
+        "list",
+        "--region=asia-south2",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(metadata.name,status.conditions)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "status": "READ",
+      "metadata": []
+    },
+    {
+      "scope": "edge-global-forwarding-rules",
+      "observedAtUtc": "2026-10-20T13:39:58.721662+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "compute",
+        "forwarding-rules",
+        "list",
+        "--global",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,loadBalancingScheme,target,portRange)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "status": "READ",
+      "metadata": []
+    },
+    {
+      "scope": "edge-global-certificates",
+      "observedAtUtc": "2026-10-20T13:39:58.903393+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "compute",
+        "ssl-certificates",
+        "list",
+        "--global",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,type,managed.status)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "status": "READ",
+      "metadata": []
+    },
+    {
+      "scope": "edge-security-policies",
+      "observedAtUtc": "2026-10-20T13:40:01.704104+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "compute",
+        "security-policies",
+        "list",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,type)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "status": "READ",
+      "metadata": []
+    },
+    {
+      "scope": "egress-default-subnet",
+      "observedAtUtc": "2026-10-20T13:40:07.905040+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "compute",
+        "networks",
+        "subnets",
+        "describe",
+        "default",
+        "--region=asia-south2",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,region,network,privateIpGoogleAccess)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "98d10c9b3f992a9857d4614258574198a65f38513d3b4be3dfbddd022abbffa2",
+      "status": "READ",
+      "metadata": {
+        "name": "default",
+        "network": "https://www.googleapis.com/compute/v1/projects/custoking-dev/global/networks/default",
+        "privateIpGoogleAccess": false,
+        "region": "https://www.googleapis.com/compute/v1/projects/custoking-dev/regions/asia-south2"
+      }
+    },
+    {
+      "scope": "egress-firewalls",
+      "observedAtUtc": "2026-10-20T13:40:07.935404+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "compute",
+        "firewall-rules",
+        "list",
+        "--filter=direction=EGRESS",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,network,direction,priority,disabled,targetTags,destinationRanges,allowed,denied)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "status": "READ",
+      "metadata": []
+    },
+    {
+      "scope": "egress-routers",
+      "observedAtUtc": "2026-10-20T13:40:08.050876+00:00",
+      "command": [
+        "C:\\Program Files (x86)\\Google\\Cloud SDK\\google-cloud-sdk\\bin\\gcloud.cmd",
+        "compute",
+        "routers",
+        "list",
+        "--filter=region:asia-south2",
+        "--project=custoking-dev",
+        "--quiet",
+        "--format=json(name,region,network,nats)"
+      ],
+      "exitCode": 0,
+      "projectedResponseSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "status": "READ",
+      "metadata": []
+    },
+    {
+      "scope": "dashboard-exact-expired-fixture",
+      "observedAtUtc": "2026-10-20T13:40:18.808666+00:00",
+      "method": "GET",
+      "documentContentRetained": false,
+      "ttlDeletionAttributionProven": false,
+      "historicalFixtureEvidence": "acceptance-dashboard-ttl-recheck.json",
+      "status": "NOT_QUERIED_COLLECTION_REQUIRES_EXACT_SOURCE"
+    }
+  ],
+  "obsoleteRevisionReadback": {
+    "priorDeletedSetCount": 198,
+    "currentInventoryReadable": true,
+    "currentRevisionCount": 135,
+    "priorDeletedNamesPresent": [],
+    "physicalInstanceDrainProven": false
+  },
+  "localSnapshotCustody": {
+    "knownBlob": "5309531af0534c281e4b9cf32de0157766e150b9",
+    "contentRead": false,
+    "refsRemoved": 0,
+    "physicalBytePurgeProven": false,
+    "objectExists": true,
+    "knownSnapshotRefsPresent": 0,
+    "headReachabilityRead": true,
+    "headKnownBlobReachable": false,
+    "originDevReachabilityRead": true,
+    "originDevKnownBlobReachable": false,
+    "allRefsKnownBlobReachable": true,
+    "allRefCount": 98,
+    "treeRefCount": 3,
+    "stashRefPresent": true,
+    "currentTreeRefsReachingKnownBlob": [
+      {
+        "ref": "refs/codex/turn-diffs/checkpoints/7af9aadb9a8548d5e1baaf632fe92da6/4aeda85197f105e774d27907bfb28f77/1792348187496/9c829234-ea71-4490-aeea-0e132f58423a",
+        "objectType": "tree",
+        "tip": "30bd0e32af80b38075ae25fa69fd0873603d1290"
+      }
+    ],
+    "classification": "UNDETERMINED; metadata-only inspection, no filename or content logged",
+    "repositoryHistoryAudit": {
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/audit-repository-export-history.ps1",
+      "exitCode": 1,
+      "branchSensitivePathCount": 0,
+      "historySensitivePathCount": 1,
+      "releaseSensitiveAssetCount": 0,
+      "pathsOrContentLogged": false
+    },
+    "stashReachabilityRead": true,
+    "stashKnownBlobReachable": true
+  },
+  "mutations": 0,
+  "productionResourcesAccessed": false,
+  "secretPayloadsRead": false,
+  "literalEnvironmentValuesRead": false,
+  "collectorSha256": "fe97412bebf555215476849224b88924e4b60da910a39b7ebcf4d6a0c066e5cb",
+  "curatedAtUtc": "2026-10-20T13:44:05.965810+00:00",
+  "nativeEvidenceFreshness": {
+    "historicalFindingFile": "acceptance-architecture-native-findings-2026-10-12.json",
+    "historicalCapturedAt": "2026-10-11T20:54:14.821320+00:00",
+    "historicalFindingCount": 32,
+    "historicalSelectedDigestCount": 2,
+    "currentImagePackageOrConsumerInspectionPerformed": false,
+    "applicabilityClosed": false,
+    "historicalSelectedIndicesStillInCurrentManifest": 1,
+    "directRuntimeDigestComparisonIsInvalid": "Historical inventory uses source index refs; Ready revisions expose platform runtime refs. Bind through release manifest.",
+    "currentReleaseScanEvidence": "acceptance-current-scans-2026-10-20.json",
+    "currentFreshScanCount": 7,
+    "currentFindingRowCount": 240,
+    "currentScannedManifestRuntimeRefsMatchReady": true,
+    "currentNativeConsumerInspectionPerformed": false
+  },
+  "localValidation": [
+    {
+      "command": "python -m unittest discover -s scripts/tests -p dev_restore_target_verifier_test.py",
+      "exitCode": 0,
+      "testsRun": 16,
+      "passed": 16,
+      "skipped": 0,
+      "scope": "Local mocked metadata and selected verifier controls; no real clone or catalog connection"
+    },
+    {
+      "command": "node --test tools/live-dashboard/security.test.mjs",
+      "exitCode": 0,
+      "testsRun": 6,
+      "passed": 6,
+      "skipped": 0,
+      "scope": "Local mocks and loopback auth/state checks; no dedicated OAuth login"
+    },
+    {
+      "command": "python -m unittest discover -s scripts/tests -p test_verify_github_governance_checks.py",
+      "exitCode": 0,
+      "testsRun": 24,
+      "passed": 21,
+      "skipped": 3,
+      "skipReason": "Three Linux process-state observation tests skip on Windows",
+      "scope": "Fixture governance semantics and process containment; no live governance enforcement"
+    }
+  ],
+  "sourceGaps": [
+    {
+      "id": "selected-provider-authentication-and-normalization",
+      "paths": [
+        "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridge.java",
+        "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportController.java",
+        "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/GenericNotificationUnknownEvidence.java"
+      ],
+      "finding": "SMS bridge remains dormant and internal reporter authority is not vendor-origin authentication. Normalized controller is an internal operator boundary. UNKNOWN evidence remains an unverified operator assertion, not a provider receipt or resend authority.",
+      "sourceSha256": {
+        "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridge.java": "1b2e2d937cc794cc5a987f9f469ff1e97b84852fab62aa16c9663cba451dcbff",
+        "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportController.java": "5144f4ef4a0dbcc03a9ff53b8e5c9962bee596330e0df990d71f6dd0e7384c70",
+        "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/GenericNotificationUnknownEvidence.java": "0574da3c185734ea8ac8ece250a2e02a086580b96cca94bc2088c33b048c1819"
+      }
+    },
+    {
+      "id": "governed-full-restore",
+      "paths": [
+        "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+        "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+        "scripts/security/verify-dev-restore-target.py"
+      ],
+      "finding": "Isolated source replay explicitly leaves restorationReady and deliveryResume false; freeze is operator attestation. Verifier leaves sourceLineageVerified false. Complete historical coverage, global enforced freeze/drain, downstream/object/provider fences and governed cutover remain implementation and live acceptance work.",
+      "sourceSha256": {
+        "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java": "7d4f58cad06434b1ec9b51ce02e7d28b63e43804ce81b4d2a5d89cf5d05d9815",
+        "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java": "6563b06b3228816a6d5fab82ad4b7805ead86cc7cb279f908ebb1000a35b6ca7",
+        "scripts/security/verify-dev-restore-target.py": "652f2c8816fa4219a77c6b64766a73c6e5e6bd10bfe6bb461133a99d7667988f"
+      }
+    },
+    {
+      "id": "compatible-egress-cutover",
+      "paths": [
+        "deploy/gcp/application-egress/README.md",
+        "deploy/gcp/application-egress/variables.tf"
+      ],
+      "finding": "Disabled CIDR firewall preparation requires existing compatible network/PGA/router/NAT and approved destination policy. Arbitrary HTTPS image imports need a compatible selected design before applying restrictions.",
+      "sourceSha256": {
+        "deploy/gcp/application-egress/README.md": "9521f83daa1ffbb8b629d4568ed24b3ec231e656850953b01cc9a196785de103",
+        "deploy/gcp/application-egress/variables.tf": "8ce82b9735348b93403e9fe58550da28bd6f0e1714ce11e53d54d05af8850f90"
+      }
+    }
+  ]
+}

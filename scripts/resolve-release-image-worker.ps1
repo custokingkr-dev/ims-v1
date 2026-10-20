@@ -5,9 +5,17 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 
 function Invoke-ImageCommand([string]$Program, [string[]]$Arguments) {
-  $global:LASTEXITCODE = 0
-  $text = (& $Program @Arguments 2>&1 | ForEach-Object { [string]$_ }) -join "`n"
-  return @{ ExitCode = $LASTEXITCODE; Text = $text.Trim() }
+  # Keep CLI diagnostics out of machine-readable stdout. A separate file also drains
+  # large stderr output without a pipe deadlock and works with Windows .cmd launchers.
+  $stderrPath = [IO.Path]::GetTempFileName()
+  try {
+    $global:LASTEXITCODE = 0
+    $text = (& $Program @Arguments 2> $stderrPath | ForEach-Object { [string]$_ }) -join "`n"
+    $exitCode = $LASTEXITCODE
+    return @{ ExitCode = $exitCode; Text = $text.Trim(); ErrorText = [IO.File]::ReadAllText($stderrPath).Trim() }
+  } finally {
+    [IO.File]::Delete($stderrPath)
+  }
 }
 
 function Read-ImageDigest([string]$Reference, [string]$Project, [switch]$AllowMissing) {
@@ -15,7 +23,7 @@ function Read-ImageDigest([string]$Reference, [string]$Project, [switch]$AllowMi
     "--project=$Project",'--format=value(image_summary.digest)')
   if ($result.ExitCode -ne 0) {
     # Permission, quota and transport errors are never evidence that a tag is absent.
-    if ($AllowMissing -and $result.Text -match '\bNOT_FOUND\b') { return $null }
+    if ($AllowMissing -and ($result.ErrorText + "`n" + $result.Text) -match '\bNOT_FOUND\b') { return $null }
     throw "Could not resolve image $Reference (exit $($result.ExitCode)); refusing promotion."
   }
   if ($result.Text -cnotmatch '^sha256:[0-9a-f]{64}$') { throw "Invalid registry digest for $Reference." }
@@ -111,7 +119,7 @@ try {
       $tag = Invoke-ImageCommand gcloud @('artifacts','tags','create',$resolvedTag,"--version=$digest",
         "--package=$($entry.image)","--repository=$($options.Repository)","--location=$($options.Region)",
         "--project=$($options.ProjectId)",'--quiet','--format=json')
-      if ($tag.ExitCode -ne 0 -and $tag.Text -notmatch '\bALREADY_EXISTS\b') { throw "Could not create promotion tag for $($entry.image)." }
+      if ($tag.ExitCode -ne 0 -and ($tag.ErrorText + "`n" + $tag.Text) -notmatch '\bALREADY_EXISTS\b') { throw "Could not create promotion tag for $($entry.image)." }
     }
     if ((Read-ImageDigest $targetTag $options.ProjectId) -cne $digest) { throw "Promotion tag conflict after publication for $($entry.image)." }
   }

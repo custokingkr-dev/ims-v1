@@ -57,7 +57,7 @@ foreach ($required in @(
         "contains(needs.detect.outputs.changed_files, 'mvnw')",
         "MAVEN_USER_HOME:",
         "Expected Maven Wrapper 3.3.4",
-        "Expected Apache Maven 3.9.16",
+        "Expected Apache Maven 3.10.0",
         "Run representative reactor tests through the wrapper",
         "needs.maven-wrapper-validation.result"
     )) {

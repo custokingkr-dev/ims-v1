@@ -10,6 +10,45 @@ $checks=0
 function Assert([bool]$Condition,[string]$Message) { if (!$Condition) { throw $Message } }
 function Read-Events([string]$Directory) { @(Get-ChildItem -LiteralPath $Directory -Filter '*.event.json' | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw | ConvertFrom-Json }) }
 try {
+  # Exercise the real native boundary independently of the fast in-process cloud doubles.
+  # A warning on stderr must never become digest/JSON data, and nonzero exits must survive.
+  $worker=Join-Path $root 'scripts/resolve-release-image-worker.ps1'
+  $ast=[Management.Automation.Language.Parser]::ParseFile($worker,[ref]$null,[ref]$null)
+  $commandFunction=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Invoke-ImageCommand'},$true)
+  . ([scriptblock]::Create($commandFunction.Extent.Text))
+  $nativeFixture=Join-Path $scratch 'native command fixture.ps1'
+  [IO.File]::WriteAllText($nativeFixture,@'
+param([string]$OutputPath,[string]$ErrorPath,[string]$LiteralArgument,[int]$ExitCode=0)
+if ($LiteralArgument -cne 'literal ; & $() {{json .Image}}') { exit 99 }
+[Console]::Out.WriteLine([IO.File]::ReadAllText($OutputPath))
+[Console]::Error.WriteLine([IO.File]::ReadAllText($ErrorPath))
+exit $ExitCode
+'@)
+  $nativeShell=Join-Path $PSHOME $(if ($IsWindows) {'pwsh.exe'} else {'pwsh'})
+  foreach ($case in @(
+    @{output='sha256:'+('a'*64);error='WARNING: credentials will expire soon';exit=0},
+    @{output='{"schemaVersion":2,"message":"literal ; & $() {{json .Image}}"}';error=('progress '*32768);exit=0},
+    @{output='';error='NOT_FOUND';exit=7},
+    @{output='';error='ALREADY_EXISTS';exit=9}
+  )) {
+    $errorPath=Join-Path $scratch 'native-stderr.txt'
+    $outputPath=Join-Path $scratch 'native-stdout.txt'
+    [IO.File]::WriteAllText($errorPath,$case.error)
+    [IO.File]::WriteAllText($outputPath,$case.output)
+    $result=Invoke-ImageCommand $nativeShell @('-NoProfile','-File',$nativeFixture,'-OutputPath',$outputPath,'-ErrorPath',$errorPath,'-LiteralArgument','literal ; & $() {{json .Image}}','-ExitCode',[string]$case.exit)
+    Assert ($result.ExitCode -eq $case.exit) 'Native exit status changed while capturing stderr.'
+    Assert ($result.Text -ceq $case.output) 'Native stderr contaminated stdout or argument boundaries changed.'
+    Assert ($result.ErrorText -ceq $case.error.Trim()) 'Native stderr was lost while capturing command output.'
+    $checks++
+  }
+  if ($IsWindows) {
+    # The Windows Google Cloud SDK resolves gcloud to a .cmd launcher.
+    $launcher=Join-Path $scratch 'native launcher.cmd'
+    [IO.File]::WriteAllText($launcher,"@echo off`r`necho fixture-stdout`r`necho NOT_FOUND 1>&2`r`nexit /b 11`r`n")
+    $result=Invoke-ImageCommand $launcher @()
+    Assert ($result.ExitCode -eq 11 -and $result.Text -ceq 'fixture-stdout' -and $result.ErrorText -ceq 'NOT_FOUND') 'Windows command launcher lost its separate streams or exit status.'
+    $checks++
+  }
   $mockBin=Join-Path $scratch 'bin'; New-Item -ItemType Directory -Path $mockBin | Out-Null
   foreach ($program in @('gcloud','docker','cosign')) {
     $escaped=$fixture.Replace("'","''")
@@ -71,7 +110,7 @@ try {
   foreach($point in $timeline) { $active+=$point.delta; $peak=[Math]::Max($peak,$active) }
   Assert ($peak -gt 1 -and $peak -le 3) "Expected bounded parallel command execution; observed $peak."
   $script:checks++
-  foreach ($scenario in @('reuse','race-same','single-manifest','moving-source-tag')) {
+  foreach ($scenario in @('reuse','race-same','single-manifest','moving-source-tag','stderr-warnings','stderr-single-manifest','stderr-race-same')) {
     $directory=Run-Scenario $scenario
     if ($scenario -eq 'reuse') { Assert (@(Read-Events $directory | Where-Object { $_.arguments[2] -eq 'create' }).Count -eq 0) 'Existing identical promotion must not be rewritten.' }
   }
@@ -83,10 +122,13 @@ try {
     @('malformed-manifest','Malformed OCI'),@('missing-amd64','exactly one runnable'),@('ambiguous-amd64','exactly one runnable'),
     @('wrong-platform','not runnable'),@('copy-failed','Could not promote'),@('wrong-promoted','Promoted digest'),
     @('wrong-runtime','runtime digest differs'),@('missing-runtime','Could not inspect'),@('race-conflict','conflict after publication'),
-    @('tag-denied','Could not create promotion tag')
+    @('tag-denied','Could not create promotion tag'),@('stderr-target-denied','Could not resolve'),
+    @('stderr-tag-denied','Could not create promotion tag'),@('stderr-missing-source','Could not resolve'),
+    @('stderr-race-conflict','conflict after publication'),@('stderr-digest-only','Invalid registry digest'),
+    @('stderr-manifest-only','Could not inspect OCI'),@('stderr-runtime-only','not runnable')
   )) {
     $directory=Run-Scenario $case[0] $case[1]
-    if ($case[0] -in @('bad-signature','conflict','target-denied','malformed-target')) {
+    if ($case[0] -in @('bad-signature','conflict','target-denied','malformed-target','stderr-target-denied','stderr-digest-only')) {
       Assert (@(Read-Events $directory | Where-Object { $_.arguments[2] -eq 'create' }).Count -eq 0) 'Rejected signature/tag/permission caused registry writes.'
     }
   }

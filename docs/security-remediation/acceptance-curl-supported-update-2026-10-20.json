@@ -1,0 +1,318 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-20T14:03:23.078956+00:00",
+  "scope": "Read-only supported Ubuntu Noble package research and existing source/evidence comparison; no image rebuild, workload, deployment or native applicability attestation.",
+  "baselineReleaseRun": 39423059832,
+  "baselineScanEvidence": "acceptance-current-scans-2026-10-20.json",
+  "baselineInstalledPackages": [
+    {
+      "name": "curl",
+      "version": "8.5.0-2ubuntu10.15"
+    },
+    {
+      "name": "libcurl4t64",
+      "version": "8.5.0-2ubuntu10.15"
+    }
+  ],
+  "affectedServices": [
+    "billing-service",
+    "identity-service",
+    "operations-service",
+    "platform-service",
+    "school-core-service"
+  ],
+  "supportedUpdate": {
+    "distribution": "Ubuntu 24.04 LTS (Noble)",
+    "pocket": "security",
+    "packageVersion": "8.5.0-2ubuntu10.16",
+    "packages": [
+      "curl",
+      "libcurl4t64"
+    ],
+    "notice": "USN-8932-1",
+    "noticePublished": "2026-10-14T19:26:26.170504",
+    "cves": [
+      "CVE-2026-86409",
+      "CVE-2026-86414",
+      "CVE-2026-87862",
+      "CVE-2026-87863",
+      "CVE-2026-87864",
+      "CVE-2026-92388",
+      "CVE-2026-92389",
+      "CVE-2026-92391",
+      "CVE-2026-94266"
+    ],
+    "currentBaselineFindingRows": 90,
+    "noticeAndExactChangelogAgree": true,
+    "signedSourceDescriptorDownloaded": true,
+    "sourceDescriptorSignatureIndependentlyVerified": false
+  },
+  "primaryEvidence": [
+    {
+      "kind": "official-notice-json",
+      "url": "https://ubuntu.com/security/notices/USN-8932-1.json",
+      "rawSha256": "f2cbe658aada741d4cb518589892462d4a1354f2fb4692ef93a148a8a63c380e"
+    },
+    {
+      "kind": "exact-supported-source-changelog",
+      "url": "https://changelogs.ubuntu.com/changelogs/pool/main/c/curl/curl_8.5.0-2ubuntu10.16/changelog",
+      "rawSha256": "ff307bdc1849a9a557a889ddf12697680499595ddbd10230bddd2f2256f88336"
+    },
+    {
+      "kind": "source-descriptor",
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/c/curl/curl_8.5.0-2ubuntu10.16.dsc",
+      "rawSha256": "ff4ae5226e471829f638b94b1b8bb74bb2f7e57ca999353f6ad7274bf43a8abf"
+    },
+    {
+      "kind": "security-archive-directory-listing",
+      "url": "https://security.ubuntu.com/ubuntu/pool/main/c/curl/",
+      "rawSha256": "817b607a63e150d3c723cc82243d1c1e10e09a25db1962086d1ff375d0eb2aee",
+      "observedPackages": [
+        "curl_8.5.0-2ubuntu10.16_amd64.deb",
+        "libcurl4t64_8.5.0-2ubuntu10.16_amd64.deb"
+      ]
+    }
+  ],
+  "canonicalCveReview": {
+    "recordsRead": 32,
+    "readErrors": 0,
+    "nobleFixedEventCount": 0,
+    "records": [
+      {
+        "cve": "CVE-2024-56433",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2024/UBUNTU-CVE-2024-56433.json",
+        "rawSha256": "dd54dd16a39f2525a8ebc4ba83fcf0d97e269aa436e596055cb642477b4387db",
+        "modified": "2026-10-17T09:29:10Z"
+      },
+      {
+        "cve": "CVE-2025-66382",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2025/UBUNTU-CVE-2025-66382.json",
+        "rawSha256": "79bc1588003f29b67c47b475a3f9d1b515cdf6837074b9884452327c4df859f2",
+        "modified": "2026-10-17T09:36:25Z"
+      },
+      {
+        "cve": "CVE-2026-102473",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-102473.json",
+        "rawSha256": "ee3ce5fd986db42e62aff6989b4957bac30ce2a4667d035f1333f5bef171a3f0",
+        "modified": "2026-10-17T10:01:18Z"
+      },
+      {
+        "cve": "CVE-2026-102474",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-102474.json",
+        "rawSha256": "269f45920d570ea9a9c7f4c192082dcb19123b019b1459fe8569b57862c6f86e",
+        "modified": "2026-10-17T10:01:18Z"
+      },
+      {
+        "cve": "CVE-2026-103111",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-103111.json",
+        "rawSha256": "4db5800f1bc05eaedc9c72f438d6f28c12abc545434eb3d24e97825889166315",
+        "modified": "2026-10-17T10:01:19Z"
+      },
+      {
+        "cve": "CVE-2026-107161",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-107161.json",
+        "rawSha256": "93e0ff1c051b635fd12e912a2a14f23da82369b10d8c3a7f68dc672b3a3cb3d8",
+        "modified": "2026-10-17T10:01:22Z"
+      },
+      {
+        "cve": "CVE-2026-18374",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18374.json",
+        "rawSha256": "266f7775f5044d3c371c270d728ac87b132a483c3183377b4ab230933ee66d6a",
+        "modified": "2026-09-10T14:24:53Z"
+      },
+      {
+        "cve": "CVE-2026-18477",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18477.json",
+        "rawSha256": "68c1af84c28ba120aec09bea90a2266fe34541febdd60b34efad53b4da605760",
+        "modified": "2026-10-17T09:38:05Z"
+      },
+      {
+        "cve": "CVE-2026-18508",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18508.json",
+        "rawSha256": "3e17824e5889911c3487864259efd09b76d58a3e2fce9d4be9c7722b3628cb7a",
+        "modified": "2026-10-17T09:38:05Z"
+      },
+      {
+        "cve": "CVE-2026-40228",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-40228.json",
+        "rawSha256": "4ddf927636f629be28b61719da9bbe291ee72de50f2db83dc98a21ff7e0055d1",
+        "modified": "2026-10-20T02:48:46Z"
+      },
+      {
+        "cve": "CVE-2026-67693",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-67693.json",
+        "rawSha256": "4f1f4db623f290f35db38dffc378cd49d7a8899b8153d8d5fe4a71b23a96ed74",
+        "modified": "2026-10-17T09:48:29Z"
+      },
+      {
+        "cve": "CVE-2026-85091",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-85091.json",
+        "rawSha256": "7de6194a8953872f8807f6c06006dd52059ebda061fe382e1719513d05f5a139",
+        "modified": "2026-10-17T09:54:13Z"
+      },
+      {
+        "cve": "CVE-2026-86145",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-86145.json",
+        "rawSha256": "3362f63bfda061c94ad398ccb54c1da0331979d56fe5329b493247d523d1102c",
+        "modified": "2026-10-17T09:54:14Z"
+      },
+      {
+        "cve": "CVE-2026-86409",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-86409.json",
+        "rawSha256": "c4b344f0c89e696ee98756e13f845228b5a3031f866197b777864eee6b1fe60f",
+        "modified": "2026-10-19T20:34:17Z"
+      },
+      {
+        "cve": "CVE-2026-86414",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-86414.json",
+        "rawSha256": "f6279bf74c3041ab8f66b04d134383739e89d8b0c97c79c5a054d39ccea9833c",
+        "modified": "2026-10-19T20:34:17Z"
+      },
+      {
+        "cve": "CVE-2026-87862",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-87862.json",
+        "rawSha256": "1b92a5116bd4906d3eebf3f911e6a39ad6dd72738bec91a7956758728a1b3c79",
+        "modified": "2026-10-19T20:34:18Z"
+      },
+      {
+        "cve": "CVE-2026-87863",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-87863.json",
+        "rawSha256": "2568e16a0a9a13c22e8fded352c556c13d771d3191d9a31dcf833a10259975f5",
+        "modified": "2026-10-19T20:34:18Z"
+      },
+      {
+        "cve": "CVE-2026-87864",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-87864.json",
+        "rawSha256": "7a358cc747f1ca529609ddfe98bcb5b7cffd21c33292d11111b68172420acfaf",
+        "modified": "2026-10-19T20:34:18Z"
+      },
+      {
+        "cve": "CVE-2026-88647",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-88647.json",
+        "rawSha256": "1888dc6cd85cce436cbd192d880fdf3d57b87e35670353b01a6703a8768b180a",
+        "modified": "2026-10-17T09:54:16Z"
+      },
+      {
+        "cve": "CVE-2026-89092",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89092.json",
+        "rawSha256": "78d5eb9ef5bca6506ede47f2aaec134ec24bd5a6a87803ebd0ac44d960fd5e87",
+        "modified": "2026-09-24T21:44:17Z"
+      },
+      {
+        "cve": "CVE-2026-89156",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89156.json",
+        "rawSha256": "813bd9b1d5ac64df412e39a1648b8886c20620f0d90dc5c7855f886366546c11",
+        "modified": "2026-10-17T09:54:16Z"
+      },
+      {
+        "cve": "CVE-2026-89157",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89157.json",
+        "rawSha256": "125a1f7a710aa72df5fd1bd6a11c8a728026c089c9e8e2966a6abec577ae224f",
+        "modified": "2026-10-17T09:54:16Z"
+      },
+      {
+        "cve": "CVE-2026-89158",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89158.json",
+        "rawSha256": "be22108e16a52e80fe7ef441eb4e3a7475fa1bc3890672387f1e223d17fdcad0",
+        "modified": "2026-10-17T09:54:16Z"
+      },
+      {
+        "cve": "CVE-2026-89160",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89160.json",
+        "rawSha256": "08595f7e2ee0cc07a49d7380c846c5b5fd9455eb867548a5c7d11f40912704bc",
+        "modified": "2026-10-17T09:54:16Z"
+      },
+      {
+        "cve": "CVE-2026-89161",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89161.json",
+        "rawSha256": "bc23661fe6c5d06909a2e0ab1374a852abdbb9f1cf368d8282176c9e31af529c",
+        "modified": "2026-10-17T09:54:16Z"
+      },
+      {
+        "cve": "CVE-2026-92388",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-92388.json",
+        "rawSha256": "788d059816f2df1522c79ade5f017d81dbddde58e217fcf4efd338ba95b9e18a",
+        "modified": "2026-10-19T20:36:26Z"
+      },
+      {
+        "cve": "CVE-2026-92389",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-92389.json",
+        "rawSha256": "93cf9982436d288619ec7a0ee51e936db25d7c4ffc874871a70f09cad152ec60",
+        "modified": "2026-10-19T20:36:26Z"
+      },
+      {
+        "cve": "CVE-2026-92391",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-92391.json",
+        "rawSha256": "219766f72c758ac77db2747e0faf20853aa2c4461f56ed11f29b7207945491c3",
+        "modified": "2026-10-19T20:36:27Z"
+      },
+      {
+        "cve": "CVE-2026-94266",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-94266.json",
+        "rawSha256": "e0530d7dcb206504c9dc774bda0fe85f5713f10167d9d6ba884d07e78fa2aa90",
+        "modified": "2026-10-19T20:37:16Z"
+      },
+      {
+        "cve": "CVE-2026-95184",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-95184.json",
+        "rawSha256": "3f8dab7766a60ccc95f60a977ea74a05233a7ec0844924d8fab2ee2b5eba6d5b",
+        "modified": "2026-10-17T09:58:12Z"
+      },
+      {
+        "cve": "CVE-2026-95209",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-95209.json",
+        "rawSha256": "e293a663b3e77e630ea7e6ab332845655cc5cb9fd4afa6a22d3c1b0eb060b0fc",
+        "modified": "2026-10-17T09:58:12Z"
+      },
+      {
+        "cve": "CVE-2026-95210",
+        "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-95210.json",
+        "rawSha256": "744bfd72b2acf22ba41391cac4f408881fc0a3fd30610ccdbf5b86fad596bc23",
+        "modified": "2026-10-17T09:58:12Z"
+      }
+    ],
+    "interpretation": "All 32 Canonical CVE records read successfully. Empty Noble fixed events conflict with the positive curl notice/changelog; do not equate empty scanner/vendor range fields with no supported fix."
+  },
+  "sourceConsumers": {
+    "dockerfiles": {
+      "services/billing-service/Dockerfile": "b7962d3a7e996bed878954d75286ea7d93b9ea28ce54059635ab7d947749b43b",
+      "services/identity-service/Dockerfile": "33fba68bf7d7c33b3efd209411c50a853bfd8bbae8c4437129a0dccd0936c241",
+      "services/operations-service/Dockerfile": "d26f1beedd57176c24f551a2c482a4e1c894c8bcbd83d34e40a34f76b939bb4f",
+      "services/platform-service/Dockerfile": "5c27ae0f70aa9764aea60361348608044bfa32489f1000b08afbd6d0d24e92d4",
+      "services/school-core-service/Dockerfile": "c8b725cb6fb1d6edc5a54db49a17cffd74fff42bbb7cfe4f86622f6333fbd474"
+    },
+    "observed": "All five Java Dockerfiles install curl, declare a localhost HTTP curl health check, run sh -c exec java, and create appuser during build. Source presence does not prove that Cloud Run executes Docker HEALTHCHECK. The inspected health command does not request AWS signing, netrc credentials, HTTP proxy authentication, HSTS persistence, IMAP/FTP/TFTP or MIME APIs. Other libcurl/native/dependency consumers remain unproved.",
+    "packagesRemoved": false
+  },
+  "otherFindings": {
+    "supportedSecurityFixEstablishedForOther23Cves": false,
+    "notAffectedAttestationsIssued": 0,
+    "retainedExactPrerequisiteEvidence": "acceptance-native-runtime-prerequisites.json",
+    "retainedMatchingRuntimeServices": [
+      "billing-service",
+      "identity-service",
+      "operations-service"
+    ],
+    "retainedScope": "Dated named nscd/journald/newuidmap/newgidmap absence checks still bind these unchanged runtime refs. They do not attest managed host state or every consumer; platform/school replacement digests require new inventory.",
+    "systemdNewerPackage": {
+      "version": "255.4-1ubuntu8.18",
+      "url": "https://changelogs.ubuntu.com/changelogs/pool/main/s/systemd/systemd_255.4-1ubuntu8.18/changelog",
+      "rawSha256": "7cb87e3c20dac0b4e3c018ec75200e9fc7f19c0e904f90a6958c2dba1c9ba504",
+      "finding": "Adds DNSSEC KSK-2024 trust anchor (LP2170538); does not establish a CVE-2026-40228 fix."
+    }
+  },
+  "requiredAcceptance": [
+    "Review a new committed runtime patch cycle through normal source checks; retain supported Ubuntu repositories and package signature verification.",
+    "Rebuild using the emitted patch epoch and prove all selected source/runtime digest mappings against the actual dev release.",
+    "Independently inspect every changed Java runtime for curl and libcurl4t64 Noble version 8.5.0-2ubuntu10.16 or a later supported fix; successful scanner exit alone is insufficient.",
+    "Run fresh exact-image scans; preserve residual findings and scanner/vendor disagreements without VEX or blanket suppression.",
+    "Complete ordinary dev rollout, readiness, rollback retention and authorization/CSP checks. Do not infer production rollout or whole-plan acceptance."
+  ],
+  "runtimePatchAcceptanceComplete": false,
+  "applicationApplicabilityClosed": false,
+  "productionResourcesAccessed": false,
+  "cloudMutations": 0,
+  "imageMutations": 0,
+  "trackedSourceEdits": 0,
+  "findingsSuppressed": 0
+}
