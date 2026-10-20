@@ -6,6 +6,7 @@ import { NotebookTracker } from '../../../features/tracker/NotebookTracker';
 import { trackerApi } from '../../../features/tracker/api';
 import type { WorklistItem } from '../../../features/tracker/types';
 import { getDisplayStatus } from '../../../shared/display/status';
+import '../../../features/catalog/product-form.css';
 import '../../../features/tracker/tracker.css';
 
 /** Notebook orders waiting on the signed-in operator (or, with "All", every order they may see), soonest deadline first. */
@@ -30,17 +31,20 @@ export function NotebookWorklistPanel() {
       <div className="ck-trk-row">
         <h2>Notebook orders</h2>
         <div className="ck-trk-actions">
-          <label><input type="radio" name="nb-scope" checked={scope === 'mine'} onChange={() => setScope('mine')} /> Assigned to me</label>
-          <label><input type="radio" name="nb-scope" checked={scope === 'all'} onChange={() => setScope('all')} /> All</label>
+          <fieldset className="ck-trk-filter">
+            <legend>Show orders</legend>
+            <label><input type="radio" name="nb-scope" checked={scope === 'mine'} onChange={() => setScope('mine')} /> Assigned to me</label>
+            <label><input type="radio" name="nb-scope" checked={scope === 'all'} onChange={() => setScope('all')} /> All</label>
+          </fieldset>
           <label><input type="checkbox" checked={finished} onChange={(e) => setFinished(e.target.checked)} /> Include completed</label>
-          <button className="ck-btn ck-btn-ghost" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" /> Refresh</button>
+          <button type="button" className="ck-btn ck-btn-ghost" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" /> Refresh</button>
         </div>
       </div>
       {error && <p className="ck-product-error" role="alert">{error}</p>}
       {!error && rows === null && <p className="ck-product-muted">Loading…</p>}
       {rows && (
         <div className="ck-table-wrap"><table className="ck-table">
-          <thead><tr><th>Order</th><th>School</th><th className="ck-num">Qty</th><th>Current step</th><th>Due</th><th>Progress</th><th /></tr></thead>
+          <thead><tr><th>Order</th><th>School</th><th className="ck-num">Qty</th><th>Current step</th><th>Due</th><th>Progress</th><th><span className="ck-sr-only">Actions</span></th></tr></thead>
           <tbody>
             {rows.length === 0 ? <tr><td colSpan={7} className="ck-product-muted">No notebook orders{scope === 'mine' ? ' assigned to you' : ''}.</td></tr>
               : rows.map((row) => (
@@ -51,7 +55,7 @@ export function NotebookWorklistPanel() {
                   <td><span className="ck-status sb2">{getDisplayStatus(row.status)}</span>{row.assigneeUserId === user?.userId ? '' : row.assigneeUserId == null ? ' · unassigned' : ''}</td>
                   <td className={row.overdue ? 'ck-trk-late' : undefined}>{row.dueAt ? `${row.overdue ? 'Overdue · ' : ''}${new Date(row.dueAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` : '—'}</td>
                   <td>{row.completed} of {row.total}</td>
-                  <td><button className="ck-btn ck-btn-ghost" onClick={() => setOpen(row.orderId)}>Open</button></td>
+                  <td><button type="button" className="ck-btn ck-btn-ghost" onClick={() => setOpen(row.orderId)}>Open</button></td>
                 </tr>
               ))}
           </tbody>

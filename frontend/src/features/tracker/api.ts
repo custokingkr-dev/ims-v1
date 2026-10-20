@@ -4,9 +4,9 @@ import { createNotebookTrackerClient } from '../../generated/notebookTrackerClie
 import { createCatalogClient } from '../../generated/catalogClient';
 import { createOperatorAdminClient } from '../../generated/operatorAdminClient';
 import { createTenantSchoolClient } from '../../generated/tenantSchoolClient';
-import type { DesignerRow, DraftImage, OperatorUser, OrderSummary, SlaRow, TrackerView, WorklistItem } from './types';
+import type { DesignerRow, DraftImage, OperatorRow, OperatorUser, OrderSummary, SlaRow, TrackerView, WorklistItem } from './types';
 
-export interface OperatorRow { assignmentId: number; userId: number; fullName: string; email: string; schoolId: number; catalogCategory: string | null }
+export type { OperatorRow };
 
 const client = createNotebookTrackerClient(api);
 const catalog = createCatalogClient(api);
@@ -66,14 +66,14 @@ export const trackerApi = {
   // Design drafts live with the order in school-core; the tracker only decides who may change them.
   draftImages: async (orderId: string): Promise<DraftImage[]> => {
     const assets = await catalog.listOrderAssets({ id: orderId });
-    return (Array.isArray(assets) ? assets : []).filter((a) => a.assetKind === 'DESIGN_DRAFT' && !a.supersededAt) as unknown as DraftImage[];
+    return (Array.isArray(assets) ? assets : []).filter((a) => a.assetKind === 'DESIGN_DRAFT' && !a.supersededAt);
   },
   uploadDraft: async (orderId: string, file: File) => { await catalog.uploadOrderAsset({ id: orderId }, { assetKind: 'DESIGN_DRAFT', file }); },
   deleteDraft: (orderId: string, assetId: number) => catalog.deleteOrderAsset({ id: orderId, assetId }),
   draftBlob: (orderId: string, assetId: number) => catalog.getOrderAssetContent({ id: orderId, assetId }),
 
   // The order itself lives in school-core: its summary, and starting a tracker whose creation failed at placement.
-  summary: (orderId: string): Promise<OrderSummary> => catalog.getNotebookTrackerSummary({ id: orderId }) as Promise<OrderSummary>,
+  summary: (orderId: string): Promise<OrderSummary> => catalog.getNotebookTrackerSummary({ id: orderId }),
   startTracker: (orderId: string) => catalog.ensureNotebookTracker({ id: orderId }),
 
   operatorUsers: async (): Promise<OperatorUser[]> => {

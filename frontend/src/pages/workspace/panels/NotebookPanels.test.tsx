@@ -1,11 +1,16 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { trackerApi } from '../../../features/tracker/api';
 import { NotebookAdminPanel } from './NotebookAdminPanel';
 import { NotebookWorklistPanel } from './NotebookWorklistPanel';
+import { SaAllOrdersPanel } from './SaAllOrdersPanel';
+import { catalogClient } from '../../../services/catalogApi';
 
 vi.mock('../../../contexts/AuthContext', () => ({ useAuth: () => ({ user: { role: 'OPERATIONS', userId: 42 } }) }));
 vi.mock('../../../features/tracker/NotebookTracker', () => ({ NotebookTracker: ({ orderId }: { orderId: string }) => <div>tracker for {orderId}</div> }));
+vi.mock('../../../features/tracker/OrderDetailEntry', () => ({ OrderDetailEntry: ({ orderId, trackerManaged }: { orderId: string; trackerManaged: boolean }) => <div>order {orderId} on tracker: {String(trackerManaged)}</div> }));
+vi.mock('../../../features/catalog/useCategoryLabel', () => ({ useCategoryLabel: () => (code?: string | null) => String(code ?? '') }));
+vi.mock('../../../services/catalogApi', () => ({ catalogClient: { getOrderPage: vi.fn(), getOrderSummary: vi.fn() } }));
 vi.mock('../../../features/tracker/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../features/tracker/api')>();
   return { ...actual, trackerApi: { worklist: vi.fn(), operators: vi.fn(), operatorUsers: vi.fn(), createScopedOperator: vi.fn(), scopeOperator: vi.fn(), revokeAssignment: vi.fn(), schools: vi.fn(), categories: vi.fn(), designers: vi.fn(), createDesigner: vi.fn(), updateDesigner: vi.fn(), timeSlots: vi.fn(), setTimeSlot: vi.fn(), clearTimeSlot: vi.fn() } };
@@ -27,6 +32,14 @@ it('lists my notebook orders soonest first, flags overdue ones and opens the tra
   expect(screen.getAllByText('6 of 12')).toHaveLength(2);
   fireEvent.click(screen.getAllByRole('button', { name: 'Open' })[0]);
   expect(await screen.findByText('tracker for CK-1')).toBeInTheDocument();
+});
+
+it('groups the worklist filters under a legend', async () => {
+  vi.mocked(trackerApi.worklist).mockResolvedValue([]);
+  render(<NotebookWorklistPanel />);
+  const group = await screen.findByRole('group', { name: 'Show orders' });
+  expect(within(group).getByRole('radio', { name: 'Assigned to me' })).toBeChecked();
+  expect(within(group).getByRole('radio', { name: 'All' })).not.toBeChecked();
 });
 
 it('asks for every order or finished ones when the filters change, and explains an empty list', async () => {
@@ -59,8 +72,74 @@ it('scopes an operator to notebooks at a chosen school and revokes an assignment
   fireEvent.change(await screen.findByLabelText('Catalogue item'), { target: { value: 'TROPHIES' } });
   fireEvent.click(assign);
   await waitFor(() => expect(trackerApi.scopeOperator).toHaveBeenCalledWith(12, 7, 'TROPHIES'));
-  fireEvent.click(screen.getByRole('button', { name: 'Revoke' }));
+});
+
+it('confirms a revoke in the page, sends nothing when cancelled, and revokes once confirmed', async () => {
+  const confirm = vi.spyOn(window, 'confirm');
+  vi.mocked(trackerApi.operators).mockResolvedValue([{ assignmentId: 9, userId: 3, fullName: 'Op Three', email: 'op3@x.test', schoolId: 7, catalogCategory: 'NOTEBOOKS' }]);
+  vi.mocked(trackerApi.revokeAssignment).mockResolvedValue(undefined);
+  render(<NotebookAdminPanel />);
+  fireEvent.click(await screen.findByRole('button', { name: /^Revoke/ }));
+  const dialog = screen.getByRole('dialog', { name: 'Revoke operator assignment' });
+  expect(dialog).toHaveTextContent('Op Three');
+  expect(dialog).toHaveTextContent('School Seven');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(trackerApi.revokeAssignment).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: /^Revoke/ }));
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Revoke assignment' }));
   await waitFor(() => expect(trackerApi.revokeAssignment).toHaveBeenCalledWith(3, 9));
+  expect(await screen.findByText('Assignment revoked.')).toBeInTheDocument();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(confirm).not.toHaveBeenCalled();
+  confirm.mockRestore();
+});
+
+it('reports set-up lists that cannot load instead of showing them as empty', async () => {
+  vi.mocked(trackerApi.operators).mockRejectedValue({ response: { data: { message: 'Identity is unavailable' } } });
+  vi.mocked(trackerApi.designers).mockRejectedValue({ response: { data: { message: 'Designers are unavailable' } } });
+  vi.mocked(trackerApi.schools).mockResolvedValue([{ id: 7, name: 'School Seven' }]);
+  vi.mocked(trackerApi.timeSlots).mockRejectedValue({ response: { data: { message: 'Time slots are unavailable' } } });
+  render(<NotebookAdminPanel />);
+  expect(await screen.findByText('Identity is unavailable')).toHaveAttribute('role', 'alert');
+  expect(screen.queryByText('No operator assignments.')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('tab', { name: 'Designers' }));
+  expect(await screen.findByText('Designers are unavailable')).toHaveAttribute('role', 'alert');
+  expect(screen.queryByText('No designers yet.')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('tab', { name: 'Time slots' }));
+  fireEvent.change(await screen.findByLabelText('School'), { target: { value: '7' } });
+  expect(await screen.findByText('Time slots are unavailable')).toHaveAttribute('role', 'alert');
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+});
+
+it('reports a school list that cannot load', async () => {
+  vi.mocked(trackerApi.operators).mockResolvedValue([]);
+  vi.mocked(trackerApi.schools).mockRejectedValue({ response: { data: { message: 'Schools are unavailable' } } });
+  render(<NotebookAdminPanel />);
+  expect(await screen.findByText('Schools are unavailable')).toHaveAttribute('role', 'alert');
+});
+
+it('moves between set-up sections with the arrow keys and labels each panel by its tab', async () => {
+  vi.mocked(trackerApi.operators).mockResolvedValue([]);
+  vi.mocked(trackerApi.designers).mockResolvedValue([]);
+  render(<NotebookAdminPanel />);
+  const tab = (name: string) => screen.getByRole('tab', { name });
+  expect(screen.getByRole('tabpanel', { name: 'Operators' })).toBeInTheDocument();
+  expect(tab('Operators')).toHaveAttribute('tabindex', '0');
+  expect(tab('Designers')).toHaveAttribute('tabindex', '-1');
+  fireEvent.keyDown(tab('Operators'), { key: 'ArrowRight' });
+  expect(tab('Designers')).toHaveAttribute('aria-selected', 'true');
+  expect(tab('Designers')).toHaveFocus();
+  expect(screen.getByRole('tabpanel', { name: 'Designers' })).toBeInTheDocument();
+  fireEvent.keyDown(tab('Designers'), { key: 'End' });
+  expect(tab('Time slots')).toHaveFocus();
+  fireEvent.keyDown(tab('Time slots'), { key: 'ArrowRight' });
+  expect(tab('Operators')).toHaveFocus();
+  fireEvent.keyDown(tab('Operators'), { key: 'ArrowLeft' });
+  expect(tab('Time slots')).toHaveAttribute('aria-selected', 'true');
+  fireEvent.keyDown(tab('Time slots'), { key: 'Home' });
+  expect(tab('Operators')).toHaveFocus();
+  expect(await screen.findByRole('tabpanel', { name: 'Operators' })).toBeInTheDocument();
 });
 
 it('creates a notebook-only operator at a school and refreshes the lists', async () => {
@@ -112,4 +191,17 @@ it('adds a designer and toggles one inactive', async () => {
   fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '1' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add designer' }));
   await waitFor(() => expect(trackerApi.createDesigner).toHaveBeenCalledWith('New One', '1'));
+});
+
+it('opens an order on the tracker as a tracker order, and any other placed form order as an ordinary one', async () => {
+  const order = (id: string, over = {}) => ({ id, schoolId: 7, schoolName: 'School Seven', category: 'NOTEBOOKS', status: 'ORDER_DETAILS', formVersion: 2, totalAmount: 0, ...over });
+  vi.mocked(catalogClient.getOrderPage).mockResolvedValue({ content: [order('CK-7', { trackerManaged: true }), order('ORD-8', { status: 'PROCESSING' })], page: 0, size: 200, totalElements: 2, totalPages: 1 });
+  vi.mocked(catalogClient.getOrderSummary).mockResolvedValue({ totalOrders: 2, pendingApproval: 0, approved: 0, rejected: 0, gmv: 0, activeOrders: 2, termSpend: 0, activeServices: 0, deliveredCount: 0 });
+  const { unmount } = render(<SaAllOrdersPanel onNewOrder={vi.fn()} />);
+  fireEvent.click(within((await screen.findByText('CK-7')).closest('tr')!).getByRole('button', { name: 'View' }));
+  expect(await screen.findByText('order CK-7 on tracker: true')).toBeInTheDocument();
+  unmount();
+  render(<SaAllOrdersPanel onNewOrder={vi.fn()} />);
+  fireEvent.click(within((await screen.findByText('ORD-8')).closest('tr')!).getByRole('button', { name: 'View' }));
+  expect(await screen.findByText('order ORD-8 on tracker: false')).toBeInTheDocument();
 });

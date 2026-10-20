@@ -4,8 +4,9 @@ import { errorMessage } from '../catalog/api';
 import { selectionLabel } from '../catalog/types';
 import { DraftImages } from './DraftImages';
 import { trackerApi } from './api';
-import { QC_ITEMS, SIGN_OFF_STEPS, STEP_FIELDS, countsMismatch, isSignedOff, wordCount, type FieldSpec } from './steps';
-import type { DesignerRow, OrderSummary, TrackerStep, TrackerView } from './types';
+import { QC_ITEMS, SIGN_OFF_STEPS, STEP_FIELDS, countsMismatch, formatDay, isSignedOff, wordCount, type FieldSpec } from './steps';
+import type { DesignerRow, OrderSummary, TrackerContact, TrackerDesigner, TrackerStep, TrackerView } from './types';
+import '../catalog/product-form.css';
 
 type Role = 'SUPERADMIN' | 'OPERATIONS' | string;
 const NOTE_WORDS = 100;
@@ -39,6 +40,54 @@ function Field({ spec, value, disabled, onChange }: { spec: FieldSpec; value: st
   );
 }
 
+/** The order's one vendor (spec v4: assigned by superadmin, name and phone), shown on the design and printing steps. */
+function VendorCard({ heading, nameLabel, contactLabel, vendor, editable, busy, onSave }: {
+  heading: string; nameLabel: string; contactLabel: string; vendor: TrackerContact | null; editable: boolean; busy: boolean;
+  onSave: (name: string, phone: string) => void;
+}) {
+  const [form, setForm] = useState({ name: vendor?.name ?? '', phone: vendor?.phone ?? '' });
+  useEffect(() => { setForm({ name: vendor?.name ?? '', phone: vendor?.phone ?? '' }); }, [vendor?.name, vendor?.phone]);
+  return (
+    <section className="ck-trk-card" aria-label={heading}>
+      <h4>{heading}</h4>
+      <dl className="ck-trk-facts">
+        <div><dt>{nameLabel}</dt><dd>{vendor?.name || 'Not assigned'}</dd></div>
+        <div><dt>{contactLabel}</dt><dd>{vendor?.phone || '—'}</dd></div>
+      </dl>
+      {editable && (
+        <div className="ck-product-fields">
+          <label className="field">Vendor name<input value={form.name} disabled={busy} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+          <label className="field">Vendor phone<input type="tel" value={form.phone} disabled={busy} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
+          <div><button type="button" className="ck-btn ck-btn-ghost" disabled={busy || !form.name.trim()} onClick={() => onSave(form.name.trim(), form.phone.trim())}>Save vendor</button></div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** The order's designer (spec v4: chosen per order from the superadmin's designer list; name and phone). */
+function DesignerCard({ designer, designers, editable, busy, onChoose }: {
+  designer: TrackerDesigner | null; designers: DesignerRow[]; editable: boolean; busy: boolean; onChoose: (id: number) => void;
+}) {
+  return (
+    <section className="ck-trk-card" aria-label="Designer">
+      <h4>Designer</h4>
+      <dl className="ck-trk-facts">
+        <div><dt>Name</dt><dd>{designer?.name ?? 'Not chosen'}</dd></div>
+        <div><dt>Phone</dt><dd>{designer?.phone || '—'}</dd></div>
+      </dl>
+      {editable && (
+        <label className="field">Choose designer
+          <select value={designer?.id ?? ''} disabled={busy} onChange={(e) => e.target.value && onChoose(Number(e.target.value))}>
+            <option value="">Select designer…</option>
+            {designers.filter((d) => d.active || d.id === designer?.id).map((d) => <option key={d.id} value={d.id}>{d.name}{d.phone ? ` · ${d.phone}` : ''}</option>)}
+          </select>
+        </label>
+      )}
+    </section>
+  );
+}
+
 export function StepWorkArea({ tracker, step, role, userId, designers, operators, summary = null, summaryError = '', onTracker }: {
   tracker: TrackerView; step: TrackerStep; role: Role; userId?: number; summary?: OrderSummary | null; summaryError?: string;
   designers: DesignerRow[]; operators: Array<{ userId: number; fullName: string }>; onTracker: (next: TrackerView) => void;
@@ -54,7 +103,6 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
   const [selectedDraft, setSelectedDraft] = useState<number | null>(null);
   const [comment, setComment] = useState('');
   const [followUp, setFollowUp] = useState({ percentComplete: '', nextFollowUpOn: '', contactPhone: '' });
-  const [vendor, setVendor] = useState({ name: tracker.vendor?.name ?? '', phone: tracker.vendor?.phone ?? '' });
 
   // A fresh server copy (another save, a reopen) replaces whatever was typed against the old one.
   useEffect(() => {
@@ -73,6 +121,7 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
   const mismatch = step.step === 11 && countsMismatch(tracker.orderedCount, toPayload(specs, form, null));
   const design = tracker.design;
   const worker = useMemo(() => operators.find((o) => o.userId === step.assigneeUserId), [operators, step.assigneeUserId]);
+  const saveVendor = (name: string, phone: string) => void act(() => trackerApi.setVendor(tracker.orderId, name, phone), 'Vendor saved.');
 
   return (
     <div className="ck-trk-work">
@@ -83,7 +132,7 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
           <div><dt>Type</dt><dd>{tracker.customised ? 'Customised notebooks' : 'Wholesale notebooks'}</dd></div>
           <div><dt>Quantity</dt><dd>{tracker.orderedCount.toLocaleString('en-IN')}</dd></div>
           <div><dt>Placed</dt><dd>{new Date(tracker.placedAt).toLocaleString('en-IN', { timeZone: tracker.timeZone })}</dd></div>
-          <div><dt>Required by</dt><dd>{summary?.requiredByDate ?? '—'}</dd></div>
+          <div><dt>Required by</dt><dd>{summary?.requiredByDate ? formatDay(summary.requiredByDate) : '—'}</dd></div>
         </dl>
       )}
       {step.step === 1 && summaryError && <p className="ck-product-error" role="alert">{summaryError}</p>}
@@ -97,14 +146,12 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
 
       {step.step === 2 && (
         <>
-          <label className="field">Designer
-            <select value={tracker.designer?.id ?? ''} disabled={busy || !step.can.canEditDetails && !superadmin}
-              onChange={(e) => e.target.value && void act(() => trackerApi.setDesigner(tracker.orderId, Number(e.target.value)), 'Designer saved.')}>
-              <option value="">Select designer…</option>
-              {designers.filter((d) => d.active || d.id === tracker.designer?.id).map((d) => <option key={d.id} value={d.id}>{d.name}{d.phone ? ` · ${d.phone}` : ''}</option>)}
-            </select>
-          </label>
-          <DraftImages orderId={tracker.orderId} canManage={design.canManageImages} />
+          <div className="ck-trk-cards">
+            <VendorCard heading="Vendor" nameLabel="Name" contactLabel="Phone" vendor={tracker.vendor} editable={superadmin} busy={busy} onSave={saveVendor} />
+            <DesignerCard designer={tracker.designer} designers={designers} editable={editable || superadmin} busy={busy}
+              onChoose={(id) => void act(() => trackerApi.setDesigner(tracker.orderId, id), 'Designer saved.')} />
+          </div>
+          <DraftImages orderId={tracker.orderId} canManage={design.canManageImages} preview />
           <p className="ck-product-muted">Design status: <strong>{(design.state ?? 'NOT_SENT').replace(/_/g, ' ').toLowerCase()}</strong>
             {design.comment ? ` — ${design.comment}` : ''}</p>
           {(design.state === 'NOT_SENT' || design.state === 'CHANGES_REQUESTED') && (step.status === 'ACTIVE' || step.status === 'COMPLETED') && (
@@ -145,7 +192,9 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
         </fieldset>
       )}
 
-      {step.step === 9 && <p className="ck-product-muted">Vendor: {tracker.vendor?.name ? `${tracker.vendor.name} · ${tracker.vendor.phone ?? ''}` : 'not assigned'}</p>}
+      {step.step === 7 && (
+        <VendorCard heading="Printing vendor" nameLabel="Printing vendor" contactLabel="Contact" vendor={tracker.vendor} editable={superadmin} busy={busy} onSave={saveVendor} />
+      )}
 
       {step.step === 10 && (
         <>
@@ -176,15 +225,6 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
           Ordered {tracker.orderedCount.toLocaleString('en-IN')}.{' '}
           {mismatch ? 'The counts do not match — add a discrepancy note before completing.' : 'Accepted must equal dispatch and not exceed produced, which must not exceed ordered.'}
         </p>
-      )}
-
-      {step.step === 9 && superadmin && (
-        <div className="ck-product-fields">
-          <label className="field">Vendor name<input value={vendor.name} onChange={(e) => setVendor({ ...vendor, name: e.target.value })} /></label>
-          <label className="field">Vendor phone<input value={vendor.phone} onChange={(e) => setVendor({ ...vendor, phone: e.target.value })} /></label>
-          <div><button type="button" className="ck-btn ck-btn-ghost" disabled={busy || !vendor.name.trim()}
-            onClick={() => void act(() => trackerApi.setVendor(tracker.orderId, vendor.name.trim(), vendor.phone.trim()), 'Vendor saved.')}>Save vendor</button></div>
-        </div>
       )}
 
       <label className="field">Stage note <span className="ck-product-muted">{noteWords}/{NOTE_WORDS} words</span>

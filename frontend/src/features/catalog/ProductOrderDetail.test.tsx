@@ -9,7 +9,7 @@ vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () 
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: auth }) }));
 beforeEach(() => { vi.clearAllMocks(); auth.role = 'SUPERADMIN'; URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
 afterEach(cleanup);
-// The quote, approval and delivery screens still serve every category except notebooks, which the order tracker runs.
+// The quote, approval and delivery screens serve every order except a notebook order on the order tracker, which the tracker runs.
 const legacy = (...args: Parameters<typeof savedNotebook>) => {
   const detail = savedNotebook(...args);
   return { ...detail, formDefinition: { ...detail.formDefinition, category: { ...detail.formDefinition.category, code: 'UNIFORMS' } } };
@@ -45,8 +45,9 @@ it('quotes persisted lines in paise, refreshes computed totals, and gates approv
   expect(screen.getByRole('button', { name: 'Approve order' })).toBeEnabled();
   expect(screen.getByText('Rs. 45,620.00')).toBeInTheDocument();
 });
+const onTracker = (status: string) => { const detail = savedNotebook(status); return { ...detail, order: { ...detail.order, trackerManaged: true } }; };
 it.each(['DESIGN_APPROVAL', 'PROCESSING', 'APPROVED'])('offers no quote, approval or delivery for a %s notebook order, which the tracker runs', async (status) => {
-  const detail = savedNotebook(status);
+  const detail = onTracker(status);
   expect(detail.formDefinition.category.code).toBe('NOTEBOOKS');
   vi.mocked(api.get).mockResolvedValue({ data: detail });
   render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
@@ -56,6 +57,24 @@ it.each(['DESIGN_APPROVAL', 'PROCESSING', 'APPROVED'])('offers no quote, approva
   expect(screen.queryByText('Quoted')).not.toBeInTheDocument();
   expect(screen.queryByText(/Design approval (pending|completed)/)).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Unit price for line 1')).not.toBeInTheDocument();
+});
+// Owner decision D1: a notebook order placed before the tracker keeps the quote, approve and deliver flow it started in.
+it('keeps quoting, design approval, order approval and delivery for a notebook order placed before the tracker', async () => {
+  const quoted = { ...savedNotebook('PROCESSING'), pricingStatus: 'QUOTED', approvedDesignAssetId: 1,
+    assets: [{ id: 1, assetKind: 'DESIGN' as const, contentType: 'image/png', sizeBytes: 100, originalFilename: 'cover.png', contentUrl: '/supply/orders/ORD-42/assets/1/content', uploadedAt: '2026-09-15T12:00:00Z' }] };
+  vi.mocked(api.get).mockImplementation(async (url) => ({ data: String(url).endsWith('/content') ? new Blob(['image'], { type: 'image/png' }) : quoted }));
+  const { unmount } = render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByRole('button', { name: 'Save quote' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Approve order' })).toBeEnabled();
+  expect(screen.getByText('Design approval completed')).toBeInTheDocument();
+  unmount();
+  vi.mocked(api.get).mockImplementation(async (url) => ({ data: String(url).endsWith('/content') ? new Blob(['image'], { type: 'image/png' }) : { ...quoted, order: { ...quoted.order, status: 'DESIGN_APPROVAL' } } }));
+  const { unmount: unmountDesign } = render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByRole('button', { name: 'Approve design' })).toBeInTheDocument();
+  unmountDesign();
+  vi.mocked(api.get).mockResolvedValue({ data: { ...savedNotebook('APPROVED', false), order: { ...savedNotebook('APPROVED', false).order, trackerManaged: false } } });
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByRole('button', { name: 'Mark delivered' })).toBeEnabled();
 });
 it('hides design and quote actions from school administrators, while keeping uploaded artwork readable', async () => {
   auth.role = 'ADMIN';

@@ -1,3 +1,4 @@
+import { selectionLabel, type SelectionSnapshot } from '../catalog/types';
 import type { TrackerStep } from './types';
 
 export type FieldKind = 'text' | 'textarea' | 'date' | 'whole' | 'number' | 'choice';
@@ -44,6 +45,36 @@ export const STEP_FIELDS: Record<number, FieldSpec[]> = {
 
 /** Steps whose completion needs a superadmin sign-off (spec v4). */
 export const SIGN_OFF_STEPS = new Set([8, 12]);
+/** Steps the spec keeps as the prototype with a "TBD" note below the name: editable, saved as drafts, completed normally. */
+export const TBD_STEPS = new Set([6]);
+
+/** A step's state in words, so the progress bar never relies on colour or an icon alone. */
+export function stepState(step: TrackerStep): 'completed' | 'overdue' | 'in progress' | 'locked' {
+  if (step.status === 'COMPLETED') return 'completed';
+  if (step.status === 'ACTIVE') return step.overdue ? 'overdue' : 'in progress';
+  return 'locked';
+}
+
+/** A calendar day such as 2026-12-15 as "15 Dec 2026". It names a day, not an instant, so no time zone may move it. */
+export function formatDay(isoDay: string): string {
+  const day = new Date(`${isoDay.slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(day.getTime()) ? isoDay : day.toLocaleDateString('en-IN', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export interface SizeSummary { size: string; pages: number; books: number }
+
+/** The order's lines by size and page count: the rulings of one size and length collapse into one entry (spec v4 header). */
+export function sizeSummary(lines: Array<{ selections: SelectionSnapshot; bookCount: number; pageCount: number }>): SizeSummary[] {
+  const groups = new Map<string, SizeSummary>();
+  for (const line of lines) {
+    const size = selectionLabel(line.selections, 'SIZE') || 'Size not given';
+    const key = `${size}|${line.pageCount}`;
+    const group = groups.get(key) ?? { size, pages: line.pageCount, books: 0 };
+    group.books += line.bookCount;
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
 
 export function isSignedOff(step: TrackerStep): boolean {
   const sign = step.data.signOff;

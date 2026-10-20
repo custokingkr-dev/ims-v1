@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
-import { useWorkspaceNavigation } from './useWorkspaceNavigation';
+import { withDerivedModuleGroups } from './config';
+import { isItemOnlyOperator, useWorkspaceNavigation } from './useWorkspaceNavigation';
 
 afterEach(cleanup);
 const permissions = ['student:read', 'student:create', 'firefighting:read', 'firefighting:create'];
@@ -19,6 +20,48 @@ function Navigation({ modules }: { modules: Set<string> | null }) {
     <button onClick={() => state.setPanel('students')}>Open students</button>
   </>;
 }
+
+function NavItems({ granted, itemOnlyOperator }: { granted: string[]; itemOnlyOperator: boolean }) {
+  const state = useWorkspaceNavigation({
+    role: 'OPERATIONS', activeModules: withDerivedModuleGroups(['ORDERS', 'FIREFIGHTING']), itemOnlyOperator,
+    can: code => granted.includes(code), canAny: codes => codes.some(code => granted.includes(code)),
+  });
+  const location = useLocation();
+  return <>
+    <output aria-label="Task URL">{location.search}</output>
+    <ul aria-label="Navigation">{state.navSections.flatMap(section => section.items).map(item => <li key={item.key}>{item.label}</li>)}</ul>
+  </>;
+}
+const navLabels = () => within(screen.getByRole('list', { name: 'Navigation' })).queryAllByRole('listitem').map(item => item.textContent);
+
+describe('notebook order navigation', () => {
+  // Exactly what identity grants an operator whose only assignment is one catalogue item at a school (owner decision D2).
+  const itemOnly = ['workspace:access', 'notebook-tracker:read', 'notebook-tracker:act', 'order:read', 'order:update'];
+
+  it('recognises an operator scoped only to catalogue items', () => {
+    expect(isItemOnlyOperator({ role: 'OPERATIONS', operatorSchools: [], operatorScopes: ['7:NOTEBOOKS'] })).toBe(true);
+    expect(isItemOnlyOperator({ role: 'OPERATIONS', operatorSchools: [7], operatorScopes: ['8:NOTEBOOKS'] })).toBe(false);
+    expect(isItemOnlyOperator({ role: 'OPERATIONS', operatorSchools: [7], operatorScopes: [] })).toBe(false);
+    expect(isItemOnlyOperator({ role: 'SUPERADMIN', operatorSchools: [], operatorScopes: ['7:NOTEBOOKS'] })).toBe(false);
+    expect(isItemOnlyOperator(null)).toBe(false);
+  });
+
+  it('gives an item-only operator with no school the notebook orders and nothing else, and opens them', async () => {
+    render(<MemoryRouter initialEntries={['/dashboard']}><NavItems granted={itemOnly} itemOnlyOperator /></MemoryRouter>);
+    expect(navLabels()).toEqual(['Notebook orders']);
+    await waitFor(() => expect(screen.getByLabelText('Task URL')).toHaveTextContent('?panel=nb-work'));
+  });
+
+  it('shows notebook orders to a school-wide operator who holds the tracker permission, beside their other work', () => {
+    render(<MemoryRouter initialEntries={['/dashboard']}><NavItems granted={['notebook-tracker:read', 'order:read']} itemOnlyOperator={false} /></MemoryRouter>);
+    expect(navLabels()).toEqual(expect.arrayContaining(['Supply Details', 'School Orders', 'Notebook orders']));
+  });
+
+  it('hides notebook orders from an operator without the tracker permission', () => {
+    render(<MemoryRouter initialEntries={['/dashboard']}><NavItems granted={['workflow:read', 'order:read']} itemOnlyOperator={false} /></MemoryRouter>);
+    expect(navLabels()).not.toContain('Notebook orders');
+  });
+});
 
 describe('workspace task URLs', () => {
   it('opens request drafts and removes the request when switching tasks', () => {

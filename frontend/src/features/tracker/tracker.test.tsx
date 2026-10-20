@@ -7,14 +7,15 @@ import { parseTracker, trackerApi } from './api';
 import { countsMismatch, slaLabel, wordCount } from './steps';
 import type { OrderSummary, TrackerStep, TrackerView } from './types';
 
-const auth = vi.hoisted(() => ({ user: { role: 'OPERATIONS', userId: 42 } as { role: string; userId: number } | null }));
+const auth = vi.hoisted(() => ({ user: { role: 'OPERATIONS', userId: 42 } as { role: string; userId: number; fullName?: string } | null }));
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: auth.user }) }));
 vi.mock('./api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api')>();
   return { ...actual, trackerApi: {
     get: vi.fn(), saveDraft: vi.fn(), saveStageNote: vi.fn(), complete: vi.fn(), reopen: vi.fn(), signOff: vi.fn(), assignStep: vi.fn(),
-    designers: vi.fn(), operators: vi.fn(), addInternalNote: vi.fn(), draftImages: vi.fn(), uploadDraft: vi.fn(), deleteDraft: vi.fn(),
-    draftBlob: vi.fn(), sendDesign: vi.fn(), addFollowUp: vi.fn(), summary: vi.fn(), startTracker: vi.fn(),
+    assignOrder: vi.fn(), designers: vi.fn(), operators: vi.fn(), addInternalNote: vi.fn(), draftImages: vi.fn(), uploadDraft: vi.fn(),
+    deleteDraft: vi.fn(), draftBlob: vi.fn(), sendDesign: vi.fn(), approveDesign: vi.fn(), requestChanges: vi.fn(), setVendor: vi.fn(),
+    setDesigner: vi.fn(), addFollowUp: vi.fn(), summary: vi.fn(), startTracker: vi.fn(),
   } };
 });
 vi.mock('../catalog/ProductOrderDetail', () => ({ ProductOrderDetail: () => <div>ordinary order detail</div> }));
@@ -44,11 +45,24 @@ const summary = (over: Partial<OrderSummary> = {}): OrderSummary => ({
   lines: [{ lineNo: 1, selections: { SIZE: { code: 'LONG', label: 'Long' }, RULING: { code: 'SINGLE_RULE', label: 'Single rule' } }, bookCount: 400, pageCount: 198 }], ...over,
 });
 
+const TITLES: Record<number, string> = {
+  1: 'Order Details', 2: 'Designing Activity', 3: 'Head Approval', 4: 'CDR Conversion', 5: 'Production Planning', 6: 'Board Procurement',
+  7: 'Printing Press', 8: 'Pre-Print Quality Gate', 9: 'Factory Handover', 10: 'Production Follow-up', 11: 'Validation Count', 12: 'Delivery & Invoicing',
+};
+/** A tracker whose only open step is the one given, with that step's work area in front. */
+const onStep = (n: number, over: Partial<TrackerStep> = {}, rest: Partial<TrackerView> = {}) => tracker({
+  progress: { completed: 0, total: 1, currentStep: n, currentTitle: TITLES[n], finished: false },
+  steps: [step(n, TITLES[n], { status: 'ACTIVE', can: can({ canEditDetails: true, canEditStageNote: true, canComplete: true }), ...over })], ...rest,
+});
+const draft = (id: number, name: string, contentType = 'image/png') => ({ id, assetKind: 'DESIGN_DRAFT', contentType, originalFilename: name, sizeBytes: 10, uploadedAt: `2026-10-19T0${id}:00:00Z` });
+const operator = (userId: number, fullName: string, catalogCategory: string | null = 'NOTEBOOKS') => ({ assignmentId: userId, userId, fullName, email: `op${userId}@x.test`, schoolId: 7, catalogCategory });
+
 beforeEach(() => {
   vi.clearAllMocks(); auth.user = { role: 'OPERATIONS', userId: 42 };
   vi.mocked(trackerApi.summary).mockResolvedValue(summary());
   vi.mocked(trackerApi.designers).mockResolvedValue([]); vi.mocked(trackerApi.operators).mockResolvedValue([]);
   vi.mocked(trackerApi.draftImages).mockResolvedValue([]);
+  URL.createObjectURL = vi.fn((blob: Blob) => `blob:${blob.type}`); URL.revokeObjectURL = vi.fn();
 });
 afterEach(cleanup);
 
@@ -92,7 +106,7 @@ describe('NotebookTracker', () => {
     expect(within(lines).getByText('Long')).toBeInTheDocument();
     expect(within(lines).getByText('Single rule')).toBeInTheDocument();
     expect(within(lines).getByText('198')).toBeInTheDocument();
-    expect(screen.getByText('2026-12-15')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Order Details work area' })).getByText('15 Dec 2026')).toBeInTheDocument();
     expect(screen.getByText('Please use green')).toBeInTheDocument();
     expect(screen.getByText(/office@seven.test · \+91 98765 43210/)).toBeInTheDocument();
   });
@@ -218,30 +232,210 @@ describe('NotebookTracker', () => {
     expect(screen.getByLabelText(/Add a note/)).toHaveValue('');
   });
 
-  it('loads the tracker itself when none was given and reports a failure', async () => {
-    vi.mocked(trackerApi.get).mockRejectedValue({ response: { data: { message: 'Order not found' } } });
+  it('loads the tracker itself when none was given, reports a failure and retries', async () => {
+    vi.mocked(trackerApi.get).mockRejectedValueOnce({ response: { data: { message: 'Order not found' } } }).mockResolvedValue(tracker());
     render(<NotebookTracker orderId="CK-404" onBack={vi.fn()} />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Order not found');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText(/Step 5 · Production Planning/)).toBeInTheDocument();
+    expect(trackerApi.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('runs a wholesale order through nine steps, without the design steps', () => {
+    const path = [1, 5, 6, 7, 8, 9, 10, 11, 12];
+    render(<NotebookTracker orderId="CK-1" onBack={vi.fn()} initial={tracker({ customised: false,
+      progress: { completed: 0, total: 9, currentStep: 1, currentTitle: 'Order Details', finished: false },
+      steps: path.map((n, i) => step(n, TITLES[n], { status: i === 0 ? 'ACTIVE' : 'LOCKED' })) })} />);
+    expect(within(screen.getByRole('list', { name: 'Order progress' })).getAllByRole('listitem')).toHaveLength(9);
+    expect(within(screen.getByRole('navigation', { name: 'Stages' })).getAllByRole('button')).toHaveLength(9);
+    expect(screen.getByText(/0 of 9 done/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Designing Activity/ })).not.toBeInTheDocument();
+  });
+
+  it('names every step and its state in the progress bar, not just a number', () => {
+    render(<NotebookTracker orderId="CK-1" onBack={vi.fn()} initial={tracker({ steps: [
+      step(1, 'Order Details', { status: 'COMPLETED', completedAt: '2026-10-19T05:00:00Z' }),
+      step(5, 'Production Planning', { status: 'ACTIVE', overdue: true }),
+      step(6, 'Board Procurement'),
+    ] })} />);
+    const items = within(screen.getByRole('list', { name: 'Order progress' })).getAllByRole('listitem');
+    expect(items[0]).toHaveTextContent('Step 1, Order Details: completed');
+    expect(items[1]).toHaveTextContent('Step 5, Production Planning: overdue');
+    expect(items[2]).toHaveTextContent('Step 6, Board Procurement: locked');
+  });
+
+  it('puts the delivery date and a summary of sizes and pages in the header', async () => {
+    vi.mocked(trackerApi.summary).mockResolvedValue(summary({ lines: [
+      { lineNo: 1, selections: { SIZE: { code: 'LONG', label: 'Long' }, RULING: { code: 'SINGLE_RULE', label: 'Single rule' } }, bookCount: 400, pageCount: 196 },
+      { lineNo: 2, selections: { SIZE: { code: 'LONG', label: 'Long' }, RULING: { code: 'FOUR_LINE', label: 'Four line' } }, bookCount: 300, pageCount: 196 },
+      { lineNo: 3, selections: { SIZE: { code: 'KING', label: 'King' }, RULING: { code: 'SINGLE_RULE', label: 'Single rule' } }, bookCount: 300, pageCount: 98 },
+    ] }));
+    render(<NotebookTracker orderId="CK-1" initial={tracker()} onBack={vi.fn()} />);
+    const head = screen.getByRole('group', { name: 'Order CK-1' });
+    expect(await within(head).findByText('15 Dec 2026')).toBeInTheDocument();
+    expect(within(head).getByText('Deliver by')).toBeInTheDocument();
+    expect(within(head).getByText('Long · 196 pages · 700 books')).toBeInTheDocument();
+    expect(within(head).getByText('King · 98 pages · 300 books')).toBeInTheDocument();
+  });
+
+  it('shows who wrote each internal note', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    vi.mocked(trackerApi.operators).mockResolvedValue([operator(12, 'Op Twelve')]);
+    const at = '2026-10-19T05:00:00Z';
+    render(<NotebookTracker orderId="CK-1" onBack={vi.fn()} initial={tracker({ internalNotes: [
+      { id: 1, authorUserId: 12, body: 'Vendor called back', createdAt: at },
+      { id: 2, authorUserId: 1, body: 'Checked the artwork', createdAt: at },
+      { id: 3, authorUserId: 99, body: 'Old note', createdAt: at },
+    ] })} />);
+    const notes = screen.getByRole('list', { name: 'Internal notes' });
+    expect(await within(notes).findByText(/Op Twelve ·/)).toBeInTheDocument();
+    expect(within(notes).getByText(/You ·/)).toBeInTheDocument();
+    expect(within(notes).getByText(/User 99 ·/)).toBeInTheDocument();
+  });
+
+  it('notes below its name that Board Procurement is still to be decided, and still completes it', () => {
+    render(<NotebookTracker orderId="CK-1" initial={onStep(6)} onBack={vi.fn()} />);
+    const area = screen.getByRole('region', { name: 'Board Procurement work area' });
+    expect(within(area).getByText(/TBD/)).toBeInTheDocument();
+    expect(within(area).getByRole('button', { name: /Complete step/ })).toBeEnabled();
+  });
+
+  it('offers superadmin to give a whole unassigned order to one operator', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    vi.mocked(trackerApi.operators).mockResolvedValue([operator(12, 'Op Twelve'), operator(13, 'Op Elsewhere', 'TROPHIES')]);
+    vi.mocked(trackerApi.assignOrder).mockResolvedValue(tracker());
+    const unassigned = tracker({ steps: tracker().steps.map((s) => ({ ...s, assigneeUserId: null })) });
+    render(<NotebookTracker orderId="CK-1" initial={unassigned} onBack={vi.fn()} />);
+    const assignment = screen.getByRole('region', { name: 'Assignment' });
+    expect(within(assignment).getByText(/not assigned/)).toBeInTheDocument();
+    const select = within(assignment).getByLabelText('Assign order to');
+    await within(select).findByRole('option', { name: 'Op Twelve' });
+    expect(within(select).queryByRole('option', { name: 'Op Elsewhere' })).not.toBeInTheDocument();
+    expect(within(assignment).getByRole('button', { name: 'Assign order' })).toBeDisabled();
+    fireEvent.change(select, { target: { value: '12' } });
+    fireEvent.click(within(assignment).getByRole('button', { name: 'Assign order' }));
+    await waitFor(() => expect(trackerApi.assignOrder).toHaveBeenCalledWith('CK-1', 12));
+  });
+
+  it('says why the order cannot be assigned when the operator list does not load', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    vi.mocked(trackerApi.operators).mockRejectedValue({ response: { data: { message: 'Identity is unavailable' } } });
+    render(<NotebookTracker orderId="CK-1" initial={tracker()} onBack={vi.fn()} />);
+    const assignment = screen.getByRole('region', { name: 'Assignment' });
+    expect(await within(assignment).findByRole('alert')).toHaveTextContent('Identity is unavailable');
+  });
+
+  it('gives operators no order assignment', () => {
+    render(<NotebookTracker orderId="CK-1" initial={tracker({ steps: tracker().steps.map((s) => ({ ...s, assigneeUserId: null })) })} onBack={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: 'Assign order' })).not.toBeInTheDocument();
+  });
+});
+
+describe('design and vendor steps', () => {
+  const vendor = { name: 'Sharma Press', phone: '+91 90000 11111' };
+  const designStep = (rest: Partial<TrackerView> = {}) => onStep(2, {}, { customised: true, vendor, designer: { id: 3, name: 'Priya Singh', phone: '98100 22222' },
+    design: { state: 'NOT_SENT', comment: null, at: null, by: null, approvedDraftRef: null, canManageImages: true }, ...rest });
+
+  it('shows the vendor and designer cards on the design step, not on the factory handover', async () => {
+    vi.mocked(trackerApi.designers).mockResolvedValue([{ id: 3, name: 'Priya Singh', phone: '98100 22222', active: true }]);
+    const { unmount } = render(<NotebookTracker orderId="CK-1" initial={designStep()} onBack={vi.fn()} />);
+    const area = screen.getByRole('region', { name: 'Designing Activity work area' });
+    const vendorCard = within(area).getByRole('region', { name: 'Vendor' });
+    expect(within(vendorCard).getByText('Sharma Press')).toBeInTheDocument();
+    expect(within(vendorCard).getByText('+91 90000 11111')).toBeInTheDocument();
+    const designerCard = within(area).getByRole('region', { name: 'Designer' });
+    expect(within(designerCard).getByText('Priya Singh')).toBeInTheDocument();
+    expect(within(designerCard).getByText('98100 22222')).toBeInTheDocument();
+    unmount();
+    render(<NotebookTracker orderId="CK-1" initial={onStep(9, {}, { vendor })} onBack={vi.fn()} />);
+    expect(within(screen.getByRole('region', { name: 'Factory Handover work area' })).queryByText(/Sharma Press/)).not.toBeInTheDocument();
+  });
+
+  it('lets superadmin set the vendor on the design step', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    vi.mocked(trackerApi.setVendor).mockResolvedValue(designStep());
+    render(<NotebookTracker orderId="CK-1" initial={designStep({ vendor: null })} onBack={vi.fn()} />);
+    const card = within(screen.getByRole('region', { name: 'Designing Activity work area' })).getByRole('region', { name: 'Vendor' });
+    fireEvent.change(within(card).getByLabelText('Vendor name'), { target: { value: ' Sharma Press ' } });
+    fireEvent.change(within(card).getByLabelText('Vendor phone'), { target: { value: '+91 90000 11111' } });
+    fireEvent.click(within(card).getByRole('button', { name: 'Save vendor' }));
+    await waitFor(() => expect(trackerApi.setVendor).toHaveBeenCalledWith('CK-1', 'Sharma Press', '+91 90000 11111'));
+  });
+
+  it('shows the printing vendor and its contact on the printing press step', () => {
+    render(<NotebookTracker orderId="CK-1" initial={onStep(7, {}, { vendor })} onBack={vi.fn()} />);
+    const area = screen.getByRole('region', { name: 'Printing Press work area' });
+    const card = within(area).getByRole('region', { name: 'Printing vendor' });
+    expect(within(card).getByText('Sharma Press')).toBeInTheDocument();
+    expect(within(card).getByText('Contact')).toBeInTheDocument();
+    expect(within(card).getByText('+91 90000 11111')).toBeInTheDocument();
+    for (const label of ['Press job reference', 'Quantity sent', 'Expected return']) expect(within(area).getByLabelText(label)).toBeInTheDocument();
+  });
+
+  it('previews the newest image on the design step and never downloads a PDF for a thumbnail', async () => {
+    vi.mocked(trackerApi.draftImages).mockResolvedValue([draft(1, 'first.png'), draft(2, 'latest.webp', 'image/webp'), draft(3, 'proof.pdf', 'application/pdf')]);
+    vi.mocked(trackerApi.draftBlob).mockImplementation(async (_order, id) => new Blob(['x'], { type: id === 2 ? 'image/webp' : 'image/png' }));
+    render(<NotebookTracker orderId="CK-1" initial={designStep()} onBack={vi.fn()} />);
+    const preview = await screen.findByRole('img', { name: 'Current design preview: latest.webp' });
+    await waitFor(() => expect(preview).toHaveAttribute('src', 'blob:image/webp'));
+    expect(screen.getByText('proof.pdf')).toBeInTheDocument();
+    expect(trackerApi.draftBlob).toHaveBeenCalledWith('CK-1', 1);
+    expect(trackerApi.draftBlob).toHaveBeenCalledWith('CK-1', 2);
+    expect(trackerApi.draftBlob).not.toHaveBeenCalledWith('CK-1', 3);
+  });
+
+  it('lets superadmin choose one draft on head approval and approve it', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    vi.mocked(trackerApi.draftImages).mockResolvedValue([draft(1, 'v1.png'), draft(2, 'v2.png')]);
+    vi.mocked(trackerApi.draftBlob).mockRejectedValue(new Error('no preview'));
+    vi.mocked(trackerApi.approveDesign).mockResolvedValue(tracker());
+    render(<NotebookTracker orderId="CK-1" onBack={vi.fn()} initial={onStep(3, {}, { customised: true,
+      design: { state: 'SENT', comment: null, at: null, by: null, approvedDraftRef: null, canManageImages: false } })} />);
+    const approve = screen.getByRole('button', { name: /Approve selected draft/ });
+    expect(approve).toBeDisabled();
+    const versions = await screen.findByRole('group', { name: 'Design version to approve' });
+    fireEvent.click(await within(versions).findByRole('radio', { name: 'v2.png' }));
+    fireEvent.click(approve);
+    await waitFor(() => expect(trackerApi.approveDesign).toHaveBeenCalledWith('CK-1', 2, undefined));
   });
 });
 
 describe('OrderDetailEntry', () => {
-  it('opens the tracker for staff when the order has one', async () => {
+  it('opens the tracker for staff when the order is on the tracker', async () => {
     vi.mocked(trackerApi.get).mockResolvedValue(tracker());
-    render(<OrderDetailEntry orderId="CK-1" onBack={vi.fn()} />);
+    render(<OrderDetailEntry orderId="CK-1" trackerManaged onBack={vi.fn()} />);
     expect(await screen.findByText(/Step 5 · Production Planning/)).toBeInTheDocument();
     expect(screen.queryByText('ordinary order detail')).not.toBeInTheDocument();
   });
-  it('falls back to the ordinary order for staff when there is no tracker', async () => {
-    vi.mocked(trackerApi.get).mockRejectedValue({ response: { status: 404 } });
-    render(<OrderDetailEntry orderId="CK-9" onBack={vi.fn()} />);
+  it('keeps the ordinary order screen for any order not on the tracker, and never asks the tracker about it', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    render(<OrderDetailEntry orderId="ORD-9" trackerManaged={false} onBack={vi.fn()} />);
     expect(await screen.findByText('ordinary order detail')).toBeInTheDocument();
+    expect(trackerApi.get).not.toHaveBeenCalled();
+    expect(trackerApi.summary).not.toHaveBeenCalled();
+  });
+  it('says why the tracker could not load and offers Retry, never falling back to the old order screen', async () => {
+    vi.mocked(trackerApi.get).mockRejectedValueOnce({ response: { status: 503, data: { message: 'Tracker service unavailable' } } }).mockResolvedValue(tracker());
+    render(<OrderDetailEntry orderId="CK-1" trackerManaged onBack={vi.fn()} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Tracker service unavailable');
+    expect(screen.queryByText('ordinary order detail')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText(/Step 5 · Production Planning/)).toBeInTheDocument();
+    expect(trackerApi.get).toHaveBeenCalledTimes(2);
+  });
+  it('treats a missing tracker that is not waiting to be created as an error too', async () => {
+    vi.mocked(trackerApi.get).mockRejectedValue({ response: { status: 404, data: { message: 'Tracker not found' } } });
+    render(<OrderDetailEntry orderId="CK-1" trackerManaged onBack={vi.fn()} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('Tracker not found');
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(screen.queryByText('ordinary order detail')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Start tracker' })).not.toBeInTheDocument();
   });
   it('offers to start the tracker when placement could not, and opens it once started', async () => {
     vi.mocked(trackerApi.get).mockRejectedValueOnce({ response: { status: 404 } }).mockResolvedValue(tracker());
     vi.mocked(trackerApi.summary).mockResolvedValue(summary({ trackerPending: true }));
     vi.mocked(trackerApi.startTracker).mockResolvedValue({ trackerPending: false });
-    render(<OrderDetailEntry orderId="CK-1" onBack={vi.fn()} />);
+    render(<OrderDetailEntry orderId="CK-1" trackerManaged onBack={vi.fn()} />);
     expect(await screen.findByText('ordinary order detail')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Start tracker' }));
     expect(await screen.findByText(/Step 5 · Production Planning/)).toBeInTheDocument();
@@ -251,28 +445,21 @@ describe('OrderDetailEntry', () => {
     vi.mocked(trackerApi.get).mockRejectedValue({ response: { status: 404 } });
     vi.mocked(trackerApi.summary).mockResolvedValue(summary({ trackerPending: true }));
     vi.mocked(trackerApi.startTracker).mockResolvedValue({ trackerPending: true });
-    render(<OrderDetailEntry orderId="CK-1" onBack={vi.fn()} />);
+    render(<OrderDetailEntry orderId="CK-1" trackerManaged onBack={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Start tracker' }));
     expect(await screen.findByText(/could not be reached/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start tracker' })).toBeEnabled();
   });
-  it('offers nothing for an order that is not waiting on a tracker', async () => {
-    vi.mocked(trackerApi.get).mockRejectedValue({ response: { status: 404 } });
-    vi.mocked(trackerApi.summary).mockRejectedValue({ response: { status: 400 } });
-    render(<OrderDetailEntry orderId="ORD-9" onBack={vi.fn()} />);
-    expect(await screen.findByText('ordinary order detail')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Start tracker' })).not.toBeInTheDocument();
-  });
   it('never asks a school administrator for a tracker', async () => {
     auth.user = { role: 'SCHOOL_ADMIN', userId: 5 };
-    render(<OrderDetailEntry orderId="CK-1" onBack={vi.fn()} />);
+    render(<OrderDetailEntry orderId="CK-1" trackerManaged onBack={vi.fn()} />);
     expect(await screen.findByText('ordinary order detail')).toBeInTheDocument();
     expect(trackerApi.get).not.toHaveBeenCalled();
   });
 });
 
 describe('DraftImages', () => {
-  const image = (id: number, name: string) => ({ id, contentType: 'image/png', originalFilename: name, sizeBytes: 10, uploadedAt: `2026-10-19T0${id}:00:00Z` });
+  const image = (id: number, name: string) => draft(id, name);
   it('lists the drafts with a count of the six allowed and shows the server message for a seventh', async () => {
     vi.mocked(trackerApi.draftImages).mockResolvedValue([1, 2, 3, 4, 5, 6].map((i) => image(i, `v${i}.png`)));
     vi.mocked(trackerApi.draftBlob).mockRejectedValue(new Error('no preview'));
@@ -299,5 +486,27 @@ describe('DraftImages', () => {
     const section = await screen.findByRole('region', { name: 'Design drafts' });
     expect(within(section).queryByRole('button', { name: /Upload draft/ })).not.toBeInTheDocument();
     expect(within(section).queryByRole('button', { name: /Delete/ })).not.toBeInTheDocument();
+  });
+  it('shows thumbnails as pictures rather than buttons that do nothing, and a PDF as a file chip', async () => {
+    vi.mocked(trackerApi.draftImages).mockResolvedValue([image(1, 'a.png'), draft(2, 'b.pdf', 'application/pdf')]);
+    vi.mocked(trackerApi.draftBlob).mockResolvedValue(new Blob(['x'], { type: 'image/png' }));
+    render(<DraftImages orderId="CK-1" canManage={false} />);
+    const section = await screen.findByRole('region', { name: 'Design drafts' });
+    expect(await within(section).findByRole('img', { name: 'a.png' })).toHaveAttribute('src', 'blob:image/png');
+    expect(within(section).getByText('PDF')).toBeInTheDocument();
+    expect(within(section).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(section).queryByRole('radio')).not.toBeInTheDocument();
+    expect(trackerApi.draftBlob).toHaveBeenCalledTimes(1);
+  });
+  it('does not download a draft again when the list reloads, and releases a deleted one', async () => {
+    vi.mocked(trackerApi.draftImages).mockResolvedValueOnce([image(1, 'a.png'), image(2, 'b.png')]).mockResolvedValue([image(2, 'b.png')]);
+    vi.mocked(trackerApi.draftBlob).mockResolvedValue(new Blob(['x'], { type: 'image/png' }));
+    vi.mocked(trackerApi.deleteDraft).mockResolvedValue(undefined);
+    render(<DraftImages orderId="CK-1" canManage />);
+    expect(await screen.findByRole('img', { name: 'a.png' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete a.png' }));
+    expect(await screen.findByText('1 of 6')).toBeInTheDocument();
+    expect(trackerApi.draftBlob).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1));
   });
 });
