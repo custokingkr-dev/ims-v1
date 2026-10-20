@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -165,22 +166,76 @@ class CatalogOrderFormIntegrationTest {
     }
 
     @Test
-    void notebookOrdersAreNeitherQuotedApprovedNorDeliveredAndStartAtTheFirstTrackerStep() {
+    void trackerManagedOrderRefusesOldActions() {
         var created = create(false, 25, 30);
         var placed = tx(() -> orders.placeOrder(created.id(), 7L));
         assertThat(placed.status()).isEqualTo("ORDER_DETAILS");
         assertThat(placed.designStatus()).isEqualTo("NOT_REQUIRED");
         assertThat(placed.pricingStatus()).isEqualTo("NOT_APPLICABLE");
+        assertThat(managed(created.id())).isTrue();
+        assertThat(placed.trackerManaged()).as("the order payload the order screen reads").isTrue();
         superadmin();
         assertThatThrownBy(() -> tx(() -> { forms.quote(created.id(), quote(created.id(), 125, 90)); return null; }))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("not quoted");
-        assertThatThrownBy(() -> tx(() -> orders.approveBySuperadmin(created.id())))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("tracker");
-        assertThatThrownBy(() -> tx(() -> orders.markDelivered(created.id(), 99L)))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("tracker");
-        assertThatThrownBy(() -> tx(() -> { forms.returnOrder(created.id(), "again"); return null; }))
-                .isInstanceOf(ResponseStatusException.class);
+        for (Supplier<?> oldAction : List.<Supplier<?>>of(
+                () -> orders.approveBySuperadmin(created.id()),
+                () -> orders.markDelivered(created.id(), 99L),
+                () -> orders.markDesignApproved(created.id()),
+                () -> orders.updateOrderStatus(created.id(), "APPROVED"),
+                () -> orders.updateOrderStatus(created.id(), "DELIVERED"),
+                () -> { forms.returnOrder(created.id(), "again"); return null; })) {
+            assertThatThrownBy(() -> tx(oldAction)).isInstanceOfSatisfying(ResponseStatusException.class,
+                    ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        }
         assertThat(tx(() -> orders.order(created.id()).orElseThrow()).status()).isEqualTo("ORDER_DETAILS");
+
+        // Even in a state the approval queue lists, a tracker-managed order stays out of Order Approvals.
+        jdbc.sql("UPDATE catalog.catalog_orders SET status = 'PROCESSING', superadmin_approval_status = 'PENDING' WHERE id = :id")
+                .param("id", created.id()).update();
+        assertThat(tx(() -> orders.pendingApprovalOrders(100))).extracting(CatalogReadRepository.PendingCatalogOrderRow::id)
+                .doesNotContain(created.id());
+    }
+
+    @Test
+    void legacyNotebookOrderKeepsOldFlow() {
+        // Customised: design approval, the approval queue, the quote, final approval and delivery, as before the tracker.
+        var custom = create(true, 400, 600);
+        upload(custom.id(), "DESIGN", 1);
+        placeBeforeTheTracker(custom.id(), true);
+        superadmin();
+        assertThat(tx(() -> orders.markDesignApproved(custom.id())).status()).isEqualTo("DESIGN_APPROVED_PROCESSING");
+        assertThat(tx(() -> orders.pendingApprovalOrders(100))).extracting(CatalogReadRepository.PendingCatalogOrderRow::id).contains(custom.id());
+        tx(() -> { forms.quote(custom.id(), quote(custom.id(), 120, 0)); return null; });
+        assertThat(tx(() -> orders.order(custom.id()).orElseThrow()).pricingStatus()).isEqualTo("QUOTED");
+        assertThat(tx(() -> orders.approveBySuperadmin(custom.id())).status()).isEqualTo("APPROVED");
+        upload(custom.id(), "PRE_DELIVERY_PHOTO", 3);
+        assertThat(tx(() -> orders.markDelivered(custom.id(), 99L)).status()).isEqualTo("DELIVERED");
+        assertThat(managed(custom.id())).isFalse();
+        assertThat(tx(() -> orders.order(custom.id()).orElseThrow()).trackerManaged()).isFalse();
+
+        // Not customised: straight into the approval queue, and the superadmin status aliases still work.
+        school(1);
+        var plain = create(false, 25, 30);
+        placeBeforeTheTracker(plain.id(), false);
+        superadmin();
+        assertThat(tx(() -> orders.pendingApprovalOrders(100))).extracting(CatalogReadRepository.PendingCatalogOrderRow::id).contains(plain.id());
+        tx(() -> { forms.quote(plain.id(), quote(plain.id(), 125, 90)); return null; });
+        assertThat(tx(() -> orders.updateOrderStatus(plain.id(), "APPROVED")).status()).isEqualTo("APPROVED");
+        assertThat(tx(() -> orders.updateOrderStatus(plain.id(), "DELIVERED")).status()).isEqualTo("DELIVERED");
+        assertThat(managed(plain.id())).isFalse();
+    }
+
+    @Test
+    void aDraftSavedBeforeTheTrackerIsPlacedOntoTheTracker() {
+        var created = create(true, 400, 600);
+        // What draft creation stored before the tracker: a quote pending and a design to approve.
+        jdbc.sql("UPDATE catalog.catalog_orders SET pricing_status = 'PENDING_PRICING', design_status = 'PENDING' WHERE id = :id")
+                .param("id", created.id()).update();
+        var placed = tx(() -> orders.placeOrder(created.id(), 7L));
+        assertThat(placed.status()).isEqualTo("ORDER_DETAILS");
+        assertThat(placed.pricingStatus()).isEqualTo("NOT_APPLICABLE");
+        assertThat(placed.designStatus()).isEqualTo("NOT_REQUIRED");
+        assertThat(managed(created.id())).isTrue();
     }
 
     @Test
@@ -403,6 +458,20 @@ class CatalogOrderFormIntegrationTest {
             ImageIO.write(image, "png", output);
             return tx(() -> forms.upload(id, kind, output.toByteArray(), "artwork.png"));
         } catch (java.io.IOException ex) { throw new AssertionError(ex); }
+    }
+
+    /** Puts a draft where placement left notebook orders before the tracker existed: on the approval flow, no tracker attributes. */
+    private static void placeBeforeTheTracker(String id, boolean custom) {
+        jdbc.sql("""
+                UPDATE catalog.catalog_orders SET status = :status, design_status = :design, superadmin_approval_status = :approval,
+                    pricing_status = 'PENDING_PRICING', placed_at = now(), placed_by = 7, attributes = '{}'::jsonb WHERE id = :id
+                """).param("id", id).param("status", custom ? "DESIGN_APPROVAL" : "PROCESSING")
+                .param("design", custom ? "PENDING" : "NOT_REQUIRED").param("approval", custom ? "NOT_SUBMITTED" : "PENDING").update();
+    }
+
+    private static boolean managed(String id) {
+        return Boolean.TRUE.equals(jdbc.sql("SELECT (attributes ->> 'trackerManaged')::boolean FROM catalog.catalog_orders WHERE id = :id")
+                .param("id", id).query(Boolean.class).optional().orElse(false));
     }
 
     @SuppressWarnings("unchecked")

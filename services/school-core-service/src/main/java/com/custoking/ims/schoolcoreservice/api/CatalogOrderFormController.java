@@ -65,12 +65,16 @@ public class CatalogOrderFormController {
         return detailResponse(id);
     }
 
-    /** Creates the tracker for a placed notebook order whose tracker could not be created at placement. */
+    /**
+     * Starts the tracker of a placed notebook order whose tracker is not created yet. The attempt runs once the request's
+     * transaction commits, so the answer is read afterwards.
+     */
     @PostMapping("/{id}/tracker/ensure")
     public Map<String, Object> ensureTracker(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
                                              @PathVariable String id) {
         requireToken(token, "order:update");
-        return forms.ensureTracker(id);
+        forms.ensureTracker(id);
+        return Map.of("trackerPending", forms.trackerPending(id));
     }
 
     /** Header data for the notebook order tracker: lines, quantity, delivery date and the school's notes. */

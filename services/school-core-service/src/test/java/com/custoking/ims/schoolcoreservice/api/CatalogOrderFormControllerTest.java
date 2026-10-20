@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class CatalogOrderFormControllerTest {
@@ -51,6 +52,17 @@ class CatalogOrderFormControllerTest {
                 .contentType("application/json").content("{\"version\":0,\"orderData\":{}}"))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(forms, orders);
+    }
+
+    /** The order screen (ProductOrderDetail, the tracker's entry) reads order.trackerManaged from the form payload. */
+    @Test void theFormPayloadSaysWhetherTheTrackerManagesTheOrder() throws Exception {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+        when(forms.detail("CK-1")).thenReturn(new java.util.LinkedHashMap<>(java.util.Map.of("formVersion", 2)));
+        when(orders.order("CK-1")).thenReturn(java.util.Optional.of(new CatalogReadRepository.CatalogOrderRow("CK-1", "NOTEBOOKS", "{}",
+                0L, 0L, 0L, "ORDER_DETAILS", null, null, null, null, null, null, null, null, "NOT_REQUIRED", "NOT_SUBMITTED",
+                null, null, 7L, null, null, null, 1L, 1L, null, null, null, null, null, "School A", 2, "NOT_APPLICABLE", true)));
+        mvc.perform(get("/api/v1/supply/orders/CK-1/form").header("X-Catalog-Service-Token", "test-token"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.order.trackerManaged").value(true));
     }
 
     @Test void streamedFilesArePrivateAndCannotExecuteInline() throws Exception {

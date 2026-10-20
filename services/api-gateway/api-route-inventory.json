@@ -3547,7 +3547,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 84
+      "line": 88
     },
     {
       "service": "school-core-service",
@@ -3556,7 +3556,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 91
+      "line": 95
     },
     {
       "service": "school-core-service",
@@ -3565,7 +3565,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets/{assetId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 102
+      "line": 106
     },
     {
       "service": "school-core-service",
@@ -3574,7 +3574,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets/{assetId}/content",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 110
+      "line": 114
     },
     {
       "service": "school-core-service",
@@ -3655,7 +3655,7 @@
       "path": "/api/v1/catalog/orders/{id}/tracker-summary",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 77
+      "line": 81
     },
     {
       "service": "school-core-service",
@@ -3664,7 +3664,7 @@
       "path": "/api/v1/catalog/orders/{id}/tracker/ensure",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 69
+      "line": 72
     },
     {
       "service": "school-core-service",
@@ -4294,7 +4294,7 @@
       "path": "/api/v1/internal/outbox/relay",
       "classification": "internal",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/OutboxRelayTriggerController.java",
-      "line": 31
+      "line": 38
     },
     {
       "service": "school-core-service",
@@ -5203,7 +5203,7 @@
       "path": "/api/v1/supply/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 84
+      "line": 88
     },
     {
       "service": "school-core-service",
@@ -5212,7 +5212,7 @@
       "path": "/api/v1/supply/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 91
+      "line": 95
     },
     {
       "service": "school-core-service",
@@ -5221,7 +5221,7 @@
       "path": "/api/v1/supply/orders/{id}/assets/{assetId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 102
+      "line": 106
     },
     {
       "service": "school-core-service",
@@ -5230,7 +5230,7 @@
       "path": "/api/v1/supply/orders/{id}/assets/{assetId}/content",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 110
+      "line": 114
     },
     {
       "service": "school-core-service",
@@ -5311,7 +5311,7 @@
       "path": "/api/v1/supply/orders/{id}/tracker-summary",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 77
+      "line": 81
     },
     {
       "service": "school-core-service",
@@ -5320,7 +5320,7 @@
       "path": "/api/v1/supply/orders/{id}/tracker/ensure",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 69
+      "line": 72
     },
     {
       "service": "school-core-service",

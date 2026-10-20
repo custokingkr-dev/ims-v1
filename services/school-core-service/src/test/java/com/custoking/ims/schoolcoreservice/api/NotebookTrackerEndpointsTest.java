@@ -50,10 +50,14 @@ class NotebookTrackerEndpointsTest {
         when(forms.trackerSummary("CK-1")).thenReturn(Map.of("orderId", "CK-1"));
         mvc.perform(get("/api/v1/catalog/orders/CK-1/tracker-summary").header("X-Catalog-Service-Token", "test-token"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.orderId").value("CK-1"));
-        when(forms.ensureTracker("CK-1")).thenReturn(Map.of("trackerPending", false));
+        when(forms.trackerPending("CK-1")).thenReturn(false);
         mvc.perform(post("/api/v1/catalog/orders/CK-1/tracker/ensure")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/v1/catalog/orders/CK-1/tracker/ensure").header("X-Catalog-Service-Token", "test-token"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.trackerPending").value(false));
+        // The flag is read only once ensureTracker has committed and made its after-commit attempt.
+        var calls = org.mockito.Mockito.inOrder(forms);
+        calls.verify(forms).ensureTracker("CK-1");
+        calls.verify(forms).trackerPending("CK-1");
     }
 
     @Test void aRefusedRequestCarriesItsReasonToTheScreenAsAMessage() throws Exception {

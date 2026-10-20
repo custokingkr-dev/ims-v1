@@ -25,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.DockerClientFactory;
@@ -44,6 +45,7 @@ import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 
 /**
  * Notebook order tracker, school-core side (spec v4): placement starts the tracker, design drafts are capped and gated,
@@ -53,7 +55,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class NotebookTrackerIntegrationTest {
     static PostgreSQLContainer<?> pg;
     static JdbcClient jdbc;
+    /** A second, independent connection: what other sessions see, so a peer call can be shown to follow the commit. */
+    static JdbcClient observer;
+    static DataSourceTransactionManager manager;
     static TransactionTemplate transaction;
+    static NotebookTrackerCreationQueue queue;
     static CatalogReadRepository orders;
     static CatalogOrderFormService forms;
     @TempDir static Path assets;
@@ -63,12 +69,18 @@ class NotebookTrackerIntegrationTest {
 
     static final class FakeTracker implements TrackerGateway {
         final List<NewTracker> created = new ArrayList<>();
+        /** Every create call, failed or not: whether a transaction was open, and the order status other sessions saw. */
+        final List<Boolean> createdInTransaction = new ArrayList<>();
+        final List<String> statusOthersSaw = new ArrayList<>();
         boolean failCreate;
         boolean down;
         ImageAccess access = new ImageAccess(true, null);
         final List<String> accessChecks = new ArrayList<>();
 
         @Override public void create(NewTracker tracker) {
+            createdInTransaction.add(TransactionSynchronizationManager.isActualTransactionActive());
+            statusOthersSaw.add(observer.sql("SELECT status FROM catalog.catalog_orders WHERE id = :id").param("id", tracker.orderId())
+                    .query(String.class).optional().orElse(null));
             if (failCreate) throw new IllegalStateException("tracker down");
             created.add(tracker);
         }
@@ -77,18 +89,22 @@ class NotebookTrackerIntegrationTest {
             accessChecks.add(orderId + ":" + userId + ":" + role);
             return access;
         }
-        void reset() { created.clear(); accessChecks.clear(); failCreate = false; down = false; access = new ImageAccess(true, null); }
+        int createCalls() { return createdInTransaction.size(); }
+        void forget() { created.clear(); createdInTransaction.clear(); statusOthersSaw.clear(); }
+        void reset() { forget(); accessChecks.clear(); failCreate = false; down = false; access = new ImageAccess(true, null); }
     }
 
     static final class FakeOperators implements OperatorResolver {
         String outcome = "NONE";
         Long userId;
         boolean down;
+        final List<Boolean> resolvedInTransaction = new ArrayList<>();
         @Override public Resolution resolve(long schoolId, String catalogCategory) {
+            resolvedInTransaction.add(TransactionSynchronizationManager.isActualTransactionActive());
             if (down) throw new IllegalStateException("identity down");
             return new Resolution(outcome, userId);
         }
-        void reset() { outcome = "NONE"; userId = null; down = false; }
+        void reset() { outcome = "NONE"; userId = null; down = false; resolvedInTransaction.clear(); }
     }
 
     @BeforeAll
@@ -102,12 +118,15 @@ class NotebookTrackerIntegrationTest {
         }
         var dataSource = new DriverManagerDataSource(pg.getJdbcUrl(), "owner", "owner");
         jdbc = JdbcClient.create(dataSource);
-        transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        observer = JdbcClient.create(new DriverManagerDataSource(pg.getJdbcUrl(), "owner", "owner"));
+        manager = new DataSourceTransactionManager(dataSource);
+        transaction = new TransactionTemplate(manager);
         var outbox = new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school");
         var products = new ProductCatalogRepository(jdbc, new ObjectMapper(), outbox, true);
         forms = new CatalogOrderFormService(jdbc, products, new ProductFormRuleEngine(),
                 new CatalogOrderAssetStorage("", "local", assets.toString()), outbox, null);
-        forms.configureTracker(TRACKER, OPERATORS);
+        queue = new NotebookTrackerCreationQueue(jdbc, TRACKER, OPERATORS, manager);
+        forms.configureTracker(TRACKER, queue);
         orders = new CatalogReadRepository(jdbc, outbox);
         orders.configureProductForms(forms, products);
         jdbc.sql("INSERT INTO tenant_school.schools(id, name, short_code, active, created_at, time_zone, contact_email, contact_phone) VALUES (1,'School A','SCA',true,now(),'Asia/Kolkata','office@school-a.test','+91 98765 43210'),(2,'School B','SCB',true,now(),'Asia/Kolkata',NULL,NULL)").update();
@@ -188,7 +207,84 @@ class NotebookTrackerIntegrationTest {
     }
 
     @Test
-    void anUnreachableTrackerStillPlacesTheOrderAndMarksItSoTheTrackerCanBeCreatedLater() {
+    void placementCommitsWhenTrackerUnreachable() {
+        TRACKER.failCreate = true;
+        var order = notebook(true);
+        var placed = tx(() -> orders.placeOrder(order, 7L));
+
+        assertThat(placed.status()).isEqualTo("ORDER_DETAILS");
+        assertThat(status(order)).as("committed, not rolled back").isEqualTo("ORDER_DETAILS");
+        assertThat(managed(order)).isTrue();
+        assertThat(pending(order)).isTrue();
+        assertThat(queued(order)).isEqualTo(1);
+        assertThat(TRACKER.createCalls()).as("attempted once after commit").isEqualTo(1);
+        assertThat(TRACKER.created).isEmpty();
+        assertThat(lastError(order)).contains("tracker down");
+    }
+
+    @Test
+    void placementMakesNoPeerCallInsideTransaction() {
+        OPERATORS.outcome = "ITEM_SPECIFIC";
+        OPERATORS.userId = 42L;
+        var order = notebook(true);
+        tx(() -> orders.placeOrder(order, 7L));
+
+        assertThat(TRACKER.createdInTransaction).containsExactly(false);
+        assertThat(OPERATORS.resolvedInTransaction).containsExactly(false);
+        assertThat(TRACKER.statusOthersSaw).as("the tracker is asked only once the placement is visible to everyone").containsExactly("ORDER_DETAILS");
+        assertThat(TRACKER.created.getFirst().assigneeUserId()).isEqualTo(42L);
+        assertThat(pending(order)).isFalse();
+        assertThat(managed(order)).isTrue();
+        assertThat(queued(order)).isZero();
+    }
+
+    @Test
+    void drainCreatesTrackerOnce() {
+        TRACKER.failCreate = true;
+        var order = notebook(true);
+        tx(() -> orders.placeOrder(order, 7L));
+        TenantContext.clear(); // the relay trigger runs with no user
+
+        assertThat(queue.drain(5)).as("still backing off after the failed attempt").isZero();
+        assertThat(TRACKER.createCalls()).isEqualTo(1);
+
+        TRACKER.failCreate = false;
+        due(order);
+        assertThat(queue.drain(5)).isEqualTo(1);
+        assertThat(queue.drain(5)).as("a second drain creates nothing").isZero();
+
+        assertThat(TRACKER.created).hasSize(1);
+        assertThat(TRACKER.created.getFirst().placedBy()).as("taken from the order row, not the caller").isEqualTo(7L);
+        assertThat(TRACKER.created.getFirst().orderedCount()).isEqualTo(2000);
+        assertThat(TRACKER.createdInTransaction).containsOnly(false);
+        assertThat(queued(order)).isZero();
+        assertThat(pending(order)).isFalse();
+        assertThat(managed(order)).isTrue();
+    }
+
+    @Test
+    void failedAttemptsBackOffDoublingUpToAnHour() {
+        TRACKER.failCreate = true;
+        var order = notebook(false);
+        tx(() -> orders.placeOrder(order, 7L));
+        TenantContext.clear();
+        assertThat(attempts(order)).isEqualTo(1);
+        assertThat(minutesToNextAttempt(order)).isCloseTo(2.0, within(0.2));
+
+        due(order);
+        assertThat(queue.drain(5)).isZero();
+        assertThat(attempts(order)).isEqualTo(2);
+        assertThat(minutesToNextAttempt(order)).isCloseTo(4.0, within(0.2));
+
+        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 9 WHERE order_id = :id").param("id", order).update();
+        due(order);
+        assertThat(queue.drain(5)).isZero();
+        assertThat(minutesToNextAttempt(order)).isCloseTo(60.0, within(0.2));
+        assertThat(pending(order)).isTrue();
+    }
+
+    @Test
+    void anUnreachableTrackerCanBeStartedByHandOnceItIsBack() {
         TRACKER.failCreate = true;
         OPERATORS.outcome = "ITEM_SPECIFIC";
         OPERATORS.userId = 42L;
@@ -199,20 +295,38 @@ class NotebookTrackerIntegrationTest {
 
         TRACKER.failCreate = false;
         superadmin();
-        assertThat(tx(() -> forms.ensureTracker(order))).containsEntry("trackerPending", false);
+        tx(() -> { forms.ensureTracker(order); return null; });
         assertThat(TRACKER.created).hasSize(1);
         assertThat(TRACKER.created.getFirst().assigneeUserId()).isEqualTo(42L);
+        assertThat(TRACKER.createdInTransaction).containsOnly(false);
         assertThat(pending(order)).isFalse();
+        assertThat(queued(order)).isZero();
     }
 
     @Test
     void ensuringATrackerNeedsAPlacedNotebookOrderAndAnOperatorOrSuperadmin() {
         var draft = notebook(true);
         superadmin();
-        assertThatThrownBy(() -> tx(() -> forms.ensureTracker(draft))).isInstanceOf(ResponseStatusException.class).hasMessageContaining("placed notebook");
+        assertThatThrownBy(() -> tx(() -> { forms.ensureTracker(draft); return null; })).isInstanceOf(ResponseStatusException.class).hasMessageContaining("placed notebook");
         school(1);
-        assertThatThrownBy(() -> tx(() -> forms.ensureTracker(draft))).isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
-        assertThat(TRACKER.created).isEmpty();
+        assertThatThrownBy(() -> tx(() -> { forms.ensureTracker(draft); return null; })).isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+        assertThat(TRACKER.createCalls()).isZero();
+    }
+
+    @Test
+    void ensureTrackerRefusesClosedOrders() {
+        var order = placedNotebook(true);
+        var legacy = placedBeforeTheTracker(true);
+        superadmin();
+        for (String closed : List.of("CANCELLED", "DELIVERED", "COMPLETED")) {
+            jdbc.sql("UPDATE catalog.catalog_orders SET status = :status WHERE id = :id").param("status", closed).param("id", order).update();
+            assertThatThrownBy(() -> tx(() -> { forms.ensureTracker(order); return null; }), closed)
+                    .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        }
+        assertThatThrownBy(() -> tx(() -> { forms.ensureTracker(legacy); return null; })).as("an order placed before the tracker keeps its old flow")
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        assertThat(TRACKER.createCalls()).isZero();
+        assertThat(queued(order) + queued(legacy)).isZero();
     }
 
     @Test
@@ -466,6 +580,35 @@ class NotebookTrackerIntegrationTest {
     static class TransactionalTestConfiguration {}
 
     @Test
+    void theCreationQueueRunsAsTheRuntimeRoleUnderRowLevelSecurity() {
+        TRACKER.failCreate = true;
+        var atOne = notebook(true);
+        tx(() -> orders.placeOrder(atOne, 7L));
+        school(2);
+        var atTwo = tx(() -> orders.createOrder(Map.of("schoolId", 2, "category", "NOTEBOOKS", "orderData", data(false, 30, 30)))).id();
+        tx(() -> orders.placeOrder(atTwo, 7L));
+
+        var runtime = new TenantAwareDataSource(new DriverManagerDataSource(pg.getJdbcUrl(), "app_rt", "app_rt"));
+        var runtimeJdbc = JdbcClient.create(runtime);
+        var runtimeManager = new DataSourceTransactionManager(runtime);
+        var runtimeQueue = new NotebookTrackerCreationQueue(runtimeJdbc, TRACKER, OPERATORS, runtimeManager);
+        assertThat(runtimeJdbc.sql("SELECT order_id FROM catalog.notebook_tracker_creation_queue").query(String.class).list())
+                .as("a school sees only its own queue rows").containsExactly(atTwo);
+        TenantContext.clear();
+        assertThat(runtimeJdbc.sql("SELECT count(*) FROM catalog.notebook_tracker_creation_queue").query(Long.class).single())
+                .as("no scope, no rows").isZero();
+
+        TRACKER.failCreate = false;
+        due(atOne);
+        due(atTwo);
+        assertThat(runtimeQueue.drain(5)).as("the claim crosses schools; each row is then worked in its own school").isEqualTo(2);
+        assertThat(queued(atOne) + queued(atTwo)).isZero();
+        assertThat(pending(atOne)).isFalse();
+        assertThat(pending(atTwo)).isFalse();
+        assertThat(TRACKER.created).extracting(TrackerGateway.NewTracker::schoolId).containsExactlyInAnyOrder(1L, 2L);
+    }
+
+    @Test
     void itemOnlyOperatorCannotListSchoolOrders() {
         var notebook = placedNotebook(true);
         var trophyData = Map.of("orderSelections", Map.of(), "lines", List.of(
@@ -565,7 +708,19 @@ class NotebookTrackerIntegrationTest {
     private String placedNotebook(boolean custom) {
         var id = notebook(custom);
         tx(() -> orders.placeOrder(id, 7L));
-        TRACKER.created.clear();
+        TRACKER.forget();
+        OPERATORS.resolvedInTransaction.clear();
+        return id;
+    }
+
+    /** A notebook order as placement left it before the tracker existed: on the approval flow, with no tracker attributes. */
+    private String placedBeforeTheTracker(boolean custom) {
+        var id = notebook(custom);
+        jdbc.sql("""
+                UPDATE catalog.catalog_orders SET status = :status, design_status = :design, superadmin_approval_status = :approval,
+                    pricing_status = 'PENDING_PRICING', placed_at = now(), placed_by = 7, attributes = '{}'::jsonb WHERE id = :id
+                """).param("id", id).param("status", custom ? "DESIGN_APPROVAL" : "PROCESSING")
+                .param("design", custom ? "PENDING" : "NOT_REQUIRED").param("approval", custom ? "NOT_SUBMITTED" : "PENDING").update();
         return id;
     }
 
@@ -597,6 +752,34 @@ class NotebookTrackerIntegrationTest {
     private List<String> intents(String order) {
         return jdbc.sql("SELECT image_count || ':' || status || ':' || recipients FROM catalog.order_design_email_intents WHERE order_id = :id ORDER BY id")
                 .param("id", order).query(String.class).list();
+    }
+
+    private boolean managed(String order) {
+        return Boolean.TRUE.equals(jdbc.sql("SELECT (attributes ->> 'trackerManaged')::boolean FROM catalog.catalog_orders WHERE id = :id")
+                .param("id", order).query(Boolean.class).optional().orElse(false));
+    }
+
+    private long queued(String order) {
+        return jdbc.sql("SELECT count(*) FROM catalog.notebook_tracker_creation_queue WHERE order_id = :id").param("id", order).query(Long.class).single();
+    }
+
+    /** Lets the backoff elapse. */
+    private void due(String order) {
+        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET next_attempt_at = now() - interval '1 second' WHERE order_id = :id")
+                .param("id", order).update();
+    }
+
+    private int attempts(String order) {
+        return jdbc.sql("SELECT attempts FROM catalog.notebook_tracker_creation_queue WHERE order_id = :id").param("id", order).query(Integer.class).single();
+    }
+
+    private double minutesToNextAttempt(String order) {
+        return jdbc.sql("SELECT EXTRACT(EPOCH FROM next_attempt_at - clock_timestamp()) / 60 FROM catalog.notebook_tracker_creation_queue WHERE order_id = :id")
+                .param("id", order).query(Double.class).single();
+    }
+
+    private String lastError(String order) {
+        return jdbc.sql("SELECT last_error FROM catalog.notebook_tracker_creation_queue WHERE order_id = :id").param("id", order).query(String.class).single();
     }
 
     private boolean pending(String order) {

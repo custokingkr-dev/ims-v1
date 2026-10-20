@@ -4,14 +4,11 @@ import com.custoking.ims.schoolcoreservice.catalog.domain.DesignDraftRules;
 import com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormRuleEngine;
 import com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormRuleEngine.NormalisationResult;
 import com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorage;
-import com.custoking.ims.schoolcoreservice.infrastructure.OperatorResolver;
 import com.custoking.ims.schoolcoreservice.infrastructure.TrackerGateway;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -42,10 +39,12 @@ public class CatalogOrderFormService {
     private final OutboxWriter outbox;
     private final ModuleEntitlementGuard moduleGuard;
     private TrackerGateway tracker;
-    private OperatorResolver operators;
+    private NotebookTrackerCreationQueue trackers;
 
-    private static final Logger LOG = LoggerFactory.getLogger(CatalogOrderFormService.class);
-    /** Notebook orders skip the approval, quote and delivery flow; their progress comes from the notebook order tracker. */
+    /**
+     * A notebook order placed now follows the notebook order tracker instead of the quote, approval and delivery flow. One
+     * placed before the tracker existed keeps that flow (owner decision D1): see {@link #trackerManaged}.
+     */
     private static final String NOTEBOOKS = "NOTEBOOKS";
     /** The first tracker step, which is the status of a freshly placed notebook order. */
     static final String FIRST_TRACKER_STATUS = "ORDER_DETAILS";
@@ -60,11 +59,11 @@ public class CatalogOrderFormService {
         this.moduleGuard = moduleGuard;
     }
 
-    /** Optional: without these the service behaves as before and notebook placement starts no tracker (unit tests). */
+    /** Optional: without these, notebook placement queues no tracker and design drafts are unavailable (unit tests). */
     @Autowired(required = false)
-    public void configureTracker(TrackerGateway tracker, OperatorResolver operators) {
+    public void configureTracker(TrackerGateway tracker, NotebookTrackerCreationQueue trackers) {
         this.tracker = tracker;
-        this.operators = operators;
+        this.trackers = trackers;
     }
 
     public boolean handlesCreation(String category) {
@@ -175,10 +174,11 @@ public class CatalogOrderFormService {
         Map<String, Object> order = load(id, true);
         requireV2(order);
         boolean custom = customized(map(order.get("order_selections")));
-        boolean notebook = isNotebook(order);
-        if (notebook && !"PLACE".equals(action)) {
+        if (trackerManaged(order)) {
             throw bad("Notebook orders move through the notebook order tracker, not through approval or delivery");
         }
+        // Placing a notebook order starts its tracker; a notebook order placed before the tracker keeps the flow below.
+        boolean startsTracker = isNotebook(order) && "PLACE".equals(action);
         String nextStatus;
         String design = string(order.get("design_status"));
         String approval = string(order.get("superadmin_approval_status"));
@@ -188,9 +188,9 @@ public class CatalogOrderFormService {
                 TenantScope.requirePermissionIfAuthenticated("order:create");
                 requireStatus(order, "DRAFT");
                 requireStage(order, "ON_PLACE");
-                nextStatus = notebook ? FIRST_TRACKER_STATUS : custom ? "DESIGN_APPROVAL" : "PROCESSING";
-                design = custom && !notebook ? "PENDING" : "NOT_REQUIRED";
-                approval = notebook ? approval : custom ? "NOT_SUBMITTED" : "PENDING";
+                nextStatus = startsTracker ? FIRST_TRACKER_STATUS : custom ? "DESIGN_APPROVAL" : "PROCESSING";
+                design = custom && !startsTracker ? "PENDING" : "NOT_REQUIRED";
+                approval = startsTracker ? approval : custom ? "NOT_SUBMITTED" : "PENDING";
             }
             case "DESIGN_APPROVED" -> {
                 TenantScope.requireOperationsOrSuperAdmin();
@@ -236,14 +236,14 @@ public class CatalogOrderFormService {
                 """).param("id", id).param("status", nextStatus).param("design", design).param("approval", approval)
                 .param("asset", approvedAsset).param("placing", "PLACE".equals(action)).param("delivering", "DELIVERED".equals(action))
                 .param("actor", TenantContext.get().userId()).param("actorString", actorString()).update();
-        if (notebook && "PLACE".equals(action)) startTracker(id);
+        if (startsTracker) startTracker(id, number(order.get("school_id")));
     }
 
     @Transactional
     public void updateStatus(String id, String status) {
         String normalized = string(status).trim().toUpperCase(Locale.ROOT);
         Map<String, Object> order = load(id, true);
-        if (isNotebook(order)) throw bad("Place a notebook order with the place action; after that it follows the notebook order tracker");
+        if (trackerManaged(order)) throw bad("This notebook order follows the notebook order tracker; its status changes there");
         String action = switch (normalized) {
             case "DESIGN_APPROVAL" -> "PLACE";
             case "PROCESSING" -> {
@@ -255,6 +255,9 @@ public class CatalogOrderFormService {
             case "DELIVERED" -> "DELIVERED";
             default -> throw bad("Use the supported place, design approval, final approval, and delivery actions");
         };
+        if ("PLACE".equals(action) && isNotebook(order)) {
+            throw bad("Place a notebook order with the place action; after that it follows the notebook order tracker");
+        }
         transition(id, action, TenantContext.get().userId());
     }
 
@@ -263,7 +266,7 @@ public class CatalogOrderFormService {
         TenantScope.requireSuperAdmin();
         Map<String, Object> order = load(id, true);
         requireV2(order);
-        if (isNotebook(order)) throw bad("Notebook orders are not returned for design approval");
+        if (trackerManaged(order)) throw bad("Notebook orders on the tracker are not returned for design approval");
         requireStatus(order, "PROCESSING", "DESIGN_APPROVED_PROCESSING");
         boolean custom = customized(map(order.get("order_selections")));
         jdbc.sql("""
@@ -281,7 +284,7 @@ public class CatalogOrderFormService {
         TenantScope.requirePermissionIfAuthenticated("catalog:quote");
         Map<String, Object> order = load(id, true);
         requireV2(order);
-        if (isNotebook(order)) throw bad("Notebook orders are not quoted");
+        if (trackerManaged(order)) throw bad("Notebook orders on the tracker are not quoted");
         requireVersion(order, request.get("version"));
         requireStatus(order, "DESIGN_APPROVAL", "DESIGN_APPROVED_PROCESSING", "PROCESSING");
         List<Map<String, Object>> persisted = lines(id);
@@ -372,12 +375,13 @@ public class CatalogOrderFormService {
     @Transactional
     public Map<String, Object> upload(String id, String assetKind, byte[] bytes, String filename) {
         TenantScope.requirePermissionIfAuthenticated("order:update");
+        String kind = string(assetKind).toUpperCase(Locale.ROOT);
+        boolean draft = DesignDraftRules.KIND.equals(kind);
+        if (draft) requireDraftAccess(load(id, false));
         Map<String, Object> order = load(id, true);
         requireV2(order);
-        String kind = string(assetKind).toUpperCase(Locale.ROOT);
         if (!Set.of("DESIGN", "PRE_DELIVERY_PHOTO", "PRINT_REFERENCE", DesignDraftRules.KIND).contains(kind)) throw bad("Select a valid attachment kind");
-        boolean draft = DesignDraftRules.KIND.equals(kind);
-        if (draft) requireDraftUploadAllowed(order);
+        if (draft) requireDraftEligible(order);
         requireAssetEditable(order, kind);
         var validated = storage.validate(bytes, filename, kind, maxUploadBytes(string(order.get("category")), kind));
         for (Map<String, Object> current : assets(id)) {
@@ -420,11 +424,14 @@ public class CatalogOrderFormService {
     @Transactional
     public void removeAsset(String id, long assetId) {
         TenantScope.requirePermissionIfAuthenticated("order:update");
+        Map<String, Object> unlocked = load(id, false);
+        boolean draft = DesignDraftRules.KIND.equals(string(asset(id, assetId).get("asset_kind")));
+        if (draft) requireDraftAccess(unlocked);
         Map<String, Object> order = load(id, true);
         requireV2(order);
         Map<String, Object> asset = asset(id, assetId);
         String kind = string(asset.get("asset_kind"));
-        if (DesignDraftRules.KIND.equals(kind)) requireDraftUploadAllowed(order);
+        if (draft) requireDraftEligible(order);
         requireAssetEditable(order, kind);
         jdbc.sql("UPDATE catalog.catalog_order_assets SET superseded_at = now() WHERE id = :asset AND order_id = :id")
                 .param("asset", assetId).param("id", id).update();
@@ -433,19 +440,28 @@ public class CatalogOrderFormService {
     }
 
     /**
-     * Creates the tracker for a placed notebook order when placement could not (the tracker was unreachable). Idempotent:
-     * the tracker ignores a second create. Superadmin and the order's operators only.
+     * Starts the tracker by hand when it is still waiting to be created: queues it now and attempts it once this commits,
+     * so no peer is called while the order is locked. Idempotent: the tracker ignores a second create. Superadmin and the
+     * order's operators only, for a tracker-managed order that is still open. Read {@link #trackerPending} afterwards.
      */
     @Transactional
-    public Map<String, Object> ensureTracker(String id) {
+    public void ensureTracker(String id) {
         TenantScope.requireOperationsOrSuperAdmin();
         Map<String, Object> order = load(id, true);
         requireV2(order);
-        if (!isNotebook(order) || "DRAFT".equals(order.get("status"))) throw bad("Only a placed notebook order has a tracker");
-        startTracker(id);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("trackerPending", Boolean.TRUE.equals(map(load(id, false).get("attributes")).get("trackerPending")));
-        return result;
+        if (!trackerManaged(order)) throw bad("Only a placed notebook order on the tracker has one; this order follows order approval");
+        String status = string(order.get("status"));
+        if (Set.of("CANCELLED", "DELIVERED", "COMPLETED").contains(status)) {
+            throw bad("A " + status.toLowerCase(Locale.ROOT) + " order gets no tracker");
+        }
+        queueTracker(id, number(order.get("school_id")));
+    }
+
+    /** Whether the order's tracker is still waiting to be created. Superadmin and the order's operators only. */
+    @Transactional(readOnly = true)
+    public boolean trackerPending(String id) {
+        TenantScope.requireOperationsOrSuperAdmin();
+        return Boolean.TRUE.equals(map(load(id, false).get("attributes")).get("trackerPending"));
     }
 
     /**
@@ -525,6 +541,7 @@ public class CatalogOrderFormService {
         if (!isNotebook(order) || !Integer.valueOf(2).equals(order.get("form_version"))) throw bad("Only a structured notebook order follows a tracker");
         String current = string(order.get("status"));
         if ("DRAFT".equals(current) || "CANCELLED".equals(current)) throw new ResponseStatusException(HttpStatus.CONFLICT, "A " + current.toLowerCase(Locale.ROOT) + " order has no tracker status");
+        if (!trackerManaged(order)) throw bad("This notebook order was placed before the tracker and follows order approval");
         if (next.equals(current)) return;
         jdbc.sql("UPDATE catalog.catalog_orders SET status = :status, version = version + 1 WHERE id = :id").param("id", id).param("status", next).update();
         order.put("status", next);
@@ -547,7 +564,7 @@ public class CatalogOrderFormService {
 
     private void assetChanged(Map<String, Object> order, String kind) {
         boolean invalidate = "DESIGN".equals(kind) && customized(map(order.get("order_selections")))
-                && !"DRAFT".equals(order.get("status")) && !isNotebook(order);
+                && !"DRAFT".equals(order.get("status")) && !trackerManaged(order);
         jdbc.sql("""
                 UPDATE catalog.catalog_orders SET version = version + 1, updated_by = :actor,
                     approved_design_asset_id = CASE WHEN :invalidate THEN NULL ELSE approved_design_asset_id END,
@@ -747,24 +764,39 @@ public class CatalogOrderFormService {
         return NOTEBOOKS.equals(string(order.get("category")));
     }
 
+    /** Set at placement since the tracker exists; a notebook order without it was placed before and keeps the old flow. */
+    private static boolean trackerManaged(Map<String, Object> order) {
+        return Boolean.TRUE.equals(map(order.get("attributes")).get("trackerManaged"));
+    }
+
     private int currentDrafts(String id) {
         return jdbc.sql("SELECT count(*) FROM catalog.catalog_order_assets WHERE order_id = :id AND asset_kind = 'DESIGN_DRAFT' AND superseded_at IS NULL")
                 .param("id", id).query(Integer.class).single();
     }
 
     /**
-     * Drafts exist only for placed, customised notebook orders, and only superadmin and operators may touch them. The
-     * tracker decides whether this user may do so right now (the assigned operator in step 2, or after a change request).
+     * Drafts exist only for placed, customised notebook orders on the tracker, and only superadmin and operators may touch
+     * them. Checked again under the order lock, without asking the tracker.
      */
-    private void requireDraftUploadAllowed(Map<String, Object> order) {
-        TenantContext ctx = TenantContext.get();
-        if (!isNotebook(order) || !customized(map(order.get("order_selections"))) || "DRAFT".equals(order.get("status"))) {
-            throw bad("Design drafts apply to placed customised notebook orders only");
+    private void requireDraftEligible(Map<String, Object> order) {
+        if (!trackerManaged(order) || !customized(map(order.get("order_selections"))) || "DRAFT".equals(order.get("status"))) {
+            throw bad("Design drafts apply to placed customised notebook orders on the tracker only");
         }
+        TenantContext ctx = TenantContext.get();
         if (!ctx.isSuperAdmin() && !ctx.isOperations()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Design drafts are managed by superadmin and operators");
         }
+    }
+
+    /**
+     * The tracker decides whether this user may change drafts right now (the assigned operator in step 2, or after a change
+     * request). It is asked before the order row is locked, so a slow tracker never holds the lock.
+     */
+    private void requireDraftAccess(Map<String, Object> order) {
+        requireV2(order);
+        requireDraftEligible(order);
         if (tracker == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "The notebook order tracker is not available");
+        TenantContext ctx = TenantContext.get();
         TrackerGateway.ImageAccess access;
         try {
             access = tracker.imageAccess(string(order.get("id")), ctx.userId() == null ? 0 : ctx.userId(), ctx.role());
@@ -777,47 +809,32 @@ public class CatalogOrderFormService {
     }
 
     /**
-     * Creates the tracker for a freshly placed notebook order. The order is placed either way: when the tracker cannot be
-     * reached the order is marked so the tracker is created on the next attempt ({@link #ensureTracker}). When no
-     * operator can be chosen the tracker is created unassigned and superadmin assigns it.
+     * Makes a freshly placed notebook order tracker-managed and queues its tracker, all in the placing transaction. A draft
+     * saved before the tracker existed still carries a pending quote, which placement settles: tracker orders are not quoted.
      */
-    private void startTracker(String id) {
-        if (tracker == null) return;
-        Map<String, Object> order = load(id, false);
-        long schoolId = number(order.get("school_id"));
-        Long assignee = null;
-        try {
-            OperatorResolver.Resolution picked = operators == null ? null : operators.resolve(schoolId, NOTEBOOKS);
-            if (picked != null && picked.userId() != null
-                    && ("ITEM_SPECIFIC".equals(picked.outcome()) || "SCHOOL_WIDE".equals(picked.outcome()))) assignee = picked.userId();
-        } catch (IllegalStateException unavailable) {
-            LOG.warn("Order {} placed without an automatic operator: {}", id, unavailable.getMessage());
-        }
-        try {
-            tracker.create(new TrackerGateway.NewTracker(id, schoolId, customized(map(order.get("order_selections"))),
-                    lines(id).stream().mapToInt(line -> ((Number) line.get("bookCount")).intValue()).sum(), placedAt(order),
-                    jdbc.sql("SELECT time_zone FROM tenant_school.schools WHERE id = :id").param("id", schoolId).query(String.class).single(),
-                    TenantContext.get().userId(), assignee,
-                    jdbc.sql("SELECT name FROM tenant_school.schools WHERE id = :id").param("id", schoolId).query(String.class).optional().orElse(null)));
-            setTrackerPending(id, false);
-        } catch (IllegalStateException unavailable) {
-            LOG.warn("Order {} placed but its tracker could not be created yet: {}", id, unavailable.getMessage());
-            setTrackerPending(id, true);
-        }
+    private void startTracker(String id, long schoolId) {
+        jdbc.sql("""
+                UPDATE catalog.catalog_orders SET pricing_status = 'NOT_APPLICABLE',
+                    attributes = attributes || jsonb_build_object('trackerManaged', true, 'trackerPending', true)
+                WHERE id = :id
+                """).param("id", id).update();
+        queueTracker(id, schoolId);
     }
 
-    private void setTrackerPending(String id, boolean pending) {
-        jdbc.sql(pending
-                ? "UPDATE catalog.catalog_orders SET attributes = jsonb_set(attributes, '{trackerPending}', 'true') WHERE id = :id"
-                : "UPDATE catalog.catalog_orders SET attributes = attributes - 'trackerPending' WHERE id = :id")
-                .param("id", id).update();
-    }
-
-    private static java.time.OffsetDateTime placedAt(Map<String, Object> order) {
-        Object value = order.get("placed_at");
-        if (value instanceof java.time.OffsetDateTime offset) return offset;
-        if (value instanceof java.sql.Timestamp timestamp) return timestamp.toInstant().atOffset(java.time.ZoneOffset.UTC);
-        throw new IllegalStateException("A placed order has no placement time");
+    /**
+     * Queues the tracker's creation in the caller's transaction and attempts it once after commit, so no peer is called
+     * while the order row is locked or the transaction is open. The relay trigger retries whatever that attempt leaves.
+     */
+    private void queueTracker(String id, long schoolId) {
+        if (trackers == null) return;
+        trackers.enqueue(id, schoolId);
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            trackers.attempt(id);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() { trackers.attempt(id); }
+        });
     }
 
     private static boolean customized(Map<String, Object> selections) {
