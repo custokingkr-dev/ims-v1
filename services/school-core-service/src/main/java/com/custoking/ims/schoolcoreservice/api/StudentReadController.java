@@ -10,11 +10,13 @@ import com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher;
 import com.custoking.ims.schoolcoreservice.persistence.CampaignCompletedException;
 import com.custoking.ims.schoolcoreservice.persistence.StudentNotFoundException;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository;
+import com.custoking.ims.schoolcoreservice.application.StudentCommands;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository.StudentRow;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -25,6 +27,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -57,6 +60,7 @@ public class StudentReadController {
 
     private static final String DELETE_CONFIRMATION_HEADER = "X-Student-Delete-Confirmation";
     private final StudentReadRepository students;
+    private final StudentCommands commands;
     private final ImageUrlFetcher fetcher;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String readToken;
@@ -65,13 +69,24 @@ public class StudentReadController {
     @Autowired
     public StudentReadController(
             StudentReadRepository students,
+            StudentCommands commands,
             ImageUrlFetcher fetcher,
             ModuleEntitlementGuard moduleGuard,
             @Value("${student.read-token:}") String readToken) {
         this.students = students;
+        this.commands = commands;
         this.fetcher = fetcher;
         this.moduleGuard = moduleGuard;
         this.readToken = readToken == null ? "" : readToken.trim();
+    }
+
+    /** Standalone controller fixtures; deployed requests use the injected command proxy above. */
+    public StudentReadController(
+            StudentReadRepository students,
+            ImageUrlFetcher fetcher,
+            ModuleEntitlementGuard moduleGuard,
+            @Value("${student.read-token:}") String readToken) {
+        this(students, new StudentCommands(students), fetcher, moduleGuard, readToken);
     }
 
     public StudentReadController(
@@ -83,6 +98,12 @@ public class StudentReadController {
 
     // The Students workspace grid + its class/section filter dropdowns consume this response's
     // {items, filters:{classes,sections,feeStatuses}, ...}. The frontend sends class/section/feeStatus.
+    @ModelAttribute
+    public void preventStudentResponseCaching(HttpServletResponse response) {
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "private, no-store");
+        response.addHeader(HttpHeaders.VARY, HttpHeaders.AUTHORIZATION);
+    }
+
     @GetMapping
     public Map<String, Object> list(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
@@ -131,7 +152,7 @@ public class StudentReadController {
         requireStudentModule(longValue(body.get("schoolId")));
         // The existing repository validates required profile/placement fields and
         // stamps updatedBy from TenantContext; photo object keys are not writable here.
-        try { return students.updateStudent(id, body); }
+        try { return commands.updateStudent(id, body); }
         catch (SecurityException ex) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
         } catch (IllegalArgumentException ex) {
@@ -202,7 +223,7 @@ public class StudentReadController {
         return students.studentPhotoContent(id)
                 .map(photo -> ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(photo.contentType()))
-                        .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePrivate())
+                        .cacheControl(CacheControl.noStore())
                         .header(HttpHeaders.VARY, "Authorization")
                         .body(photo.data()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "student photo not found"));
@@ -246,7 +267,7 @@ public class StudentReadController {
         if (req.photoUrl() != null && req.photoUrl().matches("(?i)^https?://.*")) params.put("photoUrl", req.photoUrl());
         applyResolvedSchool(params);
         requireStudentModule(longValue(params.get("schoolId")));
-        return execute(() -> students.createStudent(params));
+        return execute(() -> commands.createStudent(params));
     }
 
     @PostMapping("/{id}/photo")
@@ -265,7 +286,7 @@ public class StudentReadController {
         } catch (IOException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read the uploaded photo", ex);
         }
-        return execute(() -> students.attachPhoto(id, data, file.getContentType()));
+        return execute(() -> commands.attachPhoto(id, data, file.getContentType()));
     }
 
     @DeleteMapping("/{id}")
@@ -279,7 +300,7 @@ public class StudentReadController {
         TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(schoolId);
         String confirmation = decodeDeleteConfirmation(encodedConfirmation);
-        return students.deleteStudent(id, confirmation);
+        return commands.deleteStudent(id, confirmation);
     }
 
     @GetMapping("/{id}/history")
@@ -307,7 +328,7 @@ public class StudentReadController {
         String url = body.get("url") == null ? "" : String.valueOf(body.get("url"));
         try {
             ImageUrlFetcher.FetchedImage img = fetcher.fetch(url);
-            return ResponseEntity.ok(execute(() -> students.attachPhoto(id, img.data(), img.contentType())));
+            return ResponseEntity.ok(execute(() -> commands.attachPhoto(id, img.data(), img.contentType())));
         } catch (ImageFetchException ex) {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(Map.of("reason", ex.reason(), "ok", false));
         }
@@ -324,7 +345,7 @@ public class StudentReadController {
         if (req.rows() != null) params.put("rows", req.rows());
         applyResolvedSchool(params);
         requireStudentModule(longValue(params.get("schoolId")));
-        return execute(() -> students.previewImport(params));
+        return execute(() -> commands.previewImport(params));
     }
 
     @PostMapping("/import/preview")
@@ -342,9 +363,11 @@ public class StudentReadController {
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "student:write");
         TenantScope.requirePermissionIfAuthenticated("student:import");
-        if (file.getSize() > 50L * 1024L * 1024L) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum file size is 50 MB");
+        if (file.getSize() > 10L * 1024L * 1024L) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum file size is 10 MB");
         }
+        if (rowsJson == null || rowsJson.length() > 2 * 1024 * 1024)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Import row data exceeds the size limit");
         List<Map<String, Object>> rows;
         try {
             rows = objectMapper.readValue(rowsJson, new TypeReference<>() {});
@@ -366,7 +389,7 @@ public class StudentReadController {
         params.put("originalFileBytes", data);
         applyResolvedSchool(params);
         requireStudentModule(longValue(params.get("schoolId")));
-        return execute(() -> students.previewImport(params));
+        return execute(() -> commands.previewImport(params));
     }
 
     @PostMapping("/imports/confirm")
@@ -380,7 +403,7 @@ public class StudentReadController {
         if (req.schoolId() != null) params.put("schoolId", req.schoolId());
         applyResolvedSchool(params);
         requireStudentModule(longValue(params.get("schoolId")));
-        return execute(() -> students.confirmImport(params));
+        return execute(() -> commands.confirmImport(params));
     }
 
     @PostMapping("/import/confirm")
@@ -428,7 +451,7 @@ public class StudentReadController {
         Map<String, Object> params = new HashMap<>(request);
         applyResolvedSchool(params);
         requireStudentModule(longValue(params.get("schoolId")));
-        return execute(() -> students.createPromotionBatch(params));
+        return execute(() -> commands.createPromotionBatch(params));
     }
 
     @GetMapping("/promotion-batches/{batchId}")
@@ -454,7 +477,7 @@ public class StudentReadController {
         Map<String, Object> batch = execute(() -> students.promotionBatchDetail(batchId));
         TenantScope.resolveSchoolId(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
         requireStudentModule(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
-        return execute(() -> students.updatePromotionBatchItem(batchId, itemId, request));
+        return execute(() -> commands.updatePromotionBatchItem(batchId, itemId, request));
     }
 
     @PostMapping("/promotion-batches/{batchId}/apply")
@@ -466,7 +489,7 @@ public class StudentReadController {
         Map<String, Object> batch = execute(() -> students.promotionBatchDetail(batchId));
         TenantScope.resolveSchoolId(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
         requireStudentModule(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
-        return execute(() -> students.applyPromotionBatch(batchId));
+        return execute(() -> commands.applyPromotionBatch(batchId));
     }
 
     @PostMapping("/reviews/id-card/initiate")
@@ -484,7 +507,7 @@ public class StudentReadController {
         params.put("assignedToUserId", req.assignedToUserId());
         applyResolvedSchool(params);
         requireStudentModule(longValue(params.get("schoolId")));
-        return execute(() -> students.initiateIdCardReview(params));
+        return execute(() -> commands.initiateIdCardReview(params));
     }
 
     @GetMapping("/reviews/id-card/status")
@@ -513,7 +536,7 @@ public class StudentReadController {
         params.put("sectionIds", req.sectionIds());
         applyResolvedSchool(params);
         requireStudentModule(longValue(params.get("schoolId")));
-        return execute(() -> students.initiateFullNameVerification(params));
+        return execute(() -> commands.initiateFullNameVerification(params));
     }
 
     @GetMapping("/reviews/full-name/status")
@@ -537,7 +560,7 @@ public class StudentReadController {
         params.put("actorId", TenantContext.get().userId());
         applyResolvedSchool(params);
         requireStudentModule(longValue(params.get("schoolId")));
-        return execute(() -> students.initiateProfileVerification(params));
+        return execute(() -> commands.initiateProfileVerification(params));
     }
 
     @GetMapping("/reviews/profile/status")
@@ -561,7 +584,7 @@ public class StudentReadController {
         params.put("actorId", TenantContext.get().userId());
         applyResolvedSchool(params);
         requireStudentModule(longValue(params.get("schoolId")));
-        return execute(() -> students.initiatePhotoVerification(params));
+        return execute(() -> commands.initiatePhotoVerification(params));
     }
 
     @GetMapping("/reviews/photo/status")
@@ -597,7 +620,7 @@ public class StudentReadController {
         Long scope = TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(scope);
         Long actorId = TenantContext.get().userId();
-        return execute(() -> students.verifyStudentProfile(id, scope, actorId));
+        return execute(() -> commands.verifyStudentProfile(id, scope, actorId));
     }
 
     @PostMapping("/{id}/verification/photo/verify")
@@ -610,7 +633,7 @@ public class StudentReadController {
         Long scope = TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(scope);
         Long actorId = TenantContext.get().userId();
-        return execute(() -> students.verifyStudentPhoto(id, scope, actorId));
+        return execute(() -> commands.verifyStudentPhoto(id, scope, actorId));
     }
 
     @PostMapping("/reviews/items/{itemId}")
@@ -623,7 +646,9 @@ public class StudentReadController {
         Long itemSchool = students.schoolIdForReviewItem(itemId);
         TenantScope.resolveSchoolId(itemSchool);
         requireStudentModule(itemSchool);
-        return execute(() -> students.updateReviewItem(itemId, request));
+        Map<String, Object> params = new HashMap<>(request);
+        params.put("schoolId", itemSchool);
+        return execute(() -> commands.updateReviewItem(itemId, params));
     }
 
     @PostMapping("/reviews/items/{itemId}/full-name-verification")
@@ -636,7 +661,9 @@ public class StudentReadController {
         Long itemSchool = students.schoolIdForReviewItem(itemId);
         TenantScope.resolveSchoolId(itemSchool);
         requireStudentModule(itemSchool);
-        return execute(() -> students.verifyFullName(itemId, request));
+        Map<String, Object> params = new HashMap<>(request);
+        params.put("schoolId", itemSchool);
+        return execute(() -> commands.verifyFullName(itemId, params));
     }
 
     @PostMapping("/review-campaigns/{campaignId}/complete")
@@ -649,7 +676,7 @@ public class StudentReadController {
         TenantScope.resolveSchoolId(campaignSchool);
         requireStudentModule(campaignSchool);
         Long actorId = TenantContext.get().userId();
-        return execute(() -> students.completeCampaign(campaignId, actorId));
+        return execute(() -> commands.completeCampaign(campaignId, actorId));
     }
 
     @GetMapping("/imports/batches")

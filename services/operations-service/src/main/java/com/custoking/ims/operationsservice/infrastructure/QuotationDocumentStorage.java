@@ -93,7 +93,9 @@ public class QuotationDocumentStorage {
             var blob = client().get(bucket, key);
             if (blob == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Quotation file not found");
             if (blob.getSize() == null || blob.getSize() > MAX_BYTES) throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Stored quotation file exceeds the allowed size");
-            return blob.getContent();
+            byte[] bytes = blob.getContent();
+            if (key.endsWith(".pdf")) validatePdf(bytes);
+            return bytes;
         } catch (ResponseStatusException ex) { throw ex; }
         catch (RuntimeException ex) { throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Quotation file could not be loaded", ex); }
     }
@@ -101,7 +103,8 @@ public class QuotationDocumentStorage {
     public void delete(String key) {
         requireKey(key);
         requireAvailable();
-        client().delete(bucket, key); // Missing objects also mean cleanup is complete.
+        try { client().delete(bucket, key); } // Missing objects also mean cleanup is complete.
+        catch (RuntimeException ex) { throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Quotation file could not be deleted", ex); }
     }
 
     private static void requireKey(String key) {
@@ -130,7 +133,28 @@ public class QuotationDocumentStorage {
                     || (reader.getJavaScript() != null && !reader.getJavaScript().isBlank())) {
                 throw bad("Choose an unencrypted PDF with 1–200 pages and no scripts");
             }
+            var visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<com.lowagie.text.pdf.PdfObject, Boolean>());
+            for (int i = 0; i < reader.getXrefSize(); i++) inspectPdfObject(reader.getPdfObject(i), visited, 0);
         } catch (IOException | IllegalArgumentException ex) { throw bad("Choose a valid, unencrypted quotation PDF"); }
+    }
+
+    private void inspectPdfObject(com.lowagie.text.pdf.PdfObject input,
+            java.util.Set<com.lowagie.text.pdf.PdfObject> visited, int depth) {
+        var object = com.lowagie.text.pdf.PdfReader.getPdfObject(input);
+        if (object == null || !visited.add(object)) return;
+        if (depth > 100 || visited.size() > 100_000) throw bad("Quotation PDF structure exceeds the permitted complexity");
+        java.util.Set<String> forbidden = java.util.Set.of("JavaScript", "JS", "OpenAction", "AA", "Launch", "EmbeddedFiles", "Filespec", "RichMedia", "XFA", "SubmitForm", "ImportData", "GoToR");
+        if (object instanceof com.lowagie.text.pdf.PdfName name && forbidden.contains(com.lowagie.text.pdf.PdfName.decodeName(name.toString())))
+            throw bad("Quotation PDFs must not contain scripts, actions, forms or embedded files");
+        if (object instanceof com.lowagie.text.pdf.PdfDictionary dictionary) {
+            for (var key : dictionary.getKeys()) {
+                if (forbidden.contains(com.lowagie.text.pdf.PdfName.decodeName(key.toString())))
+                    throw bad("Quotation PDFs must not contain scripts, actions, forms or embedded files");
+                inspectPdfObject(dictionary.get(key), visited, depth + 1);
+            }
+        } else if (object instanceof com.lowagie.text.pdf.PdfArray array) {
+            for (int i = 0; i < array.size(); i++) inspectPdfObject(array.getPdfObject(i), visited, depth + 1);
+        }
     }
 
     private Storage client() {

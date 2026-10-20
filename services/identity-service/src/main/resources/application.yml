@@ -21,7 +21,7 @@ spring:
         default_schema: ${IDENTITY_DB_SCHEMA:identity}
     open-in-view: false
   flyway:
-    enabled: true
+    enabled: ${APP_MIGRATIONS_ENABLED:true}
     url: ${FLYWAY_URL:${spring.datasource.url}}
     user: ${FLYWAY_USERNAME:${spring.datasource.username}}
     password: ${FLYWAY_PASSWORD:${spring.datasource.password}}
@@ -67,13 +67,23 @@ management:
         enabled: ${OTEL_METRICS_EXPORT_ENABLED:false}
 
 app:
+  runtime-db-role: ${RUNTIME_DB_ROLE:app_rt}
+  runtime-db-schemas: identity
   jwt-secret: ${APP_JWT_SECRET:}
+  jwt-previous-secret: ${APP_JWT_PREVIOUS_SECRET:}
+  jwt-issuer: ${APP_JWT_ISSUER:ims-identity}
+  jwt-audience: ${APP_JWT_AUDIENCE:ims-api}
   jwt-expiration-ms: ${APP_JWT_EXPIRATION_MS:900000}
   refresh-token-expiration-ms: ${APP_REFRESH_TOKEN_EXPIRATION_MS:604800000}
   cookie-secure: ${APP_COOKIE_SECURE:false}
   cookie-same-site: ${APP_COOKIE_SAME_SITE:Strict}
 
 identity:
+  cookie:
+    allowed-origins: ${IDENTITY_COOKIE_ALLOWED_ORIGINS:${IDENTITY_WEBAUTHN_ORIGINS:}}
+  webauthn:
+    rp-id: ${IDENTITY_WEBAUTHN_RP_ID:}
+    origins: ${IDENTITY_WEBAUTHN_ORIGINS:}
   quotas:
     login-per-minute: ${IDENTITY_QUOTA_LOGIN_PER_MINUTE:300}
     user-reads-per-minute: ${IDENTITY_QUOTA_USER_READS_PER_MINUTE:900}

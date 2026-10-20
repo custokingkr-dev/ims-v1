@@ -2,13 +2,24 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import api from '../../services/api';
 import { ProductOrderDetail } from './ProductOrderDetail';
-import { savedNotebook } from './catalogTestFixtures';
+import { savedNotebook, trophyDefinition } from './catalogTestFixtures';
 const auth = vi.hoisted(() => ({ role: 'SUPERADMIN' }));
 vi.mock('../../services/api', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn() } }));
 vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: auth }) }));
 beforeEach(() => { vi.clearAllMocks(); auth.role = 'SUPERADMIN'; URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
 afterEach(cleanup);
+it('shows trophy model/size and quantity instead of notebook fields for placed orders', async () => {
+  const detail = { ...savedNotebook('PROCESSING', false), formDefinition: trophyDefinition, orderSelections: {},
+    lines: [{ id: 101, lineNo: 1, optionSelections: { VARIANT: { code: 'T_WM001_B', label: 'WM001 / Size B' } }, requestedBookCount: 3, bookCount: 3, requestedPageCount: 1, pageCount: 1, unitPricePaise: null, lineTotalPaise: null }] };
+  vi.mocked(api.get).mockResolvedValue({ data: detail });
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByText('WM001 / Size B')).toBeInTheDocument();
+  expect(screen.getByRole('columnheader', { name: 'Quantity' })).toBeInTheDocument();
+  expect(screen.queryByRole('columnheader', { name: 'Printed pages' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('columnheader', { name: 'Ruling' })).not.toBeInTheDocument();
+  expect(screen.getByText('No design approval required')).toBeInTheDocument();
+});
 it('quotes persisted lines in paise, refreshes computed totals, and gates approval on the quote', async () => {
   let detail = savedNotebook('PROCESSING', false);
   vi.mocked(api.get).mockImplementation(async () => ({ data: detail }));

@@ -1,33 +1,16 @@
 #!/usr/bin/env python3
-"""Fails if classes that are meant to be identical across services have drifted apart.
+"""Fails if intentionally identical infrastructure classes drift across services.
 
-WHY THIS EXISTS RATHER THAN A SHARED MODULE
+Ten class names in GUARDED cover shared security, migration, tracing and event infrastructure.
+Package and import differences are allowed; behavior differences require an explicit decision.
 
-Seven infrastructure classes are byte-identical across three to five services, apart from their package
-and import lines -- about 636 redundant lines. The textbook fix is to extract a shared module, and that
-is genuinely the right end state. It is also not a safe change to make casually here:
+The repository now has a root Maven parent/reactor and Java Docker builds use root contexts.
+Those boundaries make a shared library possible, but extracting one still requires deliberate
+dependency, packaging, versioning and release changes. This check preserves consistent behavior
+while service copies remain. It is not a claim that the old independent-parent build still exists.
 
-  * There is NO aggregator pom. Each service is an independent Maven project parented directly to
-    spring-boot-starter-parent.
-  * Each service's Docker build context is its OWN DIRECTORY, and the Dockerfile resolves dependencies
-    from Maven Central via `mvn dependency:go-offline`.
-
-So a shared module has to be published to a Maven registry with credentials available inside the Docker
-build, versioned, and ordered ahead of every service in CI. That is surgery on the release path, and
-the release path has a manual production approval gate.
-
-This takes the other half of the value at a fraction of the risk. The duplication stays; what changes is
-that it can no longer drift silently. A fix applied to one copy and not the others now fails CI instead
-of quietly leaving four services on the old behaviour -- which is the actual danger, rather than the
-line count.
-
-WHY ONLY THE ALREADY-IDENTICAL ONES
-
-Eighteen further classes share a name across services while having diverged, and that divergence was
-examined and found LEGITIMATE: billing-service's TenantScope is a third the size of school-core's
-because billing has no operator surface at all, so the extra logic would be dead code there. Locking
-those together would force artificial uniformity on services with genuinely different needs. Only
-classes that are already identical are guarded, because for those, identical is demonstrably correct.
+Classes with legitimate service-specific behavior are not forced into this list. Adding a guarded
+name means every copy must stay identical; removing one means a distinct implementation is intended.
 """
 import collections
 import os
@@ -44,6 +27,9 @@ GUARDED = [
     "TenantDataSourceConfig.java",
     "LoggingDomainEventPublisher.java",
     "RuntimeDbRoleGuard.java",
+    "MachineCallerFilter.java",
+    "MigrationOnlyMain.java",
+    "MigrationRuntimePolicy.java",
     "OutboxPublisherConfiguration.java",
     "DomainEventPublisher.java",
 ]

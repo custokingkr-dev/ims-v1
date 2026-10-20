@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "scope": "Isolated dev catalog and exact reserved marker restore; interrupted operator execution, no agreed RPO/RTO certificate",
+  "project": "custoking-dev",
+  "source": "custoking-db-dev",
+  "clone": "custoking-dev-security-restore-20261007095108-6f59ef96",
+  "job": "ims-dev-security-restore-20261007095108-6f59ef96",
+  "pointInTimeUtc": "2026-10-07T09:46:08Z",
+  "startedUtc": "2026-10-07T09:51:08+00:00",
+  "resumedUtc": "2026-10-07T11:32:21.212891+00:00",
+  "success": true,
+  "cleanup": {
+    "jobRemoved": true,
+    "cloneRemoved": true,
+    "cloneProtectionDisabledForDeletion": true
+  },
+  "schemaCatalog": [
+    {
+      "schema": "workflow",
+      "present": true,
+      "tableCount": 5
+    },
+    {
+      "schema": "tenant_school",
+      "present": true,
+      "tableCount": 19
+    },
+    {
+      "schema": "student",
+      "present": true,
+      "tableCount": 22
+    },
+    {
+      "schema": "reporting",
+      "present": true,
+      "tableCount": 19
+    },
+    {
+      "schema": "notification",
+      "present": true,
+      "tableCount": 11
+    },
+    {
+      "schema": "identity",
+      "present": true,
+      "tableCount": 15
+    },
+    {
+      "schema": "firefighting",
+      "present": true,
+      "tableCount": 6
+    },
+    {
+      "schema": "fee",
+      "present": true,
+      "tableCount": 7
+    },
+    {
+      "schema": "catalog",
+      "present": true,
+      "tableCount": 15
+    },
+    {
+      "schema": "billing",
+      "present": true,
+      "tableCount": 8
+    },
+    {
+      "schema": "audit",
+      "present": true,
+      "tableCount": 3
+    },
+    {
+      "schema": "attendance",
+      "present": true,
+      "tableCount": 4
+    }
+  ],
+  "operatorInterruptionObserved": true,
+  "cloneDataReadinessSeconds": 860.639,
+  "usableApplicationRtoCertified": false,
+  "cloneOperation": "3a64c681-fe40-4f8a-a145-425000000049",
+  "cloneOperationCompleteUtc": "2026-10-07T10:05:28.639Z",
+  "syntheticFixture": {
+    "sourceProvenance": "SEC-ACPT-20261007",
+    "sourceVerifiedAtUtc": "2026-10-07T09:27:39.792829+00:00",
+    "restoredVerified": true,
+    "restoredCount": 2,
+    "restoredSha256": "c845fb66371f309c21696710b38e86fb7440aab44ad7278f967974d7c43bae92"
+  },
+  "image": "docker.io/library/postgres@sha256:95206741a5b214807675e14165369d05b93a9cf692223b616d07cca227e74b0b",
+  "validatedUtc": "2026-10-07T11:32:54.151298+00:00",
+  "validationCompleteElapsedSeconds": 6106.151,
+  "finishedUtc": "2026-10-07T11:35:24.428570+00:00"
+}

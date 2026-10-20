@@ -1,0 +1,78 @@
+{
+  "project": "custoking-dev",
+  "marker": "SEC-ACPT-20261007",
+  "jobs": [
+    {
+      "name": "ims-sec-final-viewer-provenance-f982847e1296",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T11:47:14.479581+00:00"
+    },
+    {
+      "name": "ims-sec-final-viewer-provision-251cf1c86ef5",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T11:47:16.530608+00:00"
+    },
+    {
+      "name": "ims-security-drill-20261007093838-ced1f9c7-verify-0",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:07:19.528015+00:00",
+      "phase": "broker-restart"
+    },
+    {
+      "name": "ims-security-drill-20261007093838-ced1f9c7-verify-2",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:07:20.973921+00:00",
+      "phase": "broker-restart"
+    },
+    {
+      "name": "ims-sec-final-viewer-provenance-fc24b8b7c898",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:07:47.926744+00:00"
+    },
+    {
+      "name": "ims-sec-final-factor-reset-341e8483363b",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:08:26.319950+00:00"
+    },
+    {
+      "name": "ims-sec-final-photo-provenance-9b5252d375fb",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:09:29.911687+00:00"
+    },
+    {
+      "name": "ims-sec-final-erase-inspect-cf1dfa1a604c",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:10:58.912036+00:00"
+    },
+    {
+      "name": "ims-sec-final-erase-inspect-7c3813f94ad2",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:12:43.509542+00:00"
+    },
+    {
+      "name": "ims-sec-final-erase-inspect-637bdffff224",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:15:09.801655+00:00"
+    },
+    {
+      "name": "ims-sec-final-disable-parents-9a4f7c022a36",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:15:37.611123+00:00"
+    },
+    {
+      "name": "ims-sec-final-cleanup-rollback-030d30ac6f9a",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:18:49.719400+00:00"
+    },
+    {
+      "name": "ims-sec-final-erase-inspect-a9de3a4da195",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:20:14.132155+00:00"
+    },
+    {
+      "name": "ims-sec-final-disable-parents-79b3b0c76419",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T12:20:43.156951+00:00"
+    }
+  ]
+}

@@ -3,10 +3,19 @@ import { createIdentityAuthClient } from '../generated/identityAuthApi';
 import type { AuthUser } from '../types/auth';
 
 // Access token lives only in this module-level variable — never written to
-// localStorage or sessionStorage so XSS cannot steal it.  Lost on page refresh;
+// localStorage or sessionStorage. This reduces persistence; XSS can still use
+// an active session or read memory. Lost on page refresh;
 // AuthProvider calls refreshToken() on mount to restore it via the HttpOnly cookie.
 let accessToken: string | null = null;
 let authSessionVersion = 0;
+const SESSION_EPOCH_KEY = 'custoking_session_epoch';
+const sessionEpoch = () => localStorage.getItem(SESSION_EPOCH_KEY);
+
+export function invalidateAuthSession(): void {
+  localStorage.removeItem('custoking_isLoggedIn');
+  localStorage.setItem(SESSION_EPOCH_KEY, crypto.randomUUID());
+  setAccessToken(null);
+}
 
 export function setAccessToken(token: string | null): void {
   if (accessToken !== token) authSessionVersion += 1;
@@ -33,6 +42,19 @@ const api = axios.create({
 // timeout, refresh suppression, and every future transport interceptor remain centralized.
 export const identityAuthClient = createIdentityAuthClient(api);
 
+export async function withAuthSessionLock<T>(operation: () => Promise<T>): Promise<T> {
+  // The cookie is shared between tabs. Serialize rotation/logout across the
+  // entire origin, not just within this module. No credentials leave memory.
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    return await navigator.locks.request('custoking-auth-session', operation);
+  }
+  return operation();
+}
+
+export class SessionRestoreUnavailableError extends Error {
+  constructor() { super('Your session could not be restored. Check your connection and retry.'); }
+}
+
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   // A cold identity-service start can exceed the ordinary 30-second deadline.
   // Extend only the canonical login POST; never retry credential submission.
@@ -51,15 +73,19 @@ let refreshing: Promise<AuthUser | null> | null = null;
 /**
  * Calls POST /api/v1/auth/refresh — the browser sends the HttpOnly cookie automatically.
  * On success updates the in-memory access token and returns the full user object.
- * On failure clears auth state; the caller is responsible for redirecting to /login.
+ * Only confirmed invalidity clears auth state. Temporary failures remain recoverable.
  */
 export async function refreshToken(): Promise<AuthUser | null> {
-  refreshing ??= identityAuthClient.refresh()
+  const admittedEpoch = sessionEpoch();
+  refreshing ??= withAuthSessionLock(() => admittedEpoch === sessionEpoch() ? identityAuthClient.refresh() : Promise.resolve(null))
     .then((restored) => {
+      if (!restored || admittedEpoch !== sessionEpoch()) return null;
       setAccessToken(restored.accessToken);
       return restored;
     })
-    .catch(() => {
+    .catch((error: AxiosError) => {
+      if (admittedEpoch !== sessionEpoch()) return null;
+      if (![401, 403].includes(error.response?.status ?? 0)) throw new SessionRestoreUnavailableError();
       setAccessToken(null);
       localStorage.removeItem('custoking_isLoggedIn');
       return null;
@@ -72,7 +98,12 @@ export async function refreshToken(): Promise<AuthUser | null> {
 
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError<{ message?: string }>) => {
+  async (error: AxiosError<{ message?: string; code?: string }>) => {
+    if (error.response?.status === 403 && error.response.data?.code === 'STEP_UP_REQUIRED') {
+      window.dispatchEvent(new Event('custoking-step-up-required'));
+      // Do not replay a mutation automatically after a verification ceremony.
+      return Promise.reject(error);
+    }
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
     const isAuthEndpoint = original?.url?.includes('/auth/');
 

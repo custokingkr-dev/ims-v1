@@ -57,13 +57,19 @@ public final class TenantScope {
 
     public static void requirePermissionIfAuthenticated(String code) {
         TenantContext ctx = TenantContext.get();
-        if (!ctx.isAuthenticated() || ctx.isSuperAdmin()) return;
+        if (!ctx.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "authenticated user required");
+        }
+        if (ctx.isSuperAdmin()) return;
         requirePermission(code);
     }
 
     public static void requireAnyPermissionIfAuthenticated(String... codes) {
         TenantContext ctx = TenantContext.get();
-        if (!ctx.isAuthenticated() || ctx.isSuperAdmin()) return;
+        if (!ctx.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "authenticated user required");
+        }
+        if (ctx.isSuperAdmin()) return;
         requireAnyPermission(codes);
     }
 }

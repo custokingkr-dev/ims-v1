@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.photoimport;
 
 import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
+import com.custoking.ims.schoolcoreservice.contracts.OpenApiContractAssertions;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.zaxxer.hikari.HikariDataSource;
@@ -42,6 +43,7 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
     static StudentPhotoStorage storage;
     static OutboxWriter outbox;
     static PhotoImportRepository repository;
+    private static final OpenApiContractAssertions CONTRACT = new OpenApiContractAssertions("photoImportClient.v1.openapi.json");
     static UUID batchId;
     static UUID rowId;
     static UUID protectedBatchId;
@@ -198,10 +200,15 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
         assertThat(inProgress.status()).isEqualTo("IN_PROGRESS");
 
         var completed = repository.completePhotoRecovery(claimed, version, normalized);
+        CONTRACT.assertResponse("PhotoImportRecoveryRow", completed);
+        CONTRACT.assertResponse("PhotoImportBatch", repository.batch(batchId, 201L));
+        CONTRACT.assertResponse("PhotoImportRow", repository.rows(batchId, 201L).getFirst());
+        CONTRACT.assertResponse("PhotoImportAccess", repository.accessState(batchId, 201L));
         assertThat(completed.status()).isEqualTo("RECOVERED");
         assertThat(completed.photoKey()).isEqualTo("uncropped-photo-key");
 
         var progress = repository.photoRecoveryProgress(batchId, 201L, version);
+        CONTRACT.assertResponse("PhotoImportRecoveryProgress", progress);
         assertThat(progress.totalCount()).isEqualTo(1);
         assertThat(progress.processedCount()).isEqualTo(1);
         assertThat(progress.recoveredCount()).isEqualTo(1);

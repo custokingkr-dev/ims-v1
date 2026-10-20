@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "checkedAtUtc": "2026-10-08T10:13:21.503764+00:00",
+  "scope": "Owner-independent source/local-only guarded restore preparation",
+  "tests": {
+    "reported": 42,
+    "passed": 42,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "log": "tmp/restore-completeness-final-tests.log",
+    "optimizedPython": true,
+    "seconds": 46.074,
+    "logSha256": "f864c72d7c456dbb315518838b9c10ec92459c2bc3150ef6f63c5485bc4ec1a9"
+  },
+  "changes": [
+    "Selected catalog fences expanded7?12, including existing generic reservation/result/report/suppression and finalized V18 UNVERIFIED assertion guard; source-bound shape/body/security checks",
+    "Shared reporting.safe_event_json dependency source-bound by body, signature, immutable volatility, invoker/no-settings and plpgsql language",
+    "New offline bounded canonical epoch/intent/receipt reconciliation includes external-only and old-epoch intents and keeps distinct immutable incarnations for reused student IDs",
+    "Explicit output denies global historical coverage, physical generation verification, lineage approval, restore readiness and delivery resume",
+    "V18 selected FORCE RLS/tenant-policy presence and forbidden effective app_rt+ims_platform_rt DML/assertion-kind INSERT checks",
+    "CLI regular FD nonblocking/no-follow/binary open, fstat, cap+1 read, growth/path-replacement continuity rejection and guaranteed close",
+    "Independent literal JDK25 identity SHA256/nameUUID vector using existing Java fixture constants",
+    "Selected V18 privileges reject all effective column-level UPDATE and received_at INSERT for both app_rt and ims_platform_rt, alongside assertion_kind INSERT/DELETE/TRUNCATE"
+  ],
+  "fileSha256": {
+    "scripts/security/verify-dev-restore-target.py": "652f2c8816fa4219a77c6b64766a73c6e5e6bd10bfe6bb461133a99d7667988f",
+    "scripts/security/verify-dev-erasure-coverage.py": "8e471f6cbdfaa1387aa15ac13589345b33f95dc3d44ec558b6a829c90ab1b0ee",
+    "scripts/tests/dev_restore_target_verifier_test.py": "c27343510e23ed15faff217caae04c3ac45830c6ade5a54d993f271d98b8fd05",
+    "scripts/tests/dev_restore_target_verifier_postgres_test.py": "6eb480054da1c15f8e5723e6acf18dcf6f8e317ff59049ab5ee98090a68579b9",
+    "scripts/tests/dev_erasure_coverage_test.py": "66ff4dfccc2fb8d148f65c06e9b68d1b50d540bcf51938b36cfd96d402d0c45e"
+  },
+  "cloudCalls": 0,
+  "sourceOrDatabaseBusinessWrites": 0,
+  "productionChanged": false,
+  "remainingDependencies": [
+    "Independently exhaustive frozen epoch/object enumeration and exact generation GETs; offline supplied inventories cannot prove no omitted epochs/objects",
+    "Owner-approved legacy lineage and pre-journal historical coverage, including external-only precommit intents (not proof of committed source deletion)",
+    "Physical approved isolated clone/source snapshot lineage; dedicated catalog-only credential; actual TLS readback",
+    "All service/application delivery/write freeze and full replay semantics, provider/object retained copies and tombstone protection before controlled new epoch/cutover/resume",
+    "Approved retention/RPO/RTO and provider erasure/physical expiry; none inferred"
+  ],
+  "limits": [
+    "Twelve source-bound triggers plus one helper and selected ACL/RLS checks are not all-policy/full-application/Flyway/coverage verification",
+    "No clone, GCS enumeration/read, provider, restore replay or cutover executed",
+    "No messaging/application migration edits; no owner-ledger/frozen-proof updates; no commits"
+  ],
+  "platformMigrationSource": {
+    "path": "services/platform-service/src/main/resources/db/migration/notification/V18__generic_unknown_report_assertions.sql",
+    "sha256": "dcae3045b1cab63383eee5878941264cef2e98b80eb660910deca3b5bc968a4c",
+    "editedByThisAgent": false
+  }
+}

@@ -42,6 +42,7 @@ class CatalogReadControllerTest {
 
     @Test
     void orderReturnsNotFoundForMissingOrder() {
+        TenantContext.set(new TenantContext(1L, "sa@school.test", "SUPERADMIN", null, null));
         when(catalog.order("CK-404")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller.order("catalog-token", "CK-404"))

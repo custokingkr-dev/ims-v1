@@ -1,0 +1,1013 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:46:13.339967+00:00",
+  "publicationSourceHeadSha": "a5aef69b58b59f32f4c3862cd7aa0b60a14ec217",
+  "acceptedApplicationSourceHeadSha": "5a048e29bfda6858b86d5533501ef5da4f37626a",
+  "acceptedApplicationReleaseRunId": 37803078011,
+  "decision": "SOURCE_RESEARCH_PROGRESS_WITH_RUNTIME_APPLICABILITY_STILL_OPEN",
+  "selectedEvidence": {
+    "inventory": {
+      "path": "docs/security-remediation/acceptance-execution-boundary-native-inventory.json",
+      "digestSha256": "cf3172ae11753588a63a7b54a3500f48fd1ae3c76ce29cfbfddc6f3d97f9a6b8"
+    },
+    "release": {
+      "path": "docs/security-remediation/acceptance-execution-boundary-dev-release.json",
+      "digestSha256": "41559f620c4c2bb3fd91b2b2d6b1197da611f38120bec745bcb96acb3a1e34fc"
+    },
+    "manifest": {
+      "path": "tmp/execution-boundary-release-37803078011/images.json",
+      "digestSha256": "0d7d906d4ce2ef332017da1e59b8c257bf86724c8fc33182f1d9062eda3abd61"
+    },
+    "scan": {
+      "path": "tmp/execution-boundary-release-37803078011/trivy/exact-digest-scan.json",
+      "digestSha256": "4e73369c407c279658af121ad150901286185d078029577deb8ab857a6b3eb55"
+    },
+    "scanCapturedAtUtc": "2026-10-08T15:54:36.5820216Z",
+    "selectedServices": [
+      {
+        "service": "platform-service",
+        "immutableSourceIndex": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:af1c8c7247e6c505619d76b6a4abc4e25201b298dafee63dda0ab024f3f51ad3",
+        "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:e5fe5011d30e139c4a77bb151020e093d928e35640e9f2f8cbeb286d02e39903",
+        "revisionInSavedReadback": "custoking-platform-service-dev-00039-znr",
+        "sarif": {
+          "path": "tmp/execution-boundary-release-37803078011/trivy/platform-service-sha256-af1c8c7247e6c505619d76b6a4abc4e25201b298dafee63dda0ab024f3f51ad3.sarif",
+          "digestSha256": "0be0c70ac2379f80f46d9212e41a1701880b692825b514afad521af8ffbccc1a"
+        },
+        "findingCount": 17
+      },
+      {
+        "service": "school-core-service",
+        "immutableSourceIndex": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:e87b28c337bea431be9cfe068a303e19206e6dfa8a03875c4e0b0851ccaccb17",
+        "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:30da779883d4ea1db7d482ca718987148e80e45a00a74466db4f363a2551bad2",
+        "revisionInSavedReadback": "custoking-school-core-service-dev-00077-8gb",
+        "sarif": {
+          "path": "tmp/execution-boundary-release-37803078011/trivy/school-core-service-sha256-e87b28c337bea431be9cfe068a303e19206e6dfa8a03875c4e0b0851ccaccb17.sarif",
+          "digestSha256": "e464e159ae42d85b7d1d6725927a01647c28ab942f35abe418fdff13482f73cd"
+        },
+        "findingCount": 17
+      }
+    ],
+    "findings": 34,
+    "uniqueAdvisories": 11,
+    "freshAtOriginalRelease": 2,
+    "cachedAtOriginalRelease": 0,
+    "newScansThisReview": 0,
+    "otherFiveServices": "Retained runtime images; their scan dates are not refreshed by this review."
+  },
+  "matrix": [
+    {
+      "advisory": "CVE-2026-18374",
+      "selectedFindingMultiplicity": 6,
+      "selectedPackages": [
+        {
+          "package": "libc-bin",
+          "installedVersion": "2.39-0ubuntu8.9"
+        },
+        {
+          "package": "libc6",
+          "installedVersion": "2.39-0ubuntu8.9"
+        },
+        {
+          "package": "locales",
+          "installedVersion": "2.39-0ubuntu8.9"
+        }
+      ],
+      "severityCounts": {
+        "MEDIUM": 6
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18374.json",
+        "digestSha256": "266f7775f5044d3c371c270d728ac87b132a483c3183377b4ab230933ee66d6a",
+        "modifiedAt": "2026-09-10T14:24:53Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "glibc",
+          "purl": "pkg:deb/ubuntu/glibc@2.39-0ubuntu8.9?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "Attacker-controlled native fopen mode using effectively empty ,ccs= extension.",
+      "sourceAndDatedImageObservations": "Owned Dockerfiles invoke Java, and inspected Java entry paths do not establish an attacker-controlled native fopen mode. Generic libc use and JNI/dependency consumers remain unresolved.",
+      "decision": "UNRESOLVED_NATIVE_CONSUMER_AND_ARGUMENT_PATH",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2026-18374",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18374.json"
+      ]
+    },
+    {
+      "advisory": "CVE-2026-89092",
+      "selectedFindingMultiplicity": 6,
+      "selectedPackages": [
+        {
+          "package": "libc-bin",
+          "installedVersion": "2.39-0ubuntu8.9"
+        },
+        {
+          "package": "libc6",
+          "installedVersion": "2.39-0ubuntu8.9"
+        },
+        {
+          "package": "locales",
+          "installedVersion": "2.39-0ubuntu8.9"
+        }
+      ],
+      "severityCounts": {
+        "MEDIUM": 6
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89092.json",
+        "digestSha256": "78d5eb9ef5bca6506ede47f2aaec134ec24bd5a6a87803ebd0ac44d960fd5e87",
+        "modifiedAt": "2026-09-24T21:44:17Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "glibc",
+          "purl": "pkg:deb/ubuntu/glibc@2.39-0ubuntu8.9?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "Enabled nscd service plus attacker-controlled unusually large DNS answers.",
+      "sourceAndDatedImageObservations": "Dated exact retained billing/identity/operations images had nscd not installed and named nscd paths absent. This does not inspect the two new runtime images or live host/service state.",
+      "decision": "UNRESOLVED_CURRENT_IMAGE_DAEMON_PREREQUISITE",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2026-89092",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89092.json"
+      ]
+    },
+    {
+      "advisory": "CVE-2025-66382",
+      "selectedFindingMultiplicity": 2,
+      "selectedPackages": [
+        {
+          "package": "libexpat1",
+          "installedVersion": "2.6.1-2ubuntu0.6"
+        }
+      ],
+      "severityCounts": {
+        "MEDIUM": 2
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2025/UBUNTU-CVE-2025-66382.json",
+        "digestSha256": "92f1ac85795591f12df81e84ebed48cb900d74fc4d44a16a6d3ecdc08755761b",
+        "modifiedAt": "2026-10-06T03:00:10Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "expat",
+          "purl": "pkg:deb/ubuntu/expat@2.6.1-2ubuntu0.6?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "Native Expat processing crafted XML that causes excessive processing time.",
+      "sourceAndDatedImageObservations": "System libexpat is positively reported installed. Java XML source controls do not prove every native dependency path; no supported Noble fixed event is present in refreshed Canonical record.",
+      "decision": "UNRESOLVED_NATIVE_XML_CONSUMER",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2025-66382",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2025/UBUNTU-CVE-2025-66382.json"
+      ]
+    },
+    {
+      "advisory": "CVE-2026-86145",
+      "selectedFindingMultiplicity": 2,
+      "selectedPackages": [
+        {
+          "package": "libpcre2-8-0",
+          "installedVersion": "10.42-4ubuntu2.1"
+        }
+      ],
+      "severityCounts": {
+        "MEDIUM": 2
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-86145.json",
+        "digestSha256": "6f83029127bc847e99dacbf0801d2200f0b7c8568bc861c502b8c6af468317ec",
+        "modifiedAt": "2026-09-25T09:45:12Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "pcre2",
+          "purl": "pkg:deb/ubuntu/pcre2@10.42-4ubuntu2.1?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "pcre2_dfa_match with recursive workspace reuse, untrusted pattern and sufficiently constrained heap.",
+      "sourceAndDatedImageObservations": "Java Pattern implementation is not the PCRE2 DFA API. This distinguishes the inspected Java regex path only; dependency/native consumers remain unknown. Upstream 10.48 fixes it, but no supported Noble backport was established.",
+      "decision": "UNRESOLVED_NATIVE_DFA_CONSUMER",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2026-86145",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-86145.json",
+        "https://github.com/PCRE2Project/pcre2/security/advisories/GHSA-3r4p-g7gg-ppmf"
+      ]
+    },
+    {
+      "advisory": "CVE-2026-89161",
+      "selectedFindingMultiplicity": 2,
+      "selectedPackages": [
+        {
+          "package": "libpcre2-8-0",
+          "installedVersion": "10.42-4ubuntu2.1"
+        }
+      ],
+      "severityCounts": {
+        "MEDIUM": 2
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89161.json",
+        "digestSha256": "c870fa610a177f7a78c16b9a6c9269dae976d4dda3618dcbb6ffc2136e73b384",
+        "modifiedAt": "2026-09-25T09:45:14Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "pcre2",
+          "purl": "pkg:deb/ubuntu/pcre2@10.42-4ubuntu2.1?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "PCRE2 JIT matching a match-data context that previously owned a copied subject, followed by its disposal.",
+      "sourceAndDatedImageObservations": "Inspected Java regex source does not establish this PCRE2 lifecycle; native dependency consumers remain unknown. Upstream fix is not authority to replace Noble's shared ABI with a blind upstream upgrade.",
+      "decision": "UNRESOLVED_NATIVE_JIT_CONTEXT_LIFECYCLE",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2026-89161",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-89161.json",
+        "https://github.com/PCRE2Project/pcre2/commit/1dcd0cf42a6a7cb62cc9a7c024196733abcfda95"
+      ]
+    },
+    {
+      "advisory": "CVE-2026-46675",
+      "selectedFindingMultiplicity": 2,
+      "selectedPackages": [
+        {
+          "package": "libpng16-16t64",
+          "installedVersion": "1.6.43-5ubuntu0.7"
+        }
+      ],
+      "severityCounts": {
+        "MEDIUM": 2
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-46675.json",
+        "digestSha256": "94df6b4e185b9908ddd5e7f340fdffcd082560bc73117e9cd69326d8de50c5ca",
+        "modifiedAt": "2026-10-08T09:37:19Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "libpng1.6",
+          "purl": "pkg:deb/ubuntu/libpng1.6@1.6.43-5ubuntu0.7?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "libpng sequential read_info then read_end without normal row/start/update calls after partial compressed metadata inflation.",
+      "sourceAndDatedImageObservations": "Both selected images report Ubuntu libpng 0.7. Its active source patch matches upstream's 19 added and 14 removed lines. Photo precheck and non-JPEG decode use ignoreMetadata=true; exact runtime ImageIO provider registry and binary/native consumer chains remain unverified.",
+      "decision": "SUPPORTED_DISTRIBUTION_SOURCE_BACKPORT_PRESENT_ALREADY_APPLIED_VENDOR_STATUS_MISMATCH",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2026-46675",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-46675.json",
+        "https://github.com/pnggroup/libpng/security/advisories/GHSA-qvg3-h654-xq3j",
+        "https://github.com/pnggroup/libpng/commit/aa77ef38c17ab2fc1b41bec09fb973c6a386641d",
+        "https://archive.ubuntu.com/ubuntu/pool/main/libp/libpng1.6/libpng1.6_1.6.43-5ubuntu0.7.dsc"
+      ]
+    },
+    {
+      "advisory": "CVE-2026-40228",
+      "selectedFindingMultiplicity": 4,
+      "selectedPackages": [
+        {
+          "package": "libsystemd0",
+          "installedVersion": "255.4-1ubuntu8.17"
+        },
+        {
+          "package": "libudev1",
+          "installedVersion": "255.4-1ubuntu8.17"
+        }
+      ],
+      "severityCounts": {
+        "LOW": 4
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-40228.json",
+        "digestSha256": "c2843d55d3c9ce648a33ecd6ddc6e124e2c2cd0eb8bafa7c6cff9d5568fe7731",
+        "modifiedAt": "2026-09-08T12:29:59Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "systemd",
+          "purl": "pkg:deb/ubuntu/systemd@255.4-1ubuntu8.17?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "systemd-journald forwarding emergency-level attacker-controlled terminal escapes to wall when ForwardToWall is enabled.",
+      "sourceAndDatedImageObservations": "Installed libsystemd/libudev alone do not prove journald activation or forwarding. Named journald binaries were absent in the three dated retained Java images; two new exact images and live configuration were not inspected.",
+      "decision": "UNRESOLVED_CURRENT_IMAGE_DAEMON_AND_FORWARDING",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2026-40228",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-40228.json"
+      ]
+    },
+    {
+      "advisory": "CVE-2024-56433",
+      "selectedFindingMultiplicity": 4,
+      "selectedPackages": [
+        {
+          "package": "login",
+          "installedVersion": "1:4.13+dfsg1-4ubuntu3.2"
+        },
+        {
+          "package": "passwd",
+          "installedVersion": "1:4.13+dfsg1-4ubuntu3.2"
+        }
+      ],
+      "severityCounts": {
+        "LOW": 4
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2024/UBUNTU-CVE-2024-56433.json",
+        "digestSha256": "9531e0ef0ae581506770dc3c37f39039299aa625d9ab0f463d0d3bd46200eed9",
+        "modifiedAt": "2026-05-20T15:14:40Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "shadow",
+          "purl": "pkg:deb/ubuntu/shadow@1:4.13+dfsg1-4ubuntu3.2?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "Default subordinate-UID allocation colliding with network-visible IDs/resources, combined with the relevant namespace/helper and filesystem conditions.",
+      "sourceAndDatedImageObservations": "Dockerfiles create an app user at build time. Dated retained images had one subuid/subgid line and named newuidmap/newgidmap paths absent. These checks do not establish absence of UID collision, host mappings or current new-image helper paths.",
+      "decision": "UNRESOLVED_NAMESPACE_MAPPING_AND_RESOURCE_PRECONDITIONS",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2024-56433",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2024/UBUNTU-CVE-2024-56433.json"
+      ]
+    },
+    {
+      "advisory": "CVE-2026-18477",
+      "selectedFindingMultiplicity": 2,
+      "selectedPackages": [
+        {
+          "package": "tar",
+          "installedVersion": "1.35+dfsg-3ubuntu0.4"
+        }
+      ],
+      "severityCounts": {
+        "MEDIUM": 2
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18477.json",
+        "digestSha256": "e012e2739e37cd8f47141505eadfd3faba156d9b6b2e7c96afd32b8704dd75ea",
+        "modifiedAt": "2026-08-25T17:36:09Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "tar",
+          "purl": "pkg:deb/ubuntu/tar@1.35+dfsg-3ubuntu0.4?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "GNU tar incremental-restore rename operation raced by an attacker able to modify the restore directory.",
+      "sourceAndDatedImageObservations": "Inspected application archive paths use Java ZIP streams, not GNU tar. Shell/dependency and external restore invocations plus filesystem attack conditions remain unverified; no supported Noble fixed event appears.",
+      "decision": "UNRESOLVED_GNU_TAR_INCREMENTAL_RESTORE_PATH",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2026-18477",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18477.json"
+      ]
+    },
+    {
+      "advisory": "CVE-2026-18508",
+      "selectedFindingMultiplicity": 2,
+      "selectedPackages": [
+        {
+          "package": "tar",
+          "installedVersion": "1.35+dfsg-3ubuntu0.4"
+        }
+      ],
+      "severityCounts": {
+        "MEDIUM": 2
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18508.json",
+        "digestSha256": "0f24a43aaf9baa1b7e8d73f59a19c291d790e9e75a938a60088371c99c5c91f6",
+        "modifiedAt": "2026-08-25T17:36:09Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "tar",
+          "purl": "pkg:deb/ubuntu/tar@1.35+dfsg-3ubuntu0.4?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "GNU tar --one-top-level extraction with a hardlink interacting with a pre-existing symlink path.",
+      "sourceAndDatedImageObservations": "Java ZIP import/export source is a distinct archive path. This does not inventory every native/dependency/operator tar use or prove the external restore path safe.",
+      "decision": "UNRESOLVED_GNU_TAR_EXTRACTION_PATH",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2026-18508",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18508.json"
+      ]
+    },
+    {
+      "advisory": "CVE-2026-85091",
+      "selectedFindingMultiplicity": 2,
+      "selectedPackages": [
+        {
+          "package": "zlib1g",
+          "installedVersion": "1:1.3.dfsg-3.1ubuntu2.2"
+        }
+      ],
+      "severityCounts": {
+        "MEDIUM": 2
+      },
+      "scannerFixedVersion": "",
+      "canonicalRecord": {
+        "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-85091.json",
+        "digestSha256": "ed4b5722d62c108a7337c33893ab2305e94262812b952b32d5437ed5711e39fd",
+        "modifiedAt": "2026-09-16T11:43:10Z",
+        "sameBytesAsPriorDatedCapture": true,
+        "relevantNobleSource": {
+          "sourcePackage": "zlib",
+          "purl": "pkg:deb/ubuntu/zlib@1:1.3.dfsg-3.1ubuntu2.2?arch=source&distro=noble",
+          "ranges": [
+            {
+              "type": "ECOSYSTEM",
+              "events": [
+                {
+                  "introduced": "0"
+                }
+              ]
+            }
+          ]
+        },
+        "nobleFixedEvents": []
+      },
+      "requiredAdvisoryPath": "Reported nonblocking gzwrite stall followed by gzprintf/gzvprintf through the later gz_vacate implementation.",
+      "sourceAndDatedImageObservations": "Exact Noble 1.3 gzwrite source has no gz_vacate or EAGAIN and is byte-identical to upstream 1.3; none of eight active distro patches modifies it. OpenJDK Inflater source calls inflate APIs, a different path. Canonical affected metadata and actual installed binary correspondence remain unresolved.",
+      "decision": "ADVISORY_SPECIFIC_PATH_ABSENT_IN_EXACT_DISTRO_SOURCE_BINARY_AND_VENDOR_SCOPE_OPEN",
+      "runtimeNotAffectedAttested": false,
+      "primaryReferences": [
+        "https://ubuntu.com/security/CVE-2026-85091",
+        "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-85091.json",
+        "https://archive.ubuntu.com/ubuntu/pool/main/z/zlib/zlib_1.3.dfsg-3.1ubuntu2.2.dsc",
+        "https://raw.githubusercontent.com/madler/zlib/v1.3/gzwrite.c",
+        "https://raw.githubusercontent.com/madler/zlib/v1.3.2/gzwrite.c"
+      ]
+    }
+  ],
+  "exactDistributionSourceComparisons": {
+    "libpng": {
+      "sourceVersion": "1.6.43-5ubuntu0.7",
+      "archive": {
+        "path": "tmp/native-advisory-primary-a5aef/libpng-noble-debian-patches.tar.xz",
+        "digestSha256": "ea25368d26281cff3282c18ffbec6c75335e6ba0458d79841936c959395c15e6"
+      },
+      "archiveUrl": "https://archive.ubuntu.com/ubuntu/pool/main/libp/libpng1.6/libpng1.6_1.6.43-5ubuntu0.7.debian.tar.xz",
+      "dsc": {
+        "path": "tmp/native-advisory-primary-deep-a5aef/libpng-noble.dsc",
+        "digestSha256": "956b23034b8dd709deb9cbaa13dd3e41d8dbef2a3042c7ff30166a72d8031b37"
+      },
+      "dscUrl": "https://archive.ubuntu.com/ubuntu/pool/main/libp/libpng1.6/libpng1.6_1.6.43-5ubuntu0.7.dsc",
+      "archiveChecksumMatchesDsc": true,
+      "dscSignatureVerified": false,
+      "activeSeriesContainsAdvisoryPatch": true,
+      "patchMember": "debian/patches/CVE-2026-46675.patch",
+      "patchMemberSha256": "08f5246cef44418b241896a68dc53cd51ef5a6565937158f35a8c2f51f13a862",
+      "seriesMemberSha256": "cff9ec240b887ca1aa9db2eea29ff3405e39352382c6f8bd219831609ecc8be2",
+      "upstreamCommit": "aa77ef38c17ab2fc1b41bec09fb973c6a386641d",
+      "upstreamCommitUrl": "https://github.com/pnggroup/libpng/commit/aa77ef38c17ab2fc1b41bec09fb973c6a386641d",
+      "orderedAddedRemovedLinesIdentical": true,
+      "addedLines": 19,
+      "removedLines": 14,
+      "hunks": [
+        "detach stale inflate pointers",
+        "claim inflate state",
+        "release decompressed chunk",
+        "iCCP success cleanup",
+        "iCCP release cleanup",
+        "IDAT finish cleanup"
+      ],
+      "scope": "Publisher HTTPS source plus .dsc checksum and active patch comparison. Context/full-tree identity, signature authentication, source-to-binary attestation and runtime reachability were not established."
+    },
+    "zlib": {
+      "installedBinaryPackageVersion": "1:1.3.dfsg-3.1ubuntu2.2",
+      "origArchive": {
+        "path": "tmp/native-advisory-primary-deep-a5aef/zlib-noble-orig.tar.xz",
+        "digestSha256": "5eea0322c1c21c75cad3b607ac1c43ff5c71e014b8ac4a34300b5e2b80d02e70"
+      },
+      "origArchiveUrl": "https://archive.ubuntu.com/ubuntu/pool/main/z/zlib/zlib_1.3.dfsg.orig.tar.xz",
+      "dsc": {
+        "path": "tmp/native-advisory-primary-deep-a5aef/zlib-noble.dsc",
+        "digestSha256": "56a7cd029863cbddafce831e4e63cccfa84017f93617929cb7c02f80bb5a122a"
+      },
+      "dscUrl": "https://archive.ubuntu.com/ubuntu/pool/main/z/zlib/zlib_1.3.dfsg-3.1ubuntu2.2.dsc",
+      "debianArchive": {
+        "path": "tmp/native-advisory-primary-deep-a5aef/zlib-noble-patches.tar.xz",
+        "digestSha256": "de1c2d532ecb7caf99ccb905fb03c37fe0c8117fbdc79d05be4474b71e6398c2"
+      },
+      "origAndDebianArchiveChecksumsMatchDsc": true,
+      "dscSignatureVerified": false,
+      "gzwriteMember": "zlib-1.3.dfsg/gzwrite.c",
+      "gzwriteMemberSha256": "469b1e58932ea11bdda2a153f6655f7b3c13254240fae157181b49ed1bc93b47",
+      "identicalToUpstreamV1_3Gzwrite": true,
+      "gzVacateOccurrenceCount": 0,
+      "eagainOccurrenceCount": 0,
+      "activeDistroPatches": [
+        {
+          "member": "CVE-2014-9485-miniunzip.patch",
+          "digestSha256": "b19062d6ba773f4a57c95022620fe78a52f0e42f76eba1df3f7f8d1b1185afb3",
+          "modifiesGzwrite": false
+        },
+        {
+          "member": "CVE-2023-45853-minizip.patch",
+          "digestSha256": "ad2ba44c3d79a72f6e47882d416c0e5996e235917b51bec015d77acfb4fa3b95",
+          "modifiesGzwrite": false
+        },
+        {
+          "member": "power/indirect-func-macros.patch",
+          "digestSha256": "cc8a6ba0960eb4caa2654420abc9e60a9fcc0b1a17f8ed96b37f56284dca27c5",
+          "modifiesGzwrite": false
+        },
+        {
+          "member": "power/add-optimized-crc32.patch",
+          "digestSha256": "e8c8bd0267407ef707a36e33334403f874f2b294ce3270bce59ec1fd37c43d19",
+          "modifiesGzwrite": false
+        },
+        {
+          "member": "power/fix-clang7-builtins.patch",
+          "digestSha256": "cfe0628431a64cb153b5910f9bfc78f92c7bde270efd924dee4387ff2943be07",
+          "modifiesGzwrite": false
+        },
+        {
+          "member": "s390x/add-vectorized-crc32.patch",
+          "digestSha256": "a467f63f7c3d88c83152ae924b9f699d0be405ddad18df1897cdcf29a6e6c4fe",
+          "modifiesGzwrite": false
+        },
+        {
+          "member": "s390x/add-accel-deflate.patch",
+          "digestSha256": "bd0affafee3bac0a3e9d39f6701eff266e7bd4628d3cc795f596df369617c576",
+          "modifiesGzwrite": false
+        },
+        {
+          "member": "CVE-2026-27171.patch",
+          "digestSha256": "e3b53987d6b69942d4a4f5614ef0525d61c38db214010cd4f117cabaef1e0335",
+          "modifiesGzwrite": false
+        }
+      ],
+      "comparedV1_3_2ContainsBothSymbols": true,
+      "comparisonUrls": [
+        "https://raw.githubusercontent.com/madler/zlib/v1.3/gzwrite.c",
+        "https://raw.githubusercontent.com/madler/zlib/v1.3.2/gzwrite.c"
+      ],
+      "scope": "The reported nonblocking gz_vacate path is absent from exact distribution source and none of eight active distro patches modifies gzwrite.c. Canonical affected metadata remains; installed binary correspondence and other native paths were not established. No vendor-status override or VEX issued."
+    }
+  },
+  "ownedSourceEvidence": [
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/infrastructure/StudentPhotoStorage.java",
+      "normalizedLfSha256": "b024d968dc1d4e50d01da51776ca8cb535c3895ec1c975fc184b7a2590f3d56c",
+      "observations": [
+        {
+          "search": "MAX_DECODED_PIXELS",
+          "lines": [
+            54,
+            440
+          ]
+        },
+        {
+          "search": "MediaWorkBudget.acquire",
+          "lines": [
+            299
+          ]
+        },
+        {
+          "search": "validatePixelCount(data)",
+          "lines": [
+            300
+          ]
+        },
+        {
+          "search": "useExifOrientation(true)",
+          "lines": [
+            307
+          ]
+        },
+        {
+          "search": "decodePixelsWithoutMetadata",
+          "lines": [
+            308,
+            412
+          ]
+        },
+        {
+          "search": "reader.setInput(input, true, true)",
+          "lines": [
+            419,
+            438
+          ]
+        }
+      ]
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/PhotoImportWorkbookParser.java",
+      "normalizedLfSha256": "d00b0bf66e80e1ebfe442af57d5dbf69d36d3903e0fdae5982a5c8389f5fb311",
+      "observations": [
+        {
+          "search": "java.util.zip.ZipInputStream",
+          "lines": [
+            303
+          ]
+        }
+      ]
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/studentexport/StudentExportArchiveWriter.java",
+      "normalizedLfSha256": "aa33647a8f7d21a125e1214522c18694636c739859b163507d67e66b97ed6c0c",
+      "observations": [
+        {
+          "search": "ZipOutputStream",
+          "lines": [
+            32,
+            84
+          ]
+        },
+        {
+          "search": "zip.putNextEntry",
+          "lines": [
+            88,
+            112,
+            130
+          ]
+        }
+      ]
+    },
+    {
+      "path": "services/school-core-service/pom.xml",
+      "normalizedLfSha256": "4b984b416767ce9fb123f1ae75c9238fb78730902f3a44b2a1d4ad1f6e69b66e",
+      "observations": [
+        {
+          "search": "thumbnailator.version",
+          "lines": [
+            20,
+            141
+          ]
+        },
+        {
+          "search": "imageio-webp",
+          "lines": [
+            145
+          ]
+        }
+      ]
+    },
+    {
+      "path": "services/platform-service/Dockerfile",
+      "normalizedLfSha256": "0b297a9e51db5e4dd818aaf48edbdef0de84f9e7be5b53b7d0c3bebcfd6dba12",
+      "observations": [
+        {
+          "search": "eclipse-temurin",
+          "lines": [
+            1,
+            14
+          ]
+        },
+        {
+          "search": "SECURITY_PATCH_EPOCH",
+          "lines": [
+            23,
+            24
+          ]
+        },
+        {
+          "search": "apt-get upgrade",
+          "lines": [
+            26
+          ]
+        },
+        {
+          "search": "USER appuser",
+          "lines": [
+            33
+          ]
+        },
+        {
+          "search": "JAVA_OPTS=",
+          "lines": [
+            37
+          ]
+        },
+        {
+          "search": "HEALTHCHECK",
+          "lines": [
+            41
+          ]
+        },
+        {
+          "search": "ENTRYPOINT",
+          "lines": [
+            43
+          ]
+        }
+      ]
+    },
+    {
+      "path": "services/school-core-service/Dockerfile",
+      "normalizedLfSha256": "80bc8800b77ee8df1d3a211cc6a4e6abd0aa8bc47aa4ce6b079086f7aa5e6d98",
+      "observations": [
+        {
+          "search": "eclipse-temurin",
+          "lines": [
+            1,
+            14
+          ]
+        },
+        {
+          "search": "SECURITY_PATCH_EPOCH",
+          "lines": [
+            23,
+            24
+          ]
+        },
+        {
+          "search": "apt-get upgrade",
+          "lines": [
+            26
+          ]
+        },
+        {
+          "search": "USER appuser",
+          "lines": [
+            33
+          ]
+        },
+        {
+          "search": "JAVA_OPTS=",
+          "lines": [
+            37
+          ]
+        },
+        {
+          "search": "HEALTHCHECK",
+          "lines": [
+            41
+          ]
+        },
+        {
+          "search": "ENTRYPOINT",
+          "lines": [
+            43
+          ]
+        }
+      ]
+    }
+  ],
+  "jdkUpstreamSourceEvidence": [
+    {
+      "name": "openjdk25-PNGImageReader.java",
+      "primaryUrl": "https://raw.githubusercontent.com/openjdk/jdk/jdk-25-ga/src/java.desktop/share/classes/com/sun/imageio/plugins/png/PNGImageReader.java",
+      "path": "tmp/native-advisory-primary-deep-a5aef/openjdk25-PNGImageReader.java",
+      "readable": true,
+      "bytes": 71308,
+      "digestSha256": "9f98dfd09a5b811b452ae7ca93f117698476254ee0709a891425c503ccb18a3c"
+    },
+    {
+      "name": "openjdk25-Pattern.java",
+      "primaryUrl": "https://raw.githubusercontent.com/openjdk/jdk/jdk-25-ga/src/java.base/share/classes/java/util/regex/Pattern.java",
+      "path": "tmp/native-advisory-primary-deep-a5aef/openjdk25-Pattern.java",
+      "readable": true,
+      "bytes": 234941,
+      "digestSha256": "f75caaa6bb4fd710a149b34991291c854bd091f5ee805d42813a8ee0c93a70fe"
+    },
+    {
+      "name": "openjdk25-Inflater.c",
+      "primaryUrl": "https://raw.githubusercontent.com/openjdk/jdk/jdk-25-ga/src/java.base/share/native/libzip/Inflater.c",
+      "path": "tmp/native-advisory-primary-deep-a5aef/openjdk25-Inflater.c",
+      "readable": true,
+      "bytes": 10207,
+      "digestSha256": "6045add86b9a406f5201396b18914efa720f487f156793e0aea1a88b1aa614f6"
+    }
+  ],
+  "jdkScope": "Upstream jdk-25-ga source distinguishes Java PNG/regex and native inflate APIs; it is not an exact Temurin image/provider registry, native link or reachability attestation. JDK/JNI/font/dlopen/dependency paths remain unresolved.",
+  "datedRuntimePrerequisites": {
+    "evidence": {
+      "path": "docs/security-remediation/acceptance-native-runtime-prerequisites.json",
+      "digestSha256": "a4dbf4e6e1db3663dbf05b848698f44f2343aaffbebfec806aca7385ac236b95"
+    },
+    "capturedAtUtc": "2026-10-08T09:51:11.819988+00:00",
+    "images": [
+      {
+        "service": "billing-service",
+        "datedRuntimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+        "runtimeRetainedInSavedCurrentReadback": true,
+        "scope": "Dated fixed named-path/package checks apply to retained exact digest only."
+      },
+      {
+        "service": "identity-service",
+        "datedRuntimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+        "runtimeRetainedInSavedCurrentReadback": true,
+        "scope": "Dated fixed named-path/package checks apply to retained exact digest only."
+      },
+      {
+        "service": "operations-service",
+        "datedRuntimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+        "runtimeRetainedInSavedCurrentReadback": true,
+        "scope": "Dated fixed named-path/package checks apply to retained exact digest only."
+      },
+      {
+        "service": "platform-service",
+        "datedRuntimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:68ea61aaf05a30ac5f42842f675c79cdca1ee921c1ddb1e251c0b786dda54c20",
+        "runtimeRetainedInSavedCurrentReadback": false,
+        "scope": "Superseded image: prior package/daemon/path checks do not establish the current image."
+      },
+      {
+        "service": "school-core-service",
+        "datedRuntimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0",
+        "runtimeRetainedInSavedCurrentReadback": false,
+        "scope": "Superseded image: prior package/daemon/path checks do not establish the current image."
+      }
+    ],
+    "retainedJavaImageCount": 3,
+    "supersededJavaImageCount": 2,
+    "namedChecksOnly": [
+      "nscd package not installed",
+      "named nscd/journald/newuidmap/newgidmap paths absent"
+    ],
+    "subuidSubgid": "One line each; UID collision and external namespace/host conditions are not established.",
+    "selectedLddScope": "Dated selected JDK traces are partial. dlopen, all other libraries and live loaded native libraries were not inspected.",
+    "nestedJarInventory": {
+      "available": false,
+      "complete": false,
+      "reason": "Old attempted unzip command masked failures and did not verify tool availability or nested BOOT-INF/lib JAR contents. Its empty output is unavailable/incomplete evidence, never proof of native-entry absence."
+    }
+  },
+  "currentExactImages": {
+    "localPresenceEvidence": {
+      "path": "tmp/native-current-image-local-presence-a5aef.json",
+      "digestSha256": "c5531bd08c5d602f9bbe3914143df5e00e562fe8892dd152508f894c7326201b"
+    },
+    "availableForBinaryInventory": false,
+    "pulls": 0,
+    "newContainersStarted": 0,
+    "runtimeProcessesInspected": false
+  },
+  "http2": {
+    "review": {
+      "path": "tmp/http2-anomaly-offline-applicability-a5aef.json",
+      "digestSha256": "cd90cd7a6426167c06fa46980d5aa51f5f2727f394f8a58e16138c314a092cc7"
+    },
+    "decision": "Saved Content-Length mismatch reset code 2 remains strict RFC9113 conformance failure. Correct fixed wire construction was checked offline; emitter/downstream attribution remains unproved. No new live probe and no source cause established."
+  },
+  "preservedHistory": {
+    "evidenceCount": 186,
+    "rawBytesMatchApprovedManifests": true,
+    "manifests": [
+      {
+        "path": "tmp/execution-boundary-publication-integrity-manifest.json",
+        "digestSha256": "ea7e2ee3ffdaff9a64ffbb75ac539be092314d7bb7fd7f8f9e307ad9f3213050"
+      },
+      {
+        "path": "tmp/pr339-corrected-source-binding-manifest.json",
+        "digestSha256": "d07fa31d276911011346eb0dcd82493f090866ab8fa3852357927b5dacf60178"
+      }
+    ]
+  },
+  "researchCaptures": [
+    {
+      "path": "tmp/native-advisory-current-primary-a5aef.json",
+      "digestSha256": "a84001006e3efb4552ba1b407113564bf02e7596b6816f8954c765839af9691f"
+    },
+    {
+      "path": "tmp/native-advisory-deep-primary-captures-a5aef.json",
+      "digestSha256": "e52a41a2aaa79fda09272c0ce6153c758dd1ad4290fe24a8375563dcb0d2f826"
+    },
+    {
+      "path": "tmp/native-zlib-orig-recovered-read-a5aef.json",
+      "digestSha256": "ae94b77739597ba46a5b2b6eaa5c196cb13f984de60cc8489c7da98201b73bb5"
+    }
+  ],
+  "fetchLimits": [
+    "Sourceware/GNU advisory mirror fetches failed; no fix absence inferred from these failures.",
+    "Several Ubuntu browser fetches timed out; Canonical OSV raw records were read successfully.",
+    "Initially guessed zlib orig .tar.bz2 returned HTTP404; exact .dsc identified .tar.xz, which was then read and checksum-verified. Initial failure was preserved."
+  ],
+  "nextConcreteWork": [
+    "Obtain approved read-only inventory and native/provider/link/JAR evidence for the two exact current runtime images before binary applicability claims.",
+    "Submit or monitor exact libpng backport and zlib source-range discrepancy with Canonical/scanner maintainers; retain current finding records until reconciled.",
+    "Track supported Noble security publications for the other nine CVEs; assess precise native consumer/prerequisite evidence independently, without replacing distro shared libraries blindly.",
+    "Resolve existing HTTP2 anomaly through owner-approved attribution/support or acceptance decision; do not regrade INTERNAL_ERROR as required PROTOCOL_ERROR."
+  ],
+  "newSupportedPackageFixToApply": null,
+  "trackedNativeHelperAdded": false,
+  "scope": "Passive primary-source reads and offline bounded archive-member comparisons plus saved-evidence validation. No extraction, executable exploit, package installation, source change, cloud pull/job/probe, VEX, suppression, alert deletion or production action.",
+  "cloudCalls": 0,
+  "cloudMutations": 0,
+  "newLiveHttpRequests": 0,
+  "productionChanged": false,
+  "allNativeAdvisoriesClosed": false
+}

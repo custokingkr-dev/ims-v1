@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "isolatedPrivateService": "ims-dev-identity-rotation-cafea1cee37a",
+  "sourceImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:90910d585d57029bb8cf5daa22360cf97626a5d21ac7a8868df726a9aeac3d91",
+  "secretManagerVersions": [
+    1,
+    2
+  ],
+  "checks": [
+    {
+      "complete": true,
+      "marker": "SEC-ACPT-20261007-ROTATION"
+    },
+    {
+      "check": "new-key-survives-previous-key-retirement",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": true
+    },
+    {
+      "check": "retired-key-authoritative-rejection",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": true
+    },
+    {
+      "check": "overlap-ready",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": true
+    },
+    {
+      "check": "new-key-authoritative-acceptance",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": true
+    },
+    {
+      "check": "previous-key-overlap-authoritative-acceptance",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": true
+    },
+    {
+      "check": "new-managed-key-signature-actual-login",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": true
+    },
+    {
+      "check": "initial-key-authoritative-introspection",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": true
+    },
+    {
+      "check": "initial-key-actual-login",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "mainIdentityConfigChanged": false,
+  "mainSigningSecretRead": false,
+  "onlySyntheticUserId": 990007202,
+  "checkedAtUtc": "2026-10-07T09:52:17.083087+00:00",
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification",
+  "transportAdmissionAttempts": [
+    {
+      "check": "non-json-http-rejection",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": false,
+      "status": 403
+    },
+    {
+      "check": "non-json-http-rejection",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": false,
+      "status": 403
+    },
+    {
+      "check": "non-json-http-rejection",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": false,
+      "status": 403
+    },
+    {
+      "check": "non-json-http-rejection",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": false,
+      "status": 403
+    },
+    {
+      "check": "non-json-http-rejection",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": false,
+      "status": 403
+    },
+    {
+      "check": "non-json-http-rejection",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": false,
+      "status": 403
+    },
+    {
+      "check": "non-json-http-rejection",
+      "marker": "SEC-ACPT-20261007-ROTATION",
+      "passed": false,
+      "status": 403
+    }
+  ],
+  "historicalClonePool": {
+    "max": 5,
+    "min": 0,
+    "futureHelperMax": 2,
+    "futureHelperMin": 0,
+    "sourceChangeAfterDrill": true
+  }
+}

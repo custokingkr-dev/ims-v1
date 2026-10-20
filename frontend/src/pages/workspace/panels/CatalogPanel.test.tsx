@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CatalogPanel } from './CatalogPanel';
 import api from '../../../services/api';
-import { notebookDefinition } from '../../../features/catalog/catalogTestFixtures';
+import { notebookDefinition, trophyDefinition } from '../../../features/catalog/catalogTestFixtures';
 
 vi.mock('../../../services/api');
 vi.mock('../../../contexts/AuthContext', () => ({ useAuth: () => ({ user: { branchId: 7 } }) }));
@@ -12,6 +12,7 @@ vi.mock('../../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: 
 const categories = [
   { code: 'NOTEBOOKS', label: 'Notebooks', emoji: '📓', description: 'Ruled, plain, graph', orderType: 'Recurring', formEnabled: true, sortOrder: 1, active: true },
   { code: 'FLIERS', label: 'Fliers', emoji: '📄', description: 'Single-page fliers', orderType: 'One-time', formEnabled: true, sortOrder: 2, active: true },
+  trophyDefinition.category,
 ];
 
 function mockApi(forms: Record<string, unknown> = {}) {
@@ -29,6 +30,13 @@ function mockApi(forms: Record<string, unknown> = {}) {
 describe('CatalogPanel tiles', () => {
   beforeEach(() => vi.mocked(api.get).mockReset());
   afterEach(() => cleanup());
+
+  it('opens Trophies as a new category with its catalogue picker', async () => {
+    mockApi({ TROPHIES: trophyDefinition });
+    render(<CatalogPanel setPanel={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: /trophies/i }));
+    expect(await screen.findByRole('region', { name: 'Trophy catalogue' })).toBeInTheDocument();
+  });
 
   it('makes a form-enabled category orderable even without a hardcoded tile', async () => {
     mockApi();

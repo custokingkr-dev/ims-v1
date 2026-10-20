@@ -1,0 +1,75 @@
+{
+  "capturedAtUtc": "2026-10-08T06:59:13.172257+00:00",
+  "scope": "Bounded GET-only primary Ubuntu package/changelog research, captured before the follow-up full dev rebuild. Exact dated vendor patch declaration and scanner disagreement; deployed all-five package observations require separate release evidence.",
+  "observedNewSchoolPackage": "libpng16-16t64 1.6.43-5ubuntu0.7",
+  "frozenOtherFourJavaPackage": "libpng16-16t64 1.6.43-5ubuntu0.6",
+  "remainingFinding": {
+    "cve": "CVE-2026-46675",
+    "scannerSeverity": "MEDIUM",
+    "fixedVersionReported": ""
+  },
+  "fetches": [
+    {
+      "url": "https://changelogs.ubuntu.com/changelogs/pool/main/libp/libpng1.6/libpng1.6_1.6.43-5ubuntu0.7/changelog",
+      "status": 200,
+      "bytes": 64593,
+      "sha256": "93b35285187b9f1c3d05ac00a2920b91c6fe6c46bc7d8c750f87380cf5981bd6",
+      "exactVersionMentioned": true
+    },
+    {
+      "url": "https://api.launchpad.net/1.0/ubuntu/+archive/primary?ws.op=getPublishedSources&source_name=libpng1.6&version=1.6.43-5ubuntu0.7&exact_match=true",
+      "status": 200,
+      "bytes": 2749,
+      "sha256": "f5b9b51ef54f27295944bc0db5ad0d5c19261080b9857f57e8c1e8b52c3b0ba2",
+      "exactVersionMentioned": true
+    },
+    {
+      "url": "https://archive.ubuntu.com/ubuntu/pool/main/libp/libpng1.6/",
+      "status": 200,
+      "bytes": 39666,
+      "sha256": "ebe9a17664d255374668930143e1cea56ced7f533f075a007b1b9f577fb72dc6",
+      "exactVersionMentioned": true
+    },
+    {
+      "url": "https://security.ubuntu.com/ubuntu/pool/main/libp/libpng1.6/",
+      "status": 200,
+      "bytes": 39667,
+      "sha256": "54c09e6ba887252f33eb688fd84e6fc1d8c3908b91e0531bd1c97d4e0eaf3adf",
+      "exactVersionMentioned": true
+    }
+  ],
+  "deltaEstablished": true,
+  "remainingCveFixedInferred": false,
+  "nativeApplicabilityEstablished": false,
+  "cloudMutations": false,
+  "exactVersionPrimaryMetadata": {
+    "sourcePackage": "libpng1.6",
+    "sourceVersion": "1.6.43-5ubuntu0.7",
+    "series": "noble",
+    "publishedPockets": [
+      {
+        "pocket": "Updates",
+        "status": "Published",
+        "datePublished": "2026-10-08T04:12:15.361122+00:00"
+      },
+      {
+        "pocket": "Security",
+        "status": "Published",
+        "datePublished": "2026-10-07T18:48:17.569182+00:00"
+      }
+    ],
+    "changelogDeltaParaphrase": "Noble security revision adds CVE-2026-46675.patch for a png_read_end use-after-free; patch clears stale zstream pointers when releasing the inflate stream in pngrutil.c.",
+    "vendorExplicitlyNamesRemainingCvePatch": true
+  },
+  "scannerVendorDisagreement": "Current exact school SARIF still reports CVE-2026-46675 MEDIUM with blank FixedVersion, while the exact published Ubuntu0.7 changelog explicitly identifies its patch. No scanner alert suppression, risk acceptance, native applicability or exploitability conclusion follows.",
+  "frozenImageLimitation": "Four unchanged Java images have observed libpng0.6. This research does not prove whether another mechanism mitigates them or claim they include the0.7 package patch.",
+  "combinedInventoryInterfaceAcknowledged": {
+    "combinedCountKey": "combinedResultCount",
+    "newImageShape": "service singleton",
+    "combinedInventoryPath": "tmp/pr329-combined-dev-image-inventory.json"
+  },
+  "trackedReferences": {
+    "firstSchoolPackageObservation": "acceptance-portrait-metadata-release-inventory.json",
+    "priorMixedSevenRuntimeInventory": "acceptance-portrait-metadata-combined-dev-inventory.json"
+  }
+}

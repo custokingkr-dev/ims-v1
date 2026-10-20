@@ -30,6 +30,15 @@ class NotificationDeliveryCommandServiceTest {
     private final NotificationInboxProcessor processor = mock(NotificationInboxProcessor.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    @Test void uncertainOrSubmittingIsExplicitlyAnsweredWithoutResetOrRetry() {
+        for(String status:java.util.List.of("UNKNOWN","SUBMITTING","ACCEPTED","REJECTED")) {
+            var row=existing(status);
+            when(inbox.findById("school-core:absentee:row-1")).thenReturn(Optional.of(row));
+            assertThat(service("msg91",false).deliverNow(command()).status()).isEqualTo(status);
+        }
+        verify(processor,never()).process(any());verify(inbox,never()).save(any());
+    }
+
     @Test
     void newEventIsPersistedProcessedAndAnsweredFromItsFinalState() {
         NotificationDeliveryCommandService service = service("logging", true);

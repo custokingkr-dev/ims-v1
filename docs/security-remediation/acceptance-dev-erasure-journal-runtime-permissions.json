@@ -1,0 +1,32 @@
+{
+  "project": "custoking-dev",
+  "job": "ims-dev-erasure-permissions-66b13a11eed980ad",
+  "success": true,
+  "ownedJobAbsent": true,
+  "productionChanged": false,
+  "studentOrProviderDataChanged": false,
+  "initialFailure": {
+    "stage": "job creation",
+    "reason": "Cloud Run Gen2 requires at least512MiB; rejected before execution. Manifest corrected to512MiB."
+  },
+  "bucket": "custoking-dev-erasure-journal",
+  "generation": "1791383307281057",
+  "marker": "DEV_ERASURE_PERMISSION_PROBE",
+  "object": "intents/permission-probe/66b13a11eed980ad.json",
+  "scope": "One synthetic journal object only; no student data or provider sends.",
+  "serviceAccount": "ims-school-core-dev@custoking-dev.iam.gserviceaccount.com",
+  "sha256": "f62f36e1cac9db4c568fa1c74217354dde709eeb9620653cb0fb1b865b484413",
+  "statuses": {
+    "anonymousGet": 401,
+    "controlCreate": 403,
+    "controlGet": 200,
+    "create": 200,
+    "delete": 403,
+    "list": 403,
+    "pinnedGet": 200,
+    "replace": 403,
+    "update": 403
+  },
+  "executionCompleted": true,
+  "checkedAtUtc": "2026-10-07T14:28:44.192620+00:00"
+}

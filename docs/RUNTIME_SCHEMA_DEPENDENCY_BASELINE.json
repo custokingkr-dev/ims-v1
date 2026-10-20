@@ -24,9 +24,5 @@
       "billing"
     ]
   },
-  "allowedExternalSchemas": {
-    "platform-service": [
-      "student"
-    ]
-  }
+  "allowedExternalSchemas": {}
 }

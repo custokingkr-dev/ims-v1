@@ -1,0 +1,96 @@
+{
+  "release": {
+    "runId": 37524985447,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37524985447",
+    "commit": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8"
+  },
+  "sourceEvidenceSha256": "sha256:7bc97af848e6eb174ae6b91920170090dd3e305a55366395b61e8b6ee016b388",
+  "startedAt": "2026-10-06T20:59:31.982Z",
+  "finishedAt": "2026-10-06T20:59:35.833Z",
+  "scope": "Anonymous live HTTP/browser smoke",
+  "currentRevision": {
+    "service": "frontend",
+    "revision": "custoking-frontend-dev-mux4y4gz",
+    "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+    "ready": true,
+    "latestTrafficPercent": 100
+  },
+  "origins": [
+    {
+      "origin": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+      "responses": [
+        {
+          "resource": "/login",
+          "status": 200,
+          "headers": {
+            "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "referrer-policy": "no-referrer",
+            "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+            "strict-transport-security": "max-age=31536000"
+          }
+        },
+        {
+          "resource": "/frontend-health",
+          "status": 200,
+          "headers": {
+            "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "referrer-policy": "no-referrer",
+            "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+            "strict-transport-security": "max-age=31536000"
+          }
+        },
+        {
+          "resource": "/assets/index-UB6jIoJq.js",
+          "status": 200,
+          "headers": {
+            "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "referrer-policy": "no-referrer",
+            "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+            "strict-transport-security": "max-age=31536000"
+          }
+        },
+        {
+          "resource": "/assets/missing-security-proof.js",
+          "status": 404,
+          "headers": {
+            "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "DENY",
+            "referrer-policy": "no-referrer",
+            "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+            "strict-transport-security": "max-age=31536000"
+          }
+        },
+        {
+          "resource": "synthetic-nonexistent-photo",
+          "status": 401,
+          "headers": {
+            "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none', default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+            "x-content-type-options": "nosniff, nosniff",
+            "x-frame-options": "DENY, DENY",
+            "referrer-policy": "strict-origin-when-cross-origin, no-referrer",
+            "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+            "strict-transport-security": "max-age=63072000; includeSubDomains; preload, max-age=31536000"
+          }
+        }
+      ],
+      "browser": {
+        "inlineExecuted": false,
+        "rasterBlobLoaded": true,
+        "violations": [
+          "script-src-elem",
+          "object-src"
+        ]
+      }
+    }
+  ],
+  "success": true,
+  "authenticatedTenantCoverage": false,
+  "observedCloudRunProcessUid": false
+}

@@ -32,7 +32,8 @@ class UserDirectoryAuthorizationTest {
 
     private final MockMvc mvc = MockMvcBuilders
             .standaloneSetup(new UserDirectoryController(users, VALID_TOKEN))
-            .addFilters(new TenantContextFilter())
+            .addFilters(com.custoking.ims.identityservice.VerifiedSessionFixtures.filter())
+            .defaultRequest(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/").header("X-Authenticated-User-Id","1").header("X-Authenticated-Session-Id","verified-test-session"))
             .build();
 
     @AfterEach

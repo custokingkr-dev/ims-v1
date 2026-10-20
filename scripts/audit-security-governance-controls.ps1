@@ -23,6 +23,8 @@ param(
   [string]$CloudDeployPipelineRenderer = "scripts/render-clouddeploy-pipelines.ps1",
   [string]$AffectedResolver = "scripts/resolve-affected-ci-targets.ps1",
   [string]$BuildReleaseWorkflow = ".github/workflows/build-release.yml",
+  [string]$ReleaseImageResolver = "scripts/resolve-release-images.ps1",
+  [string]$ReleaseImageWorker = "scripts/resolve-release-image-worker.ps1",
   [string]$CiWorkflow = ".github/workflows/ci-pr.yml",
   [string]$DetectWorkflow = ".github/workflows/_detect-changes.yml",
   [string]$ConfigWorkflow = ".github/workflows/reconcile-deployment-config.yml",
@@ -48,6 +50,7 @@ param(
   [string]$LiveWorker = "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/BroadcastLiveWorker.java",
   [string]$LiveLedger = "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/BroadcastLiveRepository.java",
   [string]$LiveReports = "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+  [string]$ReportBodyReader = "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/AsyncNotificationReportBody.java",
   [string]$LiveConfiguration = "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/LiveBroadcastConfiguration.java",
   [string]$PlatformApplicationConfig = "services/platform-service/src/main/resources/application.yml",
   [string]$PlatformCloudRunManifest = "deploy/cloudrun/platform-service.yaml",
@@ -64,13 +67,13 @@ $paths = @($ReadinessAudit, $GovernanceConfigurator, $GitHubExactCheckVerifier,
   $ReportingConfigurator, $SecretRotationAudit, $SecretRotationPolicy, $RecoveryBucketRole,
   $CloudDeployDevTargets, $CloudDeployProdTargets, $CloudDeployRenderer,
   $CloudDeployPipelineRenderer, $AffectedResolver,
-  $BuildReleaseWorkflow, $CiWorkflow, $DetectWorkflow, $ConfigWorkflow, $RollbackWorkflow,
+  $BuildReleaseWorkflow, $ReleaseImageResolver, $ReleaseImageWorker, $CiWorkflow, $DetectWorkflow, $ConfigWorkflow, $RollbackWorkflow,
   $RecoveryWorkflow, $RestoreDrillScript, $RecoveryPrerequisiteAudit, $CloudSqlTransportAudit, $CloudSqlTransportSql,
   $CloudSqlTransportCapture, $DeadLetterReplayScript, $AsyncSchedulerConfigurator,
   $NotificationResilienceConfigurator, $ReportingResilienceConfigurator,
   $ScaleFixtureScript, $LoadCertificationScript,
   $CicdTerraform, $DependabotConfig, $CodeQlWorkflow,
-  $ContainerWorkflow, $Msg91Provider, $LiveProvider, $LiveWorker, $LiveLedger, $LiveReports, $LiveConfiguration, $PlatformApplicationConfig,
+  $ContainerWorkflow, $Msg91Provider, $LiveProvider, $LiveWorker, $LiveLedger, $LiveReports, $ReportBodyReader, $LiveConfiguration, $PlatformApplicationConfig,
   $PlatformCloudRunManifest, $NotificationConsentEvidence)
 $contents = @{}
 foreach ($relative in $paths) {
@@ -300,10 +303,12 @@ Require-Text $LiveProvider @(
   'PROVIDER_OUTCOME_UNCONFIRMED'
 )
 Require-Text $LiveWorker @(
-  'transaction.execute(tx -> prepareNext())',
+  'TransactionSynchronizationManager.isActualTransactionActive()',
+  'transaction.execute(tx -> queue.candidate(OffsetDateTime.now(), "LIVE"))',
+  'queue.claimExpected(OffsetDateTime.now(), snapshot)',
   'provider.submit(plan.prepared())',
   'ledger.reserve(row,prepared)',
-  'queue.claim(OffsetDateTime.now(),"LIVE")',
+  'new NotificationPolicyGuard().requireAllowed',
   'POLICY_BINDING_CHANGED'
 )
 Require-Text $LiveLedger @(
@@ -318,7 +323,26 @@ Require-Text $LiveLedger @(
 Require-Text $LiveReports @(
   'X-Notification-Service-Token', 'X-MSG91-Webhook-Token',
   'MessageDigest.isEqual', 'configuration.webhookToken().length()<32',
-  'bytes.length>32768', 'Provider report persistence unavailable'
+  'Duration.ofSeconds(5),32768', 'BODY.receive(request,response,this::record',
+  'transaction.setTimeout(5)', 'StandardCharsets.UTF_8.newDecoder()',
+  'CodingErrorAction.REPORT', 'STRICT_DUPLICATE_DETECTION',
+  'FAIL_ON_TRAILING_TOKENS', 'Provider report persistence unavailable'
+)
+if ($contents[$LiveReports].Contains('@RequestBody') -or $contents[$LiveReports].Contains('getInputStream(')) {
+  $violations.Add("EMAIL reports must authenticate before their shared bounded servlet reader; eager body conversion/direct stream reads are forbidden.") | Out-Null
+}
+$serviceAuthAt = $contents[$LiveReports].IndexOf('requireToken(token,"notification:report");')
+$callbackAuthAt = $contents[$LiveReports].IndexOf('configuration.webhookToken().length()<32')
+$bodyReadAt = $contents[$LiveReports].IndexOf('BODY.receive(request,response,this::record')
+if ($serviceAuthAt -lt 0 -or $callbackAuthAt -le $serviceAuthAt -or $bodyReadAt -le $callbackAuthAt) {
+  $violations.Add("EMAIL service and callback credentials must precede the bounded body read.") | Out-Null
+}
+Require-Text $ReportBodyReader @(
+  'new Semaphore(2)', 'this(timeout,8192',
+  'request.getContentLengthLong()>maxBytes', 'maxBytes+1-body.size()',
+  'body.size()>maxBytes', 'System.nanoTime()>=deadline',
+  'context.setTimeout(timeoutMillis)', 'processing=true',
+  'processing=false', 'if(!released)', 'if(!processing)release()'
 )
 Require-Text $LiveConfiguration @(
   'schools.size() <= 100', 'destinations.size() <= 1000',
@@ -714,9 +738,9 @@ Require-Text $BuildReleaseWorkflow @(
   "Ops / Reconcile deployment configuration",
   "Resolve immutable release images",
   "id: images",
-  '$immutableRef = "$runtimeRegistry/$($entry.image)@$digest"',
-  '${scanKey}_ref=$immutableRef',
-  "immutableRef = `$immutableRef",
+  'resolve-release-images.ps1',
+  '-MaxConcurrency 3',
+  'resolve-release-images-test.ps1',
   "Trivy exact-digest HIGH/CRITICAL gate",
   "Trivy exact-digest SARIF evidence",
   "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0",
@@ -728,6 +752,18 @@ Require-Text $BuildReleaseWorkflow @(
   "Get-Item -LiteralPath `$tablePath",
   "Get-Item -LiteralPath `$sarifPath",
   "No immutable release image was scanned. Deployment is blocked."
+)
+Require-Text $ReleaseImageResolver @(
+  '[ValidateRange(1,3)]', 'ForEach-Object -Parallel', '-ThrottleLimit $MaxConcurrency',
+  '$failed.Count -gt 0', '${key}_ref=$($service.immutableRef)',
+  '${key}_digest_key=$($service.digest.Replace', 'resolve-release-image-worker.ps1'
+)
+Require-Text $ReleaseImageWorker @(
+  'Invoke-ImageCommand cosign', '--certificate-identity', '--certificate-oidc-issuer',
+  '.github/workflows/build-release.yml@refs/heads/dev', 'https://token.actions.githubusercontent.com',
+  'dev-approved-', 'Read-OciManifest $sourceRef', '$promoted -cne $digest',
+  'Promotion tag conflict', 'immutableRef=$immutableRef', 'runtimeRef=',
+  "'artifacts','tags','create'", '--prefer-index=false'
 )
 if ($contents[$BuildReleaseWorkflow].Contains("Apply changed deployment configuration") -or
     $contents[$BuildReleaseWorkflow].Contains("gcloud deploy apply") -or
@@ -785,7 +821,7 @@ if ($releaseTableCount -ne 7 -or $releaseSarifCount -ne 7) {
 }
 $releaseGateIndex = $buildReleaseContent.IndexOf("- name: Enforce exact-digest Trivy gates and evidence", [System.StringComparison]::Ordinal)
 $devDeployIndex = $buildReleaseContent.IndexOf("- name: Fast dev deployment", [System.StringComparison]::Ordinal)
-$prodDeployIndex = $buildReleaseContent.IndexOf("- name: Create and serially promote Cloud Deploy releases", [System.StringComparison]::Ordinal)
+$prodDeployIndex = $buildReleaseContent.IndexOf("- name: Create and promote Cloud Deploy dependency groups", [System.StringComparison]::Ordinal)
 if ($releaseGateIndex -lt 0 -or $devDeployIndex -le $releaseGateIndex -or $prodDeployIndex -le $releaseGateIndex) {
   $violations.Add("The aggregate exact-digest Trivy gate must precede every deploy or promotion step.") | Out-Null
 }
@@ -851,6 +887,7 @@ $approvedActionPins = @{
   "gitleaks/gitleaks-action@v3"         = "e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e"
   "google-github-actions/auth@v3"       = "7c6bc770dae815cd3e89ee6cdf493a5fab2cc093"
   "google-github-actions/setup-gcloud@v3" = "aa5489c8933f4cc7a4f7d45035b3b1440c9c10db"
+  "hashicorp/setup-terraform@v3"        = "b9cd54a3c349d3f38e8881555d616ced269862dd"
   "sigstore/cosign-installer@v4.1.2"    = "6f9f17788090df1f26f669e9d70d6ae9567deba6"
 }
 $actionSourceFiles = @(

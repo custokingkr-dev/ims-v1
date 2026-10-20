@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "marker": "SEC-ACPT-20261007",
+  "role": "VIEWER",
+  "userId": 990007205,
+  "schoolId": 990007101,
+  "normalLogin": true,
+  "validBody": true,
+  "allowedOrigin": true,
+  "bearerAuthCookieCsrfNotApplicable": true,
+  "studentReadGranted": true,
+  "studentUpdateGranted": false,
+  "roleCatalogObservation": {
+    "status": 200,
+    "legitimatelyGrantedRead": true,
+    "initialExpected": 403,
+    "initialObserved": 200,
+    "initialAttemptStopped": true,
+    "initialHarnessExpectationCorrected": true
+  },
+  "checks": [
+    {
+      "check": "actual-normal-password-login",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "own-student-permitted",
+      "status": 200,
+      "expected": 200,
+      "passed": true
+    },
+    {
+      "check": "foreign-object-concealed",
+      "status": 404,
+      "expected": 404,
+      "passed": true
+    },
+    {
+      "check": "valid-own-student-write-permission-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    },
+    {
+      "check": "admin-only-owned-user-assignment-directory-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    },
+    {
+      "check": "spoofed-role-carrier-foreign-object-denied",
+      "status": 404,
+      "expected": 404,
+      "passed": true
+    },
+    {
+      "check": "spoofed-role-carrier-write-still-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    },
+    {
+      "check": "spoofed-role-carrier-admin-still-denied",
+      "status": 403,
+      "expected": 403,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "checkedAtUtc": "2026-10-07T12:07:52.369779+00:00"
+}

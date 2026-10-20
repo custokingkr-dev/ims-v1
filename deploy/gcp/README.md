@@ -18,6 +18,15 @@ Files in this directory are not one single deployment procedure. Treat them by p
 - `direct-service-smoke-job.template.yaml`: optional authenticated business-smoke support. The release workflow performs Cloud Run readiness/digest/traffic checks, frontend HTTP verification when changed, and final gateway health; it does not invoke this job.
 - `github-deploy-runtime-operator-role.yaml`: source for a custom IAM posture that is not currently verified live.
 
+The dev registry also retains exact reviewed rollback images tagged with
+`security-rollback-reviewed-`. The keep rule overrides scheduled deletion for
+those tags; normal seven-day cleanup and the recent-three rule still apply to
+other images. Tag both the source/index digest and the resolved runtime digest
+only after reviewing successful release evidence. Do not move or remove these
+reviewed tags as routine cleanup. Future rollback still requires current
+advisory/signature/deployment gates; tags are mutable and do not prevent an
+authorized manual deletion. [Executed dev protection evidence](../../docs/security-remediation/acceptance-registry-rollback-protection.md).
+
 Historical GCP bootstrap and operations documents can still be useful for infrastructure facts, secrets, Google Drive intake setup, cost guardrails, and smoke scripts. Do not treat older Cloud Build commands as current deployment instructions.
 
 ## Manual Production Readiness Bundle

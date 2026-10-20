@@ -41,6 +41,7 @@ export interface OrderAsset {
 export type SelectionSnapshot = Record<string, string | { code: string; label: string; spec?: string; specText?: string }>;
 export interface SavedLine {
   id: number; lineNo: number; optionSelections: SelectionSnapshot;
+  attributes?: Record<string, string | number>;
   requestedBookCount: number; bookCount: number; requestedPageCount: number; pageCount: number;
   unitPricePaise: number | null; lineTotalPaise: number | null;
 }

@@ -415,9 +415,10 @@ public class AttendanceReadRepository {
         String academicYearId = currentAcademicYearId(sectionSchoolId);
         Map<String, Object> daily = dailyRecord(date, sectionId, academicYearId);
         List<Map<String, Object>> students = jdbc.sql("""
-                SELECT s.id, s.admission_no, s.roll_no, s.full_name, s.photo_url,
+                SELECT s.id, s.admission_no, s.roll_no, s.full_name, s.photo_url, school.school_uid::text AS school_uid,
                        ar.status, ar.remarks
                 FROM student.students s
+                JOIN tenant_school.schools school ON school.id=s.school_id
                 LEFT JOIN %s ar
                        ON ar.student_id = s.id
                       AND ar.attendance_date = :date
@@ -439,7 +440,7 @@ public class AttendanceReadRepository {
                         "admissionNo", rs.getString("admission_no"),
                         "rollNo", rs.getString("roll_no"),
                         "fullName", rs.getString("full_name"),
-                        "photoUrl", photoStorage.toDisplayUrl(rs.getString("photo_url")),
+                        "photoUrl", photoStorage.toDisplayUrl(rs.getString("photo_url"), rs.getString("school_uid"), rs.getLong("id")),
                         "status", rs.getString("status"),
                         "remarks", rs.getString("remarks") == null ? "" : rs.getString("remarks")))
                 .list();

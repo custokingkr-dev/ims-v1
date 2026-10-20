@@ -1,0 +1,721 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:42:39.434236+00:00",
+  "service": "platform-service",
+  "command": [
+    "D:\\Projects\\ims-v1-security\\mvnw.cmd",
+    "-pl",
+    "services/platform-service",
+    "clean",
+    "test"
+  ],
+  "nativeExit": 0,
+  "counts": {
+    "tests": 496,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 496
+  },
+  "skippedCases": [],
+  "logPath": "tmp/remaining-round-platform-service-full.log",
+  "logDigestSha256": "15ab0cfc7a4a2ca66acb301f347279d20f5c3810f6aa689923c051b8ac4249ed",
+  "classes": [
+    {
+      "class": "com.custoking.ims.migration.MigrationDisabledConfigurationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.migration.MigrationDisabledConfigurationTest.xml",
+      "digestSha256": "28c8f86a88a3a9b0ea1a3d0bc061be8986bf659b14ce1465300b388b8f288b2d"
+    },
+    {
+      "class": "com.custoking.ims.migration.MigrationOnlyMainIntegrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.migration.MigrationOnlyMainIntegrationTest.xml",
+      "digestSha256": "8fc5dd08011bad993823d45c39fa0a22fb21ce1dd59451389898a41919b7d0c1"
+    },
+    {
+      "class": "com.custoking.ims.migration.MigrationRuntimePolicyTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.migration.MigrationRuntimePolicyTest.xml",
+      "digestSha256": "358a17c6d5deb24db73f7cbc6786b634d95680e1327bb4bc84ba7378c02af425"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.AuditIngestControllerTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.AuditIngestControllerTest.xml",
+      "digestSha256": "ec5f084771bf8f56de8d43b3be1ca9f278d758e66c460d6140fcd74cffbee736"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.AuditTenantScopingTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.AuditTenantScopingTest.xml",
+      "digestSha256": "dc8211e5ef4a84b42b13b5b4faefa83e196da4f21ade93ce7d787057abf4c93b"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.compat.AuditPublicCompatibilityControllerTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.compat.AuditPublicCompatibilityControllerTest.xml",
+      "digestSha256": "542d479bcf3e0c86153fdd2068cf8fdeb19bdbc4cdb3f95a77a541d20b262de7"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.compat.ReportingApprovalsCompatibilityControllerTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.compat.ReportingApprovalsCompatibilityControllerTest.xml",
+      "digestSha256": "f8ea4489f7aa877dc1d745e56d98846d7525d3d62c784b34663befa19f9ffcf0"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.internal.AsyncNotificationReportBodyTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.internal.AsyncNotificationReportBodyTest.xml",
+      "digestSha256": "06ad0479d002f63291c70ea9110db7248c658b5cd0f6a018b180dfd7fc1b4927"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.internal.AsyncWorkTriggerControllerTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.internal.AsyncWorkTriggerControllerTest.xml",
+      "digestSha256": "953b1b9df30335715f86a1379b3aa14a2f2f28e8c5a6d17e84a3dc8089a62368"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.internal.GenericNotificationReportControllerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.internal.GenericNotificationReportControllerTest.xml",
+      "digestSha256": "e700e7a24beb228ce2297bea58998f343fdd1dd185a3431dc7541cc9097f5055"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.internal.GenericNotificationReportHttpIntegrationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.internal.GenericNotificationReportHttpIntegrationTest.xml",
+      "digestSha256": "e876ed5b92fb7fa583c9b219308c45d4bbc6f824ebf71e1f0090d80de93a5a74"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.internal.NotificationDeliveryCommandControllerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.internal.NotificationDeliveryCommandControllerTest.xml",
+      "digestSha256": "d5c039dcc731788df57515d02cab4501ceff1d561f738da7acbf2d1c15684b91"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.internal.PubSubPushControllerTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.internal.PubSubPushControllerTest.xml",
+      "digestSha256": "9d7cd2659d1da2357a02020ad622d180994e8e996a21b3ff2df03100a29b39eb"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.Msg91BroadcastReportControllerTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.Msg91BroadcastReportControllerTest.xml",
+      "digestSha256": "88492f152ce3c2e54bf10323e8e8a1857aad85989f8e446db6779531b46c581c"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.Msg91BroadcastReportHttpIntegrationTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.Msg91BroadcastReportHttpIntegrationTest.xml",
+      "digestSha256": "b255b676f1a7d447092bcc66fd9307fea24a3030b17b1954cb5419c7e9187f5c"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.Msg91BroadcastReportPostgresIntegrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.Msg91BroadcastReportPostgresIntegrationTest.xml",
+      "digestSha256": "63171be5d3be2adedd1a773169bdd403f91c6f1d822ee531e574dd8fb5b5520a"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.NotificationBroadcastCapabilitiesTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.NotificationBroadcastCapabilitiesTest.xml",
+      "digestSha256": "511e25cf485931db11382392241639c96fa337a21743b10aa738d4e7d1f526bc"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.NotificationStatusControllerTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.NotificationStatusControllerTest.xml",
+      "digestSha256": "2d2b91b0e1959680b9d6e75e3b23ccda594ef0a233c71275da8f0cd19a2ffcd4"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.NotificationTenantScopingTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.NotificationTenantScopingTest.xml",
+      "digestSha256": "7bf72c5f77ba972a3386a11abeef4e6607a20a1d936b3e472e23630e27491f4a"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.NotificationValidationTest",
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.NotificationValidationTest.xml",
+      "digestSha256": "79d48fc93dc218c70fd3643e48c4c6884c479a39d3c1b7539b4310a89a27d96f"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.ReportingReadControllerTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.ReportingReadControllerTest.xml",
+      "digestSha256": "12bdb4316ee47ee86fb5969b7676208e6f618d1cf20e0788a5ec63dbcbbbfa29"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.ReportingTenantScopingTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.ReportingTenantScopingTest.xml",
+      "digestSha256": "4772ca0aaa759b54d3d79645dda4c809e8e101dca237e9db007f4b0ef6363ca6"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.ReportingValidationTest",
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.ReportingValidationTest.xml",
+      "digestSha256": "95f5cc0701d08b7edf716d59316c76d8166d0ce05662c4f053566e68bbdd3bc5"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.api.ReportingWorkspaceContractTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.api.ReportingWorkspaceContractTest.xml",
+      "digestSha256": "3a64fb59562a3fd1fa7819790089897134743948df91fa07ae655a8a05015d14"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.AttendanceFactProjectionIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.AttendanceFactProjectionIntegrationTest.xml",
+      "digestSha256": "6001b1649681c8427c9f328518ca768104c489442cd7a57a1f4aeff0798765ef"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.BillingInvoiceProjectionIntegrationTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.BillingInvoiceProjectionIntegrationTest.xml",
+      "digestSha256": "8638d0036ca7e78e82942942d26d2ae8b5948b2aafa2475086fa2eabceb5ecdd"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.BroadcastDeliveryWorkerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.BroadcastDeliveryWorkerTest.xml",
+      "digestSha256": "c9a3da4efb9f14f8eeb87827747b3f208bc1805ae0f5353d6932f6fa0473c41a"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.BroadcastDispatchServiceTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.BroadcastDispatchServiceTest.xml",
+      "digestSha256": "29a3b15b71a4c1d31798ffbc5d96b0db009d7ef3f98528037ff1a52df193d947"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.BroadcastLiveDispatchServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.BroadcastLiveDispatchServiceTest.xml",
+      "digestSha256": "6eb11624fd4f94174dc9f7a9e6b026658f8d63797e472d635820056688d70a87"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.BroadcastLiveWorkerTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.BroadcastLiveWorkerTest.xml",
+      "digestSha256": "a1aeeaee8d5010cacb5db693d89055b5808ba0d197d46de4ccec4fb353980154"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.CatalogFactProjectionIntegrationTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.CatalogFactProjectionIntegrationTest.xml",
+      "digestSha256": "4dc7bfad24e6f676f06893d9ac893849458b51d21edc378f9c663ebe31036c4b"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.CurrentNotificationRecipientPolicyTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.CurrentNotificationRecipientPolicyTest.xml",
+      "digestSha256": "8d35c21fc401e336d3ba9da56e080177223658ed8de191bd6100cafd93dfc1d3"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.DimensionProjectionIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.DimensionProjectionIntegrationTest.xml",
+      "digestSha256": "79850aed26c329a0081c73baa72f005a801cb9584ff83803a86c6a1e214d8e0d"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.FeeFactProjectionIntegrationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.FeeFactProjectionIntegrationTest.xml",
+      "digestSha256": "7aabc0bd401d4d766c4b150bb540237edb88f87ef3f49bdd77663ecef8cd42f1"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.FirefightingFactProjectionIntegrationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.FirefightingFactProjectionIntegrationTest.xml",
+      "digestSha256": "beea30ff2fdd843539f38c87b50dac012fdcd78a2141b6e42ba15baf3f7ff07d"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.GenericNotificationReportServiceTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.GenericNotificationReportServiceTest.xml",
+      "digestSha256": "1051eb494370452467deb07e059f957d0ccada56487b011fad4704278f3b7318"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.GenericNotificationSubmissionWorkerTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.GenericNotificationSubmissionWorkerTest.xml",
+      "digestSha256": "ad4a3f3584831ca18f05ffa7be1bb6c880888d49418ff20183e8172dc0b5924a"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.NotificationDeliveryBroadcastDedupeTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.NotificationDeliveryBroadcastDedupeTest.xml",
+      "digestSha256": "e9a0901a0da88d82cb62709c61acf705880111f07a8a58b4b588d4c02500d6e8"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.NotificationDeliveryCommandServiceTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.NotificationDeliveryCommandServiceTest.xml",
+      "digestSha256": "0ae3280f1337831d4484c533fcb4e6068b393e02453472a67f6761f1774ce897"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.NotificationDeliveryServiceTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.NotificationDeliveryServiceTest.xml",
+      "digestSha256": "9f94a391febdef953748aa936a1a5667b9291cfd7422917c6b21dc6e44a89a6c"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.NotificationInboxProcessorTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.NotificationInboxProcessorTest.xml",
+      "digestSha256": "30b09278e427aa25f77d14de6e07e702c99aca3bcdfbec7d774162f0d687c59d"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.NotificationPolicyGuardAbsenteeContractTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.NotificationPolicyGuardAbsenteeContractTest.xml",
+      "digestSha256": "491677745b15a5dd6b1fdbb3ffb55c05dd5078038e2aad89975eea795d29b501"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.NotificationSubmissionResultTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.NotificationSubmissionResultTest.xml",
+      "digestSha256": "034e3836ee2a84466693a25eb8752186438505d1166c044fc2c3a38398aad565"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.ReportingEventInboxProcessorRetryTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.ReportingEventInboxProcessorRetryTest.xml",
+      "digestSha256": "cd0c5c740eb7a59bf8411daa8f632b1831fd20aeb708087751b260da38ac70b8"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.StudentDimensionProjectionIntegrationTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.StudentDimensionProjectionIntegrationTest.xml",
+      "digestSha256": "a02c999084cd6917c9ccbcd51596614380d6c1400e65c1f702ea5f86d5cd7e11"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.application.StudentReviewFactProjectionIntegrationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.application.StudentReviewFactProjectionIntegrationTest.xml",
+      "digestSha256": "961aa7026122cc08bfd76c9e61d201a496686028d359adfd69eec8e6016415b3"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.config.RequestCorrelationFilterTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.config.RequestCorrelationFilterTest.xml",
+      "digestSha256": "0f9834e8e281fe27fff1077b111b3696b1a55c4fbf3526d43d3c55028e15845a"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.infrastructure.Msg91BroadcastLiveProviderTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.infrastructure.Msg91BroadcastLiveProviderTest.xml",
+      "digestSha256": "42b56e04d330b98aad61e213016acb3df8d99fbf4a751fe08af5bcfe84470af6"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.infrastructure.Msg91GenericSubmissionTransportTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.infrastructure.Msg91GenericSubmissionTransportTest.xml",
+      "digestSha256": "fd8ca525e1902cb120c6947cb26e5fb3da31439dfbd2789495e9db648ccfbb73"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.infrastructure.Msg91NotificationDeliveryProviderTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.infrastructure.Msg91NotificationDeliveryProviderTest.xml",
+      "digestSha256": "6b513f659dc9d768101d3583e529b5a8901e728ee68270614bba6bbb70c8b885"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.infrastructure.Msg91SmsV3ReportBridgePostgresTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.infrastructure.Msg91SmsV3ReportBridgePostgresTest.xml",
+      "digestSha256": "36e37f54744f9ca7205d04b43d0c64fb144497f22bd80eb2c06a836e8cf3a3cf"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.infrastructure.Msg91SmsV3ReportBridgeTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.infrastructure.Msg91SmsV3ReportBridgeTest.xml",
+      "digestSha256": "730da1f03e8e7f62f2f725e03889bc00c6d15001ff21b258d8ab1416a5c264df"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.infrastructure.Msg91SmsV3ReportCodecTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.infrastructure.Msg91SmsV3ReportCodecTest.xml",
+      "digestSha256": "a23e54f845714dc6ee9955e6841307d26541ca0bcf032c76f7efd81fb5c9d5da"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.infrastructure.SchoolCoreBroadcastRecipientPolicyTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.infrastructure.SchoolCoreBroadcastRecipientPolicyTest.xml",
+      "digestSha256": "079c305f1e9e487c860e1bc61aa987f426ab10f84c876baf7c482b34fb99a2fa"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.observability.TracingAutoConfigTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.observability.TracingAutoConfigTest.xml",
+      "digestSha256": "aa799002bb0c6d1277dea11563ef4f204ac04378aea02928661df0df0e7cff0a"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.BroadcastDispatchRepositoryIntegrationTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.BroadcastDispatchRepositoryIntegrationTest.xml",
+      "digestSha256": "07b23d35908881f0d01771780458a905ebd306dace26ff7b4a6e7c1ec3697411"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.BroadcastLiveRepositoryIntegrationTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.BroadcastLiveRepositoryIntegrationTest.xml",
+      "digestSha256": "0b32c27038afdef6c804c8f57733c0f4f477f6a85df749aab9e2103e796c7620"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.GenericAcceptedReportBindingIntegrationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.GenericAcceptedReportBindingIntegrationTest.xml",
+      "digestSha256": "42be3e757e8bd21462b1a0804f50f87e03f5050fe76161dca87de889afe7de5c"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.GenericNotificationReportIntegrationTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.GenericNotificationReportIntegrationTest.xml",
+      "digestSha256": "9cca7550c5af1c999505f357b754b37813bdded07e4e745f76325ba7d8516fa2"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.GenericNotificationSubmissionIntegrationTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.GenericNotificationSubmissionIntegrationTest.xml",
+      "digestSha256": "95b8df18a65fcd20cd82ef8fa5b47adafee5c85ac1972ce2382f31d5ae6c586a"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.NotificationBroadcastDispatchPolicyTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.NotificationBroadcastDispatchPolicyTest.xml",
+      "digestSha256": "651d48a74af34dfea29f0b3d9c80494bc46f10e4dffa177e6a93354f9a446794"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.ReportingApprovalRepositoryTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.ReportingApprovalRepositoryTest.xml",
+      "digestSha256": "c6568527d71c0b7885fe859c0f8bfe80bd4a23a9b76928c8804da4073446fb63"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.ReportingDimensionReadIntegrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.ReportingDimensionReadIntegrationTest.xml",
+      "digestSha256": "a0c323dfd51c07502400e917c222648ca6b49c76928856917502aa834bd2a77e"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.ReportingFactReadIntegrationTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.ReportingFactReadIntegrationTest.xml",
+      "digestSha256": "7cc0cf8a587c708052c38d1f4b0c25aae45b29227a25da68ff039c4214293082"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.ReportingReadRepositoryInvoiceListIntegrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.ReportingReadRepositoryInvoiceListIntegrationTest.xml",
+      "digestSha256": "c8be5c9a18b2d16a68583ca748443974f6888c8b5db505dc05f5750387e05293"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.ReportingReadRepositoryInvoiceMetricsIntegrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.ReportingReadRepositoryInvoiceMetricsIntegrationTest.xml",
+      "digestSha256": "c5c23c13cd0b5dfb5f0408e7176bdcf02fce34d40a6b3dae3cdd1465e35a6945"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.persistence.ReportingTenantKeyMigrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.persistence.ReportingTenantKeyMigrationTest.xml",
+      "digestSha256": "1c3e683f8ab490393726ea918869dce8fa282a6646b83162ee7b4a77facad8b9"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.security.CallerIdentityTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.security.CallerIdentityTest.xml",
+      "digestSha256": "c9d196afd1c15252f49289379cadab4b4caeb6f453096373f03038172ad9268f"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.security.InternalCallerAuthenticatorTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.security.InternalCallerAuthenticatorTest.xml",
+      "digestSha256": "d656de765250d0e620ea393b631ce3f4272feb0be0451a56226ab1bd69eaf6e8"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.security.MachineCallerFilterTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.security.MachineCallerFilterTest.xml",
+      "digestSha256": "ba0bd61da9282cd37bd5f44dbdaac75b1e938e5b1b23c9473f2429fb301186e6"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.security.NotificationRlsIntegrationTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.security.NotificationRlsIntegrationTest.xml",
+      "digestSha256": "7e8216a93979f9518e4689ea52bf5a50365c4cd2a767a3c6ffdd05f98f3df44c"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.security.PubSubPushAuthenticatorTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.security.PubSubPushAuthenticatorTest.xml",
+      "digestSha256": "80a7c7036475eacadc532ad91c79ad05c6dbe388efdd39ff3dc12785f4580d76"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.security.ReportingCommandCenterRlsIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.security.ReportingCommandCenterRlsIntegrationTest.xml",
+      "digestSha256": "dcbf7926609bfabc0748fa2bf820524a43563dacc41dd1545639b20257e2b449"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.security.ReportingFactRlsIntegrationTest",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.security.ReportingFactRlsIntegrationTest.xml",
+      "digestSha256": "57f03b160d163e64591929fe05c4c5981251f39d72282004c47f54d1377ff55c"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.security.ReportingRlsIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.security.ReportingRlsIntegrationTest.xml",
+      "digestSha256": "5bd79bf16bcf75e08deaf9b29692f149ef61b2c4b00af4731a0d55770fe649ac"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.security.RuntimeDbRoleGuardIntegrationTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.security.RuntimeDbRoleGuardIntegrationTest.xml",
+      "digestSha256": "dcccbfd1708fecc39454e830c2e71122e804638df00b44f72f4155625594b9cb"
+    },
+    {
+      "class": "com.custoking.ims.platformservice.security.TenantScopeTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-platform-service-full-reports/TEST-com.custoking.ims.platformservice.security.TenantScopeTest.xml",
+      "digestSha256": "c6e912ae0ed17aaa5c70a40ecf85007d43b6fd7ff5124de029a5a5cce86ed7e9"
+    }
+  ],
+  "sourceReviewDigestSha256": "fbc9fcf853020c725e74501b174560291427b6bebaa4b14eedc0a621ac966648",
+  "sourcesLfHashesUnchangedDuringRun": true,
+  "scope": "Local full affected-service suite; controlled HTTP/PostgreSQL fixtures. Any Windows filesystem skip is recorded, not treated as pass. Focused tests overlap this full suite."
+}

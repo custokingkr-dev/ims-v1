@@ -1,0 +1,1320 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:48:57.834552+00:00",
+  "service": "school-core-service",
+  "command": [
+    "D:\\Projects\\ims-v1-security\\mvnw.cmd",
+    "-pl",
+    "services/school-core-service",
+    "clean",
+    "package"
+  ],
+  "nativeExit": 0,
+  "counts": {
+    "tests": 979,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "passed": 978
+  },
+  "skippedCases": [
+    {
+      "class": "com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorageTest",
+      "case": "rejectsSymbolicParentsAndEncodedTraversal"
+    }
+  ],
+  "logPath": "tmp/remaining-round-school-core-service-full.log",
+  "logDigestSha256": "c60eaddc6d19cedb93aa37804d970783a6543ce2e927cd999b1866ed313bae58",
+  "classes": [
+    {
+      "class": "com.custoking.ims.migration.MigrationDisabledConfigurationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.migration.MigrationDisabledConfigurationTest.xml",
+      "digestSha256": "f55023f893ce71d9c24db3fec334ea9a549d55d0833738a8026dd40c3f3885df"
+    },
+    {
+      "class": "com.custoking.ims.migration.MigrationOnlyMainIntegrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.migration.MigrationOnlyMainIntegrationTest.xml",
+      "digestSha256": "3003747ff27acefe75a52f69482e14409959492760f684c1380bad38db541e00"
+    },
+    {
+      "class": "com.custoking.ims.migration.MigrationRuntimePolicyTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.migration.MigrationRuntimePolicyTest.xml",
+      "digestSha256": "25502931f44092a0a0c85314a789c69adf8688dfd6a15403b4e84e72e3c3ee35"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryConcurrencyIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryConcurrencyIntegrationTest.xml",
+      "digestSha256": "dcdcae928bb3ccce50ee198e2cbaf4511f2b0d77e590282932d2b456def9e597"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryConfigurationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryConfigurationTest.xml",
+      "digestSha256": "d0d26f0ee6f1e1381eed41f6b8cffe65849754a697d57ab24db9e8bdaadb0fe7"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryStateMachineTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryStateMachineTest.xml",
+      "digestSha256": "c80b0733df1f114fda16d45640b7de92558e7fb9b96be9c04fdc74ff8e87f80f"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryTenantScopeIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryTenantScopeIntegrationTest.xml",
+      "digestSha256": "88c03f181b24840ad3f8d2006a640d2adcdb51e44429f0bc20107c34c8ec717f"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryWiringTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryWiringTest.xml",
+      "digestSha256": "5b1d1340b3db6d41e442d8fccd9f3d73874de2f9a5f2eee1bf62c143eb92870d"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.absentee.DryRunAbsenteeDeliveryGatewayTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.absentee.DryRunAbsenteeDeliveryGatewayTest.xml",
+      "digestSha256": "f922142f76c12eab1e347f21fe108a8a60ab984dbb2284e55227a69ccc738eed"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.absentee.PlatformAbsenteeDeliveryGatewayTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.absentee.PlatformAbsenteeDeliveryGatewayTest.xml",
+      "digestSha256": "0cdbeecc133c6686eebce0ebeaea55b3d54811b62ad28d9a8500eb5fc3e9653b"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.AbsenteeRecipientPolicyControllerTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.AbsenteeRecipientPolicyControllerTest.xml",
+      "digestSha256": "400aae554ba71ee49de99a6613fb43c90f73492eee58f0a1ae69a38fa6eb9618"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.AttendanceAbsenteeControllerTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.AttendanceAbsenteeControllerTest.xml",
+      "digestSha256": "adcb257a89b84657c241a0544d36a7bce112e803fcfb01cbae83e79abacd484d"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.AttendanceReadControllerTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.AttendanceReadControllerTest.xml",
+      "digestSha256": "51e172dd88d27cb6e956821e559f8b9fbfd76752d8d5831c66064dbf6b8457f4"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.AttendanceReportControllerTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.AttendanceReportControllerTest.xml",
+      "digestSha256": "0f6d589752b2de0003510a8a2e6277bfb5299ada778d82521811bb0ecbd341b6"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.AttendanceTenantScopingTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.AttendanceTenantScopingTest.xml",
+      "digestSha256": "e3a95e261a7cb81e0bdefc622b7167371eeffcf8a9366fbdfcbfbe28b5f6592d"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.AttendanceValidationTest",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.AttendanceValidationTest.xml",
+      "digestSha256": "7fdd2e9cc8a6c607901a5ece39f02f588e153e93fb851ac04435465d392aa66a"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.BroadcastRecipientPolicyControllerTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.BroadcastRecipientPolicyControllerTest.xml",
+      "digestSha256": "081bdd10ecd6f9eba0a4b801ac4072121376a16dd8677cb11a354f849f24b7cd"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.CatalogCanonicalContractTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.CatalogCanonicalContractTest.xml",
+      "digestSha256": "4d6cdf5ae0a2c09b5b83d9afefa4a77d062fc6d83fa8269ec6135e4eca26e2ed"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.CatalogOrderFormControllerTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.CatalogOrderFormControllerTest.xml",
+      "digestSha256": "b5384fc0ef49eed6a15ad15d71729b5bb15674990fa05273889e321d11b5c98b"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.CatalogProductFormControllerTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.CatalogProductFormControllerTest.xml",
+      "digestSha256": "0d0174ba5004755de8021172b3c57cbdabe721be56f24827817e775590f49d92"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.CatalogReadControllerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.CatalogReadControllerTest.xml",
+      "digestSha256": "865611381db2a9ff431f426a95d47c92e901b725f303f45c18c30be7255a5f54"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.CatalogTenantScopingTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.CatalogTenantScopingTest.xml",
+      "digestSha256": "16bd9f5107b9668672efacb4b109de8d78930bac40bb2783da0d9595de791515"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.CatalogValidationTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.CatalogValidationTest.xml",
+      "digestSha256": "ad45574c1ebaf31e2d83edd7fe62c5253a523ed7b93a251bff4ad5108503c21f"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.compat.CatalogPublicCompatibilityControllerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.compat.CatalogPublicCompatibilityControllerTest.xml",
+      "digestSha256": "701c7937bdd2ef200e6cb088fc4e69a37ea73a4fc47df0da2b04ba2b0e7a38fd"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.compat.FeePublicCompatibilityControllerTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.compat.FeePublicCompatibilityControllerTest.xml",
+      "digestSha256": "6d781511c80889f15939622eaec052fe10445d248da9ef94d333616506c20106"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.compat.StudentUpdateControllerTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.compat.StudentUpdateControllerTest.xml",
+      "digestSha256": "c22abdb7add5c9534b5cfddea7d6f6ed0f93206897393c79096b976af39b90ed"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.compat.StudentWorkspaceCompatibilityControllerTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.compat.StudentWorkspaceCompatibilityControllerTest.xml",
+      "digestSha256": "cb5b3ecb3e67e85004d7544f4a0c424e3b21d5c02e223a6fdd8053384f36fc75"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.compat.TenantSchoolPublicCompatibilityControllerTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.compat.TenantSchoolPublicCompatibilityControllerTest.xml",
+      "digestSha256": "ba86927ae1912e32aaa0438b53e9e86cb834e6486d750d4c3bbda8fd2e2c2373"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.FeeCanonicalContractTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.FeeCanonicalContractTest.xml",
+      "digestSha256": "223abe1210aa5416476bd712c78ddfe8201c09e7c49465141a23c8e851b35757"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.FeeReadControllerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.FeeReadControllerTest.xml",
+      "digestSha256": "6e51c3b566434db60f6959e9ac14c5e13603a45e17a486546b0ade243afeb653"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.FeeTenantScopingTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.FeeTenantScopingTest.xml",
+      "digestSha256": "b15bd7d186f1ec8f25c4b768c08cf715fa9bea62e4b488b238574be6e3677d27"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.FeeValidationTest",
+      "tests": 34,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.FeeValidationTest.xml",
+      "digestSha256": "e2c4c514324dd84f7ea3ab08767a7e4277e22c3619b59092210304548fd04e3c"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.GuardianConsentControllerTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.GuardianConsentControllerTest.xml",
+      "digestSha256": "efa64a489e82256b90a2b04c620655994c4a284780ef3730263a800ddfd70fe2"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.internal.OutboxRelayTriggerControllerTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.internal.OutboxRelayTriggerControllerTest.xml",
+      "digestSha256": "235cb0a57e32f524655b255f6d398c78542ec9160912a81feb8e72ad32b4efce"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.SchoolStructureControllerTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.SchoolStructureControllerTest.xml",
+      "digestSha256": "4d25ac3b921a8fd4e30be460f2145906831189f875b9ea9e24cd9303c94c9a53"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.StudentCanonicalContractTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.StudentCanonicalContractTest.xml",
+      "digestSha256": "749f7a701e87387ed2545e6fb460bccfa747f2535f4091183559a4835d1fe51b"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.StudentExportControllerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.StudentExportControllerTest.xml",
+      "digestSha256": "24eb3d2b5b73de7e58e4e4c0d3bb4b4c2b5a8e6fd16837eccee94abbc044f063"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.StudentPhotoFromUrlControllerTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.StudentPhotoFromUrlControllerTest.xml",
+      "digestSha256": "c37d4aa6433cbfc06a6770f7c157f45a2fe22fe712b6df707e64db57e5d492c1"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.StudentPhotoImportControllerTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.StudentPhotoImportControllerTest.xml",
+      "digestSha256": "81ee17e5089e9f66db21db79aef223adfba90750f92cce4da098b779383ce05e"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.StudentReadControllerTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.StudentReadControllerTest.xml",
+      "digestSha256": "d47600a57f85961b382258dd6b4950a1f257782408b33ac38ad20c2c099390e8"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.StudentTenantScopingTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.StudentTenantScopingTest.xml",
+      "digestSha256": "90aaa3019cbdda9669e635372b8945dd797ec77a7b28fa5104cc93a1ea6785ee"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.StudentValidationTest",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.StudentValidationTest.xml",
+      "digestSha256": "1feb3e4c8d1b5c0909b2517aa398f34c16ac76dd45b40bea3915bef708f9b2d9"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.TenantSchoolControllerTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.TenantSchoolControllerTest.xml",
+      "digestSha256": "50940009de456c22013b5f653718215d990d9a95d45d1d146cf4393d3e0fd2b3"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.TenantSchoolTenantScopingTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.TenantSchoolTenantScopingTest.xml",
+      "digestSha256": "d7da791c7cfaaeb44c8bf64bf2b313e3fe01606352353e508b6aa7d8536909f7"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.TimetableControllerTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.TimetableControllerTest.xml",
+      "digestSha256": "a880e2c4bb086d0c57e2e7a4912f89c16cee87a951e8fee160630a2f04ebb9a8"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.api.ValidationExceptionHandlerImportAdmissionTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.api.ValidationExceptionHandlerImportAdmissionTest.xml",
+      "digestSha256": "f2f4bf09a0eb261323831da844c438085baba8709d9246f2be7986c7b5975272"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.application.report.AttendanceReportCsvTest",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.application.report.AttendanceReportCsvTest.xml",
+      "digestSha256": "889695ab6f960e1cd7091e7396f8ad8d119316eb9007930d7a67dbe4cf491fc9"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.application.report.AttendanceReportPdfTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.application.report.AttendanceReportPdfTest.xml",
+      "digestSha256": "609c107e48e274665266e9fc6ceaebcef6e23cf84d4a15205a3feee1d31ffad3"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.AttendanceTenantScopingTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.AttendanceTenantScopingTest.xml",
+      "digestSha256": "f90a5243ce431789508cc03ab72338394674992f04246bb98a97874dad301149"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormRuleEngineTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormRuleEngineTest.xml",
+      "digestSha256": "1938200a0b0f7a27330cb68fd6a7927cd8effc589577ace44e16269665299421"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.erasure.GcsErasureJournalStoreTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.erasure.GcsErasureJournalStoreTest.xml",
+      "digestSha256": "d210581d545040812e050e5fec0eeb5a420428234b220d6e0e75956d9652ee1f"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournalIntegrationTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournalIntegrationTest.xml",
+      "digestSha256": "9cfe36e929ab690f42478c2b0d66a71c3eada96533c68c20f35b5b35f38b1898"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournalTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournalTest.xml",
+      "digestSha256": "3a6bce3c055585455105ee31cf1f49e51c63d2fc6c79f4b790a5e02ee8550874"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorageTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorageTest.xml",
+      "digestSha256": "a21f1e134191846de34647dfb288edeeeba9549d3f0e692b97cdd11397e0e159"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcherDnsBindingTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcherDnsBindingTest.xml",
+      "digestSha256": "eb4b315283877d9256f397f4a60e32a1cd616894af6d215081930d99622e6f18"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcherTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcherTest.xml",
+      "digestSha256": "53789fa55ad35055ca288daf0d6f87faa3d2d0fecab6b3a0a65bb72b14695749"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.infrastructure.MediaSecurityTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.infrastructure.MediaSecurityTest.xml",
+      "digestSha256": "c5d29d33259e7f8c2649c99e8a00bc9d98719635a16e6d398abd77abba0f2be8"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoOwnershipTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoOwnershipTest.xml",
+      "digestSha256": "3fa4bb0bfce70cc81a8bffd3b33b1534389e7c1f9d0cadcce7e7ec7f13cf7089"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorageTest",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorageTest.xml",
+      "digestSha256": "27384dd2b6e898f8ae1fc1992655b7dda29ebcb9d5e4c605c98012bfa21adfa8"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.observability.AttendanceStorageHealthReporterIntegrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.observability.AttendanceStorageHealthReporterIntegrationTest.xml",
+      "digestSha256": "62737ce09f83d184a2ac00bde7dbb5fc8c41a6a6e3a6495fc78630df15cb8f29"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.observability.AttendanceStorageHealthReporterTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.observability.AttendanceStorageHealthReporterTest.xml",
+      "digestSha256": "00ab28092dc81f98f78ce46419ff679c4d6f341eda8f4c6626b48e6941d92934"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.observability.TracingAutoConfigTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.observability.TracingAutoConfigTest.xml",
+      "digestSha256": "82f5dcfe13e653ce96dfe53743b7ff86c9224b9323bd23014bb577d7e2779648"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.outbox.OutboxPublisherStartupCheckTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.outbox.OutboxPublisherStartupCheckTest.xml",
+      "digestSha256": "cab65c43df5eee03f8de2a17b203e59afe258244bc8022607420998aeee09358"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.outbox.OutboxRelayTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.outbox.OutboxRelayTest.xml",
+      "digestSha256": "afcdb80a082dc6209c38d3093546b406e17c0841a400d93f03b241ec774e5264"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.outbox.PhotoCleanupDurabilityIntegrationTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.outbox.PhotoCleanupDurabilityIntegrationTest.xml",
+      "digestSha256": "a20f1df9fa2c6481dd361c17e76c7e48f9dc10f27f29abd03efad9879bc1e949"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.outbox.PublishDeadlineTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.outbox.PublishDeadlineTest.xml",
+      "digestSha256": "d3e0a84fdfd55aea57da1820c5d76c97b7781e2eed03aef93760302a1f9a783d"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AbsenteeNotificationIntegrationTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AbsenteeNotificationIntegrationTest.xml",
+      "digestSha256": "762217e727dabe8f85e1b8db4e3f05df50070820af8e5c65a4c24066395e7e0a"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AbsenteeNotificationPolicyMigrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AbsenteeNotificationPolicyMigrationTest.xml",
+      "digestSha256": "850b7f403e1a5dbeaf244606a986a36fa8587153de6cc6da28ea1a59bb4adec1"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AbsenteeRecipientPolicyIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AbsenteeRecipientPolicyIntegrationTest.xml",
+      "digestSha256": "a1f5a3891453af023e427e6693a97931afc9b2d425b7b97c68bc7d29b3e1cbe2"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AcademicCalendarTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AcademicCalendarTest.xml",
+      "digestSha256": "94220399c68775e24fb15462de883026c4d73049e8d24005086703fe09fefdb3"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AnnualPlanConfirmationRepositoryIntegrationTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AnnualPlanConfirmationRepositoryIntegrationTest.xml",
+      "digestSha256": "ea6f358a44f6da76ca2acd0207b01cd07951cd4dff2f0837eb05a50790c817b4"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AttendanceEventEmissionIntegrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AttendanceEventEmissionIntegrationTest.xml",
+      "digestSha256": "d55a4708801f673145f4b8511ec51e3a139d00c13f4689d7e78ee27d3e357e4b"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AttendanceLateLeaveMigrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AttendanceLateLeaveMigrationTest.xml",
+      "digestSha256": "6bb9464a9e92bc6a876e348b7809447c0b01377775975287324de712441eac40"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AttendanceLateLeaveRoundTripTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AttendanceLateLeaveRoundTripTest.xml",
+      "digestSha256": "eb7ee994fa66cda2e511897dc7b83b0fd307ed32116745c59f5707e195ebbda8"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AttendancePartitionData01OperatorTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AttendancePartitionData01OperatorTest.xml",
+      "digestSha256": "2f03792cda1ec02df65dd124ddbea9100f42682e428f958f4278c57501e68676"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AttendancePercentTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AttendancePercentTest.xml",
+      "digestSha256": "b0c2bc9c60e40c05c194a24ca254ebc0d5e1644fc33144ce4cf0fd53ea51df81"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepositoryFailLoudTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepositoryFailLoudTest.xml",
+      "digestSha256": "5abeb8d573bb9ad758b25d1c3ee9ed858850c3161d459e4fc50cb2c8dcc90c70"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AttendanceReportRepositoryIntegrationTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AttendanceReportRepositoryIntegrationTest.xml",
+      "digestSha256": "738b6269158e1e5d2b7848cf7269af28234fefda30aa004776191977d578563e"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.AttendanceTenantKeyMigrationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.AttendanceTenantKeyMigrationTest.xml",
+      "digestSha256": "43f8c94336d3400b32863933db9689e6431fc691fd40545b63b40064c6fbe1ea"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.BroadcastRecipientPolicyIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.BroadcastRecipientPolicyIntegrationTest.xml",
+      "digestSha256": "507381d1b086817b1ec7932eb249b11bdaa29e627941f86043788c2b3ed5e88a"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.CatalogOrderEventEmissionIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.CatalogOrderEventEmissionIntegrationTest.xml",
+      "digestSha256": "38acc70d9eb3d82c2b8024979ca9f0b42a46e510102374a0c7023d0df9e982ea"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.CatalogOrderFormIntegrationTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.CatalogOrderFormIntegrationTest.xml",
+      "digestSha256": "fcc53c475a7cf9a117e922bca4f0864f8a53d8265a4980e080e90cd250984050"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.CatalogProductFormIntegrationTest",
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.CatalogProductFormIntegrationTest.xml",
+      "digestSha256": "0dd33da5841ef5c44b986e4725e7b5d91b99dd86cff11145fd02b294afc20505"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.CatalogTenantKeyMigrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.CatalogTenantKeyMigrationTest.xml",
+      "digestSha256": "58b1959e5e1a68cb9e52d78f1730e3d4cbc0bc017cac81abac1f2e22f92089df"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeeBandDeleteIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeeBandDeleteIntegrationTest.xml",
+      "digestSha256": "71f1e3df8eb82488b3cabf570b8cd70da1b0fbb01e024fa190b1ccdec4f7a9a6"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeeBandSchoolScopeMigrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeeBandSchoolScopeMigrationTest.xml",
+      "digestSha256": "85d58449680c5083201f9e8d3973ee3d4219428d57ab784b9daa8a512cb26f90"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeeBandSchoolScopeRepoTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeeBandSchoolScopeRepoTest.xml",
+      "digestSha256": "dcd6dbb11b2883b5d28105d4eba025e33c1c902f69a2687860d876f5297607e0"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeeDocumentRendererTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeeDocumentRendererTest.xml",
+      "digestSha256": "486333100f8f09975d2bd3985e3225ab52a8f5adc90a2e6a09fb71adbed717fb"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeeMoneySemanticsTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeeMoneySemanticsTest.xml",
+      "digestSha256": "d8abb1bf487ed8eb3a892e1c7aa6756cd701001c4283a3deb886942c3494acd1"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeeOutboxEmissionIntegrationTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeeOutboxEmissionIntegrationTest.xml",
+      "digestSha256": "7c070732a96d3e80d755cdf3c92630564f1af243106334c02ea1a95b69a70023"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeePaymentIntegrityIntegrationTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeePaymentIntegrityIntegrationTest.xml",
+      "digestSha256": "dda7d170632915999c12d490121bc081e3ba690df158880937ba18655afee33a"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeePaymentMigrationIntegrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeePaymentMigrationIntegrationTest.xml",
+      "digestSha256": "226c37bfa7a7c4fb9e64b3bb469c4aac1602ce56d302b931e4a1ba5bcfd1ad0b"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeeReadRepositoryReceiptDelegationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeeReadRepositoryReceiptDelegationTest.xml",
+      "digestSha256": "d3c839265b0d7b0107b0b8efcd6782c81be0bfb11e8e920378fc1946ccca9cdc"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeeReceiptRepositoryTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeeReceiptRepositoryTest.xml",
+      "digestSha256": "6e5dd90d998143d85c7888e9c8f22a067f4749651c6f196bedc055442d67a112"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.FeeTenantKeyMigrationTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.FeeTenantKeyMigrationTest.xml",
+      "digestSha256": "ccf47e2cfdc9130c86199804212b0788578427beb97a5feff46012f9cf3e553f"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.GuardianCommunicationDispatchPolicyTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.GuardianCommunicationDispatchPolicyTest.xml",
+      "digestSha256": "9d3c8793d94e0ebc059f9c3392d1f4f675fa4bd57c192fc96b9e35557c8ebac1"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.GuardianCommunicationPolicyTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.GuardianCommunicationPolicyTest.xml",
+      "digestSha256": "7286fb2e5c541801a85f72a34596de6a4e3da9fb3cc06ec12bfb621a2bd25ba2"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.GuardianConsentRepositoryIntegrationTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.GuardianConsentRepositoryIntegrationTest.xml",
+      "digestSha256": "fbdeb6e7eaaed309866680ee65fd4306de0430611548e9eb193cf9f8be42a9cd"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.GuardianSafeCreatePlannerMigrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.GuardianSafeCreatePlannerMigrationTest.xml",
+      "digestSha256": "18c765175939e0fe9b8faaf75f9c78b5d3055d07d1de68b1b71e79d95ac2cdc1"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.LegacyCatalogConsolidationIntegrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.LegacyCatalogConsolidationIntegrationTest.xml",
+      "digestSha256": "fc28dd87a01af11706c15730789210a55c43f655837f5157b77a06565e0935bb"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.PrePrimaryClassCatalogMigrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.PrePrimaryClassCatalogMigrationTest.xml",
+      "digestSha256": "9c6543f6f21e620c0cc81915ae4a974ab0ca9a1db0e9946e167cdf63efc24134"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.ReferenceEventEmissionIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.ReferenceEventEmissionIntegrationTest.xml",
+      "digestSha256": "9fef52a6d84b7e524c8e21a44b366a257515f2fb47f51b878d813e0f0df863cb"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.SchoolStructureDeltaTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.SchoolStructureDeltaTest.xml",
+      "digestSha256": "fd7c1ef6d70e53db64a684e0e7f05e3b42de007ce7fba93426476473299fa6a9"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.SchoolStructureIntegrationTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.SchoolStructureIntegrationTest.xml",
+      "digestSha256": "db12e52d1b0d7b6f8774769f87fe2b85c938a22375dedd0843159662c3300fbe"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.SchoolTimeZoneMigrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.SchoolTimeZoneMigrationTest.xml",
+      "digestSha256": "7b4b9dc5ddaa682db44fed93f9d2d5323e95b28d94abc7ad39746401c96eda8c"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.SchoolUidMigrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.SchoolUidMigrationTest.xml",
+      "digestSha256": "1afcee72bf346cb2bffc605270daaf07369180b299f0a4136f2e5619f574669b"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentGuardianForwardSyncIntegrationTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentGuardianForwardSyncIntegrationTest.xml",
+      "digestSha256": "1f59e65768dab959a552cc88e3c6fda6b1255fb0b0153a3891506b825a7af900"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentImportAdmissionGuardIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentImportAdmissionGuardIntegrationTest.xml",
+      "digestSha256": "fae3805779495ddfce38c2d59676b31217f95dbe5abd739e0c4620686ca578f1"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentImportDateParserTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentImportDateParserTest.xml",
+      "digestSha256": "ad86a9d8be6ca69d235d3cba008035d6d913a50660454a373a0279ce5f1b70a0"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentImportPhotoIntegrationTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentImportPhotoIntegrationTest.xml",
+      "digestSha256": "e1c5fa9bc1aed2821bd35c504ae4eb7c993197b9ebf4ea10c2344e8f4be1aaef"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentImportProgressStoreIntegrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentImportProgressStoreIntegrationTest.xml",
+      "digestSha256": "4ac4be429db08153a0afef91b1ffda7ae6f50c65ab7be29681de22a8ce91cbaa"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentImportUsageIntegrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentImportUsageIntegrationTest.xml",
+      "digestSha256": "526e982d65a6f9756360989f4b5265333cc9e7afed76a4a5a57f9db7849824d9"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentOnboardingScaleCertificationIntegrationTest",
+      "tests": 0,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentOnboardingScaleCertificationIntegrationTest.xml",
+      "digestSha256": "23c5de72fff58a394d6386bd730d4e260f6743a95510bc8ccc918d636a0e8fb7"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentOutboxEmissionIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentOutboxEmissionIntegrationTest.xml",
+      "digestSha256": "449d014a2badcee220eb9b8b44488a2e61a88f18ddc70fe76d697356d6e6bbea"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentReviewCompletionIntegrationTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentReviewCompletionIntegrationTest.xml",
+      "digestSha256": "bf75d178862f790f1833fd71467d76868777903e8e9786c28c1f2bd4b8906050"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentReviewInvalidationServiceTransactionTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentReviewInvalidationServiceTransactionTest.xml",
+      "digestSha256": "785d2bf4cc5d569f784c6cca9de4ece123603ae6376238eb584d9ae7277f2a9d"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.StudentUpdateIntegrationTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.StudentUpdateIntegrationTest.xml",
+      "digestSha256": "cb712ad32aab19fe856f4ebb39badfd00c2b8047967cd00c97f10466c7367a74"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.TenantSchoolClassCatalogMigrationTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.TenantSchoolClassCatalogMigrationTest.xml",
+      "digestSha256": "9bc4a4507144acf9156173f0f7e76dd06894bcfcc23672b8709e41b1f498c916"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.persistence.TimetableRepositoryIntegrationTest",
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.persistence.TimetableRepositoryIntegrationTest.xml",
+      "digestSha256": "a5fb620e1dba5031d5856d9f76d47f42ccf804603974ec452ba7d04b8f77255e"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningRepositoryIntegrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningRepositoryIntegrationTest.xml",
+      "digestSha256": "5e67a83c0bfb64d1845275c3e372fa74b3d92e5496d65d6a23ef82b0497f74f7"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningServiceTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningServiceTest.xml",
+      "digestSha256": "3c4572df08020e0503c54544a9fdd69e5b68a44e7b0497858085dcea8924b5cb"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.photoimport.DriveMappingRulesTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.photoimport.DriveMappingRulesTest.xml",
+      "digestSha256": "61cda79c0e9fed681ae5cb2dd8a0103359c815a71d668998e1fbbdc0688ce69b"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.photoimport.GoogleDriveBoundedHttpTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.photoimport.GoogleDriveBoundedHttpTest.xml",
+      "digestSha256": "48e991aac9223df47bd6a4a17dd6084e63db8455e67580403ea46c8fdd1398c4"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.photoimport.GoogleDrivePhotoImportClientTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.photoimport.GoogleDrivePhotoImportClientTest.xml",
+      "digestSha256": "d8959b6f7aaee2cd2f1842a34da5f3b688d33b83356ce5c8f04dc4a5ede63fb9"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRecoveryRepositoryIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRecoveryRepositoryIntegrationTest.xml",
+      "digestSha256": "2cc5100778ca624e6b938409f5cfc1051bdaece0673cc94a6c649dd82e76b581"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.photoimport.PhotoImportServiceTest",
+      "tests": 25,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.photoimport.PhotoImportServiceTest.xml",
+      "digestSha256": "0f19c53929a80ca849359260a4f50c19b557313fdb7cc4a8a61ecbfa442898b6"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.photoimport.PhotoImportWorkbookParserTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.photoimport.PhotoImportWorkbookParserTest.xml",
+      "digestSha256": "28714b5c874e294b5a532ad402af8828f7edab57317d5a6a21ad215a3da60032"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.photoimport.PhotoImportWorkflowMigrationIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.photoimport.PhotoImportWorkflowMigrationIntegrationTest.xml",
+      "digestSha256": "ceb0c98166422658e51fd9755334b98e4f7eccc491ec3652efb2d6876f881c88"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.recovery.IsolatedStudentErasureRecoveryIntegrationTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.recovery.IsolatedStudentErasureRecoveryIntegrationTest.xml",
+      "digestSha256": "60432451a574d5dc4781c7f0caab4b09ce55ad90ef9222c096d828893cb3a87e"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.recovery.RecoveryAuthorizationTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.recovery.RecoveryAuthorizationTest.xml",
+      "digestSha256": "0040df2bea7ffab65ca7ce45e855367783f0c6153a0149ea4d80c495504168ca"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.AttendanceRlsIntegrationTest",
+      "tests": 16,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.AttendanceRlsIntegrationTest.xml",
+      "digestSha256": "40ee34bc320e14cbcd12047bbb16851caa7f181b3269df7b7db768602b3f3ded"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.CatalogRlsIntegrationTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.CatalogRlsIntegrationTest.xml",
+      "digestSha256": "dcd8b8318b8fd32b0e8fbb37752378521522e72ad4022a461fab5373eddb3430"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.FeeRlsIntegrationTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.FeeRlsIntegrationTest.xml",
+      "digestSha256": "6fa3a290aebf204cead3d668f5ba59b9e0c7097197034172918e299d1ccd518d"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.MachineCallerFilterTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.MachineCallerFilterTest.xml",
+      "digestSha256": "0b62e4f7d308784e36877cfd723b7fbde4881be52a8d39d14afdcea594ed5a75"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuardTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuardTest.xml",
+      "digestSha256": "af3f63dd0841751c48953630ba40f7ebfd03d9c9274a6d320698125805ae2d06"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.RuntimeDbRoleGuardIntegrationTest",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.RuntimeDbRoleGuardIntegrationTest.xml",
+      "digestSha256": "5ed6a0185ef6fdc1dbb70504309c090de5b5aa85c575e328abfe9d4d2325183a"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.StudentImportRlsIntegrationTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.StudentImportRlsIntegrationTest.xml",
+      "digestSha256": "024a08c4208d659325ca955d7020c9b9b8c0cc81422bd594f6dbefd021cb35df"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.StudentRlsIntegrationTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.StudentRlsIntegrationTest.xml",
+      "digestSha256": "9bb081d3e83ad96defd1640cc694acafa97e195dabcb5146f28713eb6aca5a09"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.TenantGucConnectionReuseIntegrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.TenantGucConnectionReuseIntegrationTest.xml",
+      "digestSha256": "5ddf911429668fcfb1805d77b0f1a5eb48de469484bf9b82846e547d205d422f"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.TenantSchoolRlsIntegrationTest",
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.TenantSchoolRlsIntegrationTest.xml",
+      "digestSha256": "606ab5c10044db5a871994e7ce8dacbd3dd2b7963403ee98b551a676e5c9b135"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.security.TenantScopeTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.security.TenantScopeTest.xml",
+      "digestSha256": "54d8cd14eb7433a1a4d34a7c621efd1b1d925486c3604ecec0902052920e685e"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.studentexport.StudentExportArchiveWriterTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.studentexport.StudentExportArchiveWriterTest.xml",
+      "digestSha256": "446f6b6d7eb0261db898ce43c9dd288c65b7e36c2850eeb206074cd0c5ec0c91"
+    },
+    {
+      "class": "com.custoking.ims.schoolcoreservice.studentexport.StudentExportRepositoryIntegrationTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "reportPath": "tmp/remaining-round-school-core-service-full-reports/TEST-com.custoking.ims.schoolcoreservice.studentexport.StudentExportRepositoryIntegrationTest.xml",
+      "digestSha256": "dd37b3dce670c1f6b12759457b110da6387066fedc325553dd78d20fc6fa6380"
+    }
+  ],
+  "sourceReviewDigestSha256": "fbc9fcf853020c725e74501b174560291427b6bebaa4b14eedc0a621ac966648",
+  "sourcesLfHashesUnchangedDuringRun": true,
+  "scope": "Local full affected-service suite; controlled HTTP/PostgreSQL fixtures. Any Windows filesystem skip is recorded, not treated as pass. Focused tests overlap this full suite."
+}

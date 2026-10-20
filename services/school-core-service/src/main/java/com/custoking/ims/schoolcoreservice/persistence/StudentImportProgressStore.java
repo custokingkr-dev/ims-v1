@@ -107,7 +107,7 @@ public class StudentImportProgressStore {
                   AND (:schoolId IS NULL OR school_id = :schoolId)
                 """)
                 .param("jobId", jobId)
-                .param("schoolId", schoolId);
+                .param("schoolId", schoolId, java.sql.Types.BIGINT);
         return spec.query((rs, rowNum) -> {
             Map<String, Object> result = new LinkedHashMap<>();
             String status = rs.getString("status");

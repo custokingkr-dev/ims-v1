@@ -241,10 +241,9 @@ services:
       GATEWAY_CLOUD_RUN_AUTH: never
       OTEL_SDK_DISABLED: "true"
       OTEL_TRACES_EXPORTER: none
-      APP_JWT_SECRET: "local-dev-jwt-secret-key-32-chars-minimum"
-      GATEWAY_LOCAL_JWT_VERIFY: enabled
+      GATEWAY_LOCAL_JWT_VERIFY: disabled
     ports:
-      - "80:80"
+      - "80:8080"
 
 volumes:
   postgres_data:

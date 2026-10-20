@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:23:35.640098+00:00",
+  "project": "custoking-dev",
+  "readOnly": true,
+  "secretValuesRead": false,
+  "literalEnvironmentValuesRead": false,
+  "cloudMutations": 0,
+  "productionAccessed": false,
+  "records": [
+    {
+      "scope": "repository-permissions",
+      "capturedAtUtc": "2026-10-08T17:23:36.394020+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "aaef1200f7c1049b0dd7d557eed7b8a366377b236d96b0836b36222e7737119a",
+      "readable": true,
+      "metadata": {
+        "permissions": {
+          "admin": false,
+          "maintain": false,
+          "push": true,
+          "triage": true,
+          "pull": true
+        },
+        "defaultBranch": "main"
+      }
+    },
+    {
+      "scope": "dev-branch",
+      "capturedAtUtc": "2026-10-08T17:23:37.039451+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "78cc144c57dbbf3e78e56b73483f5e0153027dd82459a8b7710a79d65998f8f8",
+      "readable": true,
+      "metadata": {
+        "protected": false,
+        "commitSha": "a5aef69b58b59f32f4c3862cd7aa0b60a14ec217"
+      }
+    },
+    {
+      "scope": "dev-classic-protection",
+      "capturedAtUtc": "2026-10-08T17:23:37.686710+00:00",
+      "exitCode": 1,
+      "evidenceDigestSha256": "75c603659be44328a1f22ab62601fcc15ab614458ee7c15edcc683798d9877a9",
+      "readable": false,
+      "errorCategory": "NOT_FOUND",
+      "apiDisabledObserved": false
+    },
+    {
+      "scope": "dev-environment",
+      "capturedAtUtc": "2026-10-08T17:23:38.342049+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "34c205454e186a621c418f1bac0e4711253b5308411deb37a6f30f09d94c1f88",
+      "readable": true,
+      "metadata": {
+        "name": "dev",
+        "protectionRuleTypes": [
+          "branch_policy"
+        ],
+        "deploymentBranchPolicy": {
+          "protected_branches": false,
+          "custom_branch_policies": true
+        }
+      }
+    },
+    {
+      "scope": "dedicated-dashboard-oauth-secret",
+      "capturedAtUtc": "2026-10-08T17:23:41.433581+00:00",
+      "exitCode": 1,
+      "evidenceDigestSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "readable": false,
+      "errorCategory": "NOT_FOUND",
+      "apiDisabledObserved": false
+    },
+    {
+      "scope": "dedicated-dashboard-service",
+      "capturedAtUtc": "2026-10-08T17:23:44.437423+00:00",
+      "exitCode": 1,
+      "evidenceDigestSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "readable": false,
+      "errorCategory": "CLI_ERROR",
+      "apiDisabledObserved": false
+    },
+    {
+      "scope": "dashboard-security-database",
+      "capturedAtUtc": "2026-10-08T17:23:46.611883+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "5f3bd7d6730eb259a1ddd52c9a6e132904593e0ceb74921d495f784f1979e548",
+      "readable": true,
+      "metadata": {
+        "deleteProtectionState": "DELETE_PROTECTION_ENABLED",
+        "locationId": "asia-south2",
+        "name": "projects/custoking-dev/databases/ims-dashboard-dev",
+        "type": "FIRESTORE_NATIVE"
+      }
+    },
+    {
+      "scope": "dashboard-expiry-policy",
+      "capturedAtUtc": "2026-10-08T17:23:49.098155+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "eda66747214625565cd8ca92fe26cb2df90fb1817c545638a2108ed4ea0127c3",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 1,
+        "saturated": false,
+        "exactExpiresAtStates": [
+          "ACTIVE"
+        ]
+      }
+    },
+    {
+      "scope": "known-default-subnet",
+      "capturedAtUtc": "2026-10-08T17:23:52.317506+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "fdb47ceeec1271b720fb3eed922e485f96afd933a7e8bb537c258d0551de80bf",
+      "readable": true,
+      "metadata": {
+        "name": "default",
+        "privateGoogleAccess": false
+      }
+    },
+    {
+      "scope": "known-network-egress-rules",
+      "capturedAtUtc": "2026-10-08T17:23:55.026726+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false,
+        "activeCount": 0
+      }
+    },
+    {
+      "scope": "known-regional-routers",
+      "capturedAtUtc": "2026-10-08T17:23:58.269124+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false,
+        "natCount": 0
+      }
+    },
+    {
+      "scope": "known-java-network-identity-service",
+      "capturedAtUtc": "2026-10-08T17:24:01.090685+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+      "readable": true,
+      "metadata": {
+        "egress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    },
+    {
+      "scope": "known-java-network-school-core-service",
+      "capturedAtUtc": "2026-10-08T17:24:04.553905+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+      "readable": true,
+      "metadata": {
+        "egress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    },
+    {
+      "scope": "known-java-network-operations-service",
+      "capturedAtUtc": "2026-10-08T17:24:07.350125+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+      "readable": true,
+      "metadata": {
+        "egress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    },
+    {
+      "scope": "known-java-network-platform-service",
+      "capturedAtUtc": "2026-10-08T17:24:10.139760+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+      "readable": true,
+      "metadata": {
+        "egress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    },
+    {
+      "scope": "known-java-network-billing-service",
+      "capturedAtUtc": "2026-10-08T17:24:12.888820+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "c1abacf843ea8f6dad57276f785bffaab5f51dc772bd1995bed55b22767be954",
+      "readable": true,
+      "metadata": {
+        "egress": "private-ranges-only",
+        "networkInterfacesConfigured": true,
+        "networkTagsConfigured": false
+      }
+    },
+    {
+      "scope": "known-regional-domain-mappings",
+      "capturedAtUtc": "2026-10-08T17:24:15.811726+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false
+      }
+    },
+    {
+      "scope": "known-edge-global-forwarding",
+      "capturedAtUtc": "2026-10-08T17:24:18.549712+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false
+      }
+    },
+    {
+      "scope": "known-edge-ssl-certificates",
+      "capturedAtUtc": "2026-10-08T17:24:22.532498+00:00",
+      "exitCode": 0,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": true,
+      "metadata": {
+        "boundedCount": 0,
+        "saturated": false
+      }
+    },
+    {
+      "scope": "cloud-dns-api-availability",
+      "capturedAtUtc": "2026-10-08T17:24:24.954994+00:00",
+      "exitCode": 1,
+      "evidenceDigestSha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f",
+      "readable": false,
+      "errorCategory": "API_DISABLED",
+      "apiDisabledObserved": true
+    }
+  ],
+  "completedAtUtc": "2026-10-08T17:24:24.954994+00:00",
+  "claims": {
+    "ownerPolicyInvented": false,
+    "edgeOrEgressAcceptanceProven": false,
+    "restoreLineageOrRtoProven": false,
+    "dashboardOAuthSelectionProven": false
+  }
+}

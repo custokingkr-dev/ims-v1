@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-07T16:23:46.1238269Z",
+  "head": "790db4912b2ed9b47cd5fea8d059cc6a414c2b8b",
+  "pullRequest": "https://github.com/custokingkr-dev/ims-v1/pull/324",
+  "ci": {
+    "id": 37650690172,
+    "attempt": 1,
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 112892921235,
+        "name": "windows-security-helper-validation",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:12Z",
+        "completed_at": "2026-10-07T16:16:38Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112892921235"
+      },
+      {
+        "id": 112892921392,
+        "name": "privacy-technical-controls",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:11Z",
+        "completed_at": "2026-10-07T16:17:36Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112892921392"
+      },
+      {
+        "id": 112892921502,
+        "name": "promotion-source-policy",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:11Z",
+        "completed_at": "2026-10-07T16:16:14Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112892921502"
+      },
+      {
+        "id": 112892921532,
+        "name": "duplicate-class-drift",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:12Z",
+        "completed_at": "2026-10-07T16:16:19Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112892921532"
+      },
+      {
+        "id": 112892921552,
+        "name": "dev-edge-terraform-validation",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:12Z",
+        "completed_at": "2026-10-07T16:16:30Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112892921552"
+      },
+      {
+        "id": 112892921588,
+        "name": "detect / detect",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:11Z",
+        "completed_at": "2026-10-07T16:16:21Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112892921588"
+      },
+      {
+        "id": 112892921682,
+        "name": "secret-scan",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:12Z",
+        "completed_at": "2026-10-07T16:16:26Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112892921682"
+      },
+      {
+        "id": 112892921729,
+        "name": "static-architecture-audits",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:11Z",
+        "completed_at": "2026-10-07T16:19:23Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112892921729"
+      },
+      {
+        "id": 112893009767,
+        "name": "docker-build (school-core-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:24Z",
+        "completed_at": "2026-10-07T16:18:58Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112893009767"
+      },
+      {
+        "id": 112893009810,
+        "name": "service-test (school-core-service)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:23Z",
+        "completed_at": "2026-10-07T16:22:30Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112893009810"
+      },
+      {
+        "id": 112893012725,
+        "name": "maven-wrapper-validation (${{ matrix.os }})",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-07T16:16:22Z",
+        "completed_at": "2026-10-07T16:16:21Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112893012725"
+      },
+      {
+        "id": 112895735502,
+        "name": "summary",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:22:32Z",
+        "completed_at": "2026-10-07T16:22:35Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172/job/112895735502"
+      }
+    ],
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650690172",
+    "status": "completed"
+  },
+  "schoolSuite": {
+    "failures": 0,
+    "platform": "Linux",
+    "passed": 952,
+    "reported": 952,
+    "errors": 0,
+    "log": "tmp/student-photo-final-school-ci.log",
+    "overlap": "Ownership/import/compatibility/export subsets overlap full suite; not additive.",
+    "skipped": 0,
+    "completedAt": "2026-10-07T16:22:26Z"
+  },
+  "helperGate": {
+    "passed": 12,
+    "optimized": true,
+    "realPostgreSQL": true,
+    "tests": 12,
+    "completedAt": "2026-10-07T16:19:18Z",
+    "log": "tmp/student-photo-final-static.log"
+  },
+  "codeql": {
+    "id": 37650689678,
+    "alertRef": "refs/pull/324/merge",
+    "mergeSha": "28197c6b45edbe9f84a82b2dce15976323a9f159",
+    "scopedOpenAlerts": 0,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650689678",
+    "jsUploadSuccess": true,
+    "analyses": [
+      {
+        "id": 1909752215,
+        "commit_sha": "28197c6b45edbe9f84a82b2dce15976323a9f159",
+        "ref": "refs/pull/324/merge",
+        "category": "/language:java-kotlin",
+        "error": "",
+        "created_at": "2026-10-07T16:20:21Z"
+      },
+      {
+        "id": 1909732016,
+        "commit_sha": "28197c6b45edbe9f84a82b2dce15976323a9f159",
+        "ref": "refs/pull/324/merge",
+        "category": "/language:javascript-typescript",
+        "error": "",
+        "created_at": "2026-10-07T16:17:19Z"
+      }
+    ],
+    "attempt": 1,
+    "conclusion": "success",
+    "scope": "This PR merge ref only; no global zero-alert claim",
+    "status": "completed",
+    "jobs": [
+      {
+        "id": 112892919703,
+        "name": "analyze (java-kotlin)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:11Z",
+        "completed_at": "2026-10-07T16:20:30Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650689678/job/112892919703"
+      },
+      {
+        "id": 112892919859,
+        "name": "analyze (javascript-typescript)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-07T16:16:11Z",
+        "completed_at": "2026-10-07T16:17:27Z",
+        "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37650689678/job/112892919859"
+      }
+    ],
+    "mergeParents": [
+      "25eb41d9bd0915c9fe9ec60e5078f6492f118380",
+      "790db4912b2ed9b47cd5fea8d059cc6a414c2b8b"
+    ],
+    "javaUploadSuccess": true
+  },
+  "limitations": [
+    "CI changed school service only; no deployment or full feature-matrix certification.",
+    "Wrapper validation scope-skipped; school tests have no skips."
+  ]
+}

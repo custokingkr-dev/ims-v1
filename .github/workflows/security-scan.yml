@@ -45,6 +45,9 @@ jobs:
           file: ${{ matrix.dockerfile }}
           load: true
           tags: security/${{ matrix.image }}:${{ github.sha }}
+          # Refresh the OS patch RUN on every scan and retry while retaining build caches.
+          build-args: |
+            SECURITY_PATCH_EPOCH=${{ github.run_id }}-${{ github.run_attempt }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: false

@@ -18,12 +18,22 @@ function Read-RequiredFile([string]$Path) {
   return Get-Content -Raw -Path $resolved
 }
 
+function Test-DomainServiceGlobalScale([string]$Manifest) {
+  # Only service metadata before spec counts; a revision annotation is insufficient.
+  $serviceMetadata=($Manifest -split '(?m)^spec:',2)[0]
+  if($serviceMetadata -notmatch '(?m)^  annotations:\r?\n(?:    [^\r\n]+\r?\n)*?    run\.googleapis\.com/maxScale: "2" # from-param: \$\{domain_max_instances\}') {
+    return $false
+  }
+  return $true
+}
+
 $workflow = Read-RequiredFile $WorkflowFile
 $compose = Read-RequiredFile $ComposeFile
 $gateway = Read-RequiredFile $GatewayFile
 $directRelease = Read-RequiredFile "scripts/invoke-direct-cloudrun-release.ps1"
 $cloudDeployRelease = Read-RequiredFile "scripts/invoke-clouddeploy-release.ps1"
 $cloudDeployWaiter = Read-RequiredFile "scripts/wait-clouddeploy-rollout.ps1"
+$cloudDeployGroupWaiter = Read-RequiredFile "scripts/wait-clouddeploy-rollout-group.ps1"
 $releaseVerification = Read-RequiredFile "scripts/verify-cloudrun-release.ps1"
 $violations = New-Object System.Collections.Generic.List[string]
 $catalog = @(Get-MicroserviceBuildCatalog)
@@ -46,6 +56,9 @@ foreach ($service in $catalog) {
     continue
   }
   $manifest = Get-Content -Raw -Path $manifestPath
+  if ($service.Name -in @('identity-service','school-core-service','operations-service','billing-service','platform-service') -and -not (Test-DomainServiceGlobalScale $manifest)) {
+    $violations.Add("Java service $($service.Name) requires service-level maxScale2 with domain_max_instances binding.")
+  }
   foreach ($required in @("custoking-$($service.Name)-dev", $service.Image)) {
     if (-not $manifest.Contains($required)) {
       $violations.Add("Cloud Run manifest for $($service.Name) is missing: $required")
@@ -85,16 +98,56 @@ foreach ($required in @(
   }
 }
 
-foreach ($required in @("--async", "--update-env-vars", "OTEL_RESOURCE_ATTRIBUTES", "service.version=`$commitSha", "traceMetadataCurrent", "currentResourceAttributes", 'status = "submitted"', 'status = "already-current"')) {
+foreach ($required in @("--update-env-vars", "OTEL_RESOURCE_ATTRIBUTES", "service.version=`$commitSha", "traceMetadataCurrent", "currentResourceAttributes", 'status = "submitted"', 'status = "already-current"')) {
   if (-not $directRelease.Contains($required)) {
-    $violations.Add("Direct dev release is missing asynchronous deployment control: $required")
+    $violations.Add("Direct dev release is missing deployment metadata control: $required")
   }
 }
 
-foreach ($required in @("WaitForRollout", "Write-DeploymentEvidence", "wait-clouddeploy-rollout.ps1", "SourceStagingDir", "--gcs-source-staging-dir", "automatic bucket discovery is not allowed")) {
-  if (-not $cloudDeployRelease.Contains($required)) {
-    $violations.Add("Cloud Deploy release orchestration is missing serialized rollout control: $required")
+function Test-ReleaseReadinessSource([string]$DirectSource, [string]$CloudSource) {
+  # Parse executable order/call nodes; inspect the required helper and profile implementation bodies.
+  $expectedOrder = 'api-gateway,identity-service,frontend,school-core-service,operations-service,billing-service,platform-service'
+  foreach ($item in @(@{Name='direct';Source=$DirectSource}, @{Name='CloudDeploy';Source=$CloudSource})) {
+    $parseErrors=$null
+    $ast=[System.Management.Automation.Language.Parser]::ParseInput($item.Source,[ref]$null,[ref]$parseErrors)
+    if($parseErrors.Count -gt 0){ "Release readiness: $($item.Name) syntax invalid";continue }
+    $order=$ast.Find({param($n) $n -is [System.Management.Automation.Language.AssignmentStatementAst] -and $n.Left.Extent.Text -eq '$releaseOrder'},$true)
+    $values=@($order.Right.FindAll({param($n) $n -is [System.Management.Automation.Language.StringConstantExpressionAst]},$true)|ForEach-Object {$_.Value})
+    if(($values -join ',') -ne $expectedOrder){ "Release readiness: $($item.Name) must install gateway first in reviewed dependency order" }
+    if($item.Name -eq 'direct') {
+      $async=$ast.Find({param($n) $n -is [System.Management.Automation.Language.StringConstantExpressionAst] -and $n.Value -eq '--async'},$true)
+      if($async){ 'Release readiness: asynchronous direct deployment is forbidden' }
+      $helper=$ast.Find({param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Invoke-DirectCloudRunDeployment'},$true)
+      foreach($required in @('AddMinutes(10)','Wait-Job $worker -Timeout 30','Stop-Job $worker','$result.ExitCode -ne 0','throw','Remove-Job $worker')) {
+        if(-not $helper -or -not $helper.Extent.Text.Contains($required)){ "Release readiness: bounded synchronous helper missing $required" }
+      }
+      $call=$ast.Find({param($n) $n -is [System.Management.Automation.Language.CommandAst] -and $n.GetCommandName() -eq 'Invoke-DirectCloudRunDeployment'},$true)
+      $preflight=$ast.Find({param($n) $n -is [System.Management.Automation.Language.CommandAst] -and $n.GetCommandName() -eq 'Assert-DirectReleaseProfile'},$true)
+      $loop=$ast.Find({param($n) $n -is [System.Management.Automation.Language.ForEachStatementAst] -and $n.Variable.Extent.Text -eq '$service'},$true)
+      if(-not $call -or -not $preflight -or -not $loop -or $preflight.Extent.StartOffset -ge $loop.Extent.StartOffset){ 'Release readiness: all profiles must fail fast before the deployment loop' }
+      $profile=$ast.Find({param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Assert-DirectReleaseProfile'},$true)
+      foreach($required in @('APP_MIGRATIONS_ENABLED','FLYWAY_','SPRING_FLYWAY_','SPRING_DATASOURCE_USERNAME','RUNTIME_DB_ROLE','secretKeyRef','DB_POOL_MAX','8080','latestRevision','latestReadyRevisionName')) {
+        if(-not $profile -or -not $profile.Extent.Text.Contains($required)){ "Release readiness: direct security profile missing $required" }
+      }
+    } elseif(-not $item.Source.Contains('if (-not $WaitForRollout -and') -or -not $item.Source.Contains('require -WaitForRollout')) {
+      'Release readiness: CloudDeploy carrier/backend releases must reject missing serialized rollout wait'
+    }
   }
+}
+foreach($readinessViolation in @(Test-ReleaseReadinessSource $directRelease $cloudDeployRelease)) { $violations.Add($readinessViolation) }
+
+foreach ($required in @("WaitForRollout", "Write-DeploymentEvidence", "wait-clouddeploy-rollout-group.ps1", "SourceStagingDir", "--gcs-source-staging-dir", "automatic bucket discovery is not allowed", "MaxParallelRollouts", '[ValidateRange(1, 2)]')) {
+  if (-not $cloudDeployRelease.Contains($required)) {
+    $violations.Add("Cloud Deploy release orchestration is missing bounded dependency control: $required")
+  }
+}
+foreach ($required in @('PENDING_RELEASE', '$state.state -eq "IN_PROGRESS"', 'APPROVAL_REJECTED', '$Rollouts.Count -gt 2')) {
+  if (-not $cloudDeployGroupWaiter.Contains($required)) {
+    $violations.Add("Cloud Deploy group waiter is missing canary/failure protection: $required")
+  }
+}
+if (-not $workflow.Contains('MaxParallelRollouts = 2') -or -not $workflow.Contains('clouddeploy-rollout-groups-test.ps1')) {
+  $violations.Add('The workflow must retain the two-rollout cap and dependency/failure regression tests.')
 }
 
 foreach ($required in @('$state -eq "IN_PROGRESS"', 'PENDING_RELEASE')) {

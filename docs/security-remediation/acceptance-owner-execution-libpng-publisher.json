@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T18:03:43.441087+00:00",
+  "success": true,
+  "cve": "CVE-2026-46675",
+  "supportedNobleFixedVersion": "1.6.43-5ubuntu0.7",
+  "primaryReadbackRawSha256": "1feb0fe1cecaea7ce51369487c8cc06fee6710dea3d981c8b82ef953d1548248",
+  "primaryRecordRawSha256": "d31ade254de5c2319012ddbf9c5647d1e061a5011bf1216cc2ddcb5f18c784a4",
+  "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-46675.json",
+  "vendorAdvisory": "https://ubuntu.com/security/CVE-2026-46675",
+  "signedIndexUrl": "https://security.ubuntu.com/ubuntu/dists/noble-security/InRelease",
+  "inReleaseRawSha256": "3f6ed46e7941d106b4adaac60f67222a233a5fa142ac2a97da94abd60c96defd",
+  "validSigningFingerprints": [
+    "F6ECB3762474EDA9D21B7022871920D1991BC93C"
+  ],
+  "positiveGpgGoodAndValidSignature": true,
+  "keyringTrustAnchor": "Ubuntu archive keyring shipped inside the exact accepted platform runtime image; not an independently enrolled key.",
+  "gpgStatusRawSha256": "aec814c0af3aaf70c13d873a368ac4d8ccf5ab91f875cd0ae62da94235757803",
+  "gpgDiagnosticRawSha256": "a122f745a1d0abb945a4e1c8620ecd4391f507cdee781a020513ded9b22d5044",
+  "packageIndexPath": "main/binary-amd64/Packages.xz",
+  "packageIndexRawSha256": "6bf98290defad249c1ea90a2d3724450b20deb3fe190ffc8626f9f4cc3d0462d",
+  "packageUrl": "https://security.ubuntu.com/ubuntu/pool/main/libp/libpng1.6/libpng16-16t64_1.6.43-5ubuntu0.7_amd64.deb",
+  "packageRawSha256": "863d6abb089b2820ceba98e6b18f06eaacc55f9b05827001e7b4021a9a7b246c",
+  "packagePayloadTarRawSha256": "dc09993c2017a8a61764e506485c6330ab1c49d8799f1655b164b245b99b96da",
+  "exactRuntimeMatches": [
+    {
+      "service": "platform-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:d3bcbdaef1b1784b1986ac4f923c50c9d5f5d0f7004c6b45cabcb4daef63c6ec",
+      "acceptedRevision": "custoking-platform-service-dev-00040-dpz",
+      "installedPackageVersion": "1.6.43-5ubuntu0.7",
+      "binaryPath": "usr/lib/x86_64-linux-gnu/libpng16.so.16.43.0",
+      "binaryRawSha256": "89c0c6569a8c00480d451401ad4c0a74942e62dc57f229a970592fdc5adb29e8",
+      "matchesSignedPublisherPayload": true
+    },
+    {
+      "service": "school-core-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:65e838d902386f8aa5ab2cc121a2984f61745fca88464971730c2bec98e043c6",
+      "acceptedRevision": "custoking-school-core-service-dev-00078-k8x",
+      "installedPackageVersion": "1.6.43-5ubuntu0.7",
+      "binaryPath": "usr/lib/x86_64-linux-gnu/libpng16.so.16.43.0",
+      "binaryRawSha256": "89c0c6569a8c00480d451401ad4c0a74942e62dc57f229a970592fdc5adb29e8",
+      "matchesSignedPublisherPayload": true
+    }
+  ],
+  "inventoryRawSha256": "cdb0d8dd45d614f46d842014e31f573d5c1117cb9305e8226f8a7030cfb8265d",
+  "matchingBinaryCount": 2,
+  "cloudMutations": 0,
+  "productionChanged": false,
+  "applicationStarted": false,
+  "exploitProbes": 0,
+  "nativeVexIssued": false,
+  "otherAdvisoriesClosed": false,
+  "scannerHistoryChanged": false,
+  "scope": "Public Canonical fixed-version corroboration and offline publisher signature/index/package/payload validation against both exact prior PR340 images. Closes the prior libpng vendor-versus-source metadata and installed binary correspondence checkpoint for these digests only. No all-native reachability, future-image, managed-host or other-CVE claim."
+}

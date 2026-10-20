@@ -1,0 +1,128 @@
+{
+  "capturedAtUtc": "2026-10-08T06:27:10.113835+00:00",
+  "releaseRunId": 37682050893,
+  "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37682050893",
+  "status": "completed",
+  "conclusion": "success",
+  "sourceSha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+  "serviceTests": [
+    {
+      "service": "frontend",
+      "jobId": 113000483111,
+      "conclusion": "success",
+      "logSha256": "ac7c9cee5117638ca24591c6d9fcd7ae23ff60c74b6f96919ae18661e660b019",
+      "countLines": [
+        " Test Files  74 passed (74)",
+        "      Tests  431 passed (431)",
+        "   Duration  31.00s (transform 2.94s, setup 4.50s, import 13.40s, tests 30.50s, environment 26.45s)",
+        "  116 passed (3.0m)",
+        "##[notice]  116 passed (3.0m)"
+      ],
+      "unitPassed": 431,
+      "unitFilesPassed": 74,
+      "browserPassed": 116
+    },
+    {
+      "service": "api-gateway",
+      "jobId": 113000483196,
+      "conclusion": "success",
+      "logSha256": "8f110ba0f3605aeffeb93ab9794104fa9c96f9c706467d15b3d734a7147c0bdd",
+      "countLines": [
+        "? tests 99",
+        "? pass 99",
+        "? fail 0"
+      ],
+      "reported": 99,
+      "passed": 99,
+      "failures": 0,
+      "skipped": 0
+    },
+    {
+      "service": "billing-service",
+      "jobId": 113000483249,
+      "conclusion": "success",
+      "logSha256": "08f7caf3dbb4ddf3d720cba35f6bec65e5900e68102cd5466c0c2d32d19ae36b",
+      "reported": 95,
+      "passed": 95,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "service": "platform-service",
+      "jobId": 113000483279,
+      "conclusion": "success",
+      "logSha256": "9702b35c0d9776d03446e1275ae9e0b360d30f4450e8e2ff2235a2269880796d",
+      "reported": 437,
+      "passed": 437,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "service": "operations-service",
+      "jobId": 113000483299,
+      "conclusion": "success",
+      "logSha256": "2383fbc382a74cfdf0e35b02a347742388da21fd032f5918d903c42dd56ca981",
+      "reported": 195,
+      "passed": 195,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "service": "identity-service",
+      "jobId": 113000483319,
+      "conclusion": "success",
+      "logSha256": "8d3470f88f9e57e60a726b0941395b915e1a70f3fa65524f6d6ad77f29b7e7f4",
+      "reported": 183,
+      "passed": 182,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    {
+      "service": "school-core-service",
+      "jobId": 113000483331,
+      "conclusion": "success",
+      "logSha256": "e9bce51709da993be148a2bc5a1e3e6e35fda10c8f5f5187793be3e44d3de249",
+      "reported": 952,
+      "passed": 952,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "codeqlExactSourceProofReference": "tmp/pr328-fresh-source-inventory.json#postmergeCodeql",
+  "futurePr329Included": false,
+  "javaAggregate": {
+    "reported": 1862,
+    "passed": 1861,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0
+  },
+  "codeqlExactSource": {
+    "runId": 37682050472,
+    "analyses": [
+      {
+        "id": 1911344172,
+        "category": "/language:java-kotlin",
+        "ref": "refs/heads/dev",
+        "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+        "created_at": "2026-10-07T20:30:59Z",
+        "results_count": 0,
+        "error": ""
+      },
+      {
+        "id": 1911324291,
+        "category": "/language:javascript-typescript",
+        "ref": "refs/heads/dev",
+        "commit_sha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+        "created_at": "2026-10-07T20:27:49Z",
+        "results_count": 0,
+        "error": ""
+      }
+    ]
+  }
+}

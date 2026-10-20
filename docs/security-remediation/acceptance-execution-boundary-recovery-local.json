@@ -1,0 +1,174 @@
+{
+  "mode": "LOCAL_ISOLATED_SOURCE_RECOVERY_TEMP_GUARD_ONLY",
+  "capturedAtUtc": "2026-10-08T14:58:22.029295+00:00",
+  "verdict": "PASS",
+  "sourceFiles": [
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+      "rawSha256": "807e7db09a5a1f7c12210fa04f017f53b851cac58b121e906ad66ac2785f4812",
+      "normalizedLfSha256": "40a55dd8a16ba896f68c7fce8fbc4e55c1232aa4df37edc7558a869b87de8821",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+      "rawSha256": "8fbf381b812ea3c07fbd303990b3f61da133aa6a88aa88c8ef8b3c942baaecf6",
+      "normalizedLfSha256": "2113c095683da7b4fd08d8dbfff97690ce64510a0468cf83e2a0a4df2dd3ebed",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+      "rawSha256": "61dc632caef52bb2cfecf574a602c3411b15245bdab4358a9ddec32396dc9072",
+      "normalizedLfSha256": "869a3223d5945d5d8a1cccfd7c207f1080b9f4c5f28481fbe3d3b2455fe8b41f",
+      "unchangedFrom19Checkpoint": false
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "rawSha256": "94cabf34d7c7db98cf5ee062acdd96fc40210adb81dfc26f4d612dd7c17db6e3",
+      "normalizedLfSha256": "d85bc3c70b71bc9500231c8b49777277a7b572078df5048c864c1e404e345a1e",
+      "unchangedFrom19Checkpoint": false
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorizationTest.java",
+      "rawSha256": "af4bc90c9428f32afdc886296935b2d8ccb5f3b1cc7a746e9c63da9e01766492",
+      "normalizedLfSha256": "fa04fd1ea1abf01c683cf37f1f11ff68b1b9351a3a4ecad6a3a1b9bb5d1dc1f0",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryFixture.java",
+      "rawSha256": "0d6b9f9aec51c92e766dc25563cb5054aea1e06d24535c3ea33d64dea9be9e18",
+      "normalizedLfSha256": "dfe30a85a46a8b2932ab6a9b32738b485fc7d11938672b384964519411edeb67",
+      "unchangedFrom19Checkpoint": true
+    }
+  ],
+  "changedSourceFiles": [
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+    "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java"
+  ],
+  "previous19Proof": {
+    "path": "tmp/recovery-isolated-final-source-capability-proof.json",
+    "rawSha256": "d618abbbc760761b37cf2aaa0e44a1f852777f2ee630bf44e9f699aad94ab508",
+    "aggregate": {
+      "tests": 19,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "preserved": true
+  },
+  "controlledOldSourceNegative": {
+    "aggregate": {
+      "tests": 1,
+      "failures": 1,
+      "errors": 0,
+      "skipped": 0
+    },
+    "expectedAssertionFailure": "TEMP-enabled old guard allowed execution instead of rejection",
+    "mavenExitCode": 1,
+    "timedOut": false,
+    "oldMainMatchesPrevious19Proof": true,
+    "scope": "One locally owned synthetic PG fixture only; not a PR/CI workflow failure."
+  },
+  "finalFocusedRun": {
+    "aggregate": {
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "selectedSuites": [
+      {
+        "class": "RecoveryAuthorizationTest",
+        "tests": 12,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlRawSha256": "91729264e3641b6e6c599c93929df862852f84eca92e833af5aa1ecf995389f2",
+        "archivedXmlPath": "tmp/recovery-temp-final-RecoveryAuthorizationTest.xml"
+      },
+      {
+        "class": "IsolatedStudentErasureRecoveryIntegrationTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlRawSha256": "abf3df1a2d4d8373402a8ffc2ef2da5ca1be3547ced5ee05d2807fc0d73bb0cb",
+        "archivedXmlPath": "tmp/recovery-temp-final-IsolatedStudentErasureRecoveryIntegrationTest.xml"
+      }
+    ],
+    "runner": {
+      "mode": "after",
+      "startedAtUtc": "2026-10-08T14:56:50.158063+00:00",
+      "finishedAtUtc": "2026-10-08T14:57:25.182169+00:00",
+      "exitCode": 0,
+      "timedOut": false,
+      "tests": "RecoveryAuthorizationTest,IsolatedStudentErasureRecoveryIntegrationTest",
+      "logPath": "tmp/recovery-temp-after-focused.log",
+      "scope": "Fixed local Maven/Testcontainers test only; no cloud or live clone."
+    },
+    "buildSuccess": true,
+    "executionToolchain": {
+      "wrapper": "D:/Projects/ims-v1-security/mvnw.cmd",
+      "javaHome": "C:/Program Files/Java/jdk-25.0.3"
+    }
+  },
+  "change": "Purpose binding denies database TEMP in addition to CREATE. Isolated local PG fixture revokes PUBLIC TEMP; new test grants TEMP directly to purpose role and proves rejection preserves student/payment/enrollment rows and creates no receipt/photo queue/outbox. Existing valid execution retains source-replay transaction semantics.",
+  "artifacts": [
+    {
+      "path": "tmp/recovery-temp-before-test-source.json",
+      "rawSha256": "b294ff2ef3b7e34b652579fcf8a451f0fbe274e636ab3a8f323c0e7d62e016ba"
+    },
+    {
+      "path": "tmp/recovery-temp-before-runner.json",
+      "rawSha256": "5ae7b49f87985de4b8e5e7d4456d352f952827e0176f39d25c2ddb65622333db"
+    },
+    {
+      "path": "tmp/recovery-temp-before-focused.log",
+      "rawSha256": "dc95fb1a966caaa98eb34820fdc19214cbce4cd73a053c795e3d4170fe4b8820"
+    },
+    {
+      "path": "tmp/recovery-temp-before-focused.xml",
+      "rawSha256": "ce240ed8cfd7b4bccb8ff4e0b69fe70bc59e5a4581b3e6ebdd1c6b8e3f81bc59"
+    },
+    {
+      "path": "tmp/recovery-temp-pre-fix-main.java",
+      "rawSha256": "38b8b9f65a015c598307367f7ff50bdfe1ffab6b3a164660f95bfd745536a42e"
+    },
+    {
+      "path": "tmp/recovery-temp-after-runner.json",
+      "rawSha256": "39563b6c5bb7abeaba4850b73eaf0612955d1beeddf703f230a392d1d61e6210"
+    },
+    {
+      "path": "tmp/recovery-temp-after-focused.log",
+      "rawSha256": "436fc655fed823344bb57695764c8dc7c80558d1dc39a26cc70c65a22c30b7cb"
+    },
+    {
+      "path": "tmp/run-recovery-temp-focused.py",
+      "rawSha256": "c0ccb448ae22e03e486b638115f585cdaeb52d1b820f3d5a5383f96c554d4d1a"
+    },
+    {
+      "path": "tmp/isolated-recovery-independent-review.json",
+      "rawSha256": "e6d2b7a2da30a074d8dcf9b06a57d1c224bc0e914a4b7efe36c1f090d7c19b8e"
+    }
+  ],
+  "privilegeCorrectionScope": "Local source guard/test only; no dev/prod roles or cloud resources altered. Actual provisioning must deny inherited PUBLIC TEMP before execution.",
+  "fullSchoolSuite": "Selected20 do not replace root frozen975/974pass/1knownWindows-symlinkskip checkpoint. Expected next full-suite count976 requires separate actual root/CI evidence.",
+  "restorationReady": false,
+  "deliveryResume": false,
+  "liveCloneExecuted": false,
+  "fullGovernedRecoveryComplete": false,
+  "remainingPrerequisites": [
+    "separately provisioned reviewed trusted POSIX mount and approval/freeze trust anchors",
+    "independent physical clone/control-plane/CA evidence and purpose execution role",
+    "approved exhaustive historical/old-epoch canonical intent bundle and lineage",
+    "independent write/delivery freeze and drain across all five Java services and gateway",
+    "approved live clone transport/credentials and downstream/object/provider reconciliation",
+    "owner RPO/RTO/retention and separate resume/cutover authorization"
+  ],
+  "limits": [
+    "Fixed protected POSIX main bootstrap deliberately refuses Windows; selected local tests do not execute actual mounted bootstrap or attest deployed purpose-role grants.",
+    "TLS local PG test uses sslmode=require; main configured verify-ca remains approved CA/endpoint source binding, without verify-full hostname/current Cloud SQL instance identity acceptance.",
+    "Generation-pinned journal and signed freeze are local controlled fixtures; signed freeze is operator attestation, not enforced global service/provider pause.",
+    "Historical coverage/downstream/provider/object recovery and cutover/resume governance remain external acceptance requirements.",
+    "No cloud/Git/GitHub/provider/credential inspection or deployment by this correction."
+  ]
+}

@@ -1724,7 +1724,8 @@ public class FeeReadRepository {
         if (total <= 0 || !Double.isFinite(percent) || percent == 0) {
             return 0;
         }
-        return Math.round(total * percent / 100.0);
+        return java.math.BigDecimal.valueOf(total).multiply(java.math.BigDecimal.valueOf(percent))
+                .divide(java.math.BigDecimal.valueOf(100), 0, java.math.RoundingMode.HALF_UP).longValueExact();
     }
 
     private void updateStudentFeeStatus(long studentId, String assignmentId) {
@@ -1908,11 +1909,15 @@ public class FeeReadRepository {
     }
 
     private long rupeesToPaise(Object value) {
-        double amount = doubleValue(value, 0);
-        if (!Double.isFinite(amount) || amount < 0) {
-            return 0;
+        if (value == null) return 0;
+        try {
+            var amount = new java.math.BigDecimal(value.toString());
+            if (amount.signum() < 0) throw new IllegalArgumentException("Amount must be nonnegative");
+            return amount.multiply(java.math.BigDecimal.valueOf(100))
+                    .setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
+        } catch (NumberFormatException | ArithmeticException ex) {
+            throw new IllegalArgumentException("Amount must be a finite monetary value within the supported range");
         }
-        return Math.round(amount * 100.0);
     }
 
     private long paymentAmountToPaise(Map<String, Object> request) {

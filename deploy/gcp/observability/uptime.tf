@@ -109,12 +109,12 @@ resource "google_cloud_run_v2_service_iam_member" "uptime_check_invoker" {
 
 locals {
   uptime_check_ids = merge(
-    { for service, check in google_monitoring_uptime_check_config.public_service : service => check.uptime_check_id },
-    { for service, check in google_monitoring_uptime_check_config.authenticated_service : service => check.uptime_check_id },
+    { for service, _ in local.public_uptime_services : service => google_monitoring_uptime_check_config.public_service[service].uptime_check_id },
+    { for service, _ in local.authenticated_uptime_services : service => google_monitoring_uptime_check_config.authenticated_service[service].uptime_check_id },
   )
 
   uptime_check_resource_types = merge(
-    { for service, _ in google_monitoring_uptime_check_config.public_service : service => "uptime_url" },
-    { for service, _ in google_monitoring_uptime_check_config.authenticated_service : service => "cloud_run_revision" },
+    { for service, _ in local.public_uptime_services : service => "uptime_url" },
+    { for service, _ in local.authenticated_uptime_services : service => "cloud_run_revision" },
   )
 }

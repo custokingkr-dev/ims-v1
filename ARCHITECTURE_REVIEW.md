@@ -2,8 +2,9 @@
 
 > Historical review from 2026-06-28. The service split, deployment path and live GCP state changed after
 > this assessment. Use [docs/DOCUMENTATION-INDEX.md](docs/DOCUMENTATION-INDEX.md),
-> [docs/architecture/custoking-architecture.html](docs/architecture/custoking-architecture.html), and
-> [docs/REMAINING-WORK-2026-08-12.md](docs/REMAINING-WORK-2026-08-12.md) for current decisions.
+> [docs/current-state/project-architecture.md](docs/current-state/project-architecture.md), and
+> [docs/security-remediation/acceptance-owner-actions.md](docs/security-remediation/acceptance-owner-actions.md)
+> for current implementation and owner gates. This historical review is retained unchanged below.
 
 **Reviewer role:** Principal / Chief Architect
 **Date:** 2026-06-28

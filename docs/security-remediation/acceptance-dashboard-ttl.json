@@ -1,0 +1,18 @@
+{
+  "project": "custoking-dev",
+  "database": "ims-dashboard-dev",
+  "checkedAtUtc": "2026-10-07T09:53:08.007176+00:00",
+  "observations": [
+    {
+      "actualTtlDeletionObserved": false,
+      "complete": true,
+      "documentCreated": true,
+      "expiresAtPast": true,
+      "marker": "SEC-ACPT-20261007-TTL",
+      "observationSecondsMaximum": 300,
+      "serviceAccountHasDeletePermission": false
+    }
+  ],
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification"
+}

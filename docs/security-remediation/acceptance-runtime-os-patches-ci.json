@@ -1,0 +1,281 @@
+{
+  "capturedAtUtc": "2026-10-07T20:27:37.246296+00:00",
+  "pullRequest": 328,
+  "sourceHead": "ca3da9351b0a05cb867023bc5010fb9ff842015d",
+  "ci": {
+    "runId": 37679823979,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "promotion-source-policy",
+        "databaseId": 112992644814,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992644814"
+      },
+      {
+        "name": "secret-scan",
+        "databaseId": 112992645052,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992645052"
+      },
+      {
+        "name": "duplicate-class-drift",
+        "databaseId": 112992645081,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992645081"
+      },
+      {
+        "name": "static-architecture-audits",
+        "databaseId": 112992645099,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992645099"
+      },
+      {
+        "name": "dev-edge-terraform-validation",
+        "databaseId": 112992645160,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992645160"
+      },
+      {
+        "name": "privacy-technical-controls",
+        "databaseId": 112992645244,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992645244"
+      },
+      {
+        "name": "detect / detect",
+        "databaseId": 112992645246,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992645246"
+      },
+      {
+        "name": "windows-security-helper-validation",
+        "databaseId": 112992645484,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992645484"
+      },
+      {
+        "name": "docker-build (billing-service)",
+        "databaseId": 112992729006,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729006"
+      },
+      {
+        "name": "service-test (api-gateway)",
+        "databaseId": 112992729010,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729010"
+      },
+      {
+        "name": "docker-build (operations-service)",
+        "databaseId": 112992729016,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729016"
+      },
+      {
+        "name": "service-test (platform-service)",
+        "databaseId": 112992729024,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729024"
+      },
+      {
+        "name": "service-test (billing-service)",
+        "databaseId": 112992729041,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729041"
+      },
+      {
+        "name": "service-test (frontend)",
+        "databaseId": 112992729084,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729084"
+      },
+      {
+        "name": "docker-build (api-gateway)",
+        "databaseId": 112992729124,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729124"
+      },
+      {
+        "name": "docker-build (frontend)",
+        "databaseId": 112992729126,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729126"
+      },
+      {
+        "name": "docker-build (identity-service)",
+        "databaseId": 112992729127,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729127"
+      },
+      {
+        "name": "service-test (identity-service)",
+        "databaseId": 112992729149,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729149"
+      },
+      {
+        "name": "docker-build (school-core-service)",
+        "databaseId": 112992729160,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729160"
+      },
+      {
+        "name": "service-test (operations-service)",
+        "databaseId": 112992729185,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729185"
+      },
+      {
+        "name": "docker-build (platform-service)",
+        "databaseId": 112992729202,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729202"
+      },
+      {
+        "name": "service-test (school-core-service)",
+        "databaseId": 112992729209,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992729209"
+      },
+      {
+        "name": "maven-wrapper-validation (${{ matrix.os }})",
+        "databaseId": 112992731762,
+        "status": "completed",
+        "conclusion": "skipped",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112992731762"
+      },
+      {
+        "name": "summary",
+        "databaseId": 112999980205,
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823979/job/112999980205"
+      }
+    ]
+  },
+  "codeql": {
+    "runId": 37679823464,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37679823464",
+    "status": "completed",
+    "conclusion": "success",
+    "languages": [
+      {
+        "name": "analyze (java-kotlin)",
+        "conclusion": "success",
+        "analyzeSuccessful": true
+      },
+      {
+        "name": "analyze (javascript-typescript)",
+        "conclusion": "success",
+        "analyzeSuccessful": true
+      }
+    ]
+  },
+  "serviceTests": [
+    {
+      "service": "api-gateway",
+      "jobId": 112992729010,
+      "conclusion": "success",
+      "logSha256": "2d2b0c57dfeeb74ca1a7a1c46795d230b2bc01459070b2bdef340fcdfb99e0db",
+      "reported": 99,
+      "passed": 99,
+      "skipped": 0
+    },
+    {
+      "service": "platform-service",
+      "jobId": 112992729024,
+      "conclusion": "success",
+      "logSha256": "38bda911f1262e4d86ffefa0d575cf46dbc16f161653b56d25a664bcd26c4261",
+      "reported": 437,
+      "passed": 437,
+      "skipped": 0
+    },
+    {
+      "service": "billing-service",
+      "jobId": 112992729041,
+      "conclusion": "success",
+      "logSha256": "a8888ba20ce4ce8ce260fc3d3a10aa51ec13d8e25243d3b08a5e822f4abaca60",
+      "reported": 95,
+      "passed": 95,
+      "skipped": 0
+    },
+    {
+      "service": "frontend",
+      "jobId": 112992729084,
+      "conclusion": "success",
+      "logSha256": "9fba67fb6b36a6589cf6ad8b96262b48792893bb06eae68243ea1609317f0859",
+      "unitPassed": 431,
+      "unitFilesPassed": 74,
+      "browserPassed": 116
+    },
+    {
+      "service": "identity-service",
+      "jobId": 112992729149,
+      "conclusion": "success",
+      "logSha256": "ba95d445d87ab57054b545d1b54998c46e9c79c3868257fdc1e69540c25c00e4",
+      "reported": 183,
+      "passed": 182,
+      "skipped": 1
+    },
+    {
+      "service": "operations-service",
+      "jobId": 112992729185,
+      "conclusion": "success",
+      "logSha256": "e2e3111484c75ee4a1004610df76a1a437c2bc7958d27f564a84fc47a7766d73",
+      "reported": 195,
+      "passed": 195,
+      "skipped": 0
+    },
+    {
+      "service": "school-core-service",
+      "jobId": 112992729209,
+      "conclusion": "success",
+      "logSha256": "f04415ffc7b23d1952b0defe52ceefd89b5e979038eef0e61b79e08daa0f6866",
+      "reported": 952,
+      "passed": 952,
+      "skipped": 0
+    }
+  ],
+  "javaAggregate": {
+    "reported": 1862,
+    "passed": 1861,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0
+  },
+  "sourcePatchDeploymentVerified": false,
+  "freshEightSourceScanVerified": false,
+  "datedBaseline": {
+    "scanRunId": 37677327459,
+    "currentAlerts": 649,
+    "fixedVersionReported": 564,
+    "noFixedVersionReported": 85,
+    "legacyAlertsExcluded": 154,
+    "patchFreshnessVerified": false
+  }
+}

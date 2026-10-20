@@ -1,0 +1,1345 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "completed": true,
+  "capturedAtUtc": "2026-10-12T09:10:31.943274+00:00",
+  "authorization": "User requested cleanup of unnecessary dev database and infrastructure. Exact proven synthetic/retired resources were removed; business records and unclassified recovery/rollback assets were retained.",
+  "applicationSourceCommit": "669330109a4bd64b529252a0600550462b34cdea",
+  "devBranchAtCleanup": "32f605ba4566e270eafba17d00b2d1db66af9a3e",
+  "mainBranchAtCleanup": "4bd6c96044e6930e2037cc9fd049cf4650f59e81",
+  "applicationSourceChanged": false,
+  "applicationDeployments": 0,
+  "productionResourcesTouched": false,
+  "revisions": {
+    "inventory": {
+      "path": "tmp/dev-cleanup-inventory-16f00350a8654efe8e2d1228f874ad96/revisions.json",
+      "sha256": "48240de5b30eff10f3d345d4d6bee5d961541280d174a0d769764ba74e187b94"
+    },
+    "inventorySha256": "48240de5b30eff10f3d345d4d6bee5d961541280d174a0d769764ba74e187b94",
+    "deletedCount": 198,
+    "deletedNames": [
+      "custoking-identity-service-dev-muiljw3x",
+      "custoking-identity-service-dev-00026-dfn",
+      "custoking-identity-service-dev-00025-m64",
+      "custoking-identity-service-dev-00024-tw4",
+      "custoking-identity-service-dev-00023-sf6",
+      "custoking-identity-service-dev-00022-zhw",
+      "custoking-identity-service-dev-00021-h59",
+      "custoking-identity-service-dev-mue1ctuh",
+      "custoking-identity-service-dev-00019-7g4",
+      "custoking-identity-service-dev-00018-dp7",
+      "custoking-identity-service-dev-00017-b48",
+      "custoking-identity-service-dev-00016-7xj",
+      "custoking-identity-service-dev-mucnqikh",
+      "custoking-identity-service-dev-00014-97s",
+      "custoking-identity-service-dev-00013-c8w",
+      "custoking-identity-service-dev-00012-sbh",
+      "custoking-identity-service-dev-00011-rx5",
+      "custoking-identity-service-dev-00010-ffr",
+      "custoking-identity-service-dev-00009-77j",
+      "custoking-identity-service-dev-00008-h82",
+      "custoking-identity-service-dev-00007-5d9",
+      "custoking-identity-service-dev-00006-vsg",
+      "custoking-identity-service-dev-00005-fcb",
+      "custoking-identity-service-dev-00004-vl9",
+      "custoking-identity-service-dev-00003-lv6",
+      "custoking-identity-service-dev-00002-rx2",
+      "custoking-identity-service-dev-00001-h6z",
+      "custoking-school-core-service-dev-00066-m9m",
+      "custoking-school-core-service-dev-muilhit3",
+      "custoking-school-core-service-dev-00064-fgw",
+      "custoking-school-core-service-dev-00063-lrw",
+      "custoking-school-core-service-dev-00062-gx4",
+      "custoking-school-core-service-dev-00061-zwd",
+      "custoking-school-core-service-dev-00060-lhr",
+      "custoking-school-core-service-dev-00059-8kq",
+      "custoking-school-core-service-dev-00058-cs6",
+      "custoking-school-core-service-dev-00057-fbq",
+      "custoking-school-core-service-dev-00056-p6s",
+      "custoking-school-core-service-dev-00055-c8v",
+      "custoking-school-core-service-dev-00054-t9j",
+      "custoking-school-core-service-dev-00053-bz6",
+      "custoking-school-core-service-dev-00052-5rg",
+      "custoking-school-core-service-dev-mue1a13z",
+      "custoking-school-core-service-dev-00050-hw6",
+      "custoking-school-core-service-dev-00049-2gc",
+      "custoking-school-core-service-dev-00048-jq9",
+      "custoking-school-core-service-dev-00047-z8r",
+      "custoking-school-core-service-dev-00046-hhm",
+      "custoking-school-core-service-dev-00045-mlq",
+      "custoking-school-core-service-dev-mucnnttz",
+      "custoking-school-core-service-dev-00043-hrc",
+      "custoking-school-core-service-dev-00042-t9g",
+      "custoking-school-core-service-dev-00041-6g8",
+      "custoking-school-core-service-dev-mtwjrdib",
+      "custoking-school-core-service-dev-00039-vbc",
+      "custoking-school-core-service-dev-00038-ch6",
+      "custoking-school-core-service-dev-00037-sbb",
+      "custoking-school-core-service-dev-00036-44z",
+      "custoking-school-core-service-dev-00035-67v",
+      "custoking-school-core-service-dev-00034-fjn",
+      "custoking-school-core-service-dev-00033-7v6",
+      "custoking-school-core-service-dev-00032-4pn",
+      "custoking-school-core-service-dev-00031-f78",
+      "custoking-school-core-service-dev-00030-tlr",
+      "custoking-school-core-service-dev-00029-4lj",
+      "custoking-school-core-service-dev-00028-vsn",
+      "custoking-school-core-service-dev-00027-sl2",
+      "custoking-school-core-service-dev-00026-mkw",
+      "custoking-school-core-service-dev-00025-7nx",
+      "custoking-school-core-service-dev-00024-5d4",
+      "custoking-school-core-service-dev-00023-l9x",
+      "custoking-school-core-service-dev-00022-qlh",
+      "custoking-school-core-service-dev-00021-pfd",
+      "custoking-school-core-service-dev-00020-tfs",
+      "custoking-school-core-service-dev-00019-65v",
+      "custoking-school-core-service-dev-00018-8bw",
+      "custoking-school-core-service-dev-00017-wx2",
+      "custoking-school-core-service-dev-00016-8kh",
+      "custoking-school-core-service-dev-00015-ms5",
+      "custoking-school-core-service-dev-00014-kdw",
+      "custoking-school-core-service-dev-00013-z7h",
+      "custoking-school-core-service-dev-00012-ztb",
+      "custoking-school-core-service-dev-00011-nff",
+      "custoking-school-core-service-dev-msz4x5b9",
+      "custoking-school-core-service-dev-00009-zcb",
+      "custoking-school-core-service-dev-00008-9zt",
+      "custoking-school-core-service-dev-00007-btq",
+      "custoking-school-core-service-dev-00006-m9l",
+      "custoking-school-core-service-dev-00005-lr7",
+      "custoking-school-core-service-dev-00004-8q7",
+      "custoking-school-core-service-dev-00003-pvg",
+      "custoking-school-core-service-dev-00002-c7t",
+      "custoking-school-core-service-dev-00001-fq8",
+      "custoking-operations-service-dev-muilm889",
+      "custoking-operations-service-dev-00024-wsn",
+      "custoking-operations-service-dev-00023-6sn",
+      "custoking-operations-service-dev-00022-bpp",
+      "custoking-operations-service-dev-00021-d52",
+      "custoking-operations-service-dev-00020-n4v",
+      "custoking-operations-service-dev-00019-ktz",
+      "custoking-operations-service-dev-mue1f9ah",
+      "custoking-operations-service-dev-00017-xxv",
+      "custoking-operations-service-dev-00016-rfz",
+      "custoking-operations-service-dev-00015-98j",
+      "custoking-operations-service-dev-00014-682",
+      "custoking-operations-service-dev-mucnstyr",
+      "custoking-operations-service-dev-00012-sqx",
+      "custoking-operations-service-dev-00011-bld",
+      "custoking-operations-service-dev-00010-z6n",
+      "custoking-operations-service-dev-00009-7rg",
+      "custoking-operations-service-dev-00008-z75",
+      "custoking-operations-service-dev-00007-78k",
+      "custoking-operations-service-dev-00006-2qp",
+      "custoking-operations-service-dev-00005-dzw",
+      "custoking-operations-service-dev-00004-pmd",
+      "custoking-operations-service-dev-00003-tnj",
+      "custoking-operations-service-dev-00002-mtt",
+      "custoking-operations-service-dev-00001-666",
+      "custoking-platform-service-dev-muipmx2l",
+      "custoking-platform-service-dev-muilo6h2",
+      "custoking-platform-service-dev-00025-2h9",
+      "custoking-platform-service-dev-00024-df4",
+      "custoking-platform-service-dev-00023-l6d",
+      "custoking-platform-service-dev-00022-7m7",
+      "custoking-platform-service-dev-00021-kb6",
+      "custoking-platform-service-dev-00020-qnt",
+      "custoking-platform-service-dev-mue1jcde",
+      "custoking-platform-service-dev-00018-qjk",
+      "custoking-platform-service-dev-00017-kbf",
+      "custoking-platform-service-dev-00016-8f8",
+      "custoking-platform-service-dev-00015-lmz",
+      "custoking-platform-service-dev-mucnwqxj",
+      "custoking-platform-service-dev-00013-tjk",
+      "custoking-platform-service-dev-mtwjttx5",
+      "custoking-platform-service-dev-00011-nhb",
+      "custoking-platform-service-dev-00010-cvq",
+      "custoking-platform-service-dev-00009-5sh",
+      "custoking-platform-service-dev-00008-5fm",
+      "custoking-platform-service-dev-00007-pbh",
+      "custoking-platform-service-dev-00006-q2x",
+      "custoking-platform-service-dev-00005-jr7",
+      "custoking-platform-service-dev-00004-v8z",
+      "custoking-platform-service-dev-00003-8tk",
+      "custoking-platform-service-dev-00002-76k",
+      "custoking-platform-service-dev-00001-q45",
+      "custoking-billing-service-dev-00024-hg9",
+      "custoking-billing-service-dev-00023-grt",
+      "custoking-billing-service-dev-00022-pcm",
+      "custoking-billing-service-dev-00021-frc",
+      "custoking-billing-service-dev-00020-87v",
+      "custoking-billing-service-dev-00019-gpb",
+      "custoking-billing-service-dev-mue1hbdh",
+      "custoking-billing-service-dev-00017-7nr",
+      "custoking-billing-service-dev-00016-2dt",
+      "custoking-billing-service-dev-00015-wp8",
+      "custoking-billing-service-dev-00014-g8t",
+      "custoking-billing-service-dev-mucnusjo",
+      "custoking-billing-service-dev-00012-7k5",
+      "custoking-billing-service-dev-00011-v2t",
+      "custoking-billing-service-dev-00010-w24",
+      "custoking-billing-service-dev-00009-564",
+      "custoking-billing-service-dev-00008-ndg",
+      "custoking-billing-service-dev-00007-dh6",
+      "custoking-billing-service-dev-00006-s7x",
+      "custoking-billing-service-dev-00005-j6b",
+      "custoking-billing-service-dev-00004-6ng",
+      "custoking-billing-service-dev-00003-ksd",
+      "custoking-billing-service-dev-00002-w8d",
+      "custoking-billing-service-dev-00001-5p7",
+      "custoking-api-gateway-dev-muiwhmm5",
+      "custoking-api-gateway-dev-muipp7a8",
+      "custoking-api-gateway-dev-00027-bkk",
+      "custoking-api-gateway-dev-00026-kr6",
+      "custoking-api-gateway-dev-00025-x97",
+      "custoking-api-gateway-dev-00024-qww",
+      "custoking-api-gateway-dev-00023-zpq",
+      "custoking-api-gateway-dev-00022-sjj",
+      "custoking-api-gateway-dev-00021-xqc",
+      "custoking-api-gateway-dev-mue1lf52",
+      "custoking-api-gateway-dev-00019-qxm",
+      "custoking-api-gateway-dev-00018-pqz",
+      "custoking-api-gateway-dev-00017-qnz",
+      "custoking-api-gateway-dev-00016-c2k",
+      "custoking-api-gateway-dev-00015-fz2",
+      "custoking-api-gateway-dev-mucnyzti",
+      "custoking-api-gateway-dev-00013-2qd",
+      "custoking-api-gateway-dev-00012-l46",
+      "custoking-api-gateway-dev-00011-str",
+      "custoking-api-gateway-dev-00010-lkx",
+      "custoking-api-gateway-dev-00009-cwl",
+      "custoking-api-gateway-dev-00008-wtv",
+      "custoking-api-gateway-dev-00007-bpm",
+      "custoking-api-gateway-dev-00006-bh7",
+      "custoking-api-gateway-dev-00005-tc9",
+      "custoking-api-gateway-dev-00004-7cf",
+      "custoking-api-gateway-dev-00003-2dg",
+      "custoking-api-gateway-dev-00002-bpg",
+      "custoking-api-gateway-dev-00001-8c6"
+    ],
+    "recoveredAbsentCount": 0,
+    "remainingCount": 128,
+    "finalVerification": {
+      "capturedAtUtc": "2026-10-12T09:02:17.066673+00:00",
+      "independentlyAbsentCount": 198,
+      "latestPinsUnchanged": true,
+      "noActiveRollouts": true,
+      "continuousReleaseFreezeCertified": false,
+      "physicalDrainCertified": false
+    },
+    "laterIndependentFinalInventory": {
+      "path": "tmp/dev-cleanup-final-inventory-4a2259d47a7148d882575f8b145bebce.json",
+      "sha256": "7f8f70118c40cfb4bfb74a17a8b96696f22279b63c2db1efd1575500fb83b200"
+    },
+    "serviceCounts": [
+      {
+        "service": "custoking-identity-service-dev",
+        "before": 35,
+        "after": 8
+      },
+      {
+        "service": "custoking-school-core-service-dev",
+        "before": 83,
+        "after": 17
+      },
+      {
+        "service": "custoking-operations-service-dev",
+        "before": 32,
+        "after": 7
+      },
+      {
+        "service": "custoking-platform-service-dev",
+        "before": 42,
+        "after": 15
+      },
+      {
+        "service": "custoking-billing-service-dev",
+        "before": 31,
+        "after": 7
+      },
+      {
+        "service": "custoking-api-gateway-dev",
+        "before": 42,
+        "after": 13
+      },
+      {
+        "service": "custoking-frontend-dev",
+        "before": 61,
+        "after": 61
+      }
+    ],
+    "physicalInstanceDrainCertified": false
+  },
+  "database": {
+    "instance": "custoking-db-dev",
+    "database": "custoking_dev",
+    "beforeSchools": 106,
+    "afterSchools": 6,
+    "beforeStudents": 300017,
+    "afterStudents": 17,
+    "reservedSchoolIds": {
+      "first": 900000000,
+      "last": 900000099
+    },
+    "schoolMarker": "short_code LIKE SCALE-%",
+    "studentMarker": "admission_no LIKE SCALE-%",
+    "deletedRowCount": 307990,
+    "deletedCounts": {
+      "student.students": 300000,
+      "student.guardians": 0,
+      "identity.app_users": 1,
+      "student.import_rows": 0,
+      "reporting.dim_school": 0,
+      "billing.outbox_events": 0,
+      "reporting.dim_section": 0,
+      "reporting.dim_student": 0,
+      "tenant_school.schools": 100,
+      "identity.auth_sessions": 0,
+      "reporting.fact_payment": 0,
+      "student.import_batches": 0,
+      "identity.rbac_audit_log": 0,
+      "reporting.academic_events": 0,
+      "student.photo_import_rows": 0,
+      "student.student_guardians": 0,
+      "firefighting.outbox_events": 0,
+      "tenant_school.school_rooms": 0,
+      "attendance.attendance_daily": 0,
+      "student.student_enrollments": 0,
+      "tenant_school.outbox_events": 0,
+      "tenant_school.staff_members": 0,
+      "reporting.fact_catalog_order": 0,
+      "student.photo_import_batches": 0,
+      "student.photo_import_sources": 0,
+      "student.student_review_items": 0,
+      "tenant_school.school_classes": 12,
+      "reporting.command_center_feed": 0,
+      "reporting.fact_fee_assignment": 0,
+      "tenant_school.school_sections": 7576,
+      "identity.user_role_assignments": 1,
+      "reporting.billing_invoice_read": 0,
+      "student.student_consent_events": 0,
+      "reporting.fact_attendance_daily": 0,
+      "reporting.reporting_event_inbox": 0,
+      "reporting.command_center_actions": 0,
+      "student.student_review_campaigns": 0,
+      "attendance.absentee_notifications": 0,
+      "student.student_promotion_batches": 0,
+      "tenant_school.school_bell_periods": 0,
+      "reporting.fact_student_review_item": 0,
+      "student.photo_import_drive_folders": 0,
+      "tenant_school.zone_school_mappings": 0,
+      "reporting.fact_firefighting_request": 0,
+      "tenant_school.school_bell_schedules": 0,
+      "tenant_school.school_class_bell_map": 0,
+      "tenant_school.school_class_subjects": 0,
+      "student.photo_import_column_mappings": 0,
+      "attendance.attendance_student_records": 0,
+      "reporting.event_student_contributions": 0,
+      "student.student_promotion_batch_items": 0,
+      "tenant_school.school_timetable_entries": 0,
+      "tenant_school.school_module_entitlements": 300,
+      "tenant_school.school_teacher_availability": 0,
+      "tenant_school.school_timetable_publications": 0
+    },
+    "outsideScopeCountsPreserved": true,
+    "before": {
+      "student.students": {
+        "scope": 300000,
+        "outsideScope": 17
+      },
+      "student.guardians": {
+        "scope": 0,
+        "outsideScope": 8
+      },
+      "identity.app_users": {
+        "scope": 1,
+        "outsideScope": 68
+      },
+      "student.import_rows": {
+        "scope": 0,
+        "outsideScope": 11
+      },
+      "reporting.dim_school": {
+        "scope": 0,
+        "outsideScope": 6
+      },
+      "billing.outbox_events": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "reporting.dim_section": {
+        "scope": 0,
+        "outsideScope": 175
+      },
+      "reporting.dim_student": {
+        "scope": 0,
+        "outsideScope": 16
+      },
+      "tenant_school.schools": {
+        "scope": 100,
+        "outsideScope": 6
+      },
+      "identity.auth_sessions": {
+        "scope": 0,
+        "outsideScope": 51
+      },
+      "reporting.fact_payment": {
+        "scope": 0,
+        "outsideScope": 5
+      },
+      "student.import_batches": {
+        "scope": 0,
+        "outsideScope": 7
+      },
+      "identity.rbac_audit_log": {
+        "scope": 0,
+        "outsideScope": 54
+      },
+      "reporting.academic_events": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "student.photo_import_rows": {
+        "scope": 0,
+        "outsideScope": 3
+      },
+      "student.student_guardians": {
+        "scope": 0,
+        "outsideScope": 8
+      },
+      "firefighting.outbox_events": {
+        "scope": 0,
+        "outsideScope": 35
+      },
+      "tenant_school.school_rooms": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "attendance.attendance_daily": {
+        "scope": 0,
+        "outsideScope": 9
+      },
+      "student.student_enrollments": {
+        "scope": 0,
+        "outsideScope": 16
+      },
+      "tenant_school.outbox_events": {
+        "scope": 0,
+        "outsideScope": 384
+      },
+      "tenant_school.staff_members": {
+        "scope": 0,
+        "outsideScope": 5
+      },
+      "reporting.fact_catalog_order": {
+        "scope": 0,
+        "outsideScope": 15
+      },
+      "student.photo_import_batches": {
+        "scope": 0,
+        "outsideScope": 3
+      },
+      "student.photo_import_sources": {
+        "scope": 0,
+        "outsideScope": 4
+      },
+      "student.student_review_items": {
+        "scope": 0,
+        "outsideScope": 16
+      },
+      "tenant_school.school_classes": {
+        "scope": 12,
+        "outsideScope": 15
+      },
+      "reporting.command_center_feed": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "reporting.fact_fee_assignment": {
+        "scope": 0,
+        "outsideScope": 7
+      },
+      "tenant_school.school_sections": {
+        "scope": 7576,
+        "outsideScope": 178
+      },
+      "identity.user_role_assignments": {
+        "scope": 1,
+        "outsideScope": 185
+      },
+      "reporting.billing_invoice_read": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "student.student_consent_events": {
+        "scope": 0,
+        "outsideScope": 6
+      },
+      "reporting.fact_attendance_daily": {
+        "scope": 0,
+        "outsideScope": 9
+      },
+      "reporting.reporting_event_inbox": {
+        "scope": 0,
+        "outsideScope": 429
+      },
+      "reporting.command_center_actions": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "student.student_review_campaigns": {
+        "scope": 0,
+        "outsideScope": 2
+      },
+      "attendance.absentee_notifications": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "student.student_promotion_batches": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "tenant_school.school_bell_periods": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "reporting.fact_student_review_item": {
+        "scope": 0,
+        "outsideScope": 16
+      },
+      "student.photo_import_drive_folders": {
+        "scope": 0,
+        "outsideScope": 3
+      },
+      "tenant_school.zone_school_mappings": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "reporting.fact_firefighting_request": {
+        "scope": 0,
+        "outsideScope": 14
+      },
+      "tenant_school.school_bell_schedules": {
+        "scope": 0,
+        "outsideScope": 3
+      },
+      "tenant_school.school_class_bell_map": {
+        "scope": 0,
+        "outsideScope": 2
+      },
+      "tenant_school.school_class_subjects": {
+        "scope": 0,
+        "outsideScope": 7
+      },
+      "student.photo_import_column_mappings": {
+        "scope": 0,
+        "outsideScope": 15
+      },
+      "attendance.attendance_student_records": {
+        "scope": 0,
+        "outsideScope": 15
+      },
+      "reporting.event_student_contributions": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "student.student_promotion_batch_items": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "tenant_school.school_timetable_entries": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "tenant_school.school_module_entitlements": {
+        "scope": 300,
+        "outsideScope": 43
+      },
+      "tenant_school.school_teacher_availability": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "tenant_school.school_timetable_publications": {
+        "scope": 0,
+        "outsideScope": 0
+      }
+    },
+    "after": {
+      "student.students": {
+        "scope": 0,
+        "outsideScope": 17
+      },
+      "student.guardians": {
+        "scope": 0,
+        "outsideScope": 8
+      },
+      "identity.app_users": {
+        "scope": 0,
+        "outsideScope": 68
+      },
+      "student.import_rows": {
+        "scope": 0,
+        "outsideScope": 11
+      },
+      "reporting.dim_school": {
+        "scope": 0,
+        "outsideScope": 6
+      },
+      "billing.outbox_events": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "reporting.dim_section": {
+        "scope": 0,
+        "outsideScope": 175
+      },
+      "reporting.dim_student": {
+        "scope": 0,
+        "outsideScope": 16
+      },
+      "tenant_school.schools": {
+        "scope": 0,
+        "outsideScope": 6
+      },
+      "identity.auth_sessions": {
+        "scope": 0,
+        "outsideScope": 51
+      },
+      "reporting.fact_payment": {
+        "scope": 0,
+        "outsideScope": 5
+      },
+      "student.import_batches": {
+        "scope": 0,
+        "outsideScope": 7
+      },
+      "identity.rbac_audit_log": {
+        "scope": 0,
+        "outsideScope": 54
+      },
+      "reporting.academic_events": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "student.photo_import_rows": {
+        "scope": 0,
+        "outsideScope": 3
+      },
+      "student.student_guardians": {
+        "scope": 0,
+        "outsideScope": 8
+      },
+      "firefighting.outbox_events": {
+        "scope": 0,
+        "outsideScope": 35
+      },
+      "tenant_school.school_rooms": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "attendance.attendance_daily": {
+        "scope": 0,
+        "outsideScope": 9
+      },
+      "student.student_enrollments": {
+        "scope": 0,
+        "outsideScope": 16
+      },
+      "tenant_school.outbox_events": {
+        "scope": 0,
+        "outsideScope": 384
+      },
+      "tenant_school.staff_members": {
+        "scope": 0,
+        "outsideScope": 5
+      },
+      "reporting.fact_catalog_order": {
+        "scope": 0,
+        "outsideScope": 15
+      },
+      "student.photo_import_batches": {
+        "scope": 0,
+        "outsideScope": 3
+      },
+      "student.photo_import_sources": {
+        "scope": 0,
+        "outsideScope": 4
+      },
+      "student.student_review_items": {
+        "scope": 0,
+        "outsideScope": 16
+      },
+      "tenant_school.school_classes": {
+        "scope": 0,
+        "outsideScope": 15
+      },
+      "reporting.command_center_feed": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "reporting.fact_fee_assignment": {
+        "scope": 0,
+        "outsideScope": 7
+      },
+      "tenant_school.school_sections": {
+        "scope": 0,
+        "outsideScope": 178
+      },
+      "identity.user_role_assignments": {
+        "scope": 0,
+        "outsideScope": 185
+      },
+      "reporting.billing_invoice_read": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "student.student_consent_events": {
+        "scope": 0,
+        "outsideScope": 6
+      },
+      "reporting.fact_attendance_daily": {
+        "scope": 0,
+        "outsideScope": 9
+      },
+      "reporting.reporting_event_inbox": {
+        "scope": 0,
+        "outsideScope": 429
+      },
+      "reporting.command_center_actions": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "student.student_review_campaigns": {
+        "scope": 0,
+        "outsideScope": 2
+      },
+      "attendance.absentee_notifications": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "student.student_promotion_batches": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "tenant_school.school_bell_periods": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "reporting.fact_student_review_item": {
+        "scope": 0,
+        "outsideScope": 16
+      },
+      "student.photo_import_drive_folders": {
+        "scope": 0,
+        "outsideScope": 3
+      },
+      "tenant_school.zone_school_mappings": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "reporting.fact_firefighting_request": {
+        "scope": 0,
+        "outsideScope": 14
+      },
+      "tenant_school.school_bell_schedules": {
+        "scope": 0,
+        "outsideScope": 3
+      },
+      "tenant_school.school_class_bell_map": {
+        "scope": 0,
+        "outsideScope": 2
+      },
+      "tenant_school.school_class_subjects": {
+        "scope": 0,
+        "outsideScope": 7
+      },
+      "student.photo_import_column_mappings": {
+        "scope": 0,
+        "outsideScope": 15
+      },
+      "attendance.attendance_student_records": {
+        "scope": 0,
+        "outsideScope": 15
+      },
+      "reporting.event_student_contributions": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "student.student_promotion_batch_items": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "tenant_school.school_timetable_entries": {
+        "scope": 0,
+        "outsideScope": 1
+      },
+      "tenant_school.school_module_entitlements": {
+        "scope": 0,
+        "outsideScope": 43
+      },
+      "tenant_school.school_teacher_availability": {
+        "scope": 0,
+        "outsideScope": 0
+      },
+      "tenant_school.school_timetable_publications": {
+        "scope": 0,
+        "outsideScope": 0
+      }
+    },
+    "unhandledResidue": {},
+    "erasureReceiptsPreserved": 3,
+    "tombstonesPreserved": 28,
+    "beforeDatabaseBytes": 190053399,
+    "afterRoutineVacuumDatabaseBytes": 102546455,
+    "afterCompactionDatabaseBytes": 23731223,
+    "reclaimedDatabaseBytes": 166322176,
+    "studentTableBytesAfter": 180224,
+    "allocatedCloudSqlDiskGb": "10",
+    "invoiceSavingsClaimed": false,
+    "vacuumAnalyzeTables": 7,
+    "boundedStudentCompaction": {
+      "lockTimeoutSeconds": 3,
+      "statementTimeoutSeconds": 15,
+      "recordsBeforeAndAfter": 17
+    },
+    "preCleanupBackup": {
+      "id": "1791794601729",
+      "status": "SUCCESSFUL",
+      "description": "pre-dev-synthetic-cleanup-20261012",
+      "instance": "custoking-db-dev",
+      "type": "ON_DEMAND",
+      "startTime": "2026-10-12T08:43:21.734Z",
+      "endTime": "2026-10-12T08:45:43.530Z",
+      "project": "custoking-dev"
+    },
+    "backupRecoveryCopiesRetained": true,
+    "physicalErasureAcrossBackupsClaimed": false,
+    "sqlEvidence": [
+      {
+        "path": "tmp/dev-cleanup-db-f7a12c08ecd7451fcd7c440fcce500ce/proof.json",
+        "sha256": "932347ffe1f1725291d5fb0e7b3e92aaa1a9c369af9a2b902ee586ef5feec2db"
+      },
+      {
+        "path": "tmp/dev-cleanup-db-e11c81a1fb891964bc1ebd94b240a0a1/proof.json",
+        "sha256": "7d9c0679f15a4b4f3f5d4986d3769746c3be6dc4f3e3c0ebce5ce51a513e344d"
+      },
+      {
+        "path": "tmp/dev-cleanup-db-13fbff32510aad9225d353f7a12f2fcc/proof.json",
+        "sha256": "f9eaea83f81bef864672cc6af0435b2382d47e3a70e4742efc6cef2d393f9690"
+      },
+      {
+        "path": "tmp/dev-cleanup-db-5fc2c29481c9f9b1b5639f619a274c2f/proof.json",
+        "sha256": "e1f3418b4168a70ebfcf7baaa67a5c3a8d41e64d68af3316c9188c89476f41d9"
+      },
+      {
+        "path": "tmp/dev-cleanup-db-b330474ef2ca12c60e9bebd968257c1c/proof.json",
+        "sha256": "6d1ab2bb5e2567ff5edb02e1f577ec004c429b1b955cb3ac6d190c574ec31bc4"
+      },
+      {
+        "path": "tmp/dev-cleanup-db-316a455414220310e5f3db053c44e85a/proof.json",
+        "sha256": "62cc8c01909fec6036e32a0a048911ca07e5574fdbfcb145d755f60df9c13ee7"
+      }
+    ],
+    "executedCleanupSqlSha256": "09383f903d1c5804cbf9091a9edc52a02381f382bcea6d9a6840eef28aeab336",
+    "sourceHelper": {
+      "path": "load-tests/sql/cleanup-scale-fleet.sql",
+      "sha256": "7ae4ec0e917a7e93f082abdbeaa652a2cae825df7ae253237cc7ca315c959117"
+    }
+  },
+  "jobs": {
+    "deleted": [
+      {
+        "name": "ims-app-rt-dev",
+        "specSha256": "8a4b26d3b2d2c2f036088623932e9b7ce8fa4963fe379c979d641eaecfa2422f",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-q-dev",
+        "specSha256": "5b2864ce49024fd7b6a2e45f87906c02d06d0b79585695e3375f3028a86e83ce",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-scale-fixture-dev",
+        "specSha256": "05904b93b27e1fe746436649995d6cc3fc955c5858ff39af3fde8a7a571af7d1",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-seed-dev",
+        "specSha256": "52a3b4143a4a42c725ec808569bb6d21f1e63508a1d7123830517a772cc9a72c",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-seedfull-dev",
+        "specSha256": "63b959af2f7a5988f57d7c8a1411ce7cdaa4b2a794904dc016e7fe7aec138a1b",
+        "independentlyAbsent": true
+      }
+    ],
+    "retained": [
+      "ims-cost-metric-dev",
+      "ims-direct-service-smoke",
+      "ims-gateway-smoke-sql-dev"
+    ],
+    "schedulerTargetsChecked": [
+      {
+        "name": "projects/custoking-dev/locations/asia-south1/jobs/ims-identity-service-async-relay-dev",
+        "state": "ENABLED",
+        "target": "https://custoking-identity-service-dev-hd4wfwk7mq-em.a.run.app/api/v1/internal/password-reset/drain"
+      },
+      {
+        "name": "projects/custoking-dev/locations/asia-south1/jobs/ims-platform-service-async-relay-dev",
+        "state": "ENABLED",
+        "target": "https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app/api/v1/internal/async/drain"
+      },
+      {
+        "name": "projects/custoking-dev/locations/asia-south1/jobs/ims-operations-service-async-relay-dev",
+        "state": "ENABLED",
+        "target": "https://custoking-operations-service-dev-hd4wfwk7mq-em.a.run.app/api/v1/internal/outbox/relay"
+      },
+      {
+        "name": "projects/custoking-dev/locations/asia-south1/jobs/ims-billing-service-async-relay-dev",
+        "state": "ENABLED",
+        "target": "https://custoking-billing-service-dev-hd4wfwk7mq-em.a.run.app/api/v1/internal/outbox/relay"
+      },
+      {
+        "name": "projects/custoking-dev/locations/asia-south1/jobs/cost-metric-export-dev",
+        "state": "ENABLED",
+        "target": "https://asia-south2-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/custoking-dev/jobs/ims-cost-metric-dev:run"
+      },
+      {
+        "name": "projects/custoking-dev/locations/asia-south1/jobs/ims-school-core-service-async-relay-dev",
+        "state": "ENABLED",
+        "target": "https://custoking-school-core-service-dev-hd4wfwk7mq-em.a.run.app/api/v1/internal/outbox/relay"
+      }
+    ],
+    "independentFinalNames": [
+      "ims-cost-metric-dev",
+      "ims-direct-service-smoke",
+      "ims-gateway-smoke-sql-dev"
+    ],
+    "evidence": {
+      "path": "tmp/dev-cleanup-jobs-cb16bf64883140c1a3424bef394219f7/proof.json",
+      "sha256": "252bc343c6a63397cb53ace5b9a5bb7ef9f5ec1ac99c07fb76e1779cf6baf756"
+    }
+  },
+  "loadTestIdentity": {
+    "email": "ims-scale-fixture-dev@custoking-dev.iam.gserviceaccount.com",
+    "uniqueId": "110902226380283039794",
+    "actions": [
+      {
+        "scope": "secret",
+        "roleRemoved": "roles/secretmanager.secretAccessor",
+        "independentlyAbsent": true
+      },
+      {
+        "scope": "subnet",
+        "roleRemoved": "roles/compute.networkUser",
+        "independentlyAbsent": true
+      },
+      {
+        "scope": "project",
+        "roleRemoved": "roles/cloudsql.client",
+        "independentlyAbsent": true
+      }
+    ],
+    "activeIdentityCatalogueAbsent": true,
+    "directLookup": "PERMISSION_DENIED_OR_ABSENT; not treated as absence proof",
+    "auditDeletion": [
+      {
+        "timestamp": "2026-10-12T09:02:58.742137787Z",
+        "method": "google.iam.admin.v1.DeleteServiceAccount",
+        "statusCode": 0,
+        "exactTargetMatched": true
+      }
+    ],
+    "physicalIdentityPurgeClaimed": false,
+    "evidence": {
+      "path": "tmp/dev-cleanup-scale-identity-final-2ff61b6c3bab44fab3d322136190c934.json",
+      "sha256": "1b27f8a1a5fdea4e6da5e5f5a4fd8998da8af10b692a23cd2338d12558119be8"
+    }
+  },
+  "expiredFirestoreFixture": {
+    "project": "custoking-dev",
+    "database": "ims-dashboard-dev",
+    "documentId": "expired-5d010f4bf88d45efb59105858cdf18aa69b1ae9c93dcd41b0c69924f5b4680ad",
+    "capturedAtUtc": "2026-10-12T08:51:26.388183+00:00",
+    "priorFixtureEvidence": "docs/security-remediation/acceptance-remaining-owner-readback.json",
+    "initialStatus": 404,
+    "manualDeleteRequests": 0,
+    "documentValuesLogged": false,
+    "ttlDeletionAttributionProven": false,
+    "absent": true,
+    "evidence": {
+      "path": "tmp/dev-cleanup-firestore-a0cd0e5dcd764e1c9dad8ac1c3c0ed86.json",
+      "sha256": "d38a7ba774708c7dc66c6bdf4820ff15dda7af39b379760ac25c01eac4ec757b"
+    }
+  },
+  "runtime": {
+    "allSevenReady": true,
+    "trafficImagesAndSelectedGuardConfigurationUnchanged": true,
+    "before": {
+      "path": "tmp/architecture-dev-runtime-a2456a114ea247f7a73ce52c3b56b019.json",
+      "sha256": "03f56b98e6ebdc31a5257e4603a3161bdf43d120e12cb122064082b472efce3b"
+    },
+    "after": {
+      "path": "tmp/architecture-dev-runtime-5892c3f440654c9b8d5ce9b6442acd49.json",
+      "sha256": "815626e3f46b69d743ed7faa1b2c5de81a790494dfd207708566588e7eb99747"
+    },
+    "services": [
+      {
+        "service": "api-gateway",
+        "name": "custoking-api-gateway-dev",
+        "revision": "custoking-api-gateway-dev-00042-dbg",
+        "ready": true,
+        "trafficPercent": 100,
+        "desiredTrafficMatches": true,
+        "url": "https://custoking-api-gateway-dev-hd4wfwk7mq-em.a.run.app",
+        "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:955ea6b43265a17f88ef39aa38a1a6dba2eb1fd5d05a4a1f066222e1b3e9e97a",
+        "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:d2f0a2a4f84918331f8f6223af6dff106a132e83f5de8c1e4441c3bb0d4dc365",
+        "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:d2f0a2a4f84918331f8f6223af6dff106a132e83f5de8c1e4441c3bb0d4dc365",
+        "selectedEnvironment": {
+          "GATEWAY_CORS_ALLOWED_ORIGINS": "https://custoking-frontend-dev-1087017280590.asia-south2.run.app,https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+          "FRONTEND_UPSTREAM": "https://custoking-frontend-dev-1087017280590.asia-south2.run.app"
+        }
+      },
+      {
+        "service": "billing-service",
+        "name": "custoking-billing-service-dev",
+        "revision": "custoking-billing-service-dev-00031-f9f",
+        "ready": true,
+        "trafficPercent": 100,
+        "desiredTrafficMatches": true,
+        "url": "https://custoking-billing-service-dev-hd4wfwk7mq-em.a.run.app",
+        "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a88da3b832d689f758f866edffa33be8719a342b7e9bd75dfa91e67d2d6d1703",
+        "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+        "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+        "selectedEnvironment": {
+          "APP_MIGRATIONS_ENABLED": "false",
+          "RUNTIME_DB_ROLE": "ims_billing_rt",
+          "SPRING_DATASOURCE_USERNAME": "ims_billing_rt"
+        }
+      },
+      {
+        "service": "frontend",
+        "name": "custoking-frontend-dev",
+        "revision": "custoking-frontend-dev-00061-txj",
+        "ready": true,
+        "trafficPercent": 100,
+        "desiredTrafficMatches": true,
+        "url": "https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app",
+        "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:e359be92df99d5792b8dfeab38e7cc19f80c34376ab6b187dc7b5b2017d1d304",
+        "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:9cb5e4336e4ac2f13b2c770984bef1eca4d2fb3a65fa6e5f7f6c2faa74719693",
+        "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:9cb5e4336e4ac2f13b2c770984bef1eca4d2fb3a65fa6e5f7f6c2faa74719693",
+        "selectedEnvironment": {
+          "API_UPSTREAM": "https://custoking-api-gateway-dev-1087017280590.asia-south2.run.app"
+        }
+      },
+      {
+        "service": "identity-service",
+        "name": "custoking-identity-service-dev",
+        "revision": "custoking-identity-service-dev-00035-vgl",
+        "ready": true,
+        "trafficPercent": 100,
+        "desiredTrafficMatches": true,
+        "url": "https://custoking-identity-service-dev-hd4wfwk7mq-em.a.run.app",
+        "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:15a81abee368161451064554a485cfe94dbafd8c5dd5adb72076c87356b25a41",
+        "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+        "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+        "selectedEnvironment": {
+          "APP_MIGRATIONS_ENABLED": "false",
+          "RUNTIME_DB_ROLE": "ims_identity_rt",
+          "SPRING_DATASOURCE_USERNAME": "ims_identity_rt"
+        }
+      },
+      {
+        "service": "operations-service",
+        "name": "custoking-operations-service-dev",
+        "revision": "custoking-operations-service-dev-00032-jbn",
+        "ready": true,
+        "trafficPercent": 100,
+        "desiredTrafficMatches": true,
+        "url": "https://custoking-operations-service-dev-hd4wfwk7mq-em.a.run.app",
+        "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:7c5cfb8810446b78f4e07fcb3179dba1eb516ecdcf7d62013ef860cbde0a3327",
+        "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+        "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+        "selectedEnvironment": {
+          "APP_MIGRATIONS_ENABLED": "false",
+          "RUNTIME_DB_ROLE": "ims_operations_rt",
+          "SPRING_DATASOURCE_USERNAME": "ims_operations_rt"
+        }
+      },
+      {
+        "service": "platform-service",
+        "name": "custoking-platform-service-dev",
+        "revision": "custoking-platform-service-dev-00042-cvv",
+        "ready": true,
+        "trafficPercent": 100,
+        "desiredTrafficMatches": true,
+        "url": "https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app",
+        "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:2f5cd9d7ec1ad8bcce62b87177602de00fb536bcc294914e37703f80777599b6",
+        "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:bd01b334e248f85b414110821e2848ffaf1782ebf885371dca8fd16b9c248074",
+        "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:bd01b334e248f85b414110821e2848ffaf1782ebf885371dca8fd16b9c248074",
+        "selectedEnvironment": {
+          "APP_MIGRATIONS_ENABLED": "false",
+          "RUNTIME_DB_ROLE": "ims_platform_rt",
+          "SPRING_DATASOURCE_USERNAME": "ims_platform_rt",
+          "MSG91_DRY_RUN": "true",
+          "NOTIFICATION_DELIVERY_PROVIDER": "logging",
+          "BROADCAST_LIVE_ENABLED": "false",
+          "NOTIFICATION_REPORT_RECONCILIATION_ENABLED": "false"
+        }
+      },
+      {
+        "service": "school-core-service",
+        "name": "custoking-school-core-service-dev",
+        "revision": "custoking-school-core-service-dev-00083-8vk",
+        "ready": true,
+        "trafficPercent": 100,
+        "desiredTrafficMatches": true,
+        "url": "https://custoking-school-core-service-dev-hd4wfwk7mq-em.a.run.app",
+        "requestedImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:98c9af354d32c6f9296cef8ad28f3027331870e6ecb9ad97b7b507f54c971202",
+        "revisionImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:2962b28d113c1970251b28a4f6b056c8c92d989e35111ba72bf78dba6aa98877",
+        "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:2962b28d113c1970251b28a4f6b056c8c92d989e35111ba72bf78dba6aa98877",
+        "selectedEnvironment": {
+          "APP_MIGRATIONS_ENABLED": "false",
+          "RUNTIME_DB_ROLE": "ims_school_core_rt",
+          "SPRING_DATASOURCE_USERNAME": "ims_school_core_rt",
+          "STUDENT_ERASURE_JOURNAL_ENABLED": "true",
+          "STUDENT_ERASURE_JOURNAL_PROJECT_ID": "custoking-dev",
+          "STUDENT_ERASURE_JOURNAL_BUCKET": "custoking-dev-erasure-journal",
+          "STUDENT_ERASURE_JOURNAL_SOURCE_LINEAGE_ID": "58bc724a-592f-49f1-b22f-0e5f95aa6808",
+          "STUDENT_ERASURE_JOURNAL_RESTORE_EPOCH": "d9c4f31c-3420-48a7-8fbe-7fc26d2065bf",
+          "STUDENT_ERASURE_JOURNAL_EPOCH_GENERATION": "1791384645925940",
+          "STUDENT_ERASURE_JOURNAL_EPOCH_SHA256": "aae5c2aedd259b60e7cdff757508a4a0584bb6ab26def2e5eddd148ede7ab108"
+        }
+      }
+    ]
+  },
+  "validation": {
+    "obsoleteRevisionControlledTests": {
+      "passed": 8,
+      "runner": "python -m unittest discover -s scripts/tests -p obsolete_revision_cleanup_test.py"
+    },
+    "scaleCleanupPostgresql16": {
+      "successAndIdempotence": true,
+      "unhandledResidueRollsBack": true,
+      "ReservedNonScaleIdRollsBack": true,
+      "evidence": {
+        "path": "tmp/dev-scale-cleanup-test-22d02474fb11418d847402fb370e053b.log",
+        "sha256": "cc70dc8cdfb258815021395657283a01d9cd10ff87182c03f366e9f8a434d8e5"
+      },
+      "initialInitServerReadinessRace": {
+        "path": "tmp/dev-scale-cleanup-test-c4aa02c800ca451d924774c7b28b2321.log",
+        "sha256": "0500dbc393c1a66fff1fb996822f675148cb05c6406acfa53e669d498d7981c2"
+      }
+    },
+    "publicAuthorizationRequests": 19,
+    "photoAuthorizationRequests": 12,
+    "cacheChecks": 6,
+    "cspOrigins": 2,
+    "publicEvidence": {
+      "authorization": {
+        "path": "tmp/architecture-public-3c169d8c83ec4bb5bc1823a561fd31f0/proof.json",
+        "sha256": "3a62797440e270cb5fee6e631fe5a68d390b057d553057d615a446220ea0895a"
+      },
+      "csp": {
+        "path": "tmp/dev-cleanup-csp-e817f15c19774e0eaadcf15430d9315b.json",
+        "sha256": "2feb5ff9e88c0e320e65a234dbdfa13036c4dfa84a1b383a7d10d427a57a0f31"
+      },
+      "cache": {
+        "path": "tmp/dev-cleanup-cache-57125687665f49a08bbc7bf282a9feab.json",
+        "sha256": "9cbb17746af54855dd391aff992c2f67256f165bfd1274585fb418fee5452218"
+      },
+      "photo": {
+        "path": "tmp/dev-cleanup-photo-denials-763b29b900be4050964df7323f2cbae4.json",
+        "sha256": "da4df347420896a7c8d7622d57fa9abb5fe7b46a0938c44372d9abb676622604"
+      }
+    },
+    "fullAuthenticatedFeatureMatrixRerun": false
+  },
+  "retainedInfrastructure": {
+    "sqlInstanceAndSystemDatabase": true,
+    "bucketNames": [
+      "asia-south2.deploy-artifacts.custoking-dev.appspot.com",
+      "custoking-dev-db-snapshots",
+      "custoking-dev-erasure-journal",
+      "custoking-dev-github-deploy-source",
+      "custoking-dev-migration",
+      "custoking-dev-quotation-documents",
+      "custoking-dev-scan-evidence",
+      "custoking-dev-student-photos",
+      "custoking-dev-terraform-state"
+    ],
+    "addresses": [
+      "google-managed-services-default",
+      "serverless-ipv4-cloudrun-1790432136301787587",
+      "serverless-ipv4-cloudrun-1791308774501888138"
+    ],
+    "noVmOrDiskCandidates": true,
+    "topics": [
+      {
+        "name": "projects/custoking-dev/topics/ims-reporting-events-v1-dev",
+        "labels": null,
+        "messageRetentionDuration": null
+      },
+      {
+        "name": "projects/custoking-dev/topics/ims-notifications-dead-letter-v1-dev",
+        "labels": null,
+        "messageRetentionDuration": null
+      },
+      {
+        "name": "projects/custoking-dev/topics/ims-reporting-dead-letter-v1-dev",
+        "labels": null,
+        "messageRetentionDuration": null
+      },
+      {
+        "name": "projects/custoking-dev/topics/ims-notifications-events-v1-dev",
+        "labels": null,
+        "messageRetentionDuration": null
+      }
+    ],
+    "subscriptions": [
+      {
+        "name": "projects/custoking-dev/subscriptions/ims-reporting-service-push-dev",
+        "topic": "projects/custoking-dev/topics/ims-reporting-events-v1-dev",
+        "labels": null,
+        "messageRetentionDuration": "604800s",
+        "expirationPolicy": {},
+        "deadLetterPolicy": {
+          "deadLetterTopic": "projects/custoking-dev/topics/ims-reporting-dead-letter-v1-dev",
+          "maxDeliveryAttempts": 10
+        },
+        "state": "ACTIVE",
+        "pushEndpoint": "https://custoking-platform-service-dev-1087017280590.asia-south2.run.app/api/v1/pubsub/reporting-events"
+      },
+      {
+        "name": "projects/custoking-dev/subscriptions/reporting-dead-letter-inspection-dev",
+        "topic": "projects/custoking-dev/topics/ims-reporting-dead-letter-v1-dev",
+        "labels": null,
+        "messageRetentionDuration": "604800s",
+        "expirationPolicy": {},
+        "deadLetterPolicy": null,
+        "state": "ACTIVE",
+        "pushEndpoint": null
+      },
+      {
+        "name": "projects/custoking-dev/subscriptions/ims-notification-service-push-dev",
+        "topic": "projects/custoking-dev/topics/ims-notifications-events-v1-dev",
+        "labels": null,
+        "messageRetentionDuration": "604800s",
+        "expirationPolicy": {},
+        "deadLetterPolicy": {
+          "deadLetterTopic": "projects/custoking-dev/topics/ims-notifications-dead-letter-v1-dev",
+          "maxDeliveryAttempts": 10
+        },
+        "state": "ACTIVE",
+        "pushEndpoint": "https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app/api/v1/pubsub/notifications"
+      },
+      {
+        "name": "projects/custoking-dev/subscriptions/notifications-dead-letter-inspection-dev",
+        "topic": "projects/custoking-dev/topics/ims-notifications-dead-letter-v1-dev",
+        "labels": null,
+        "messageRetentionDuration": "604800s",
+        "expirationPolicy": {},
+        "deadLetterPolicy": null,
+        "state": "ACTIVE",
+        "pushEndpoint": null
+      }
+    ],
+    "registryPoliciesUnchanged": true,
+    "registryKeepTagsRemoved": 0,
+    "objectContentReads": 0,
+    "legacyMigrationDumps": [
+      {
+        "name": "dev/custoking_dev-20260818T043740Z.sql.gz",
+        "generation": "1787008065424795",
+        "size": 110018,
+        "creation_time": "2026-08-17T23:07:45+0000",
+        "timeCreated": null,
+        "update_time": "2026-08-17T23:07:45+0000",
+        "updated": null
+      },
+      {
+        "name": "dev/custoking_dev-sanitized.sql.gz",
+        "generation": "1787008538994252",
+        "size": 107739,
+        "creation_time": "2026-08-17T23:15:38+0000",
+        "timeCreated": null,
+        "update_time": "2026-08-17T23:15:38+0000",
+        "updated": null
+      }
+    ],
+    "legacyMigrationDumpBytes": 217757,
+    "legacyMigrationDumpsDeleted": false,
+    "backupPitrAndErasureJournalRetentionUnchanged": true,
+    "terraformStateAndJournalsPreserved": true,
+    "protectedLocalFilesAndSnapshotRefsUntouched": true
+  },
+  "remainingDecisions": [
+    {
+      "scope": "Legacy migration SQL dumps and historical on-demand backups",
+      "whyRetained": "Historical recovery data; no approved expiry/retention decision. Live rows are cleaned, but recovery copies remain.",
+      "nextStep": "Select explicit retention/expiry for the exact dated copies, preserve required recovery baseline, then use generation-pinned object deletion/backup IDs and independent absence checks."
+    },
+    {
+      "scope": "128 other revisions and reviewed rollback images",
+      "whyRetained": "Secure/unknown revision history and reviewed KEEP-protected rollback images; absence of traffic alone does not establish supported rollback retention.",
+      "nextStep": "Choose the supported rollback window and review positive evidence before trimming additional history. KEEP protection tags remain unchanged."
+    },
+    {
+      "scope": "Capacity and old-instance drain",
+      "whyRetained": "Revision absence and the instantaneous 17-connection database snapshot are not a representative workload/SLO or drain result.",
+      "nextStep": "Define workload/SLO targets and a bounded test window; regenerate only the required synthetic fleet through the guarded fixture tool, then clean it afterward."
+    }
+  ],
+  "evidenceCorrections": [
+    "The first nonrecursive object-pattern inventory returned zero matches; the later explicit /** inventory establishes 2 migration objects, 30 source objects and 384 scan-evidence objects. No buckets were removed.",
+    "The first scale preflight referenced a nonexistent school_id on reporting tombstones; read-only SQL failed before mutation and the owned job was independently removed. Corrected student-ID linkage passed.",
+    "Routine vacuum SQL completed and its job was removed before a console-summary int/list formatting error; saved SQL proof confirms success. No duplicate vacuum was run to repair console output.",
+    "Subnet IAM removal does not accept --condition=None in this CLI. Secret access was checkpointed as revoked; the exact remaining grants were resumed after revalidation, and account deletion was confirmed by the audit event and bounded live identity catalogue. A direct PERMISSION_DENIED response was not treated as absence proof."
+  ],
+  "primaryGuidance": [
+    {
+      "title": "Cloud Run revision management",
+      "url": "https://docs.cloud.google.com/run/docs/managing/revisions"
+    },
+    {
+      "title": "Artifact Registry cleanup and KEEP policies",
+      "url": "https://docs.cloud.google.com/artifact-registry/docs/repositories/cleanup-policy"
+    },
+    {
+      "title": "PostgreSQL 16 VACUUM",
+      "url": "https://www.postgresql.org/docs/16/sql-vacuum.html"
+    }
+  ],
+  "rawEvidence": [
+    {
+      "path": "tmp/dev-cleanup-inventory-16f00350a8654efe8e2d1228f874ad96/infrastructure.json",
+      "sha256": "9e4262c96e473d92403a5eb49629844dc62fcb33746382f2dd734fc56ba2a9db"
+    },
+    {
+      "path": "tmp/dev-cleanup-storage-6c9083667d6e4b59997fbdd04792de26/proof.json",
+      "sha256": "d1aec8537c4195a11db8f072f7a1e615f98163fa0be9c6298c86aa83e5d8d15d"
+    },
+    {
+      "path": "tmp/dev-obsolete-apply-5c7832f4cfc041f2a4d6ff86d61d1e01.json",
+      "sha256": "74befcb402a58806f2054feb9256b5f0bac1d28b24fd52de15326860dca5447b"
+    },
+    {
+      "path": "tmp/dev-cleanup-backup-0964af2838524009b4e7402a658c0242.json",
+      "sha256": "35141be5295549e2b76e416414fcea272eec212fef3e7517908d7b869f17ee09"
+    },
+    {
+      "path": "tmp/dev-cleanup-fixture-iam-b43e390510474fe5b2fd0cf6bf52b019.json",
+      "sha256": "105a5859b5367ca2c967ea17ad0e62a0838f9bb8ab83877f7a52417600b2a536"
+    },
+    {
+      "path": "tmp/dev-cleanup-scale-identity-21f99a4d446b49a2b4890d67d0bca8fd.json",
+      "sha256": "b27a445082872fc64bc5d326c7a409912231925c1afc53e680c0b7b24b3cff08"
+    },
+    {
+      "path": "tmp/dev-cleanup-scale-identity-cb8d144982a543c3838336835dc2e48f.json",
+      "sha256": "e85329406198862d525dcb1269075fb7a9a456880d78de0da0d266f749ad5133"
+    }
+  ]
+}

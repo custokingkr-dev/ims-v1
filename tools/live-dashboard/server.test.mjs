@@ -31,7 +31,8 @@ test("server binds sign-in state, rejects unbound callbacks, and clears logout c
     redirect: "manual",
   });
   assert.equal(unboundCallback.status, 400);
-  assert.match(await unboundCallback.text(), /state cookie is missing/);
+  assert.equal(await unboundCallback.text(), 'Sign-in failed; start a new sign-in attempt');
+  assert.equal(authorization.searchParams.get('redirect_uri'), 'http://localhost:8787/auth/callback');
 
   const response = await fetch(`${origin}/auth/logout`, {
     method: "POST",

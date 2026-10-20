@@ -94,4 +94,9 @@ class TenantScopeTest {
         assertEquals(403, assertThrows(ResponseStatusException.class,
                 () -> TenantScope.resolveOperationsWriteScope(10L)).getStatusCode().value());
     }
+    @Test
+    void contextlessServiceTokenCannotSkipUserPermission() {
+        assertThrows(ResponseStatusException.class, () -> TenantScope.requirePermissionIfAuthenticated("workflow:act"));
+        assertThrows(ResponseStatusException.class, () -> TenantScope.requireAnyPermissionIfAuthenticated("a", "b"));
+    }
 }

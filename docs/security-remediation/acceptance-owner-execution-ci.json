@@ -1,0 +1,1452 @@
+{
+  "capturedAtUtc": "2026-10-09T18:02:17.341922+00:00",
+  "decision": "MERGE_READY",
+  "pullRequest": 342,
+  "sourceHead": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+  "baseHead": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+  "syntheticMerge": "38b20b7deb0f614b065af3492c6a30d61665c2db",
+  "mergeTree": "ff906ccee4f1362abe23f847908cc3b4dff45a8b",
+  "runs": {
+    "ci": {
+      "id": 37969730096,
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "event": "pull_request",
+      "path": ".github/workflows/ci-pr.yml",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-10-09T17:55:54Z",
+      "updated_at": "2026-10-09T18:01:38Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096"
+    },
+    "ql": {
+      "id": 37969729217,
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "event": "pull_request",
+      "path": ".github/workflows/codeql-analysis.yml",
+      "status": "completed",
+      "conclusion": "success",
+      "run_attempt": 1,
+      "created_at": "2026-10-09T17:55:53Z",
+      "updated_at": "2026-10-09T18:00:08Z",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969729217"
+    }
+  },
+  "actualJobs": [
+    {
+      "id": 113952977574,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCBypg",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113952977574",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113952977574",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:55:54Z",
+      "started_at": "2026-10-09T17:55:56Z",
+      "completed_at": "2026-10-09T17:56:03Z",
+      "name": "duplicate-class-drift",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:55:57Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:56:01Z"
+        },
+        {
+          "name": "Check guarded classes have not diverged",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:01Z",
+          "completed_at": "2026-10-09T17:56:01Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-09T17:56:01Z",
+          "completed_at": "2026-10-09T17:56:01Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-09T17:56:01Z",
+          "completed_at": "2026-10-09T17:56:01Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113952977574",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014304,
+      "runner_name": "GitHub Actions 1000014304",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113952977771,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCBzaw",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113952977771",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113952977771",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:55:54Z",
+      "started_at": "2026-10-09T17:55:56Z",
+      "completed_at": "2026-10-09T17:57:19Z",
+      "name": "privacy-technical-controls",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:55:56Z",
+          "completed_at": "2026-10-09T17:55:57Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:56:00Z"
+        },
+        {
+          "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:00Z",
+          "completed_at": "2026-10-09T17:56:02Z"
+        },
+        {
+          "name": "Audit current, branch, history and release export boundaries",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-09T17:56:02Z",
+          "completed_at": "2026-10-09T17:56:12Z"
+        },
+        {
+          "name": "Run synthetic export and verified-deletion drill",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-09T17:56:12Z",
+          "completed_at": "2026-10-09T17:57:16Z"
+        },
+        {
+          "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-09T17:57:16Z",
+          "completed_at": "2026-10-09T17:57:17Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-09T17:57:17Z",
+          "completed_at": "2026-10-09T17:57:17Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-09T17:57:17Z",
+          "completed_at": "2026-10-09T17:57:17Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113952977771",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014303,
+      "runner_name": "GitHub Actions 1000014303",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113952977974,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCB0Ng",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113952977974",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113952977974",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:55:54Z",
+      "started_at": "2026-10-09T17:55:57Z",
+      "completed_at": "2026-10-09T17:56:06Z",
+      "name": "detect / detect",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:55:58Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:55:58Z",
+          "completed_at": "2026-10-09T17:56:02Z"
+        },
+        {
+          "name": "Detect affected services",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:02Z",
+          "completed_at": "2026-10-09T17:56:04Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-09T17:56:04Z",
+          "completed_at": "2026-10-09T17:56:04Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-09T17:56:04Z",
+          "completed_at": "2026-10-09T17:56:04Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113952977974",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014305,
+      "runner_name": "GitHub Actions 1000014305",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113952978014,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCB0Xg",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113952978014",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113952978014",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:55:54Z",
+      "started_at": "2026-10-09T17:55:56Z",
+      "completed_at": "2026-10-09T17:57:11Z",
+      "name": "windows-security-helper-validation",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:55:57Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:56:05Z"
+        },
+        {
+          "name": "Verify PowerShell 5 helper serialization and native exit handling",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:05Z",
+          "completed_at": "2026-10-09T17:56:18Z"
+        },
+        {
+          "name": "Verify optimized restore-verifier deadlines and historical coverage on Windows",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-09T17:56:18Z",
+          "completed_at": "2026-10-09T17:56:21Z"
+        },
+        {
+          "name": "Verify immutable runtime patch cycles and release binding on Windows",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-09T17:56:21Z",
+          "completed_at": "2026-10-09T17:57:07Z"
+        },
+        {
+          "name": "Verify Scheduler create and update command arguments",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-09T17:57:07Z",
+          "completed_at": "2026-10-09T17:57:07Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-09T17:57:07Z",
+          "completed_at": "2026-10-09T17:57:09Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-09T17:57:09Z",
+          "completed_at": "2026-10-09T17:57:09Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113952978014",
+      "labels": [
+        "windows-latest"
+      ],
+      "runner_id": 1000014309,
+      "runner_name": "GitHub Actions 1000014309",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113952978034,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCB0cg",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113952978034",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113952978034",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:55:54Z",
+      "started_at": "2026-10-09T17:55:56Z",
+      "completed_at": "2026-10-09T18:01:31Z",
+      "name": "static-architecture-audits",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:55:57Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:56:00Z"
+        },
+        {
+          "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:00Z",
+          "completed_at": "2026-10-09T17:56:01Z"
+        },
+        {
+          "name": "Verify generated OpenAPI clients are current",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-09T17:56:01Z",
+          "completed_at": "2026-10-09T17:56:01Z"
+        },
+        {
+          "name": "Test browser contract generation and canonical routing",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-09T17:56:01Z",
+          "completed_at": "2026-10-09T17:56:01Z"
+        },
+        {
+          "name": "Audit offline service boundaries",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-09T17:56:01Z",
+          "completed_at": "2026-10-09T17:56:07Z"
+        },
+        {
+          "name": "Verify financial and workflow contract bindings",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-09T17:56:07Z",
+          "completed_at": "2026-10-09T17:56:08Z"
+        },
+        {
+          "name": "Verify bounded signed transport probe controls",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-10-09T17:56:08Z",
+          "completed_at": "2026-10-09T17:56:08Z"
+        },
+        {
+          "name": "Test immutable GitHub governance check verification",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-10-09T17:56:08Z",
+          "completed_at": "2026-10-09T17:56:09Z"
+        },
+        {
+          "name": "Test explicit dashboard release target and publication controls without Docker",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-10-09T17:56:09Z",
+          "completed_at": "2026-10-09T17:56:10Z"
+        },
+        {
+          "name": "Test offline GCP governance audits",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-09T17:56:10Z",
+          "completed_at": "2026-10-09T17:56:10Z"
+        },
+        {
+          "name": "Verify digest-bound image User and database catalog evidence rejection",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-09T17:56:10Z",
+          "completed_at": "2026-10-09T17:56:11Z"
+        },
+        {
+          "name": "Test deployment security admission and isolated native release fixtures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-09T17:56:11Z",
+          "completed_at": "2026-10-09T17:59:28Z"
+        },
+        {
+          "name": "Verify guarded dev journal acceptance and PostgreSQL rehearsal under optimization",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-09T17:59:28Z",
+          "completed_at": "2026-10-09T17:59:33Z"
+        },
+        {
+          "name": "Install isolated restore-verifier test dependency",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-09T17:59:33Z",
+          "completed_at": "2026-10-09T17:59:35Z"
+        },
+        {
+          "name": "Verify restore-target rejection, historical coverage and real PostgreSQL TLS under optimization",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-10-09T17:59:35Z",
+          "completed_at": "2026-10-09T18:00:17Z"
+        },
+        {
+          "name": "Test OpenAPI CI routing invariants",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-10-09T18:00:17Z",
+          "completed_at": "2026-10-09T18:00:19Z"
+        },
+        {
+          "name": "Verify immutable runtime patch-cycle identities and workflow binding",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18,
+          "started_at": "2026-10-09T18:00:19Z",
+          "completed_at": "2026-10-09T18:01:29Z"
+        },
+        {
+          "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 35,
+          "started_at": "2026-10-09T18:01:29Z",
+          "completed_at": "2026-10-09T18:01:29Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 36,
+          "started_at": "2026-10-09T18:01:29Z",
+          "completed_at": "2026-10-09T18:01:29Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 37,
+          "started_at": "2026-10-09T18:01:29Z",
+          "completed_at": "2026-10-09T18:01:29Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113952978034",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014310,
+      "runner_name": "GitHub Actions 1000014310",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113952978057,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCB0iQ",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113952978057",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113952978057",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:55:55Z",
+      "started_at": "2026-10-09T17:55:57Z",
+      "completed_at": "2026-10-09T17:56:10Z",
+      "name": "secret-scan",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:55:58Z",
+          "completed_at": "2026-10-09T17:55:59Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:55:59Z",
+          "completed_at": "2026-10-09T17:56:03Z"
+        },
+        {
+          "name": "Run gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:03Z",
+          "completed_at": "2026-10-09T17:56:07Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-09T17:56:07Z",
+          "completed_at": "2026-10-09T17:56:08Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-09T17:56:08Z",
+          "completed_at": "2026-10-09T17:56:08Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113952978057",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014306,
+      "runner_name": "GitHub Actions 1000014306",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113952978081,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCB0oQ",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113952978081",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113952978081",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:55:55Z",
+      "started_at": "2026-10-09T17:55:56Z",
+      "completed_at": "2026-10-09T17:56:18Z",
+      "name": "dev-edge-terraform-validation",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:55:59Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:55:59Z",
+          "completed_at": "2026-10-09T17:56:04Z"
+        },
+        {
+          "name": "Run hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:04Z",
+          "completed_at": "2026-10-09T17:56:05Z"
+        },
+        {
+          "name": "Validate dev edge and mock-provider acceptance",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-09T17:56:05Z",
+          "completed_at": "2026-10-09T17:56:08Z"
+        },
+        {
+          "name": "Validate persistent dashboard state without a web deployment",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-09T17:56:08Z",
+          "completed_at": "2026-10-09T17:56:11Z"
+        },
+        {
+          "name": "Validate independent dev erasure journal and least-privilege scope",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-09T17:56:11Z",
+          "completed_at": "2026-10-09T17:56:14Z"
+        },
+        {
+          "name": "Validate disabled dev egress preparation and explicit destination boundaries",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-09T17:56:14Z",
+          "completed_at": "2026-10-09T17:56:16Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-09T17:56:16Z",
+          "completed_at": "2026-10-09T17:56:17Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-09T17:56:17Z",
+          "completed_at": "2026-10-09T17:56:17Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113952978081",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014307,
+      "runner_name": "GitHub Actions 1000014307",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113952978082,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCB0og",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113952978082",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113952978082",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:55:55Z",
+      "started_at": "2026-10-09T17:55:56Z",
+      "completed_at": "2026-10-09T17:55:59Z",
+      "name": "promotion-source-policy",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:55:57Z"
+        },
+        {
+          "name": "Require dev as the source of main promotions",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:55:57Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:55:57Z",
+          "completed_at": "2026-10-09T17:55:57Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113952978082",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014308,
+      "runner_name": "GitHub Actions 1000014308",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113953055086,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCGhbg",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113953055086",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113953055086",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:56:06Z",
+      "started_at": "2026-10-09T17:56:08Z",
+      "completed_at": "2026-10-09T18:00:51Z",
+      "name": "service-test (school-core-service)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:56:08Z",
+          "completed_at": "2026-10-09T17:56:09Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:56:09Z",
+          "completed_at": "2026-10-09T17:56:12Z"
+        },
+        {
+          "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:12Z",
+          "completed_at": "2026-10-09T17:56:13Z"
+        },
+        {
+          "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-09T17:56:13Z",
+          "completed_at": "2026-10-09T17:56:13Z"
+        },
+        {
+          "name": "Install Node dependencies",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-09T17:56:13Z",
+          "completed_at": "2026-10-09T17:56:13Z"
+        },
+        {
+          "name": "Run Maven tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-09T17:56:13Z",
+          "completed_at": "2026-10-09T18:00:50Z"
+        },
+        {
+          "name": "Run gateway tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-09T18:00:50Z",
+          "completed_at": "2026-10-09T18:00:50Z"
+        },
+        {
+          "name": "Run frontend tests and build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-09T18:00:50Z",
+          "completed_at": "2026-10-09T18:00:50Z"
+        },
+        {
+          "name": "Remove broken Google Chrome apt source",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-09T18:00:50Z",
+          "completed_at": "2026-10-09T18:00:50Z"
+        },
+        {
+          "name": "Install Playwright Chromium",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-09T18:00:50Z",
+          "completed_at": "2026-10-09T18:00:50Z"
+        },
+        {
+          "name": "Run authenticated frontend browser tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-09T18:00:50Z",
+          "completed_at": "2026-10-09T18:00:50Z"
+        },
+        {
+          "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-09T18:00:50Z",
+          "completed_at": "2026-10-09T18:00:50Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-09T18:00:50Z",
+          "completed_at": "2026-10-09T18:00:50Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-09T18:00:50Z",
+          "completed_at": "2026-10-09T18:00:50Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113953055086",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014312,
+      "runner_name": "GitHub Actions 1000014312",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113953055090,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCGhcg",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113953055090",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113953055090",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:56:06Z",
+      "started_at": "2026-10-09T17:56:08Z",
+      "completed_at": "2026-10-09T17:58:17Z",
+      "name": "service-test (platform-service)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:56:09Z",
+          "completed_at": "2026-10-09T17:56:11Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:56:11Z",
+          "completed_at": "2026-10-09T17:56:14Z"
+        },
+        {
+          "name": "Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:14Z",
+          "completed_at": "2026-10-09T17:56:17Z"
+        },
+        {
+          "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 4,
+          "started_at": "2026-10-09T17:56:17Z",
+          "completed_at": "2026-10-09T17:56:17Z"
+        },
+        {
+          "name": "Install Node dependencies",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 5,
+          "started_at": "2026-10-09T17:56:17Z",
+          "completed_at": "2026-10-09T17:56:17Z"
+        },
+        {
+          "name": "Run Maven tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-09T17:56:17Z",
+          "completed_at": "2026-10-09T17:58:14Z"
+        },
+        {
+          "name": "Run gateway tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7,
+          "started_at": "2026-10-09T17:58:14Z",
+          "completed_at": "2026-10-09T17:58:14Z"
+        },
+        {
+          "name": "Run frontend tests and build",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8,
+          "started_at": "2026-10-09T17:58:14Z",
+          "completed_at": "2026-10-09T17:58:14Z"
+        },
+        {
+          "name": "Remove broken Google Chrome apt source",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 9,
+          "started_at": "2026-10-09T17:58:14Z",
+          "completed_at": "2026-10-09T17:58:14Z"
+        },
+        {
+          "name": "Install Playwright Chromium",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 10,
+          "started_at": "2026-10-09T17:58:14Z",
+          "completed_at": "2026-10-09T17:58:14Z"
+        },
+        {
+          "name": "Run authenticated frontend browser tests",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 11,
+          "started_at": "2026-10-09T17:58:14Z",
+          "completed_at": "2026-10-09T17:58:14Z"
+        },
+        {
+          "name": "Post Run actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 21,
+          "started_at": "2026-10-09T17:58:14Z",
+          "completed_at": "2026-10-09T17:58:14Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 22,
+          "started_at": "2026-10-09T17:58:14Z",
+          "completed_at": "2026-10-09T17:58:14Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 23,
+          "started_at": "2026-10-09T17:58:14Z",
+          "completed_at": "2026-10-09T17:58:14Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113953055090",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014311,
+      "runner_name": "GitHub Actions 1000014311",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113953055099,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCGhew",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113953055099",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113953055099",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:56:06Z",
+      "started_at": "2026-10-09T17:56:08Z",
+      "completed_at": "2026-10-09T17:58:15Z",
+      "name": "docker-build (school-core-service)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:56:09Z",
+          "completed_at": "2026-10-09T17:56:12Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:56:12Z",
+          "completed_at": "2026-10-09T17:56:15Z"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:15Z",
+          "completed_at": "2026-10-09T17:56:19Z"
+        },
+        {
+          "name": "Set image reference",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-09T17:56:19Z",
+          "completed_at": "2026-10-09T17:56:19Z"
+        },
+        {
+          "name": "Resolve the security patch epoch",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-09T17:56:19Z",
+          "completed_at": "2026-10-09T17:56:19Z"
+        },
+        {
+          "name": "Build image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-09T17:56:19Z",
+          "completed_at": "2026-10-09T17:57:37Z"
+        },
+        {
+          "name": "Trivy HIGH/CRITICAL gate",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-09T17:57:37Z",
+          "completed_at": "2026-10-09T17:58:07Z"
+        },
+        {
+          "name": "Post Trivy HIGH/CRITICAL gate",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-09T17:58:07Z",
+          "completed_at": "2026-10-09T17:58:07Z"
+        },
+        {
+          "name": "Post Build image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-09T17:58:07Z",
+          "completed_at": "2026-10-09T17:58:09Z"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-09T17:58:09Z",
+          "completed_at": "2026-10-09T17:58:13Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-09T17:58:13Z",
+          "completed_at": "2026-10-09T17:58:13Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-09T17:58:13Z",
+          "completed_at": "2026-10-09T17:58:13Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113953055099",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014313,
+      "runner_name": "GitHub Actions 1000014313",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113953055264,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCGiIA",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113953055264",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113953055264",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T17:56:06Z",
+      "started_at": "2026-10-09T17:56:08Z",
+      "completed_at": "2026-10-09T17:58:15Z",
+      "name": "docker-build (platform-service)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T17:56:09Z",
+          "completed_at": "2026-10-09T17:56:12Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T17:56:12Z",
+          "completed_at": "2026-10-09T17:56:16Z"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T17:56:16Z",
+          "completed_at": "2026-10-09T17:56:23Z"
+        },
+        {
+          "name": "Set image reference",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-09T17:56:23Z",
+          "completed_at": "2026-10-09T17:56:23Z"
+        },
+        {
+          "name": "Resolve the security patch epoch",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-10-09T17:56:23Z",
+          "completed_at": "2026-10-09T17:56:23Z"
+        },
+        {
+          "name": "Build image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-10-09T17:56:23Z",
+          "completed_at": "2026-10-09T17:57:36Z"
+        },
+        {
+          "name": "Trivy HIGH/CRITICAL gate",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-10-09T17:57:36Z",
+          "completed_at": "2026-10-09T17:58:06Z"
+        },
+        {
+          "name": "Post Trivy HIGH/CRITICAL gate",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-10-09T17:58:06Z",
+          "completed_at": "2026-10-09T17:58:06Z"
+        },
+        {
+          "name": "Post Build image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-10-09T17:58:06Z",
+          "completed_at": "2026-10-09T17:58:08Z"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-10-09T17:58:08Z",
+          "completed_at": "2026-10-09T17:58:12Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-10-09T17:58:12Z",
+          "completed_at": "2026-10-09T17:58:13Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-10-09T17:58:13Z",
+          "completed_at": "2026-10-09T17:58:13Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113953055264",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014314,
+      "runner_name": "GitHub Actions 1000014314",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 113953057500,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiCGq3A",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113953057500",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113953057500",
+      "status": "completed",
+      "conclusion": "skipped",
+      "created_at": "2026-10-09T17:56:07Z",
+      "started_at": "2026-10-09T17:56:07Z",
+      "completed_at": "2026-10-09T17:56:06Z",
+      "name": "maven-wrapper-validation (${{ matrix.os }})",
+      "steps": [],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113953057500",
+      "labels": [],
+      "runner_id": null,
+      "runner_name": null,
+      "runner_group_id": null,
+      "runner_group_name": null
+    },
+    {
+      "id": 113955205079,
+      "run_id": 37969730096,
+      "workflow_name": "CI / PR",
+      "head_branch": "security/owner-execution-boundaries-2026-10-09",
+      "run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/runs/37969730096",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOR_Ksqc8AAAAaiEJv1w",
+      "head_sha": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+      "url": "https://api.github.com/repos/custokingkr-dev/ims-v1/actions/jobs/113955205079",
+      "html_url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37969730096/job/113955205079",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-10-09T18:01:31Z",
+      "started_at": "2026-10-09T18:01:33Z",
+      "completed_at": "2026-10-09T18:01:37Z",
+      "name": "summary",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-10-09T18:01:34Z",
+          "completed_at": "2026-10-09T18:01:34Z"
+        },
+        {
+          "name": "Write summary",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-10-09T18:01:34Z",
+          "completed_at": "2026-10-09T18:01:34Z"
+        },
+        {
+          "name": "Enforce required job results",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-10-09T18:01:34Z",
+          "completed_at": "2026-10-09T18:01:34Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-10-09T18:01:34Z",
+          "completed_at": "2026-10-09T18:01:34Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/custokingkr-dev/ims-v1/check-runs/113955205079",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000014315,
+      "runner_name": "GitHub Actions 1000014315",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ],
+  "actualTestEvidence": [
+    {
+      "service": "platform-service",
+      "jobId": 113953055090,
+      "reported": 498,
+      "passed": 498,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "tmp/new-source-pr342-platform-service-ci.log",
+      "digestSha256": "a87c227ee795e8bffb4d3aba0af3621e7855bfd254cef13b6765bc6c76771540"
+    },
+    {
+      "service": "school-core-service",
+      "jobId": 113953055086,
+      "reported": 986,
+      "passed": 986,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "tmp/new-source-pr342-school-core-service-ci.log",
+      "digestSha256": "980f61125146a96a165f0f46e8cd7ec68a74e5662696b253a45b2fda29c567e3"
+    }
+  ],
+  "codeQL": {
+    "ref": "refs/pull/342/merge",
+    "analysisCommitIsSyntheticMerge": true,
+    "actualUploads": [
+      {
+        "id": 1925242284,
+        "commit_sha": "38b20b7deb0f614b065af3492c6a30d61665c2db",
+        "ref": "refs/pull/342/merge",
+        "category": "/language:java-kotlin",
+        "created_at": "2026-10-09T17:59:59Z",
+        "results_count": 0,
+        "error": "",
+        "rules_count": 120
+      },
+      {
+        "id": 1925224639,
+        "commit_sha": "38b20b7deb0f614b065af3492c6a30d61665c2db",
+        "ref": "refs/pull/342/merge",
+        "category": "/language:javascript-typescript",
+        "created_at": "2026-10-09T17:57:03Z",
+        "results_count": 0,
+        "error": "",
+        "rules_count": 103
+      }
+    ],
+    "traversal": {
+      "maxPages": 4,
+      "pagesRead": 1,
+      "recordsRead": 2,
+      "selectedRunWindowComplete": true,
+      "createdDescendingVerified": true
+    },
+    "scopedOpenAlerts": 0
+  },
+  "manifestDigestSha256": "554e9f1585aa9a85434969db3fbb4e4c87c1ed0b16d4854423e390b3ee1e6f2c",
+  "exactChangedPathCount": 38,
+  "actualDashboardReleaseSafetyCiStepPassed": true,
+  "cloudCalls": 0,
+  "mutations": 0,
+  "scope": "Exact source CI only; focused/full overlap not summed; no runtime/provider/restore acceptance."
+}

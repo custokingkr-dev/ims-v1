@@ -98,6 +98,7 @@ class StudentReadControllerTest {
 
     @Test
     void getReturnsNotFoundForMissingStudent() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:read")));
         when(students.schoolIdForStudent(404L)).thenThrow(new StudentNotFoundException("student not found"));
         when(students.find(404L)).thenReturn(Optional.empty());
 
@@ -112,6 +113,7 @@ class StudentReadControllerTest {
 
     @Test
     void workspaceStudentReturnsNotFoundAfterPermanentDelete() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:read")));
         when(students.schoolIdForStudent(404L)).thenThrow(new StudentNotFoundException("student not found"));
 
         assertThatThrownBy(() -> controller.workspaceStudent("student-token", 404L))
@@ -141,7 +143,7 @@ class StudentReadControllerTest {
     }
 
     @Test
-    void studentPhotoContentReturnsPrivateCacheableImage() {
+    void studentPhotoContentReturnsNonCacheablePrivateImage() {
         TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:read")));
         byte[] body = "jpeg-data".getBytes(java.nio.charset.StandardCharsets.UTF_8);
         when(students.schoolIdForStudent(42L)).thenReturn(10L);
@@ -152,7 +154,7 @@ class StudentReadControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders().getContentType()).isEqualTo(org.springframework.http.MediaType.IMAGE_JPEG);
-        assertThat(response.getHeaders().getCacheControl()).contains("private", "max-age");
+        assertThat(response.getHeaders().getCacheControl()).isEqualTo("no-store");
         assertThat(response.getHeaders().getVary()).contains("Authorization");
         assertThat(response.getBody()).isEqualTo(body);
         verify(students).studentPhotoContent(42L);

@@ -5,6 +5,7 @@ import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository.CustomerRow;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository.InvoiceRow;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository.PaymentRow;
+import com.custoking.ims.billingservice.api.dto.CreateBillingPaymentRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -120,7 +121,16 @@ public class BillingInvoiceService {
     }
 
     @Transactional
-    public PaymentRow createBillingPayment(Map<String, Object> request) {
-        return invoices.createBillingPayment(request);
+    public PaymentRow createBillingPayment(CreateBillingPaymentRequest request) {
+        PaymentRow payment = invoices.createBillingPayment(request);
+        var payload = new LinkedHashMap<String,Object>();
+        payload.put("payment", payment);
+        payload.put("actorId", payment.receivedByUserId());
+        payload.put("authority", "SERVER");
+        String requestId = org.slf4j.MDC.get("requestId");
+        payload.put("requestId", requestId != null && requestId.matches("[A-Za-z0-9._:-]{1,128}")
+                ? requestId : java.util.UUID.randomUUID().toString());
+        outbox.appendPaymentOnce(String.valueOf(payment.id()), objectMapper.writeValueAsString(payload));
+        return payment;
     }
 }

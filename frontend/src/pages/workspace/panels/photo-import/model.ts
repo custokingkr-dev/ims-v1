@@ -1,103 +1,17 @@
-export interface SchoolContext {
-  id: number;
-  schoolUid: string;
-  name: string;
-  shortCode: string;
-  academicYearId: string;
-  academicYearLabel: string;
-  driveFolderStatus: 'NOT_PROVISIONED' | 'PROVISIONING' | 'READY' | 'FAILED';
-  driveFolderId?: string;
-  driveFolderName?: string;
-  driveFolderUrl?: string;
-  driveFolderError?: string;
-}
+import type { PhotoImportAccess, PhotoImportBatch, PhotoImportContext, PhotoImportRow, PhotoImportSchool, PhotoImportRecoveryRow, PhotoImportRecoveryResult, PhotoImportRecoveryProgress } from '../../../../generated/photoImportClient';
 
-export interface ImportContext {
-  driveConfigured: boolean;
-  managedDriveConfigured: boolean;
-  schools: SchoolContext[];
-  mappingColumns: string[];
-  mappingFileFormats: string[];
-  mappingRowLimit?: number;
-  imageFileLimit?: string;
-  fileNameRule: string;
-}
-
-export interface ImportBatch {
-  id: string;
-  schoolId: number;
-  schoolName: string;
-  academicYearId: string;
-  academicYearLabel: string;
-  driveFolderId: string;
-  driveFolderName?: string;
-  workbookFileName?: string;
-  status: string;
-  totalRows: number;
-  readyCount: number;
-  heldCount: number;
-  errorCount: number;
-  appliedCount: number;
-  failedCount: number;
-  createdAt: string;
-  photographerAccessExpiresAt?: string;
-  photographerAccessRevokedAt?: string;
-}
-
-export interface AccessState {
-  expiresAt?: string;
-  revokedAt?: string;
-  overdue: boolean;
-}
-
-export interface ImportRow {
-  id: string;
-  excelRow: number;
-  admissionNo: string;
-  workbookName: string;
-  className: string;
-  sectionName: string;
-  imageNo?: string;
-  driveFileName?: string;
-  studentId?: number;
-  status: 'READY' | 'HELD' | 'ERROR' | 'EXCLUDED' | 'APPLIED' | 'FAILED';
-  message?: string;
-  cropX: number;
-  cropY: number;
-  manuallyReviewed: boolean;
-  sourceObjectKey?: string;
-}
-
-export interface RecoveryRowResult {
-  rowId: string;
-  status: 'RECOVERED' | 'ALREADY_RECOVERED' | 'IN_PROGRESS' | 'PROTECTED' | 'FAILED';
-  photoKey?: string;
-  message?: string;
-}
-
-export interface RecoveryProgress {
-  totalCount: number;
-  processedCount: number;
-  recoveredCount: number;
-  protectedCount: number;
-  failedCount: number;
-  inProgressCount: number;
-  pendingCount: number;
-  percentComplete: number;
-  resumable: boolean;
-  updatedAt?: string;
-}
-
-export interface RecoveryBatchResult {
-  selectedCount: number;
-  recoveredCount: number;
-  alreadyRecoveredCount: number;
-  inProgressCount: number;
-  protectedCount: number;
-  failedCount: number;
-  rows: RecoveryRowResult[];
-  progress: RecoveryProgress;
-}
+export type SchoolContext = PhotoImportSchool;
+export type ImportContext = PhotoImportContext;
+// UI projections allow partial local progress and lightweight display fixtures;
+// the generated HTTP client retains the complete serialized server contract.
+export type ImportBatch = Pick<PhotoImportBatch, 'id' | 'schoolId' | 'schoolName' | 'academicYearId' | 'academicYearLabel' | 'driveFolderId' | 'status' | 'totalRows' | 'readyCount' | 'heldCount' | 'errorCount' | 'appliedCount' | 'failedCount' | 'createdAt'>
+  & Partial<Pick<PhotoImportBatch, 'driveFolderName' | 'workbookFileName' | 'photographerAccessExpiresAt' | 'photographerAccessRevokedAt'>>;
+export type AccessState = PhotoImportAccess;
+export type ImportRow = Pick<PhotoImportRow, 'id' | 'excelRow' | 'admissionNo' | 'workbookName' | 'className' | 'sectionName' | 'status' | 'cropX' | 'cropY' | 'manuallyReviewed'>
+  & Partial<Pick<PhotoImportRow, 'imageNo' | 'driveFileName' | 'studentId' | 'message' | 'sourceObjectKey'>>;
+export type RecoveryRowResult = PhotoImportRecoveryRow;
+export type RecoveryProgress = Omit<PhotoImportRecoveryProgress, 'batchId' | 'schoolId' | 'updatedAt'> & Partial<Pick<PhotoImportRecoveryProgress, 'batchId' | 'schoolId' | 'updatedAt'>>;
+export type RecoveryBatchResult = PhotoImportRecoveryResult;
 
 export interface OperationProgress {
   label: string;

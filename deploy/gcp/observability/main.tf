@@ -81,6 +81,12 @@ data "google_cloud_run_v2_service" "services" {
 
 data "google_project" "current" {
   project_id = var.project
+  lifecycle {
+    precondition {
+      condition     = var.project == "custoking-${var.env}"
+      error_message = "The observability project and environment must match."
+    }
+  }
 }
 
 locals {

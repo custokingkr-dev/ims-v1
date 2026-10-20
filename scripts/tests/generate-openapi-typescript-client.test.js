@@ -91,3 +91,67 @@ test('live broadcast queueing binds explicit mode and fingerprint while preservi
   assert.match(result, /queueBroadcast\(parameters: \{ id: string; \}, request: QueueBroadcastRequest\)/);
   assert.match(result, /http.post<BroadcastOutcomes>\(`[^`]+\/send`, request\)/);
 });
+
+test('erasure confirmation headers are explicit, encoded once and cannot become identity headers', () => {
+  const original = read('studentClient.v1.openapi.json');
+  const generated = renderClient(original, 'studentClient.v1.openapi.json');
+  assert.match(generated, /"X-Student-Delete-Confirmation": encodeURIComponent\(String\(parameters.confirmation\)\)/);
+  for (const name of ['Authorization', 'X-Student-Service-Token', 'X-Authenticated-School-Id', 'Cookie']) {
+    const spec = structuredClone(original);
+    spec.paths['/api/v1/students/{id}'].delete.parameters[1].name = name;
+    assert.throws(() => validateContract(spec, inventory), /Unsupported or duplicate parameter/);
+  }
+  for (const patch of [{ required: false }, { 'x-ims-header-encoding': 'raw' }, { schema: { type: 'integer' } }, { 'x-ims-client-name': 'id' }]) {
+    const spec = structuredClone(original);
+    Object.assign(spec.paths['/api/v1/students/{id}'].delete.parameters[1], patch);
+    assert.throws(() => validateContract(spec, inventory), /Unsupported or duplicate parameter/);
+  }
+  const spec = structuredClone(original);
+  spec.paths['/api/v1/students'].post.parameters.push(spec.paths['/api/v1/students/{id}'].delete.parameters[1]);
+  assert.throws(() => validateContract(spec, inventory), /Unsupported or duplicate parameter/);
+});
+
+test('import multipart text is explicit and complex form fields fail closed', () => {
+  const original = read('studentClient.v1.openapi.json');
+  const generated = renderClient(original, 'studentClient.v1.openapi.json');
+  assert.match(generated, /form.append\("rowsJson", request.rowsJson\)/);
+  assert.doesNotMatch(generated, /Content-Type|Service-Token/);
+  for (const field of [{ type: 'object' }, { type: 'integer' }, { type: 'string', format: 'date-time' }]) {
+    const spec = structuredClone(original);
+    spec.components.schemas.ImportFileUpload.properties.rowsJson = field;
+    assert.throws(() => validateContract(spec, inventory), /Multipart generation supports explicit string or binary fields/);
+  }
+});
+
+test('serialized student dates, nullable record fields and property additions cannot drift silently', () => {
+  const original = read('studentClient.v1.openapi.json');
+  for (const [schema, field] of [['StudentRecord', 'dob'], ['StudentImportBatch', 'completedAt'], ['StudentImportUsage', 'usageDate']]) {
+    const spec = structuredClone(original);
+    spec.components.schemas[schema].properties[field] = { type: 'integer' };
+    assert.throws(() => validateContract(spec, inventory), /type drifted from Java/);
+  }
+  const spec = structuredClone(original);
+  delete spec.components.schemas.StudentImportEvidenceRow.properties.rawJson;
+  assert.throws(() => validateContract(spec, inventory), /properties drifted/);
+});
+
+
+test('only bounded transport options enter a client and cannot replace its wire contract', () => {
+  const spec = read('photoImportClient.v1.openapi.json');
+  validateContract(spec, inventory);
+  const generated = renderClient(spec, 'photoImportClient.v1.openapi.json');
+  assert.match(generated, /Pick<AxiosRequestConfig, "signal" \| "timeout" \| "onDownloadProgress">/);
+  assert.match(generated, /signal: requestOptions\?\.signal/);
+  assert.doesNotMatch(generated, /\.\.\.requestOptions/);
+  for (const options of [['headers'], ['baseURL'], ['url'], ['params'], ['responseType'], ['timeout', 'timeout'], false, null]) {
+    assert.throws(() => validateContract({ ...spec, 'x-ims-request-options': options }, inventory), /Request options/);
+  }
+  spec.components.schemas.PhotoImportClientRequestOptions = { type: 'string' };
+  assert.throws(() => validateContract(spec, inventory), /Reserved request options type/);
+});
+
+test('UUID record type changes fail the photo contract gate', () => {
+  const spec = read('photoImportClient.v1.openapi.json');
+  spec.components.schemas.PhotoImportBatch.properties.id = { type: 'integer' };
+  assert.throws(() => validateContract(spec, inventory), /type drifted from Java UUID/);
+});

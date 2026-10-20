@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T18:23:38.754519+00:00",
+  "decision": "PASS",
+  "blockers": [],
+  "independentReview": true,
+  "reviewer": "/root/recovery_remaining_execution",
+  "actualPinnedCollector": {
+    "path": "tmp/collect-owner-execution-postmerge-actual-jobs.py",
+    "rawSha256": "e7f5633e4e3e0a63c86f90352dc304f02626c5e832bf3f7e3690ac48d1c2b049"
+  },
+  "approvedTuple": {
+    "source": "629bb9bd432d5fcd9cc2f05fd548ca7ee7ff9f06",
+    "parent": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+    "tree": "ff906ccee4f1362abe23f847908cc3b4dff45a8b",
+    "cdRun": 37971242023,
+    "codeqlRun": 37971241448,
+    "tests": {
+      "platform-service": 498,
+      "school-core-service": 986
+    },
+    "ciProofSha256": "7cb701d6bc3c18a81f0d9dd7bd6f99de98b769d56a3089af61ce888ce7a2689c"
+  },
+  "priorPinnedCollectorReview": {
+    "path": "tmp/owner-execution-pinned-collector-independent-review.json",
+    "rawSha256": "3c7c8cf69896dfa4c90c7aaae249be5af1603c22ba717306213b05b9b502de5a"
+  },
+  "priorPinnedCollector": {
+    "path": "tmp/collect-owner-execution-postmerge.py",
+    "rawSha256": "469d51d48e26f8f3578b383bd3326a21223b1339a50110163fd2d8004e8fe883"
+  },
+  "actualBuildJobCapture": {
+    "path": "tmp/owner-execution-actual-build-job-names.json",
+    "rawSha256": "f6d03ff9392ca38a5a1d9caad9119a647433765bfbe6252f5b6e4bae6c579408"
+  },
+  "actualBuildJobCaptureCollector": {
+    "path": "tmp/capture-owner-execution-actual-build-jobs.py",
+    "rawSha256": "6ba3156fd5a52492dc9b4fb639f2ba4ef8b93b91636b5e2cd50771c37b6ba6c1"
+  },
+  "forwardPreparation": {
+    "path": "tmp/owner-execution-actual-job-collector-forward.json",
+    "rawSha256": "77c00c8a9b88bea0f84077032ba5e76a587c90aa2464627ce360e5e40ed9ac06"
+  },
+  "lockedTuple": {
+    "path": "tmp/owner-execution-locked-release-tuple.json",
+    "rawSha256": "7fd5833fcfdf7d0f22c8718fee9f9395e095566f9c0b6cff0dacfb5cc3ff6fb8"
+  },
+  "acceptedSourceCiProof": {
+    "path": "tmp/owner-execution-source-ci-proof.json",
+    "rawSha256": "7cb701d6bc3c18a81f0d9dd7bd6f99de98b769d56a3089af61ce888ce7a2689c"
+  },
+  "actualSelectedBuildJobIds": {
+    "platform-service": 113959998234,
+    "school-core-service": 113959998520
+  },
+  "actualSelectedBuildJobNames": {
+    "platform-service": "build-images (platform-service, pom.xml|services/platform-service, ./., custoking-platform-servic...",
+    "school-core-service": "build-images (school-core-service, pom.xml|services/school-core-service, ./., custoking-school-co..."
+  },
+  "exactOneTopLevelBuildsLiteralChanged": true,
+  "allOtherBytesAndAstCodeblocksPreserved": true,
+  "existingTupleSourceCiHeadBaseTreeZipWorkflowTestCodeqlGuardsPreserved": true,
+  "diff": {
+    "path": "tmp/owner-execution-actual-buildnames-collector-reviewed.diff",
+    "rawSha256": "7756ec4fd4460176c923364bfdc32a89dede2e91232b2b6bd2485a3dd427da82"
+  },
+  "rawApiResponseHashRecordedInSavedCapture": true,
+  "rawApiResponseIndependentlyRevalidated": false,
+  "testsOrAdaptersExecutedByReviewer": 0,
+  "githubCalls": 0,
+  "cloudCalls": 0,
+  "artifactDownloads": 0,
+  "tagsCreated": 0,
+  "publicProbes": 0,
+  "currentWorkflowSuccessAccepted": false,
+  "actualRuntimeAccepted": false,
+  "wholePlanComplete": false,
+  "scope": "Static exact actual REST name forward review. Only the top-level BUILDS literal changed against the accepted pinned collector; saved complete attempt-one capture establishes the names and selected IDs. The root-authorized actual collector must still enforce successful exact workflows, artifacts and positive package evidence before runtime verification; this review adds no execution acceptance."
+}

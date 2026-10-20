@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:33:05.739492+00:00",
+  "stage": "final",
+  "nativeExit": 0,
+  "counts": {
+    "tests": 13,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "logPath": "tmp/provider-canonical-final.log",
+  "logRawSha256": "6acb9258904ddbe4d334d5971465a7570528cf984ef60607c3a311b7512f2db0",
+  "reportPath": "tmp/provider-canonical-final-surefire.xml",
+  "reportRawSha256": "7034e194d3fc563b335e704a2ce2669ef778c13207516568eaa57b1bc3bcc88d",
+  "sourceLfSha256": "563c0b688b055144ae618a4270a34dd243ad13818c13d5256df6d12a499d8e43",
+  "testLfSha256": "0eb60717db20945d396b7919c2a322f6ba6438f113fbf6389e02cd3a0b6c01e7",
+  "sourceAndTestsUnchangedDuringRun": true,
+  "failedCases": [],
+  "scope": "Controlled injected/local HTTP fixtures only; no live provider or website attack performed."
+}

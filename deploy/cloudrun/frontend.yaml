@@ -4,6 +4,7 @@ metadata:
   name: custoking-frontend-dev # from-param: custoking-frontend-${env}
   labels:
     app: custoking-ims
+    security-profile: dedicated-runtime-v1
     component: cloud-run
     service: frontend
     env: dev # from-param: ${env}
@@ -25,7 +26,7 @@ spec:
         - image: custoking-frontend
           ports:
             - name: http1
-              containerPort: 80
+              containerPort: 8080
           resources:
             limits:
               cpu: "1"
@@ -33,14 +34,14 @@ spec:
           startupProbe:
             httpGet:
               path: /
-              port: 80
+              port: 8080
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 12
           livenessProbe:
             httpGet:
               path: /
-              port: 80
+              port: 8080
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3

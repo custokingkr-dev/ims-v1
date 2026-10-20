@@ -1,0 +1,30 @@
+{
+  "project": "custoking-dev",
+  "bucket": "custoking-dev-erasure-journal",
+  "object": "control/58bc724a-592f-49f1-b22f-0e5f95aa6808/current.json",
+  "generation": "1791384645925940",
+  "sha256": "aae5c2aedd259b60e7cdff757508a4a0584bb6ab26def2e5eddd148ede7ab108",
+  "size": 237,
+  "control": {
+    "database": "custoking_dev",
+    "project": "custoking-dev",
+    "restoreEpoch": "d9c4f31c-3420-48a7-8fbe-7fc26d2065bf",
+    "schemaVersion": 1,
+    "sourceInstance": "custoking-db-dev",
+    "sourceLineageId": "58bc724a-592f-49f1-b22f-0e5f95aa6808",
+    "state": "ACTIVE"
+  },
+  "createOnly": false,
+  "pinnedReadbackVerified": true,
+  "checkedAtUtc": "2026-10-07T14:50:45.728903+00:00",
+  "scope": "Initial dev source epoch only. It does not activate a restored database or prove complete restore replay.",
+  "encoding": "Canonical sorted compact ASCII, exactly one LF",
+  "initialPublication": {
+    "generation": "1791382791257652",
+    "sha256": "4c4414d7f18eae9b3e1a857d66500414667acdde29c92a32deaedca4163d1cb4",
+    "issue": "Windows text output translated final LF to CRLF. Detected staged-source/remote-byte hash mismatch before application enablement.",
+    "correction": "Owner generation-matched replacement preserving every control field; prior version retained.",
+    "applicationEnabledDuringCorrection": false
+  },
+  "replacementPreconditionGeneration": "1791382791257652"
+}

@@ -1,0 +1,43 @@
+{
+  "project": "custoking-dev",
+  "checks": [
+    {
+      "complete": true,
+      "marker": "SEC-ACPT-20261007-DASHBOARD-AUTH"
+    },
+    {
+      "check": "expired-cookie-rejected-independent-of-ttl-cleanup",
+      "marker": "SEC-ACPT-20261007-DASHBOARD-AUTH",
+      "passed": true
+    },
+    {
+      "check": "second-instance-logout-revocation",
+      "marker": "SEC-ACPT-20261007-DASHBOARD-AUTH",
+      "passed": true
+    },
+    {
+      "check": "second-instance-session-valid",
+      "marker": "SEC-ACPT-20261007-DASHBOARD-AUTH",
+      "passed": true
+    },
+    {
+      "check": "second-instance-oauth-replay-rejected",
+      "marker": "SEC-ACPT-20261007-DASHBOARD-AUTH",
+      "passed": true
+    },
+    {
+      "check": "first-instance-authorization-consumed",
+      "marker": "SEC-ACPT-20261007-DASHBOARD-AUTH",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "replicas": "Two independent module state instances in one CloudRun job; separate CloudRun replica persistence demonstrated by companion probe",
+  "sessionSecretManaged": true,
+  "oauthProviderTested": false,
+  "expiryMethod": "Controlled clock advance13hours; real TTL deletion not observed",
+  "checkedAtUtc": "2026-10-07T09:43:58.491238+00:00",
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification",
+  "wrapperSourceSha256": "6c73fca84e74cb2947a03cc2b9f4f290526e4eee784a10f8b88a4a32e658faf7"
+}

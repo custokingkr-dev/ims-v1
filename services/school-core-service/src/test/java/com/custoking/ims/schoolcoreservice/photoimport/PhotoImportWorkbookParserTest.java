@@ -14,6 +14,31 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PhotoImportWorkbookParserTest {
     private final PhotoImportWorkbookParser parser = new PhotoImportWorkbookParser();
 
+    @Test void rejectsSparseExtremeRowsAndFormulaCellsBeforeEvaluation() throws Exception {
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet("mapping");
+            sheet.createRow(100_000).createCell(0).setCellValue("x");
+            workbook.write(output);
+            assertThatThrownBy(() -> parser.parse(output.toByteArray(), "mapping.xlsx")).hasMessageContaining("too many rows");
+        }
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            workbook.createSheet("mapping").createRow(0).createCell(0).setCellFormula("1+1");
+            workbook.write(output);
+            assertThatThrownBy(() -> parser.parse(output.toByteArray(), "mapping.xlsx")).hasMessageContaining("formulas");
+        }
+    }
+
+    @Test void rejectsCompressedExpansionBombWithBoundedFixture() throws Exception {
+        var output = new ByteArrayOutputStream();
+        try (var zip = new java.util.zip.ZipOutputStream(output)) {
+            zip.putNextEntry(new java.util.zip.ZipEntry("xl/bomb.xml"));
+            byte[] chunk = new byte[8192];
+            for (int i = 0; i < 2561; i++) zip.write(chunk);
+            zip.closeEntry();
+        }
+        assertThatThrownBy(() -> parser.parse(output.toByteArray(), "mapping.xlsx")).hasMessageContaining("safe size limit");
+    }
+
     @Test
     void parsesNumericIdentifiersUsingDisplayedValuesAndKeepsBlankImageRows() throws Exception {
         byte[] workbook;

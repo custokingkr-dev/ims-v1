@@ -1,0 +1,68 @@
+﻿{
+    "readOnly":  true,
+    "capturedAtUtc":  "2026-10-07T09:25:47.1074139Z",
+    "project":  "custoking-dev",
+    "metrics":  [
+                    {
+                        "value":  14.69668202191235,
+                        "sampleAt":  "2026-10-07T09:24:00Z",
+                        "ageSeconds":  107,
+                        "metric":  "cloudsql.googleapis.com/database/memory/components",
+                        "unit":  "1",
+                        "descriptor":  "Memory stats components in percentage as usage, cache and free memory for the database.",
+                        "labels":  {
+                                       "component":  "Cache"
+                                   }
+                    },
+                    {
+                        "value":  70.678224601593627,
+                        "sampleAt":  "2026-10-07T09:24:00Z",
+                        "ageSeconds":  107,
+                        "metric":  "cloudsql.googleapis.com/database/memory/components",
+                        "unit":  "1",
+                        "descriptor":  "Memory stats components in percentage as usage, cache and free memory for the database.",
+                        "labels":  {
+                                       "component":  "Free"
+                                   }
+                    },
+                    {
+                        "value":  14.625093376494023,
+                        "sampleAt":  "2026-10-07T09:24:00Z",
+                        "ageSeconds":  107,
+                        "metric":  "cloudsql.googleapis.com/database/memory/components",
+                        "unit":  "1",
+                        "descriptor":  "Memory stats components in percentage as usage, cache and free memory for the database.",
+                        "labels":  {
+                                       "component":  "Usage"
+                                   }
+                    },
+                    {
+                        "value":  154345472,
+                        "sampleAt":  "2026-10-07T09:24:00Z",
+                        "ageSeconds":  107,
+                        "metric":  "cloudsql.googleapis.com/database/memory/total_usage",
+                        "unit":  "By",
+                        "descriptor":  "Total RAM usage in bytes. This metric reports the RAM usage of the database process, including the buffer/cache.",
+                        "labels":  null
+                    },
+                    {
+                        "value":  643825664,
+                        "sampleAt":  "2026-10-07T09:25:00Z",
+                        "ageSeconds":  47,
+                        "metric":  "cloudsql.googleapis.com/database/memory/usage",
+                        "unit":  "By",
+                        "descriptor":  "RAM usage in bytes. This metric reports the RAM usage of the server, excluding the buffer/cache.",
+                        "labels":  null
+                    },
+                    {
+                        "value":  643825664,
+                        "sampleAt":  "2026-10-07T09:24:00Z",
+                        "ageSeconds":  107,
+                        "metric":  "cloudsql.googleapis.com/database/memory/quota",
+                        "unit":  "By",
+                        "descriptor":  "Maximum RAM size in bytes.",
+                        "labels":  null
+                    }
+                ],
+    "database":  "custoking-db-dev"
+}

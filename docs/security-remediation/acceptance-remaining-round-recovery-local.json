@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:33:07.996898+00:00",
+  "decision": "LOCAL_RECOVERY_FENCE_AND_FRESHNESS_REGRESSIONS_PASSED_ONLY",
+  "sources": [
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+      "rawSha256": "33acffd49cc2d93fe39d2ebf2fdf5b19395a6401b2f5e355dc89b0137a82ac76",
+      "normalizedLfSha256": "33acffd49cc2d93fe39d2ebf2fdf5b19395a6401b2f5e355dc89b0137a82ac76"
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+      "rawSha256": "ea408e201e9950f524e5678dc4743e35da4a956a1f228819710d60a12b322104",
+      "normalizedLfSha256": "ea408e201e9950f524e5678dc4743e35da4a956a1f228819710d60a12b322104"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "rawSha256": "21a11f7e4887464b96304a7f5fe1d4e72a989cdf0f334f30c415f9ae805eaca0",
+      "normalizedLfSha256": "21a11f7e4887464b96304a7f5fe1d4e72a989cdf0f334f30c415f9ae805eaca0"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorizationTest.java",
+      "rawSha256": "bc939586c42fdc26ec82615258449af8e2ba73f7ae757825d5178f0141b53c9b",
+      "normalizedLfSha256": "bc939586c42fdc26ec82615258449af8e2ba73f7ae757825d5178f0141b53c9b"
+    }
+  ],
+  "finalRun": {
+    "command": "JAVA_HOME=jdk-25.0.3 mvnw.cmd -f services/school-core-service/pom.xml -Dtest=RecoveryAuthorizationTest,IsolatedStudentErasureRecoveryIntegrationTest test",
+    "exitCode": 0,
+    "logPath": "tmp/recovery-epoch-freshness-final-focused.log",
+    "logRawSha256": "6d9ff1ff5fdf0dd94ccb0301d3d14296de176ec21b7631fc374d77c856b13606",
+    "classes": [
+      {
+        "class": "RecoveryAuthorizationTest",
+        "tests": 14,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlPath": "tmp/recovery-epoch-freshness-final-RecoveryAuthorizationTest.xml",
+        "rawSha256": "8f36cf02a3f4c031c092e4409e0fbe18c4ec4ab5ce60bd1e88bc30d1eb0cce35"
+      },
+      {
+        "class": "IsolatedStudentErasureRecoveryIntegrationTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "xmlPath": "tmp/recovery-epoch-freshness-final-IsolatedStudentErasureRecoveryIntegrationTest.xml",
+        "rawSha256": "b1218bc75b3f0a4b5d932afdb10ccbfd26b68577b64b4ff22b56f94e9bfa16b1"
+      }
+    ],
+    "aggregate": {
+      "tests": 23,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "beforeFix": {
+    "exitCode": 1,
+    "logPath": "tmp/recovery-epoch-freshness-before-fix.log",
+    "logRawSha256": "63ed5bcca9b5bcf795749a9532d7254bbc6b06a1023e631076ce9a37aec72a84",
+    "sourceHashesPath": "tmp/recovery-epoch-freshness-before-fix-source-hashes.json",
+    "sourceHashesRawSha256": "0aa2886e9c033493a2daa9d1fb2b5991bba73d26d056eb6a32049426d641e4a7",
+    "classes": [
+      {
+        "path": "tmp/recovery-epoch-freshness-before-fix-RecoveryAuthorizationTest.xml",
+        "rawSha256": "d971d8c050dfb5db8c2f73b2cada762fc1a131280b7140c6e62838a3965b06c3",
+        "tests": 14,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "path": "tmp/recovery-epoch-freshness-before-fix-IsolatedStudentErasureRecoveryIntegrationTest.xml",
+        "rawSha256": "c931dadbb40017c5382fca438f67f050c75e3da9526853eb1139f959c8eb4fd6",
+        "tests": 9,
+        "failures": 1,
+        "errors": 0,
+        "skipped": 0
+      }
+    ],
+    "expectedRegressionFailures": 3
+  },
+  "scope": {
+    "realLocalPostgresqlFourOwnerMigrationChains": true,
+    "externalControlClient": "bounded fake",
+    "changedControlCases": [
+      "generation changed",
+      "ACTIVE body changed",
+      "missing current control"
+    ],
+    "rollbackVerified": [
+      "source",
+      "fee child",
+      "enrollment child",
+      "terminal receipt",
+      "photo cleanup queue",
+      "StudentDeleted outbox"
+    ],
+    "freshnessChecks": "exact 120s evidence/approval/freeze age, exact 600s validity, >45s admission runway",
+    "cloudCalls": 0,
+    "liveWrites": 0,
+    "fullRestorationReady": false,
+    "deliveryResume": false,
+    "hardwareProven": false,
+    "globalFreezeEnforced": false
+  },
+  "limitations": [
+    "External control read and SQL commit are not atomic; commit-admission recheck cannot enforce a global lease.",
+    "Signed pause/freeze is operator attestation, not independent six-service admission enforcement.",
+    "Local TLS purpose-role workflow tests do not prove live clone/control-plane provenance.",
+    "Owner-approved lineage, complete historical/old-epoch/external-only enumeration, absent-source incarnation coverage and legacy mappings remain required.",
+    "All-service delivery/object/provider reconciliation, live approved clone and governed resume/cutover remain unexecuted.",
+    "Retention/RPO/RTO, physical authenticator and unclassified local snapshot custody require owner inputs.",
+    "No full suite/package/CI/deployment acceptance claimed by this focused run."
+  ]
+}

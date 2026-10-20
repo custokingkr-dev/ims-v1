@@ -11,6 +11,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class Msg91NotificationDeliveryProviderTest {
+    @org.junit.jupiter.api.Test void typedSubmitCannotBypassLiveDisableEvenWithCredentials() {
+        var properties=new Msg91Properties();properties.setDryRun(false);properties.setAuthKey("synthetic_auth_key");
+        var provider=new Msg91NotificationDeliveryProvider(properties,null,new tools.jackson.databind.ObjectMapper());
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->provider.submit(new com.custoking.ims.platformservice.application.NotificationDeliveryRequest(
+            "one","fee-reminder.v1","SMS","GUARDIAN","one","{}"))).hasMessageContaining("MSG91 live delivery is disabled");
+    }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -37,6 +43,18 @@ class Msg91NotificationDeliveryProviderTest {
                 .containsEntry("mobiles", "919999999999")
                 .containsEntry("student", "Asha")
                 .containsEntry("amount", 1200);
+    }
+
+    @Test
+    void smsBuilderRejectsVariablesThatReplaceRoutingOrCorrelation() {
+        Fixture fixture = fixture();
+        fixture.properties.setSmsFlowId("flow-123");
+        for (String field : new String[]{"mobiles", "Mobiles", "CRQID", "crqid"}) {
+            assertThatThrownBy(() -> body(fixture.provider, request("event-1", "SMS",
+                    "{\"destination\":\"919999999999\",\"variables\":{\"" + field + "\":\"918888888888\"}}")))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("SMS variables cannot supply routing or correlation fields");
+        }
     }
 
     @Test
@@ -76,6 +94,27 @@ class Msg91NotificationDeliveryProviderTest {
                 .containsEntry("template_id", "otp-template")
                 .containsEntry("otp", "123456")
                 .containsEntry("otp_length", "6");
+    }
+
+    @Test
+    void everyChannelRejectsAmbiguousPayloadBeforeProviderPreparation() throws Exception {
+        Fixture fixture=fixture();
+        fixture.properties.setSmsFlowId("synthetic-flow");
+        fixture.properties.setOtpTemplateId("synthetic-otp");
+        fixture.properties.setEmailFromAddress("sender@synthetic.invalid");
+        fixture.properties.setEmailDomain("synthetic.invalid");
+        fixture.properties.setWhatsappIntegratedNumber("919888888888");
+        for(String channel:new String[]{"SMS","OTP","EMAIL","WHATSAPP"}) {
+            String destination="EMAIL".equals(channel)?"guardian@synthetic.invalid":"919999999999";
+            String valid="{\"destination\":\""+destination+"\",\"templateId\":\"synthetic\",\"templateName\":\"synthetic\"}";
+            assertThat(body(fixture.provider,request("valid-event",channel,valid))).isNotEmpty();
+            for(String payload:new String[]{
+                    valid.replace("\"destination\":","\"destination\":\"other\",\"destination\":"),
+                    valid.replace("\"destination\":","\"destination\":\"other\",\"destin\\u0061tion\":"),
+                    valid+" {}",valid+" null"})
+                assertThatThrownBy(()->body(fixture.provider,request("ambiguous-event",channel,payload)))
+                        .isInstanceOf(RuntimeException.class);
+        }
     }
 
     @Test

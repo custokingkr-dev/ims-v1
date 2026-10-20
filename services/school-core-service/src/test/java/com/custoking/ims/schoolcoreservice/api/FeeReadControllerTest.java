@@ -42,6 +42,7 @@ class FeeReadControllerTest {
 
     @Test
     void exportStructureRejectsUnsupportedFormat() {
+        authenticatedAdmin();
         assertThatThrownBy(() -> controller.exportStructure("fee-token", "2026", "csv"))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
@@ -78,6 +79,7 @@ class FeeReadControllerTest {
 
     @Test
     void deleteBandReturnsCompatibilityPayloadAfterRepositoryDelete() {
+        authenticatedAdmin();
         Map<String, Object> response = controller.deleteBand("fee-token", "band-1");
 
         assertThat(response).isEqualTo(Map.of("removed", true, "bandId", "band-1"));
@@ -86,11 +88,17 @@ class FeeReadControllerTest {
 
     @Test
     void paymentsDelegatesFiltersWithValidToken() {
+        authenticatedAdmin();
         when(fees.payments(990001L, "assignment-1", 25)).thenReturn(List.of());
 
         Object response = controller.payments("fee-token", 990001L, "assignment-1", 25);
 
         assertThat(response).isEqualTo(List.of());
         verify(fees).payments(990001L, "assignment-1", 25);
+    }
+
+    private void authenticatedAdmin() {
+        TenantContext.set(new TenantContext(1L, "admin@school.test", "ADMIN", 10L, null,
+                Set.of(), Set.of("fee_structure:manage", "fee:read")));
     }
 }

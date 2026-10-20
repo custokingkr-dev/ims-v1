@@ -4,11 +4,18 @@ param(
   [ValidateRange(20, 10000)]
   [int]$MaxConnections = 200,
   [ValidateRange(5, 5000)]
-  [int]$ReservedConnections = 40
+  [int]$ReservedConnections = 40,
+  [ValidateRange(1, 4)]
+  [int]$RevisionOverlap = 2,
+  [ValidateRange(0, 1000)]
+  [int]$ConcurrentStartupInstancesPerService = 0,
+  [ValidateRange(0, 1000)]
+  [int]$JobConnections = 10,
+  [string]$RepositoryRoot = ""
 )
 
 $ErrorActionPreference = "Stop"
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$repoRoot = if ($RepositoryRoot) { Resolve-Path -LiteralPath $RepositoryRoot } else { Resolve-Path (Join-Path $PSScriptRoot "..") }
 $targetPath = Join-Path $repoRoot "deploy/clouddeploy/targets-$Environment.yaml"
 $services = @(
   "identity-service",
@@ -50,28 +57,67 @@ foreach ($service in $services) {
     $poolMax = [int]$defaultMatch.Groups[1].Value
     $poolSource = "application default"
   }
+  # Custom schema Flyway pools can coexist briefly after sequential migrations;
+  # min-idle=0 is not the same as immediate pool closure. Count every configured pool.
+  $configurationNames = @{
+    "school-core-service" = "SchoolCoreFlywayConfig.java"
+    "operations-service" = "OperationsFlywayConfig.java"
+    "platform-service" = "PlatformFlywayConfig.java"
+  }
+  $migrationConnectionsPerInstance = 2 # Flyway lock and migration connections for single-schema services.
+  $migrationPoolCount = 1
+  $migrationPoolMax = 2
+  if ($configurationNames.ContainsKey($service)) {
+    $configurationFiles = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot "services/$service/src/main/java") -Recurse -File |
+      Where-Object { $_.Name -eq $configurationNames[$service] })
+    if ($configurationFiles.Count -ne 1) { throw "Expected one Flyway configuration for $service." }
+    $configuration = Get-Content -Raw -LiteralPath $configurationFiles[0].FullName
+    $migrationPoolCount = [regex]::Matches($configuration, '\.dataSource\(migrationDs\(').Count
+    $migrationMaxMatch = [regex]::Match($configuration, 'setMaximumPoolSize\((\d+)\)')
+    if ($migrationPoolCount -lt 1 -or -not $migrationMaxMatch.Success) { throw "Cannot resolve migration pool ceiling for $service." }
+    $migrationPoolMax = [int]$migrationMaxMatch.Groups[1].Value
+    $migrationConnectionsPerInstance = $migrationPoolCount * $migrationPoolMax
+  }
+  $startupInstances = if ($ConcurrentStartupInstancesPerService -gt 0) { [Math]::Min($maxInstances, $ConcurrentStartupInstancesPerService) } else { $maxInstances }
   $rows.Add([pscustomobject]@{
       service = $service
       maxInstances = $maxInstances
       poolMax = $poolMax
       maximumConnections = $maxInstances * $poolMax
+      overlappingRuntimeConnections = $maxInstances * $poolMax * $RevisionOverlap
+      migrationPoolCount = $migrationPoolCount
+      migrationPoolMax = $migrationPoolMax
+      migrationConnectionsPerInstance = $migrationConnectionsPerInstance
+      concurrentStartingInstances = $startupInstances
+      startupMigrationConnections = $startupInstances * $migrationConnectionsPerInstance
       poolSource = $poolSource
   })
 }
 
 $configuredMaximum = [int](($rows | Measure-Object maximumConnections -Sum).Sum)
+$overlappingRuntime = [int](($rows | Measure-Object overlappingRuntimeConnections -Sum).Sum)
+$startupMigrationMaximum = [int](($rows | Measure-Object startupMigrationConnections -Sum).Sum)
+$configuredPeak = $overlappingRuntime + $startupMigrationMaximum + $JobConnections
 $availableToApplications = $MaxConnections - $ReservedConnections
 $result = [ordered]@{
   environment = $Environment
   databaseMaxConnections = $MaxConnections
-  reservedForMigrationsJobsAndOperators = $ReservedConnections
+  reservedForOperatorsAndOtherClients = $ReservedConnections
   applicationBudget = $availableToApplications
   configuredFleetMaximum = $configuredMaximum
-  utilizationOfDatabaseLimit = [math]::Round($configuredMaximum / $MaxConnections, 3)
-  withinBudget = $configuredMaximum -le $availableToApplications
+  revisionOverlap = $RevisionOverlap
+  overlappingRuntimeMaximum = $overlappingRuntime
+  startupMigrationMaximum = $startupMigrationMaximum
+  concurrentJobConnections = $JobConnections
+  configuredPeakConnections = $configuredPeak
+  totalIncludingReserve = $configuredPeak + $ReservedConnections
+  remainingHeadroom = $MaxConnections - $configuredPeak - $ReservedConnections
+  assumptions = @("Single-schema Flyway has at most two simultaneous connections per starting instance.", "Custom Flyway pools may retain all schema pools until idle housekeeping drains them.", "Instance caps are configured ceilings, not proof of live rollout/revision or Cloud SQL limits.")
+  utilizationOfDatabaseLimit = [math]::Round(($configuredPeak + $ReservedConnections) / $MaxConnections, 3)
+  withinBudget = $configuredPeak -le $availableToApplications
   services = @($rows)
 }
 $result | ConvertTo-Json -Depth 6
 if (-not $result.withinBudget) {
-  throw "Configured Hikari fleet ceiling $configuredMaximum exceeds application budget $availableToApplications."
+  throw "Configured overlap/startup/job ceiling $configuredPeak exceeds nonreserved budget $availableToApplications (steady runtime: $configuredMaximum)."
 }

@@ -1,4 +1,6 @@
 import api, { getAuthSessionVersion } from '../services/api';
+import { reportingClient } from '../services/reportingApi';
+import { studentClient } from '../services/studentApi';
 import type {
   DashboardCommandCenterResponse,
   FeeDefaulterListResponse,
@@ -46,12 +48,12 @@ export async function fetchCommandCenterMetrics(): Promise<DashboardCommandCente
   }
   if (commandCenterRequest?.authSessionVersion === sessionVersion) return commandCenterRequest.promise;
 
-  const request = api.get<DashboardCommandCenterResponse>('/reporting/dashboard-command-center')
-    .then((res) => {
+  const request = reportingClient.getDashboardCommandCenter()
+    .then((data) => {
       if (getAuthSessionVersion() === sessionVersion) {
-        commandCenterCache = { authSessionVersion: sessionVersion, loadedAt: Date.now(), data: res.data };
+        commandCenterCache = { authSessionVersion: sessionVersion, loadedAt: Date.now(), data };
       }
-      return res.data;
+      return data;
     })
     .finally(() => {
       if (commandCenterRequest?.promise === request) commandCenterRequest = null;
@@ -68,8 +70,7 @@ export async function fetchFeeDefaulters(params: {
   page?: number;
   size?: number;
 }): Promise<FeeDefaulterListResponse> {
-  const res = await api.get<FeeDefaulterListResponse>('/reporting/fee-defaulters', { params });
-  return res.data;
+  return reportingClient.getFeeDefaulters(params);
 }
 
 export async function sendFeeReminders(request: SendFeeRemindersRequest): Promise<SendFeeRemindersResult> {
@@ -104,92 +105,52 @@ export async function sendPhotographyPaymentReminders(
 
 // ── Student Review Campaigns ──────────────────────────────────────────────────
 
-export async function fetchIdCardReviewStatus(): Promise<IdCardReviewStatusResponse> {
-  const res = await api.get<IdCardReviewStatusResponse>(
-    '/students/reviews/id-card/status'
-  );
-  return res.data;
+export async function fetchIdCardReviewStatus(schoolId: number): Promise<IdCardReviewStatusResponse> {
+  return studentClient.getIdCardReviewStatus({ schoolId });
 }
 
-export async function initiateIdCardReview(
-  request: InitiateIdCardReviewRequest
-): Promise<IdCardReviewStatusResponse> {
-  const res = await api.post<IdCardReviewStatusResponse>(
-    '/students/reviews/id-card/initiate',
-    request
-  );
-  return res.data;
+export async function initiateIdCardReview(request: InitiateIdCardReviewRequest): Promise<IdCardReviewStatusResponse> {
+  return studentClient.initiateIdCardReview(request);
 }
 
-export async function fetchFullNameVerificationStatus(): Promise<FullNameVerificationStatusResponse> {
-  const res = await api.get<FullNameVerificationStatusResponse>(
-    '/students/reviews/full-name/status'
-  );
-  return res.data;
+export async function fetchFullNameVerificationStatus(schoolId: number): Promise<FullNameVerificationStatusResponse> {
+  return studentClient.getFullNameReviewStatus({ schoolId });
 }
 
-export async function initiateFullNameVerification(
-  request: InitiateFullNameVerificationRequest
-): Promise<FullNameVerificationStatusResponse> {
-  const res = await api.post<FullNameVerificationStatusResponse>(
-    '/students/reviews/full-name/initiate',
-    request
-  );
-  return res.data;
+export async function initiateFullNameVerification(request: InitiateFullNameVerificationRequest): Promise<FullNameVerificationStatusResponse> {
+  return studentClient.initiateFullNameReview(request);
 }
 
 export async function fetchProfileVerificationStatus(schoolId: number): Promise<StudentVerificationStatusResponse> {
-  const res = await api.get<StudentVerificationStatusResponse>(
-    '/students/reviews/profile/status',
-    { params: { schoolId } }
-  );
-  return res.data;
+  return studentClient.getProfileReviewStatus({ schoolId });
 }
 
-export async function initiateProfileVerification(
-  request: InitiateIdCardReviewRequest
-): Promise<StudentVerificationStatusResponse> {
-  const res = await api.post<StudentVerificationStatusResponse>(
-    '/students/reviews/profile/initiate',
-    request
-  );
-  return res.data;
+export async function initiateProfileVerification(request: InitiateIdCardReviewRequest): Promise<StudentVerificationStatusResponse> {
+  return studentClient.initiateProfileReview(request);
 }
 
 export async function fetchPhotoVerificationStatus(schoolId: number): Promise<StudentVerificationStatusResponse> {
-  const res = await api.get<StudentVerificationStatusResponse>(
-    '/students/reviews/photo/status',
-    { params: { schoolId } }
-  );
-  return res.data;
+  return studentClient.getPhotoReviewStatus({ schoolId });
 }
 
-export async function initiatePhotoVerification(
-  request: InitiateIdCardReviewRequest
-): Promise<StudentVerificationStatusResponse> {
-  const res = await api.post<StudentVerificationStatusResponse>(
-    '/students/reviews/photo/initiate',
-    request
-  );
-  return res.data;
+export async function initiatePhotoVerification(request: InitiateIdCardReviewRequest): Promise<StudentVerificationStatusResponse> {
+  return studentClient.initiatePhotoReview(request);
 }
 
 export async function fetchStudentVerificationSummary(studentId: number): Promise<StudentVerificationSummaryResponse> {
-  const res = await api.get<StudentVerificationSummaryResponse>(`/students/${studentId}/verification`);
-  return res.data;
+  return studentClient.getStudentVerification({ id: studentId });
 }
 
 export async function verifyStudentProfile(studentId: number): Promise<ReviewItemDetail> {
-  const res = await api.post<ReviewItemDetail>(`/students/${studentId}/verification/profile/verify`, {});
-  return res.data;
+  return studentClient.verifyStudentProfile({ id: studentId });
 }
 
 export async function verifyStudentPhoto(studentId: number): Promise<ReviewItemDetail> {
-  const res = await api.post<ReviewItemDetail>(`/students/${studentId}/verification/photo/verify`, {});
-  return res.data;
+  return studentClient.verifyStudentPhoto({ id: studentId });
 }
 
 export interface CampaignItemsParams {
+  schoolId?: number;
   status?: string;
   classId?: string;
   sectionId?: string;
@@ -200,60 +161,34 @@ export interface CampaignItemsParams {
 export interface PageResponse<T> {
   content: T[];
   totalElements: number;
-  totalPages: number;
-  number: number;
+  page: number;
   size: number;
 }
 
-export async function fetchCampaignItems(
-  campaignId: string,
-  params: CampaignItemsParams
-): Promise<PageResponse<ReviewItemDetail>> {
-  const res = await api.get<PageResponse<ReviewItemDetail>>(
-    `/students/review-campaigns/${campaignId}/items`,
-    { params }
-  );
-  return res.data;
+export async function fetchCampaignItems(campaignId: string, params: CampaignItemsParams): Promise<PageResponse<ReviewItemDetail>> {
+  return studentClient.getCampaignItems({ campaignId, ...params });
 }
 
-export async function updateReviewItem(
-  itemId: string,
-  request: UpdateReviewItemRequest
-): Promise<ReviewItemDetail> {
-  const res = await api.post<ReviewItemDetail>(`/students/reviews/items/${encodeURIComponent(itemId)}`, request);
-  return res.data;
+export async function updateReviewItem(itemId: string, request: UpdateReviewItemRequest): Promise<ReviewItemDetail> {
+  return studentClient.updateReviewItem({ itemId }, request);
 }
 
-export async function verifyFullName(
-  itemId: string,
-  request: VerifyFullNameRequest
-): Promise<ReviewItemDetail> {
-  const res = await api.post<ReviewItemDetail>(
-    `/students/reviews/items/${encodeURIComponent(itemId)}/full-name-verification`,
-    request
-  );
-  return res.data;
+export async function verifyFullName(itemId: string, request: VerifyFullNameRequest): Promise<ReviewItemDetail> {
+  return studentClient.verifyFullName({ itemId }, request);
 }
 
 export async function completeReviewCampaign(campaignId: string): Promise<void> {
-  await api.post(`/students/review-campaigns/${campaignId}/complete`, {});
+  await studentClient.completeReviewCampaign({ campaignId });
 }
 
 // ── Low Attendance Meeting Invites ────────────────────────────────────────────
 
 export async function fetchLowAttendanceSections(date?: string): Promise<LowAttendanceSectionsResponse> {
-  const res = await api.get<LowAttendanceSectionsResponse>(
-    '/reporting/low-attendance/sections',
-    { params: date ? { date } : undefined }
-  );
-  return res.data;
+  return reportingClient.getLowAttendanceSections(date ? { date } : undefined);
 }
 
 export async function fetchLowAttendanceStudents(sectionId: string): Promise<LowAttendanceStudentItem[]> {
-  const res = await api.get<LowAttendanceStudentItem[]>(
-    `/reporting/low-attendance/sections/${encodeURIComponent(sectionId)}/students`
-  );
-  return res.data;
+  return reportingClient.getLowAttendanceStudents({ sectionId });
 }
 
 export async function sendMeetingInvites(
@@ -269,8 +204,7 @@ export async function sendMeetingInvites(
 // ── Vendor Payment Dues ───────────────────────────────────────────────────────
 
 export async function fetchVendorDues(): Promise<VendorDuesListResponse> {
-  const res = await api.get<VendorDuesListResponse>('/reporting/vendor-dues');
-  return res.data;
+  return reportingClient.getVendorDues();
 }
 
 export async function markCatalogOrderVendorPaid(
@@ -290,6 +224,5 @@ export async function markFirefightingVendorPaid(
 // ── Reorder Prediction ────────────────────────────────────────────────────────
 
 export async function fetchReorderSignals(): Promise<ReorderSignalsResponse> {
-  const res = await api.get<ReorderSignalsResponse>('/reporting/reorder-signals');
-  return res.data;
+  return reportingClient.getReorderSignals();
 }

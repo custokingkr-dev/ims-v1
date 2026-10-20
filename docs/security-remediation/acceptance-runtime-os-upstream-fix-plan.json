@@ -1,0 +1,833 @@
+{
+  "schemaVersion": 1,
+  "researchedOnUtc": "2026-10-07",
+  "scope": "Primary-source context and fix plan for the 11 CVEs remaining in the dated PR328 fresh eight-component source scan and exact seven deployed release images. This is not native reachability proof, an exploit attestation or a risk exception.",
+  "severityCaution": "Ubuntu/Trivy vendor priority and upstream CVSS differ. A zero HIGH/CRITICAL vendor gate does not mean every advisory has a low upstream score. Do not dismiss based on package presence or absent fixedVersion alone.",
+  "items": [
+    {
+      "cve": "CVE-2026-18374",
+      "packages": [
+        "libc6",
+        "libc-bin",
+        "locales"
+      ],
+      "primaryUrl": "https://ubuntu.com/security/CVE-2026-18374",
+      "vendorNobleStatusObserved": "Vulnerable, fix deferred",
+      "prerequisite": "Attacker-controlled fopen mode including effectively empty ccs extension can trigger heap overflow.",
+      "nextStep": "Check native call paths and reject untrusted mode strings; monitor supported distro fix. No source path or runtime reachability absence proved."
+    },
+    {
+      "cve": "CVE-2026-89092",
+      "packages": [
+        "libc6",
+        "libc-bin",
+        "locales"
+      ],
+      "primaryUrl": "https://ubuntu.com/security/CVE-2026-89092",
+      "vendorNobleStatusObserved": "Vulnerable",
+      "prerequisite": "Enabled nscd using malicious DNS with unusually large responses can overflow its thread stack.",
+      "nextStep": "Independently inspect exact image packages/process startup and DNS path; monitor distro backport. Do not infer daemon execution from libc package presence."
+    },
+    {
+      "cve": "CVE-2025-66382",
+      "packages": [
+        "libexpat1"
+      ],
+      "primaryUrl": "https://ubuntu.com/security/CVE-2025-66382",
+      "vendorNobleStatusObserved": "Vulnerable, fix deferred",
+      "prerequisite": "Crafted roughly2MiB XML input causes excessive processing in native expat.",
+      "nextStep": "Identify any native XML consumers and enforce existing parser/input/resource limits; monitor distro fix. Java XML controls do not attest all native consumers."
+    },
+    {
+      "cve": "CVE-2026-86145",
+      "packages": [
+        "libpcre2-8-0"
+      ],
+      "primaryUrl": "https://ubuntu.com/security/CVE-2026-86145",
+      "vendorNobleStatusObserved": "Vulnerable",
+      "upstreamCvss3": 8.2,
+      "prerequisite": "Recursive DFA workspace reuse needs attacker-controlled expression or recursive pattern with small heap limit.",
+      "nextStep": "Inspect native PCRE2 DFA consumers and prevent untrusted expressions; retain risk and monitor supported distro backport despite upstream10.48 fix."
+    },
+    {
+      "cve": "CVE-2026-89161",
+      "packages": [
+        "libpcre2-8-0"
+      ],
+      "primaryUrl": "https://ubuntu.com/security/CVE-2026-89161",
+      "vendorNobleStatusObserved": "Vulnerable",
+      "upstreamCvss3": 7.4,
+      "prerequisite": "Native PCRE2 JIT mishandles a previously copied subject supplied as context.",
+      "nextStep": "Review exact native JIT consumers and context ownership; monitor distro backport. Upstream10.48 does not establish a compatible Noble package fix."
+    },
+    {
+      "cve": "CVE-2026-46675",
+      "packages": [
+        "libpng16-16t64"
+      ],
+      "primaryUrl": "https://ubuntu.com/security/CVE-2026-46675",
+      "upstreamUrl": "https://github.com/pnggroup/libpng/security/advisories/GHSA-qvg3-h654-xq3j",
+      "vendorNobleStatusObserved": "libpng1.6 Needs evaluation in dated detail page; current list labels vulnerable. Do not confuse different source package libpng Not in release with installed libpng1.6.",
+      "prerequisite": "Native sequential reader calls png_read_end after metadata without starting image rows, after incomplete compressed text/profile handling.",
+      "nextStep": "Inspect exact native consumers and image normalization path; monitor distro fix for upstream1.6.59. Keep crafted-image residual open until image-bound reachability is verified."
+    },
+    {
+      "cve": "CVE-2026-40228",
+      "packages": [
+        "libsystemd0",
+        "libudev1"
+      ],
+      "primaryUrl": "https://ubuntu.com/security/CVE-2026-40228",
+      "vendorNobleStatusObserved": "Vulnerable, fix deferred",
+      "prerequisite": "Running journald with ForwardToWall=yes relays ANSI sequences from emergency log messages to terminals.",
+      "nextStep": "Inspect daemon/startup/config/terminal exposure in exact image; shared library presence alone is not daemon execution. Monitor distro fix."
+    },
+    {
+      "cve": "CVE-2024-56433",
+      "packages": [
+        "login",
+        "passwd"
+      ],
+      "primaryUrl": "https://ubuntu.com/security/CVE-2024-56433",
+      "vendorNobleStatusObserved": "Vulnerable, fix deferred",
+      "prerequisite": "Local subordinate ID ranges collide with administrator-assigned network users, permitting mapped identity access.",
+      "nextStep": "Inspect subuid/subgid/newuidmap and network identity/mount exposure on exact runtime; prohibit conflicting allocations, monitor vendor guidance. Existing nonroot User alone does not attest complete absence."
+    },
+    {
+      "cve": "CVE-2026-18477",
+      "packages": [
+        "tar"
+      ],
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18477.json",
+      "vendorNobleStatusObserved": "Canonical OSV affected Noble range contains1.35+dfsg-3ubuntu0.4 with no fixed event in observed record.",
+      "prerequisite": "Incremental restore plus attacker write access to backup directory and restore system enables rename race and escape.",
+      "nextStep": "Keep untrusted archives out of runtime tar restore and isolate governed restoration. Fresh extraction directory alone does not mitigate; monitor supported distro fix."
+    },
+    {
+      "cve": "CVE-2026-18508",
+      "packages": [
+        "tar"
+      ],
+      "primaryUrl": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-18508.json",
+      "vendorNobleStatusObserved": "Canonical OSV affected Noble range contains1.35+dfsg-3ubuntu0.4 with no fixed event in observed record.",
+      "prerequisite": "one-top-level archive extraction permits escaping hardlinks, amplified by a preexisting symbolic link.",
+      "nextStep": "Do not rely on one-top-level as an untrusted archive sandbox; inspect any exact runtime extractor and retain isolation/monitoring until distro fix."
+    },
+    {
+      "cve": "CVE-2026-85091",
+      "packages": [
+        "zlib1g"
+      ],
+      "primaryUrl": "https://ubuntu.com/security/CVE-2026-85091",
+      "vendorNobleStatusObserved": "Vulnerable, fix deferred; vendor documents ambiguous affected versions and an ineffective proposed upstream patch.",
+      "upstreamCvss3": 7.4,
+      "prerequisite": "Nonblocking native gzwrite stall followed by formatted gzip output with stale buffer state can overflow.",
+      "nextStep": "Inspect native gzip output consumers; preserve residual and vendor severity distinction. Avoid unsupported cherry-picked patch or changing distro solely to hide scanner result."
+    }
+  ],
+  "commonFixPlan": [
+    "Compare fresh nonce-refreshed eight-component SARIF and all seven exact release image SARIF against the dated baseline.",
+    "For remaining issues, prove native API/package/process reachability against immutable images and maintain approved mitigations; no blanket NOT_AFFECTED classification.",
+    "Monitor Canonical/Alpine and dependency advisories; install available supported fixes through CI, fresh image gates, dev rollout and acceptance.",
+    "Keep historical-category alerts separate and preserve original evidence; no broad scanner ignore, dismissal or analysis deletion."
+  ],
+  "productionChanged": false,
+  "observedFreshSourceSha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+  "observedFreshSourceRunId": 37682100431,
+  "freshSourceResidualFindings": 85,
+  "freshSourcePackageGroups": [
+    {
+      "package": "libc-bin",
+      "installedVersion": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ]
+    },
+    {
+      "package": "libc6",
+      "installedVersion": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ]
+    },
+    {
+      "package": "libexpat1",
+      "installedVersion": "2.6.1-2ubuntu0.6",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2025-66382"
+      ]
+    },
+    {
+      "package": "libpcre2-8-0",
+      "installedVersion": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-86145",
+        "CVE-2026-89161"
+      ]
+    },
+    {
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.6",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-46675"
+      ]
+    },
+    {
+      "package": "libsystemd0",
+      "installedVersion": "255.4-1ubuntu8.17",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-40228"
+      ]
+    },
+    {
+      "package": "libudev1",
+      "installedVersion": "255.4-1ubuntu8.17",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-40228"
+      ]
+    },
+    {
+      "package": "locales",
+      "installedVersion": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ]
+    },
+    {
+      "package": "login",
+      "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2024-56433"
+      ]
+    },
+    {
+      "package": "passwd",
+      "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2024-56433"
+      ]
+    },
+    {
+      "package": "tar",
+      "installedVersion": "1.35+dfsg-3ubuntu0.4",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 10,
+      "categoryCounts": {
+        "billing-service": 2,
+        "school-core-service": 2,
+        "platform-service": 2,
+        "identity-service": 2,
+        "operations-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18477",
+        "CVE-2026-18508"
+      ]
+    },
+    {
+      "package": "zlib1g",
+      "installedVersion": "1:1.3.dfsg-3.1ubuntu2.2",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "fixStatus": "NO_FIXED_VERSION_REPORTED",
+      "resultCount": 5,
+      "categoryCounts": {
+        "billing-service": 1,
+        "school-core-service": 1,
+        "platform-service": 1,
+        "identity-service": 1,
+        "operations-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-85091"
+      ]
+    }
+  ],
+  "deployedInventoryBindingPending": false,
+  "approvedRiskException": false,
+  "nativeSourceContext": {
+    "schemaVersion": 1,
+    "capturedOnUtc": "2026-10-07T20:39:20.115109Z",
+    "sourceCommit": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+    "scope": "Five Java Dockerfile startup instructions and narrowly selected production application paths relevant to the 11 dated baseline CVEs. Advisory prerequisites are referenced from the existing research, not independently refreshed here. This is not the final patched-image inventory.",
+    "researchEvidence": {
+      "path": "tmp/runtime-os-upstream-research.json",
+      "sha256": "553d4b9ed62dd156653d64105d9ca4b95f9b4310064c371fbb78308cb9a51c3d",
+      "cveCount": 11
+    },
+    "limits": {
+      "sourceOnly": true,
+      "immutableImageInspected": false,
+      "actualProcessesVerified": false,
+      "loadedNativeLibrariesVerified": false,
+      "negativeVexAttestation": false,
+      "cloudOrDockerActions": false,
+      "sourceModified": false
+    },
+    "startup": {
+      "files": [
+        {
+          "path": "services/identity-service/Dockerfile",
+          "lines": [
+            14,
+            26,
+            29,
+            33,
+            37,
+            43
+          ],
+          "sourceLfSha256": "d6c2756dc1c6c67060178c7251ddeb11128fcd83b5d2222033ded82ade7be808"
+        },
+        {
+          "path": "services/school-core-service/Dockerfile",
+          "lines": [
+            14,
+            26,
+            29,
+            33,
+            37,
+            43
+          ],
+          "sourceLfSha256": "80bc8800b77ee8df1d3a211cc6a4e6abd0aa8bc47aa4ce6b079086f7aa5e6d98"
+        },
+        {
+          "path": "services/operations-service/Dockerfile",
+          "lines": [
+            14,
+            26,
+            29,
+            33,
+            37,
+            43
+          ],
+          "sourceLfSha256": "f39799e4092569d87ea30a58d02e3032230aebb823eac2f4a6b08d379e05360b"
+        },
+        {
+          "path": "services/platform-service/Dockerfile",
+          "lines": [
+            14,
+            26,
+            29,
+            33,
+            37,
+            43
+          ],
+          "sourceLfSha256": "0b297a9e51db5e4dd818aaf48edbdef0de84f9e7be5b53b7d0c3bebcfd6dba12"
+        },
+        {
+          "path": "services/billing-service/Dockerfile",
+          "lines": [
+            14,
+            26,
+            29,
+            33,
+            37,
+            43
+          ],
+          "sourceLfSha256": "a9c45b9f80db189ea5c70cc3642918a277ef45de4c213f3536b482b25751963e"
+        }
+      ],
+      "observation": "All five share pinned Temurin 25 JRE Noble, supported apt upgrade with new dependencies/no removals, build-time system appuser creation and sh exec java startup; JAVA_OPTS defaults blank. The source instructions do not launch the named daemons or a GNU tar operation.",
+      "limitation": "Resolved image contents, actual processes, configured JAVA_OPTS/native agents and inherited JDK/JNI/shared-library paths were not inspected."
+    },
+    "boundedSearch": {
+      "roots": [
+        "services/identity-service/src/main",
+        "services/school-core-service/src/main",
+        "services/operations-service/src/main",
+        "services/platform-service/src/main",
+        "services/billing-service/src/main"
+      ],
+      "include": "*.java",
+      "pattern": "ProcessBuilder|Runtime\\.getRuntime|System\\.(load|loadLibrary)|java\\.lang\\.foreign|com\\.sun\\.jna|NativeLibrary|nscd|journald|newuidmap|newgidmap",
+      "matchCount": 0,
+      "rgExitCode": 1,
+      "interpretation": "No matches for these tokens in the explicit production source roots. This is not proof of absent native consumers, dependency behavior or image tools."
+    },
+    "evidence": [
+      {
+        "id": "photo_decode",
+        "sources": [
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/infrastructure/StudentPhotoStorage.java",
+            "lines": [
+              54,
+              70,
+              284,
+              299,
+              300,
+              302,
+              303,
+              307,
+              409,
+              413,
+              419,
+              420,
+              421,
+              425
+            ],
+            "sourceLfSha256": "f365d7994cad322474e80a958281a68e7f69e08eab7fdcdc6ac86cf030b8b410"
+          }
+        ],
+        "observation": "Portrait input is size-limited (default 5 MiB, configurable), type-limited and checked for 40 million pixels using registered ImageIO readers. The dimension precheck calls reader.setInput(input, true, true): seekForwardOnly=true and ignoreMetadata=true before getWidth/getHeight. Necessary format/header/provider parsing is distinct from the optional metadata this setting requests to ignore. Subsequent Thumbnailator decode explicitly enables useExifOrientation(true), then resizes and writes JPEG.",
+        "limitation": "Registered ImageIO provider/JDK/JNI behavior and libpng linkage were not inspected, including header handling and subsequent full decode/EXIF orientation. Existing byte/pixel/ignoreMetadata controls are recorded; no advisory-specific native sequence or decoder wall deadline is established by this source review."
+      },
+      {
+        "id": "media_budget",
+        "sources": [
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/infrastructure/MediaWorkBudget.java",
+            "lines": [
+              5,
+              8
+            ],
+            "sourceLfSha256": "4e1c0dbf7c522aa257d29b5bd188d5dc834df3df7e7d25a414c875ccae2fe741"
+          }
+        ],
+        "observation": "Shared school image/PDF/workbook work has two nonblocking admission slots.",
+        "limitation": "A concurrency cap is not a per-parser timeout or cancellation guarantee; this budget was not observed in operations image validation."
+      },
+      {
+        "id": "workbook_zip_xml",
+        "sources": [
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/PhotoImportWorkbookParser.java",
+            "lines": [
+              31,
+              32,
+              41,
+              44,
+              57,
+              58,
+              59,
+              60,
+              62,
+              63,
+              65,
+              67,
+              69,
+              71,
+              103,
+              303,
+              307,
+              310,
+              314
+            ],
+            "sourceLfSha256": "d00b0bf66e80e1ebfe442af57d5dbf69d36d3903e0fdae5982a5c8389f5fb311"
+          }
+        ],
+        "observation": "POI WorkbookFactory accepts bounded XLS/XLSX data. XLSX preflight applies inflate ratio 0.01, 20 MiB entry, 10 MiB text, 100 ZIP entries and 30 MiB total expanded content; workbook/sheet/row/column/cell and formula restrictions follow.",
+        "limitation": "This establishes Java ZIP/OOXML parsing, not a native expat call. Dependency parser/provider implementations and parser CPU wall bounds were not verified."
+      },
+      {
+        "id": "school_catalog_decode_file_open",
+        "sources": [
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/infrastructure/CatalogOrderAssetStorage.java",
+            "lines": [
+              29,
+              31,
+              56,
+              112,
+              113,
+              114,
+              144,
+              145,
+              150,
+              152,
+              153,
+              161,
+              179
+            ],
+            "sourceLfSha256": "7112ae7f883c574e6d518a0994ae41cf41e2e10c60ba934783050929ee47202f"
+          }
+        ],
+        "observation": "Attachment validation caps data at 5 MiB by default and 10 MiB absolutely, uses fixed Java NOFOLLOW_LINKS input opening, then ImageIO or OpenPDF parsing with the school admission budget. ImageIO reader.setInput(input, true, true) requests seek-forward-only input and ignored optional metadata before the 40 million pixel check and reader.read(0).",
+        "limitation": "Java fixed open options are not an attacker-provided C fopen mode. JDK/dependency native opens, media providers and pre-structural-check parser work remain unresolved."
+      },
+      {
+        "id": "operations_document_decode",
+        "sources": [
+          {
+            "path": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/infrastructure/QuotationDocumentStorage.java",
+            "lines": [
+              28,
+              57,
+              117,
+              118,
+              122,
+              123,
+              124,
+              125,
+              131,
+              132,
+              133,
+              145,
+              146
+            ],
+            "sourceLfSha256": "9bfcaa1a3a3414fb997f48b65dec00e7be6375fb386a4265bc5dedce82962297"
+          }
+        ],
+        "observation": "Quotation input is capped at 5 MiB. ImageIO reader.setInput(input, true, true) requests seek-forward-only input and ignored optional metadata before the 20 million pixel check and reader.read(0). OpenPDF parsing precedes 1-200 page/no-encryption/no-script and structural depth/object/action restrictions.",
+        "limitation": "No per-decoder wall deadline or school shared admission budget was observed in this validator. These restrictions do not establish native parser reachability or CPU safety."
+      },
+      {
+        "id": "archive_compression_font_output",
+        "sources": [
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/studentexport/StudentExportArchiveWriter.java",
+            "lines": [
+              39,
+              84,
+              87,
+              176,
+              177,
+              197,
+              198,
+              205,
+              258
+            ],
+            "sourceLfSha256": "aa33647a8f7d21a125e1214522c18694636c739859b163507d67e66b97ed6c0c"
+          }
+        ],
+        "observation": "Exports use Java ZipOutputStream/Deflater.NO_COMPRESSION and POI SXSSFWorkbook(100), including compressed temporary files and workbook font styling. Filename regexes are fixed literals.",
+        "limitation": "JDK/POI compressed output is a candidate dependency chain, not proof of nonblocking native gzwrite followed by formatted gzip output. Font styling is document metadata; Java2D/font/JNI loading remains unverified."
+      },
+      {
+        "id": "fixed_java_regex",
+        "sources": [
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/DriveFolderId.java",
+            "lines": [
+              8,
+              9
+            ],
+            "sourceLfSha256": "fbd99f4ae0071de879f5eacb8757d17c1f64a78b9ecb9280e864ef7e6fd40afa"
+          },
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/DscImageNumber.java",
+            "lines": [
+              9,
+              25,
+              28
+            ],
+            "sourceLfSha256": "1e6a76daeffea38b47989eb6e897103473274620983bd7fea1b17badbfdd3438"
+          }
+        ],
+        "observation": "Examined identifier/filename checks use fixed java.util.regex patterns, including a bounded 10-200 character Drive identifier.",
+        "limitation": "These specific Java patterns are not demonstrated PCRE2 DFA/JIT consumers. Native libraries or dependency calls elsewhere were not ruled out."
+      },
+      {
+        "id": "declared_media_dependency_chain",
+        "sources": [
+          {
+            "path": "services/school-core-service/pom.xml",
+            "lines": [
+              20,
+              21,
+              28,
+              29,
+              30,
+              62,
+              136,
+              140,
+              141,
+              145,
+              150,
+              151
+            ],
+            "sourceLfSha256": "4b984b416767ce9fb123f1ae75c9238fb78730902f3a44b2a1d4ad1f6e69b66e"
+          },
+          {
+            "path": "services/operations-service/pom.xml",
+            "lines": [
+              19,
+              20,
+              21,
+              101,
+              105
+            ],
+            "sourceLfSha256": "00bb776a39792677638b70665f4d9bd6789fd4b85c98f60f271742275dcb5c78"
+          }
+        ],
+        "observation": "Declared dependencies include Thumbnailator 0.4.21, POI 5.5.1, TwelveMonkeys WebP ImageIO provider, OpenPDF, Google Cloud Storage and the gRPC BOM.",
+        "limitation": "No resolved native dependency inventory, selected provider implementation, JDK native library linkage or loaded-library observation was collected."
+      }
+    ],
+    "contexts": [
+      {
+        "cves": [
+          "CVE-2026-18374"
+        ],
+        "evidenceIds": [
+          "school_catalog_decode_file_open"
+        ],
+        "sourceObservation": "The examined explicit file open uses fixed Java options; no direct native execution/loading call matched the defined source search.",
+        "unresolvedPrerequisites": "Third-party/JDK native fopen calls and whether any attacker-controlled ccs mode reaches them are not established.",
+        "nextStep": "Resolve image-bound native call paths and mode ownership before any non-applicability decision.",
+        "disposition": "OPEN_SOURCE_CONTEXT_ONLY"
+      },
+      {
+        "cves": [
+          "CVE-2026-89092"
+        ],
+        "evidenceIds": [],
+        "sourceObservation": "The five Docker entrypoints execute Java through sh; none starts nscd explicitly.",
+        "unresolvedPrerequisites": "Exact image daemon availability/execution, NSS/DNS configuration and possible inherited native consumers remain unverified.",
+        "nextStep": "Inspect exact immutable-image startup/process/NSS evidence; retain residual until the nscd/DNS prerequisite is decided.",
+        "disposition": "OPEN_SOURCE_CONTEXT_ONLY"
+      },
+      {
+        "cves": [
+          "CVE-2025-66382"
+        ],
+        "evidenceIds": [
+          "workbook_zip_xml",
+          "declared_media_dependency_chain",
+          "archive_compression_font_output"
+        ],
+        "sourceObservation": "Untrusted workbook data enters Java POI ZIP/OOXML parsing with expansion/input/admission limits.",
+        "unresolvedPrerequisites": "A native expat consumer was not demonstrated. JDK/font/library/native dependency mappings remain unverified; roughly 2 MiB crafted XML is not excluded solely by the larger byte cap.",
+        "nextStep": "Identify native XML consumers and their bounds from the exact image; isolate expensive parsers if necessary.",
+        "disposition": "OPEN_SOURCE_CONTEXT_ONLY"
+      },
+      {
+        "cves": [
+          "CVE-2026-86145",
+          "CVE-2026-89161"
+        ],
+        "evidenceIds": [
+          "fixed_java_regex",
+          "archive_compression_font_output"
+        ],
+        "sourceObservation": "Examined application pattern checks use fixed Java regex implementations; source startup has no direct PCRE2 command.",
+        "unresolvedPrerequisites": "Native PCRE2 DFA/JIT library consumers, recursive workspace use, copied subject/context lifetime and dependency reachability remain unverified.",
+        "nextStep": "Map exact native consumers and attacker pattern/subject ownership before mitigation or VEX.",
+        "disposition": "OPEN_SOURCE_CONTEXT_ONLY"
+      },
+      {
+        "cves": [
+          "CVE-2026-46675"
+        ],
+        "evidenceIds": [
+          "photo_decode",
+          "school_catalog_decode_file_open",
+          "operations_document_decode",
+          "media_budget",
+          "declared_media_dependency_chain"
+        ],
+        "sourceObservation": "Image inputs reach registered ImageIO header/dimension parsing with seekForwardOnly=true and ignoreMetadata=true before byte/pixel-limited full decoding; school parsing also has admission limits. The portrait path then separately enables Thumbnailator EXIF orientation during full decode.",
+        "unresolvedPrerequisites": "Selected providers, native libpng linkage and the advisory-specific png_read_end sequence are not established. Necessary header/provider handling and subsequent full decoding/EXIF handling were not inspected at the dependency/native level. The source controls cannot establish image-bound non-applicability.",
+        "nextStep": "Resolve selected providers and exact native decoder call order; maintain limits and consider isolated parsing with enforceable CPU/wall/memory bounds if exposure is established.",
+        "disposition": "OPEN_SOURCE_CONTEXT_ONLY"
+      },
+      {
+        "cves": [
+          "CVE-2026-40228"
+        ],
+        "evidenceIds": [],
+        "sourceObservation": "No Docker entrypoint starts journald; Java source search has no journald/new daemon execution hit.",
+        "unresolvedPrerequisites": "Actual daemon startup, ForwardToWall, emergency log forwarding and terminal exposure were not inspected; libsystemd/libudev package presence does not decide execution.",
+        "nextStep": "Inspect exact image process/config prerequisites without equating a shared library to a running service.",
+        "disposition": "OPEN_SOURCE_CONTEXT_ONLY"
+      },
+      {
+        "cves": [
+          "CVE-2024-56433"
+        ],
+        "evidenceIds": [],
+        "sourceObservation": "Dockerfiles create a system appuser at build time and select USER appuser for runtime.",
+        "unresolvedPrerequisites": "Actual subordinate ID allocations, mapping tools, administrator/network identity overlap and mount exposure remain unverified.",
+        "nextStep": "Inspect exact image/subuid/subgid and governed runtime identity/mount configuration; nonroot USER alone is insufficient.",
+        "disposition": "OPEN_SOURCE_CONTEXT_ONLY"
+      },
+      {
+        "cves": [
+          "CVE-2026-18477",
+          "CVE-2026-18508"
+        ],
+        "evidenceIds": [
+          "workbook_zip_xml",
+          "archive_compression_font_output"
+        ],
+        "sourceObservation": "Examined archive application paths use Java ZIP/POI, and the five src/main roots have no direct ProcessBuilder/Runtime execution match.",
+        "unresolvedPrerequisites": "Installed GNU tar, inherited scripts/tools, incremental restore or one-top-level extraction usage and attacker directory/symlink access remain unverified.",
+        "nextStep": "Keep untrusted data away from native tar restore/extraction; prove exact tool/restore prerequisites independently rather than relying on fresh directories or one-top-level.",
+        "disposition": "OPEN_SOURCE_CONTEXT_ONLY"
+      },
+      {
+        "cves": [
+          "CVE-2026-85091"
+        ],
+        "evidenceIds": [
+          "archive_compression_font_output",
+          "workbook_zip_xml"
+        ],
+        "sourceObservation": "Java ZIP output and compressed POI temporary files are candidate JDK compression paths.",
+        "unresolvedPrerequisites": "Linkage to distro zlib and the specific nonblocking gzwrite stall plus formatted-output buffer sequence are not established.",
+        "nextStep": "Inspect exact native gzip output consumers and I/O ownership; do not substitute unsupported upstream patches or infer absence from Java API names.",
+        "disposition": "OPEN_SOURCE_CONTEXT_ONLY"
+      }
+    ],
+    "fixPlan": [
+      "Compare all exact newly released image SARIF and the fresh standalone SARIF with the dated baseline before identifying final residual CVEs.",
+      "Resolve immutable-image JDK/JNI/provider/native dependency and loaded-library paths, then evaluate exact advisory API prerequisites; do not issue blanket NOT_AFFECTED or suppress package findings from source absence.",
+      "Inspect actual daemon/NSS/terminal/subordinate-ID/restore execution prerequisites under the governed runtime configuration without broad business-data probes.",
+      "Retain byte/pixel/ZIP expansion and concurrency limits. These do not supply parser wall-time cancellation; process-isolated parsing with enforceable limits is a potential fix only after exposure/requirements are established.",
+      "Prefer supported distro/dependency fixes and reviewed CI/dev acceptance. Do not purge runtime packages, switch distro or cherry-pick ambiguous patches merely to remove scanner results."
+    ],
+    "result": "SOURCE_CONTEXT_COMPLETE_RESIDUAL_NATIVE_REACHABILITY_UNRESOLVED",
+    "clarification": {
+      "capturedOnUtc": "2026-10-07T20:41:22.896274Z",
+      "previousProofSha256": "ba8391d85993183970a77cb310ecdc31db02a2e461f8fe3d475015af00c654ea",
+      "scope": "Corrected dimension-precheck description to record existing ignoreMetadata=true and seekForwardOnly=true flags separately from necessary header/provider reads and later full decoding/EXIF orientation. No source, runtime or vulnerability disposition changed."
+    }
+  },
+  "datedDeployedBinding": {
+    "sourceHeadSha": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+    "runId": 37682050893,
+    "proof": "acceptance-runtime-os-patches-release-inventory.json",
+    "proofSha256": "2f17ca7f4660dc5ecd381b9781b1afce3e41c3ca38d80276925c04fbce9b2095",
+    "allSevenBindingsVerified": true,
+    "totalResults": 85,
+    "scope": "PR328 exact deployed release; subsequent portrait source/release acceptance is separate"
+  },
+  "subsequentVendorBackportFollowup": {
+    "capturedOnUtc": "2026-10-08",
+    "cve": "CVE-2026-46675",
+    "vendorPackage": "libpng1.6 1.6.43-5ubuntu0.7",
+    "primaryChangelog": "https://changelogs.ubuntu.com/changelogs/pool/main/libp/libpng1.6/libpng1.6_1.6.43-5ubuntu0.7/changelog",
+    "vendorExplicitPatchDeclared": true,
+    "scannerStillReportsCve": true,
+    "proof": "acceptance-libpng-vendor-patch-research.json",
+    "datedEarlierInventoryUnchanged": true,
+    "schoolPatchObservedInPriorRelease": true,
+    "otherFourImagesInitialRefreshAcceptance": "FAIL",
+    "initialFailureProof": "acceptance-libpng-refresh-initial-failure.json",
+    "fixPlan": "Review committed patch-cycle source identity, require actual all-five package versions in fresh exact-image SARIF, verify seven Ready runtimes and preserve the vendor/scanner discrepancy without suppression or native exploitability claims.",
+    "completeAllFiveDeploymentBindingPending": false,
+    "noBlanketNotAffectedOrRiskException": true,
+    "acceptedSourceSha": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+    "acceptedReleaseRunId": 37746479841,
+    "acceptedPackageVersion": "1.6.43-5ubuntu0.7",
+    "acceptedProof": "acceptance-runtime-patch-cycle-release-inventory.json",
+    "readyProofSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f",
+    "currentScanResultCount": 85,
+    "allFiveVendorPackageBackportsInstalled": true
+  }
+}

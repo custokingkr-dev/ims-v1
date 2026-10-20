@@ -1,5 +1,7 @@
 import { DragEvent, useRef, useState } from 'react';
 import api from '../../../services/api';
+import { studentClient } from '../../../services/studentApi';
+import type { ImportPreview, ImportProgress, SkippedImportRow as WireSkippedImportRow } from '../../../generated/studentClient';
 import { TransferProgress } from '../../../components/TransferProgress';
 import { ModuleShell } from '../ui';
 import type { PanelKey } from '../config';
@@ -162,28 +164,7 @@ export function normalizeImportCellValue(value: string | number | boolean | Date
   return typeof value === 'number' ? value : String(value);
 }
 
-interface ImportStructurePreview {
-  currentClassCount: number;
-  currentSectionCount: number;
-  requiredClassCount: number;
-  requiredSectionCount: number;
-  requiresStructureUpdate: boolean;
-  missingClasses?: string[];
-  missingSections?: string[];
-  unsupportedClasses?: string[];
-}
-
-type SkippedImportRow = {
-  rowNumber: number;
-  reason: string;
-  name?: string;
-  admissionNo?: string;
-  className?: string;
-  sectionName?: string;
-  phone?: string;
-  status?: string;
-  message?: string;
-};
+type SkippedImportRow = Pick<WireSkippedImportRow, 'rowNumber' | 'reason'> & Partial<WireSkippedImportRow>;
 
 function csvCell(value: unknown): string {
   const text = String(value ?? '');
@@ -239,11 +220,9 @@ export async function attachPhotos(
       try {
         if (job.photo.kind === 'embedded') {
           const blob = await downscaleImageBlob(job.photo.bytes, job.photo.contentType);
-          const fd = new FormData();
-          fd.append('file', new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' }));
-          await api.post(`/students/${job.studentId}/photo`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+          await studentClient.uploadStudentPhoto({ id: job.studentId }, { file: new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' }) });
         } else {
-          await api.post(`/students/${job.studentId}/photo-from-url`, { url: job.photo.url });
+          await studentClient.attachStudentPhotoFromUrl({ id: job.studentId }, { url: job.photo.url });
         }
         attached += 1;
       } catch (err: unknown) {
@@ -277,8 +256,8 @@ export function BulkImportPanel({
   const [bulkImportError, setBulkImportError] = useState('');
   const [bulkImportWarning, setBulkImportWarning] = useState('');
   const [bulkImportFileName, setBulkImportFileName] = useState('');
-  const [bulkImportPreview, setBulkImportPreview] = useState<{ fileToken?: string; batchId?: string; jobId?: string; originalFileStored?: boolean; structure?: ImportStructurePreview; rows?: { rowNumber: number; name: string; className: string; sectionName: string; admissionNo: string; dateOfBirth?: string; phone: string; status: string; statusTone: string; description?: string; message?: string }[]; validCount?: number; errorCount?: number; warningCount?: number } | null>(null);
-  const [bulkImportProgress, setBulkImportProgress] = useState<{ done?: boolean; failed?: boolean; status?: string; phase?: string; pct?: number; processedRows?: number; totalRows?: number; inserted?: number; skipped?: number; message?: string; skippedRows?: SkippedImportRow[] } | null>(null);
+  const [bulkImportPreview, setBulkImportPreview] = useState<ImportPreview | null>(null);
+  const [bulkImportProgress, setBulkImportProgress] = useState<Partial<ImportProgress> | null>(null);
   const [photoUploadProgress, setPhotoUploadProgress] = useState<{ processed: number; total: number; attached: number; skipped: number; pct: number } | null>(null);
   const [bulkImportToast, setBulkImportToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [photoReport, setPhotoReport] = useState<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> } | null>(null);
@@ -311,12 +290,8 @@ export function BulkImportPanel({
   };
 
   const previewImportFile = async (file: File, rows: Record<string, string | number>[]) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('rowsJson', JSON.stringify(rows));
-    if (_params?.schoolId) fd.append('schoolId', String(_params.schoolId));
-    const res = await api.post('/students/import/upload-preview', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-    setBulkImportPreview(res.data as typeof bulkImportPreview);
+    const preview = await studentClient.previewImportFile(_params || {}, { file, rowsJson: JSON.stringify(rows) });
+    setBulkImportPreview(preview);
   };
 
   const handleBulkImportFile = async (file: File) => {
@@ -328,7 +303,7 @@ export function BulkImportPanel({
     setPhotoUploadProgress(null);
     setPhotoReport(null);
     if (!(ext.endsWith('.xlsx') || ext.endsWith('.xls') || ext.endsWith('.ods') || ext.endsWith('.csv'))) { setBulkImportError('Only .xlsx, .xls, .ods, and .csv files are supported.'); return; }
-    if (file.size > 50 * 1024 * 1024) { setBulkImportError('Maximum file size is 50 MB.'); return; }
+    if (file.size > 10 * 1024 * 1024) { setBulkImportError('Maximum file size is 10 MB.'); return; }
     try {
       const rows = await parseRows(file);
       if (rows.length > 500) { setBulkImportWarning('Maximum 500 rows per import. Please reduce the file and try again.'); return; }
@@ -433,7 +408,7 @@ export function BulkImportPanel({
       setBulkImportToast(null);
       const previewJobId = bulkImportPreview.jobId;
       let settled = false;
-      const trackedConfirm = api.post<{ jobId?: string }>('/students/import/confirm', { fileToken: bulkImportPreview.fileToken })
+      const trackedConfirm = studentClient.confirmImport({ fileToken: bulkImportPreview.fileToken, ...(_params || {}) })
         .then(response => {
           settled = true;
           return { response, error: null as unknown };
@@ -455,32 +430,31 @@ export function BulkImportPanel({
         while (!settled) {
           await new Promise(resolve => setTimeout(resolve, 300));
           if (settled) break;
-          const statusRes = await api.get<typeof bulkImportProgress>(
-            `/students/import/status/${encodeURIComponent(previewJobId)}`,
-          );
-          if (statusRes.data) setBulkImportProgress(statusRes.data);
-          if (statusRes.data?.failed) {
-            throw new Error(statusRes.data.message || 'Import failed.');
+          const statusRes = await studentClient.getImportStatus({ jobId: previewJobId });
+          if (statusRes) setBulkImportProgress(statusRes);
+          if (statusRes?.failed) {
+            throw new Error(statusRes.message || 'Import failed.');
           }
         }
       }
       const confirmOutcome = await trackedConfirm;
       if (confirmOutcome.error) throw confirmOutcome.error;
       const confirmRes = confirmOutcome.response!;
-      const jobId = (confirmRes.data as { jobId?: string })?.jobId || previewJobId;
-      const insertedStudents = (confirmRes.data as { insertedStudents?: Array<{ admissionNo: string; studentId: number }> })?.insertedStudents || [];
+      const jobId = confirmRes.jobId || previewJobId;
+      const insertedStudents = confirmRes.insertedStudents || [];
       if (!jobId) {
         // Backend returned a synchronous inline result — no job polling needed
-        const inlineResult = confirmRes.data as { inserted?: number; skipped?: number; skippedRows?: SkippedImportRow[] };
+        const inlineResult = confirmRes;
         setBulkImportProgress({ done: true, pct: 100, inserted: inlineResult.inserted, skipped: inlineResult.skipped, skippedRows: inlineResult.skippedRows });
         setBulkImportToast({ type: 'success', message: `${inlineResult.inserted ?? 0} students imported. ${inlineResult.skipped ?? 0} rows skipped.` });
       } else {
         let done = false;
-        let finalStatus: { done?: boolean; inserted?: number; skipped?: number; pct?: number; skippedRows?: SkippedImportRow[] } | null = null;
+        let finalStatus: ImportProgress | null = null;
         while (!done) {
-          const statusRes = await api.get<{ done?: boolean; inserted?: number; skipped?: number; pct?: number; skippedRows?: SkippedImportRow[] } | null>(`/students/import/status/${encodeURIComponent(jobId)}`);
-          finalStatus = statusRes.data;
+          const statusRes = await studentClient.getImportStatus({ jobId });
+          finalStatus = statusRes;
           setBulkImportProgress(finalStatus);
+          if (finalStatus.failed) throw new Error(finalStatus.message || 'Import failed.');
           done = Boolean(finalStatus?.done);
           if (!done) await new Promise((resolve) => setTimeout(resolve, 500));
         }
@@ -544,7 +518,7 @@ export function BulkImportPanel({
         <div className={`ck-import-zone ${bulkImportDragActive ? 'ck-import-zone-active' : ''}`} onDragOver={(e) => { e.preventDefault(); setBulkImportDragActive(true); }} onDragLeave={() => setBulkImportDragActive(false)} onDrop={(e) => void handleBulkImportDrop(e)}>
           <div className="ck-iz-icon"><Upload size={22} aria-hidden="true" /></div>
           <div className="ck-iz-title">{bulkImportFileName ? 'Replace the selected file' : 'Drop the student file here'}</div>
-          <div className="ck-iz-sub">XLSX, XLS, ODS, or CSV · Maximum 50 MB · Up to 500 rows</div>
+          <div className="ck-iz-sub">XLSX, XLS, ODS, or CSV · Maximum 10 MB · Up to 500 rows</div>
           <div className="ck-actions-inline" style={{ justifyContent: 'center', marginTop: 14 }}>
             <button className="ck-btn ck-btn-g ck-icon-label" type="button" onClick={() => bulkImportInputRef.current?.click()}><Upload size={15} />Choose file</button>
           </div>

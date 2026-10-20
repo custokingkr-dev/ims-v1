@@ -1,0 +1,17 @@
+{
+  "release": {
+    "runId": 37524985447,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37524985447",
+    "commit": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8"
+  },
+  "checkedAtUtc": "2026-10-06T21:03:33.4047917Z",
+  "sourceEvidenceSha256": "sha256:5ee4da17d2ae41b77ce4d52a4b5b1f1793e861509dfe60b67ef1e97a4bfabe1d",
+  "environment": "dev",
+  "sharedRole": "app_rt",
+  "sharedRoleCanLogin": false,
+  "sharedRoleSessions": 0,
+  "baselineAclRetained": true,
+  "temporaryOwnerJobAbsent": true,
+  "cleanupVerifiedBy": "Independent read-only exact dev job lookup returned not found.",
+  "scope": "Shared-role LOGIN disabled and sessions terminated; retained legacy ACL baseline remains for migration callbacks. Role was not dropped; retained ACLs are not proof of cross-schema access by dedicated runtime roles."
+}

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "sourceHeadSha": "25eb41d9bd0915c9fe9ec60e5078f6492f118380",
+  "releaseRunId": 37643895536,
+  "marker": "SEC-JOURNAL-DEV-20261007-1666c7012cb8",
+  "status": "EXACT_SYNTHETIC_CONVERGED",
+  "converged": true,
+  "observation": {
+    "activeActorSessionCount": 0,
+    "databaseCheckedAtUtc": "2026-10-07T16:13:21.340352+00:00",
+    "deadLetterDeletionOutboxCount": 0,
+    "deletionInboxCount": 1,
+    "deletionInboxStatuses": [
+      {
+        "attemptCount": 0,
+        "safeErrorCode": "NONE",
+        "status": "PROCESSED"
+      }
+    ],
+    "deletionOutboxCount": 1,
+    "disabledActorCount": 1,
+    "marker": "SEC-JOURNAL-DEV-20261007-1666c7012cb8",
+    "outboxAttemptCount": 4,
+    "outboxSafeErrorCodes": [
+      "NONE"
+    ],
+    "processedDeletionInboxCount": 1,
+    "publishedDeletionOutboxCount": 1,
+    "receiptCount": 1,
+    "reportingProjectionCount": 0,
+    "schoolId": 990008101,
+    "sourceCount": 0,
+    "studentId": 990008301,
+    "tombstoneCount": 1
+  },
+  "priorEvidence": "acceptance-precommit-journal-dev.json",
+  "priorEvidenceSha256": "eff8c45965a1a10f80b8407e14d3c9f5bee3d0fd05ac4bfa656d82104902aa90",
+  "earlierObservationPreserved": {
+    "checkedAtUtc": "2026-10-07T16:06:05.320140+00:00",
+    "tombstoneCount": 0
+  },
+  "readOnlyTransaction": true,
+  "statementTimeoutSeconds": 10,
+  "ownerJobExecutionCompleted": true,
+  "immutableOwnerImage": "docker.io/library/postgres@sha256:95206741a5b214807675e14165369d05b93a9cf692223b616d07cca227e74b0b",
+  "ownedJobs": [
+    {
+      "name": "ims-sec-final-journal-downstream-0f1de98b76bf",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T16:13:33.035990+00:00"
+    }
+  ],
+  "cleanupAggregateFilteredToThisNewJob": true,
+  "manualDrainOrRepublish": false,
+  "fixtureOrBusinessSqlMutation": false,
+  "providerCalls": 0,
+  "productionChanged": false,
+  "fullBacklogClaim": false,
+  "scope": "One exact authorized synthetic student deletion and disabled actor only; no payload/contact export, provider or whole-backlog acceptance claim",
+  "checkedAtUtc": "2026-10-07T16:13:33.049145+00:00"
+}

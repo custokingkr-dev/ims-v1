@@ -1,8 +1,9 @@
 # Custoking IMS High-Level Architecture
 
-Last reconciled: 2026-08-12. Live-state and launch-gate details are in
-[current-state/README.md](current-state/README.md) and
-[REMAINING-WORK-2026-08-12.md](REMAINING-WORK-2026-08-12.md).
+Reference baseline reconciled: 2026-08-12. For the implementation reconciled on 2026-10-11, read
+[current source architecture](current-state/project-architecture.md). Runtime observations below
+retain their original dates; current owner gates are in
+[the owner-action plan](security-remediation/acceptance-owner-actions.md).
 
 ## Purpose
 

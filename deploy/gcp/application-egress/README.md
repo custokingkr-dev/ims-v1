@@ -1,0 +1,28 @@
+# Disabled dev CIDR egress preparation
+
+This standalone module is disabled by default. It creates no resource and reads no Google data in that mode. It is not wired into any application manifest/workflow/state. No destination, network, tag or per-instance NAT budget is supplied by default. This work performs no live apply, Cloud Run routing change, NAT/network creation or connectivity attestation.
+
+When explicitly enabled after owner review, it reads an existing `custoking-dev` network, `asia-south2` subnet, router and Public NAT; it manages only dedicated-tag egress firewall rules. The subnet/router must match that network; Private Google Access must be enabled. Public NAT must cover the selected primary subnet range, support `ENDPOINT_TYPE_VM`, have no conditional rules, and reserve at least twice the explicitly reviewed per-instance port requirement. Those configuration checks do not prove current route selection, aggregate NAT headroom or workload capacity. Unsupported/private/conditional NAT requires another reviewed implementation, not a silent bypass.
+
+Each explicit allow rule targets a nonempty subset of the protected `ims-egress-dev-*` tags, uses a single address family, canonical IPv4 /24-or-narrower or IPv6 /64-or-narrower CIDRs, TCP/UDP and individual numeric ports. Protocol-all, any-internet allow, broad ranges and port wildcards/ranges are rejected. At most32 rules,16 CIDRs/ports per rule and10 tags are accepted. No application destination is invented; TEST-NET addresses in mocked tests are synthetic and are not an application allowlist. Higher-priority explicit allows use priority1000, and IPv4+IPv6 deny-all rules use1100. Untagged resources are unaffected. A higher-priority applicable allow or organization/network firewall policy can change the effective outcome; the module does not enumerate or certify those policies.
+
+## Required owner cutover and compatibility
+
+Before applying anything, approve exact destination/tag/service scope, existing network/subnet/router/NAT names, port reserve, budget and a staged test/rollback window. Inspect current routes, higher-priority/hierarchical firewall policies, DNS, subnet address capacity and NAT/connection limits. Stage reviewed firewall rules before attaching the dedicated tags. Independently confirm effective rules before deploying a controlled tagged revision with Direct VPC `all-traffic`; no existing revision is changed by this module. Verify exact desired/current tags and routing for every selected service/job, legitimate dependencies and forbidden connections, then govern traffic cutover. The output is only a proposed binding, not a generated manifest or verified deployment. Do not switch existing `private-ranges-only` revisions merely to claim enforcement: public traffic would otherwise bypass this boundary.
+
+Required application classes include private SQL, authenticated peer Cloud Run endpoints, Google credential/storage/IAM/PubSub/OIDC/Drive/token endpoints and owner-selected provider/SMTP endpoints. Arbitrary public HTTPS image imports are an implemented feature: a static Google-only CIDR list breaks it. Approve a compatible host/feature design or isolated fetch service before enabling. Google/API/peer host addresses, private VIP DNS/routes and certificates must be accepted through the actual path; no default vendor IP list is inferred from hostname samples. Existing NAT and Private Google Access do not create an egress allow rule automatically here.
+
+This is a CIDR/protocol/port boundary, **not DNS, hostname, TLS SNI, URL, redirect, tenant or data-exfiltration enforcement**. IP sharing/churn and newly resolved addresses matter. Keep application connection-bound SSRF address validation and per-redirect checks; use a separately approved proxy/firewall design if hostname/URL policy is required. Platform-reserved metadata/DNS paths and return traffic have special firewall behavior; tag-scoped deny rules cannot be claimed to block all platform paths. No actual DNS rebinding, viewer matrix or deployed network test is established by Terraform mocks.
+
+## Local validation
+
+```text
+terraform -chdir=deploy/gcp/application-egress init -backend=false -lockfile=readonly
+terraform -chdir=deploy/gcp/application-egress fmt -check -recursive
+terraform -chdir=deploy/gcp/application-egress validate
+terraform -chdir=deploy/gcp/application-egress test
+```
+
+Seventeen mocked tests passed without Google API/state changes. They cover disabled zero resources/data reads, exact allow and dual-stack deny scope, empty inventory/tag mismatch, open/broad/IPv6/mixed-family allows, wildcard protocol/port range, missing PGA/foreign network, wrong/private/conditional NAT, missing VM endpoint and insufficient port reserve. Google provider7.39.0 lock checksums were independently checked for Linux amd64 and Windows amd64; no lock update was needed. Mock apply is provider-local computation, not cloud apply.
+
+Primary references checked2026-10-08: [Direct VPC routing and revision tags](https://docs.cloud.google.com/run/docs/configuring/vpc-direct-vpc), [VPC firewall priority/targeting and special paths](https://docs.cloud.google.com/firewall/docs/firewalls), [Cloud NAT/Direct VPC requirements and route/PGA interactions](https://docs.cloud.google.com/nat/docs/nat-product-interactions), [Private Cloud Run networking](https://docs.cloud.google.com/run/docs/securing/private-networking), [Secure Web Proxy](https://docs.cloud.google.com/secure-web-proxy/docs), [existing-NAT data source](https://registry.terraform.io/providers/hashicorp/google/latest/docs/data-sources/compute_router_nat).

@@ -59,6 +59,307 @@
           }
         }
       }
+    },
+    "/api/v1/reporting/dashboard-command-center": {
+      "get": {
+        "operationId": "getDashboardCommandCenter",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardCommandCenterResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/reporting/fee-defaulters": {
+      "get": {
+        "operationId": "getFeeDefaulters",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "classId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "daysOverdue",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "reminderStatus",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeDefaulterListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/reporting/low-attendance/sections": {
+      "get": {
+        "operationId": "getLowAttendanceSections",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LowAttendanceSectionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/reporting/low-attendance/sections/{sectionId}/students": {
+      "get": {
+        "operationId": "getLowAttendanceStudents",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "sectionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LowAttendanceStudentItem"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/reporting/vendor-dues": {
+      "get": {
+        "operationId": "getVendorDues",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorDuesListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/reporting/reorder-signals": {
+      "get": {
+        "operationId": "getReorderSignals",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReorderSignalsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -310,6 +611,588 @@
           "annualPlan"
         ],
         "additionalProperties": true
+      },
+      "FeeSection": {
+        "type": "object",
+        "properties": {
+          "defaulterCount": {
+            "type": "number"
+          },
+          "totalOverdueAmountPaise": {
+            "type": "number"
+          },
+          "oldestDueDays": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "defaulterCount",
+          "totalOverdueAmountPaise",
+          "oldestDueDays"
+        ],
+        "additionalProperties": false
+      },
+      "PhotographySection": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "collectedAmount": {
+            "type": "number"
+          },
+          "pendingAmount": {
+            "type": "number"
+          },
+          "targetAmount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "eventId",
+          "collectedAmount",
+          "pendingAmount",
+          "targetAmount"
+        ],
+        "additionalProperties": false
+      },
+      "LifecycleSection": {
+        "type": "object",
+        "properties": {
+          "pendingReviewCount": {
+            "type": "number"
+          },
+          "longAbsenceCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "pendingReviewCount",
+          "longAbsenceCount"
+        ],
+        "additionalProperties": false
+      },
+      "AttendanceSection": {
+        "type": "object",
+        "properties": {
+          "sectionsBelowThresholdCount": {
+            "type": "number"
+          },
+          "thresholdPercent": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sectionsBelowThresholdCount",
+          "thresholdPercent"
+        ],
+        "additionalProperties": false
+      },
+      "VendorDuesSection": {
+        "type": "object",
+        "properties": {
+          "catalogOrderCount": {
+            "type": "number"
+          },
+          "catalogOrderTotalPaise": {
+            "type": "number"
+          },
+          "firefightingCount": {
+            "type": "number"
+          },
+          "firefightingTotalPaise": {
+            "type": "number"
+          },
+          "totalDuesPaise": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "catalogOrderCount",
+          "catalogOrderTotalPaise",
+          "firefightingCount",
+          "firefightingTotalPaise",
+          "totalDuesPaise"
+        ],
+        "additionalProperties": false
+      },
+      "ReorderSection": {
+        "type": "object",
+        "properties": {
+          "alertCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "alertCount"
+        ],
+        "additionalProperties": false
+      },
+      "DashboardCommandCenterResponse": {
+        "type": "object",
+        "properties": {
+          "fees": {
+            "$ref": "#/components/schemas/FeeSection"
+          },
+          "photography": {
+            "$ref": "#/components/schemas/PhotographySection"
+          },
+          "lifecycle": {
+            "$ref": "#/components/schemas/LifecycleSection"
+          },
+          "attendance": {
+            "$ref": "#/components/schemas/AttendanceSection"
+          },
+          "vendorDues": {
+            "$ref": "#/components/schemas/VendorDuesSection"
+          },
+          "reorderSignals": {
+            "$ref": "#/components/schemas/ReorderSection"
+          }
+        },
+        "required": [
+          "fees",
+          "photography",
+          "lifecycle",
+          "attendance",
+          "vendorDues",
+          "reorderSignals"
+        ],
+        "additionalProperties": false
+      },
+      "FeeDefaulterItem": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "number"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "parentName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parentPhone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dueAmount": {
+            "type": "number"
+          },
+          "dueDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "daysOverdue": {
+            "type": "number"
+          },
+          "lastReminderSentAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reminderStatus": {
+            "type": "string",
+            "enum": [
+              "NOT_SENT",
+              "SENT",
+              "PENDING",
+              "FAILED"
+            ]
+          },
+          "paymentStatus": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "className",
+          "sectionName",
+          "parentName",
+          "parentPhone",
+          "dueAmount",
+          "dueDate",
+          "daysOverdue",
+          "lastReminderSentAt",
+          "reminderStatus",
+          "paymentStatus"
+        ],
+        "additionalProperties": false
+      },
+      "FeeDefaulterListResponse": {
+        "type": "object",
+        "properties": {
+          "totalDefaulters": {
+            "type": "number"
+          },
+          "totalOverdueAmount": {
+            "type": "number"
+          },
+          "oldestDueDays": {
+            "type": "number"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FeeDefaulterItem"
+            }
+          },
+          "page": {
+            "type": "number"
+          },
+          "size": {
+            "type": "number"
+          },
+          "totalElements": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "totalDefaulters",
+          "totalOverdueAmount",
+          "oldestDueDays",
+          "items",
+          "page",
+          "size",
+          "totalElements"
+        ],
+        "additionalProperties": false
+      },
+      "LowAttendanceSectionItem": {
+        "type": "object",
+        "properties": {
+          "sectionId": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "presentCount": {
+            "type": "number"
+          },
+          "totalEnrolled": {
+            "type": "number"
+          },
+          "attendancePct": {
+            "type": "number"
+          },
+          "studentsBelowThreshold": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sectionId",
+          "sectionName",
+          "className",
+          "presentCount",
+          "totalEnrolled",
+          "attendancePct",
+          "studentsBelowThreshold"
+        ],
+        "additionalProperties": false
+      },
+      "LowAttendanceSectionsResponse": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "thresholdPercent": {
+            "type": "number"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LowAttendanceSectionItem"
+            }
+          }
+        },
+        "required": [
+          "date",
+          "thresholdPercent",
+          "sections"
+        ],
+        "additionalProperties": false
+      },
+      "LowAttendanceStudentItem": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "number"
+          },
+          "studentName": {
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "fatherName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fatherContact": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "attendancePercent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastInviteSentAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "studentId",
+          "studentName",
+          "admissionNo",
+          "className",
+          "sectionName",
+          "fatherName",
+          "fatherContact",
+          "attendancePercent",
+          "lastInviteSentAt"
+        ],
+        "additionalProperties": false
+      },
+      "VendorDueItem": {
+        "type": "object",
+        "properties": {
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "CATALOG_ORDER",
+              "FIREFIGHTING"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "vendorName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amountPaise": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sourceType",
+          "id",
+          "title",
+          "category",
+          "vendorName",
+          "amountPaise",
+          "status",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "VendorDuesListResponse": {
+        "type": "object",
+        "properties": {
+          "catalogOrderCount": {
+            "type": "number"
+          },
+          "catalogOrderTotalPaise": {
+            "type": "number"
+          },
+          "firefightingCount": {
+            "type": "number"
+          },
+          "firefightingTotalPaise": {
+            "type": "number"
+          },
+          "totalDuesPaise": {
+            "type": "number"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VendorDueItem"
+            }
+          }
+        },
+        "required": [
+          "catalogOrderCount",
+          "catalogOrderTotalPaise",
+          "firefightingCount",
+          "firefightingTotalPaise",
+          "totalDuesPaise",
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "ReorderSignalItem": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "lastOrderDate": {
+            "type": "string"
+          },
+          "daysSinceLastOrder": {
+            "type": "number"
+          },
+          "avgIntervalDays": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "predictedNextOrderDate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "alertLevel": {
+            "type": "string",
+            "enum": [
+              "RED",
+              "YELLOW",
+              "OK"
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "lastOrderDate",
+          "daysSinceLastOrder",
+          "avgIntervalDays",
+          "predictedNextOrderDate",
+          "alertLevel"
+        ],
+        "additionalProperties": false
+      },
+      "ReorderSignalsResponse": {
+        "type": "object",
+        "properties": {
+          "alertCount": {
+            "type": "number"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReorderSignalItem"
+            }
+          }
+        },
+        "required": [
+          "alertCount",
+          "items"
+        ],
+        "additionalProperties": false
       }
     }
   },

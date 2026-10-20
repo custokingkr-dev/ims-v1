@@ -1,0 +1,384 @@
+{
+  "capturedAtUtc": "2026-10-08T08:03:06.200454+00:00",
+  "releaseRunId": 37746479841,
+  "sourceSha": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+  "releaseConclusion": "success",
+  "serviceTests": [
+    {
+      "service": "billing-service",
+      "jobId": 113209191487,
+      "conclusion": "success",
+      "logSha256": "6e75d652f81973cc554a2a131a368619bbe2ce297c10d52f5cbb304ba0128e8d",
+      "reported": 95,
+      "passed": 95,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "service": "school-core-service",
+      "jobId": 113209191531,
+      "conclusion": "success",
+      "logSha256": "9cd3b43dbe7a40df2d8c1a70abb886a006381320c16a65b94982b767ba446843",
+      "reported": 956,
+      "passed": 956,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "service": "identity-service",
+      "jobId": 113209191575,
+      "conclusion": "success",
+      "logSha256": "cea7442b07953f4bfd375611e46cae2ef980d5bdb9131fb4d5f656be7aa70325",
+      "reported": 183,
+      "passed": 182,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    {
+      "service": "api-gateway",
+      "jobId": 113209191602,
+      "conclusion": "success",
+      "logSha256": "17f8bb800e323661d581d9d2ba240b3980f659dfb10360e8db85f247ebd5fd66",
+      "reported": 99,
+      "passed": 99,
+      "failures": 0
+    },
+    {
+      "service": "operations-service",
+      "jobId": 113209191608,
+      "conclusion": "success",
+      "logSha256": "6ba0940008229964d0d2433e7ba43ce473e86a18446dfccf3a240739320b19d6",
+      "reported": 195,
+      "passed": 195,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "service": "platform-service",
+      "jobId": 113209191677,
+      "conclusion": "success",
+      "logSha256": "2c57e6e0dee99d0f1e2e72d0494090f43295bfe24ee1e2370e99bc47ca4a367c",
+      "reported": 437,
+      "passed": 437,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "service": "frontend",
+      "jobId": 113209191687,
+      "conclusion": "success",
+      "logSha256": "b954836affa40cd61ec2e225464778dfd8bbd72db6dcbe68e0b52d75a4cbb8de",
+      "unitPassed": 431,
+      "browserPassed": 116
+    }
+  ],
+  "postmergeCodeql": {
+    "runId": 37746479329,
+    "actualDevRefAnalyses": [
+      {
+        "id": 1914163943,
+        "category": "/language:java-kotlin",
+        "ref": "refs/heads/dev",
+        "commit_sha": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+        "created_at": "2026-10-08T07:58:52Z",
+        "results_count": 0,
+        "error": ""
+      },
+      {
+        "id": 1914154154,
+        "category": "/language:javascript-typescript",
+        "ref": "refs/heads/dev",
+        "commit_sha": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+        "created_at": "2026-10-08T07:56:53Z",
+        "results_count": 0,
+        "error": ""
+      }
+    ],
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37746479329",
+    "languageJobs": [
+      {
+        "name": "analyze (java-kotlin)",
+        "conclusion": "success",
+        "analyzeSuccess": true
+      },
+      {
+        "name": "analyze (javascript-typescript)",
+        "conclusion": "success",
+        "analyzeSuccess": true
+      }
+    ],
+    "workflowConclusion": "success",
+    "workflowStatus": "completed",
+    "workflowSourceSha": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+    "workflowUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37746479329"
+  },
+  "javaAggregate": {
+    "reported": 1866,
+    "passed": 1865,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0
+  },
+  "stressOrExploitProof": false,
+  "actualImageBuildJobs": [
+    {
+      "jobId": 113210978652,
+      "jobName": "build-images (services/api-gateway, api-gateway, custoking-api-gateway, services/api-gateway/Dock...",
+      "conclusion": "success",
+      "buildStep": {
+        "name": "Build and push image",
+        "conclusion": "success",
+        "status": "completed"
+      },
+      "logSha256": "71c7cb54555ac2e9c5dbca08117660cc0611c56cf1e350d0c2d2e7e8578dfe4a",
+      "selectedEpochDockerArgumentObserved": true,
+      "patchRunOutputObserved": true,
+      "service": "api-gateway",
+      "sourceTagMatchesReleaseManifest": true,
+      "securityPatchEpochMatchesReleaseManifest": true,
+      "manifestSourceId": "792801ca2c960562200d3437a05443dd73735af1bd9d554e351dc714ac00d125"
+    },
+    {
+      "jobId": 113210978691,
+      "jobName": "build-images (pom.xml|services/identity-service, identity-service, custoking-identity-service, se...",
+      "conclusion": "success",
+      "buildStep": {
+        "name": "Build and push image",
+        "conclusion": "success",
+        "status": "completed"
+      },
+      "logSha256": "0c768491b973d7880bc45e68fae52139d98ac12ec632b7060988e49d971b188b",
+      "selectedEpochDockerArgumentObserved": true,
+      "patchRunOutputObserved": true,
+      "service": "identity-service",
+      "sourceTagMatchesReleaseManifest": true,
+      "securityPatchEpochMatchesReleaseManifest": true,
+      "manifestSourceId": "e2e02b3baa692c1f187f1f29fb18e4651e0670ef0a0e595cdbced9cc9e30342c"
+    },
+    {
+      "jobId": 113210978725,
+      "jobName": "build-images (frontend, frontend, VITE_API_BASE_URL=/api/v1, custoking-frontend, frontend/Dockerf...",
+      "conclusion": "success",
+      "buildStep": {
+        "name": "Build and push image",
+        "conclusion": "success",
+        "status": "completed"
+      },
+      "logSha256": "c67d46259b2a57557f8a40b5f46aed9b2fd23bc497d6566da27daea5fc0cba96",
+      "selectedEpochDockerArgumentObserved": true,
+      "patchRunOutputObserved": true,
+      "service": "frontend",
+      "sourceTagMatchesReleaseManifest": true,
+      "securityPatchEpochMatchesReleaseManifest": true,
+      "manifestSourceId": "f43b46bac25d4a95491d68b24b3711639af88630e6bd1bef150f734ab7d97ab6"
+    },
+    {
+      "jobId": 113210978726,
+      "jobName": "build-images (pom.xml|services/platform-service, platform-service, custoking-platform-service, se...",
+      "conclusion": "success",
+      "buildStep": {
+        "name": "Build and push image",
+        "conclusion": "success",
+        "status": "completed"
+      },
+      "logSha256": "8a652f5ba78e334aaa4ca21a91836ae1273060cd42384e950154de353cddf1f3",
+      "selectedEpochDockerArgumentObserved": true,
+      "patchRunOutputObserved": true,
+      "service": "platform-service",
+      "sourceTagMatchesReleaseManifest": true,
+      "securityPatchEpochMatchesReleaseManifest": true,
+      "manifestSourceId": "cad98a95b6c8c865d1b25635bd3dc3920dfa4172191f7612a0001bd899cfd54f"
+    },
+    {
+      "jobId": 113210978746,
+      "jobName": "build-images (pom.xml|services/billing-service, billing-service, custoking-billing-service, servi...",
+      "conclusion": "success",
+      "buildStep": {
+        "name": "Build and push image",
+        "conclusion": "success",
+        "status": "completed"
+      },
+      "logSha256": "654cff9bfd55e1279f6092be8b8a0b1ba84eead573657a2324f85631e6d66586",
+      "selectedEpochDockerArgumentObserved": true,
+      "patchRunOutputObserved": true,
+      "service": "billing-service",
+      "sourceTagMatchesReleaseManifest": true,
+      "securityPatchEpochMatchesReleaseManifest": true,
+      "manifestSourceId": "b627218a5e35fa75b1b17b5d7f268d8217bfcfcb9cb49f1aec45b076fd4fb3d2"
+    },
+    {
+      "jobId": 113210978748,
+      "jobName": "build-images (pom.xml|services/operations-service, operations-service, custoking-operations-servi...",
+      "conclusion": "success",
+      "buildStep": {
+        "name": "Build and push image",
+        "conclusion": "success",
+        "status": "completed"
+      },
+      "logSha256": "7418bc941734dc9a1580571310e89573426d874c98e0eb8694e2e906ef7833c2",
+      "selectedEpochDockerArgumentObserved": true,
+      "patchRunOutputObserved": true,
+      "service": "operations-service",
+      "sourceTagMatchesReleaseManifest": true,
+      "securityPatchEpochMatchesReleaseManifest": true,
+      "manifestSourceId": "3e0982a68236bba716ff2688afbd6ee6bea83b50ec3a6b57828ae297bac4e181"
+    },
+    {
+      "jobId": 113210978910,
+      "jobName": "build-images (pom.xml|services/school-core-service, school-core-service, custoking-school-core-se...",
+      "conclusion": "success",
+      "buildStep": {
+        "name": "Build and push image",
+        "conclusion": "success",
+        "status": "completed"
+      },
+      "logSha256": "51a8eaa39183420622e8501d6aa54044630b8b0924768541a4d682da814ded92",
+      "selectedEpochDockerArgumentObserved": true,
+      "patchRunOutputObserved": false,
+      "service": "school-core-service",
+      "sourceTagMatchesReleaseManifest": true,
+      "securityPatchEpochMatchesReleaseManifest": true,
+      "manifestSourceId": "07c4981d18874bbea51a918b02a193f6b0f8ee31a1753fb41b4a8f0ffb239707"
+    }
+  ],
+  "releaseStatus": "completed",
+  "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37746479841",
+  "finalCheckedAtUtc": "2026-10-08T08:28:10.414677+00:00",
+  "jobs": [
+    {
+      "name": "resolve-target",
+      "databaseId": 113209053703,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-secret-scan",
+      "databaseId": 113209114056,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "detect / detect",
+      "databaseId": 113209114451,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-static-gate",
+      "databaseId": 113209191377,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-service-test (billing-service)",
+      "databaseId": 113209191487,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-service-test (school-core-service)",
+      "databaseId": 113209191531,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-service-test (identity-service)",
+      "databaseId": 113209191575,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-service-test (api-gateway)",
+      "databaseId": 113209191602,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-service-test (operations-service)",
+      "databaseId": 113209191608,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-service-test (platform-service)",
+      "databaseId": 113209191677,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release-service-test (frontend)",
+      "databaseId": 113209191687,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "no-deployment",
+      "databaseId": 113209192713,
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "configuration-reconciliation-required",
+      "databaseId": 113209193308,
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "name": "build-images (services/api-gateway, api-gateway, custoking-api-gateway, services/api-gateway/Dock...",
+      "databaseId": 113210978652,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "build-images (pom.xml|services/identity-service, identity-service, custoking-identity-service, se...",
+      "databaseId": 113210978691,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "build-images (frontend, frontend, VITE_API_BASE_URL=/api/v1, custoking-frontend, frontend/Dockerf...",
+      "databaseId": 113210978725,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "build-images (pom.xml|services/platform-service, platform-service, custoking-platform-service, se...",
+      "databaseId": 113210978726,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "build-images (pom.xml|services/billing-service, billing-service, custoking-billing-service, servi...",
+      "databaseId": 113210978746,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "build-images (pom.xml|services/operations-service, operations-service, custoking-operations-servi...",
+      "databaseId": 113210978748,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "build-images (pom.xml|services/school-core-service, school-core-service, custoking-school-core-se...",
+      "databaseId": 113210978910,
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "release",
+      "databaseId": 113212167513,
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "scope": "Actual all-seven release suites and build jobs, exact source and actual post-merge dev CodeQL uploads. Earlier portrait-only counts and local/CI regressions are not added to these totals.",
+  "curatedAtUtc": "2026-10-08T08:29:56.395172+00:00"
+}

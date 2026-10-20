@@ -2,6 +2,7 @@ package com.custoking.ims.platformservice.api;
 
 import com.custoking.ims.platformservice.persistence.AuditEvent;
 import com.custoking.ims.platformservice.persistence.AuditEventRepository;
+import com.custoking.ims.platformservice.persistence.AuditIngestQuota;
 import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantScope;
 import jakarta.persistence.criteria.Predicate;
@@ -37,12 +38,14 @@ public class AuditIngestController {
 
     private final AuditEventRepository repository;
     private final String ingestToken;
+    private final AuditIngestQuota quota;
 
     public AuditIngestController(
             AuditEventRepository repository,
-            @Value("${audit.ingest-token:}") String ingestToken) {
+            @Value("${audit.ingest-token:}") String ingestToken, AuditIngestQuota quota) {
         this.repository = repository;
         this.ingestToken = ingestToken == null ? "" : ingestToken.trim();
+        this.quota=quota;
     }
 
     @PostMapping
@@ -54,14 +57,18 @@ public class AuditIngestController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "action is required");
         }
 
-        // The shared token only proves the request came through a trusted hop; a user request the
-        // gateway relays carries a principal, and that principal is the record's actor, tenant and
-        // time. Only superadmin and header-less system callers may attribute records freely.
+        // Public ingest is unverified client telemetry. Even SUPERADMIN cannot claim a
+        // successful server business action or attribute it to somebody else.
         TenantContext principal = TenantContext.get();
-        boolean bindToPrincipal = principal.isAuthenticated() && !principal.isSuperAdmin();
+        if(principal.userId()==null) throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Client telemetry requires an authenticated user");
+        if(request.action().length()>180 || length(request.oldValue())+length(request.newValue())>16384)
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE,"Telemetry payload exceeds limits");
+        if(!quota.allow(principal.userId(),principal.schoolId())) throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,"Telemetry quota exceeded");
+        boolean bindToPrincipal = true;
 
         AuditEvent event = new AuditEvent();
-        event.setAction(request.action());
+        event.setAction("CLIENT."+request.action());
+        event.setProvenance("CLIENT_TELEMETRY");
         event.setUserId(bindToPrincipal ? principal.userId() : request.userId());
         event.setSchoolId(bindToPrincipal ? principal.schoolId() : request.schoolId());
         event.setEntityType(request.entityType());
@@ -72,7 +79,7 @@ public class AuditIngestController {
         event.setActorEmail(trim(bindToPrincipal ? principal.email() : request.actorEmail(), 255));
         event.setOldValue(request.oldValue());
         event.setNewValue(request.newValue());
-        event.setOutcome(StringUtils.hasText(request.outcome()) ? request.outcome() : "SUCCESS");
+        event.setOutcome("UNVERIFIED");
         event.setEventTimestamp(!bindToPrincipal && request.timestamp() != null ? request.timestamp() : OffsetDateTime.now());
 
         AuditEvent saved = repository.save(event);
@@ -147,6 +154,7 @@ public class AuditIngestController {
         }
         return value.substring(0, maxLength);
     }
+    private int length(String value) { return value == null ? 0 : value.length(); }
 
     public record AuditEventRequest(
             String action,
@@ -189,7 +197,7 @@ public class AuditIngestController {
             String oldValue,
             String newValue,
             String outcome,
-            OffsetDateTime timestamp) {
+            OffsetDateTime timestamp, String provenance) {
 
         public static AuditEventEntry from(AuditEvent event) {
             return new AuditEventEntry(
@@ -206,7 +214,7 @@ public class AuditIngestController {
                     event.getOldValue(),
                     event.getNewValue(),
                     event.getOutcome(),
-                    event.getEventTimestamp());
+                    event.getEventTimestamp(),event.getProvenance());
         }
     }
 }

@@ -7,6 +7,7 @@ param(
     [string]$OutputPath = "artifacts/direct-service-smoke-job.generated.yaml",
     [string]$DirectSmokeServiceAccount,
     [string]$SmokeSchoolId = "",
+    [string]$SmokeUserId = "",
     [string]$GcloudPath = "gcloud"
 )
 
@@ -52,6 +53,10 @@ if (-not (Test-Path -LiteralPath $outputDirectory)) {
     New-Item -ItemType Directory -Path $outputDirectory | Out-Null
 }
 
+if ($SmokeUserId -and ($SmokeUserId -notmatch '^[1-9][0-9]*$' -or $SmokeSchoolId -notmatch '^[1-9][0-9]*$')) {
+    throw "Positive read-only direct smoke requires a dedicated positive user ID and school ID."
+}
+
 $schoolCoreService = "custoking-school-core-service-$Environment"
 $catalogTokenSecret = "catalog-read-token-$Environment"
 $tenantTokenSecret = "tenant-school-read-token-$Environment"
@@ -70,6 +75,7 @@ $content = $content.Replace("__DIRECT_SMOKE_SERVICE_ACCOUNT__", (Escape-YamlValu
 $content = $content.Replace("__CATALOG_URL__", (Escape-YamlValue $catalogUrl))
 $content = $content.Replace("__TENANT_URL__", (Escape-YamlValue $tenantUrl))
 $content = $content.Replace("__SMOKE_SCHOOL_ID__", (Escape-YamlValue $SmokeSchoolId))
+$content = $content.Replace("__SMOKE_USER_ID__", (Escape-YamlValue $SmokeUserId))
 $content = $content.Replace("__CATALOG_TOKEN_SECRET__", (Escape-YamlValue $catalogTokenSecret))
 $content = $content.Replace("__TENANT_TOKEN_SECRET__", (Escape-YamlValue $tenantTokenSecret))
 $content | Set-Content -Path $output -Encoding UTF8

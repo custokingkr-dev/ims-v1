@@ -1,0 +1,1213 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T10:19:06.478561+00:00",
+  "scope": "Local frozen source/log/static audit only; no cloud or provider calls; no live receipt authority",
+  "sourceFiles": [
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportController.java",
+      "sha256": "5144f4ef4a0dbcc03a9ff53b8e5c9962bee596330e0df990d71f6dd0e7384c70",
+      "modifiedAtUtc": "2026-10-08T09:57:09.799220+00:00"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/GenericNotificationReportService.java",
+      "sha256": "5ec28b3f205e67859a954fa00677442fd8095d3267e68ca495b9ef6fda81ad79",
+      "modifiedAtUtc": "2026-10-08T09:53:31.931614+00:00"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/GenericNotificationUnknownEvidence.java",
+      "sha256": "0574da3c185734ea8ac8ece250a2e02a086580b96cca94bc2088c33b048c1819",
+      "modifiedAtUtc": "2026-10-08T09:49:56.223460+00:00"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/NotificationReportAuthority.java",
+      "sha256": "33df51c0dd6868c2be79848194d4e630f5e0f54325dae046477d872f4e0fd4eb",
+      "modifiedAtUtc": "2026-10-08T09:49:56.220862+00:00"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/GenericNotificationReportRepository.java",
+      "sha256": "ede8727cbb4c32763dc30fac5bbcf7789338c8ef03013e2f062e1691f3c2c585",
+      "modifiedAtUtc": "2026-10-08T09:53:31.934045+00:00"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodec.java",
+      "sha256": "b9ac0edab783cd4b2bd5306c41b3041d6c6d20cf995460ef20c1fa40fe17eeb5",
+      "modifiedAtUtc": "2026-10-08T09:56:05.080176+00:00"
+    },
+    {
+      "path": "services/platform-service/src/main/resources/db/migration/notification/V18__generic_unknown_report_assertions.sql",
+      "sha256": "dcae3045b1cab63383eee5878941264cef2e98b80eb660910deca3b5bc968a4c",
+      "modifiedAtUtc": "2026-10-08T09:59:35.697359+00:00"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportHttpIntegrationTest.java",
+      "sha256": "fcc2cb03c5a176df7367682a1f5d8c48fb2f6f018446f6e78714cc306f726d94",
+      "modifiedAtUtc": "2026-10-08T09:55:00.721211+00:00"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/persistence/GenericNotificationReportIntegrationTest.java",
+      "sha256": "51c7f97f76fdf01c58d143da29d16ddc014d63dce6466ad4df1eb55c4238174d",
+      "modifiedAtUtc": "2026-10-08T09:58:49.337017+00:00"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/application/GenericNotificationReportServiceTest.java",
+      "sha256": "37e5f220c37dc38f411948a032dcca1a38394296de65d6b5e5c4f028a15307da",
+      "modifiedAtUtc": "2026-10-08T09:57:55.711309+00:00"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodecTest.java",
+      "sha256": "736401fe8d4b7f24462b9758b5f5748de4934680e1eb54b39bb469d0a8893572",
+      "modifiedAtUtc": "2026-10-08T09:56:40.297960+00:00"
+    },
+    {
+      "path": "scripts/audit-service-authorization-boundaries.ps1",
+      "sha256": "bc5cacfc9a70eda5a7b5414f6165565e8c703f859447fa39a318acf9aeef13c0",
+      "modifiedAtUtc": "2026-10-08T10:17:58.714189+00:00"
+    },
+    {
+      "path": "scripts/tests/service_authorization_machine_proof_test.py",
+      "sha256": "648af9c0fcfa5cdd96ee699098a15c8438b9bf66f0d5e5ef92723875a7f484a4",
+      "modifiedAtUtc": "2026-10-08T10:17:58.714189+00:00"
+    }
+  ],
+  "testLogs": [
+    {
+      "path": "tmp/platform-provider-followup-final.log",
+      "sha256": "c0a59dcc77323cf69a75c3fbc8838f57776be69feb6c9711a826fb99ad9fcd6b",
+      "aggregate": {
+        "tests": 448,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "buildSuccess": true,
+      "classes": [
+        {
+          "class": "com.custoking.ims.migration.MigrationDisabledConfigurationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.migration.MigrationOnlyMainIntegrationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.migration.MigrationRuntimePolicyTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.AuditIngestControllerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.AuditTenantScopingTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.compat.AuditPublicCompatibilityControllerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.compat.ReportingApprovalsCompatibilityControllerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.AsyncWorkTriggerControllerTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.GenericNotificationReportControllerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.GenericNotificationReportHttpIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.NotificationDeliveryCommandControllerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.PubSubPushControllerTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.Msg91BroadcastReportControllerTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.NotificationBroadcastCapabilitiesTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.NotificationStatusControllerTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.NotificationTenantScopingTest",
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.NotificationValidationTest",
+          "tests": 19,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.ReportingReadControllerTest",
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.ReportingTenantScopingTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.ReportingValidationTest",
+          "tests": 17,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.ReportingWorkspaceContractTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.AttendanceFactProjectionIntegrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.BillingInvoiceProjectionIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.BroadcastDeliveryWorkerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.BroadcastDispatchServiceTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.BroadcastLiveDispatchServiceTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.BroadcastLiveWorkerTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.CatalogFactProjectionIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.CurrentNotificationRecipientPolicyTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.DimensionProjectionIntegrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.FeeFactProjectionIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.FirefightingFactProjectionIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.GenericNotificationReportServiceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.GenericNotificationSubmissionWorkerTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationDeliveryBroadcastDedupeTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationDeliveryCommandServiceTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationDeliveryServiceTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationInboxProcessorTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationPolicyGuardAbsenteeContractTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationSubmissionResultTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.ReportingEventInboxProcessorRetryTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.StudentDimensionProjectionIntegrationTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.StudentReviewFactProjectionIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.config.RequestCorrelationFilterTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91BroadcastLiveProviderTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91GenericSubmissionTransportTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91NotificationDeliveryProviderTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91SmsV3ReportCodecTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.SchoolCoreBroadcastRecipientPolicyTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.observability.TracingAutoConfigTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.BroadcastDispatchRepositoryIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.BroadcastLiveRepositoryIntegrationTest",
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.GenericNotificationReportIntegrationTest",
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.GenericNotificationSubmissionIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.NotificationBroadcastDispatchPolicyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingApprovalRepositoryTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingDimensionReadIntegrationTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingFactReadIntegrationTest",
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingReadRepositoryInvoiceListIntegrationTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingReadRepositoryInvoiceMetricsIntegrationTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingTenantKeyMigrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.CallerIdentityTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.InternalCallerAuthenticatorTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.MachineCallerFilterTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.NotificationRlsIntegrationTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.PubSubPushAuthenticatorTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.ReportingCommandCenterRlsIntegrationTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.ReportingFactRlsIntegrationTest",
+          "tests": 18,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.ReportingRlsIntegrationTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.RuntimeDbRoleGuardIntegrationTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.TenantScopeTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "path": "tmp/provider-followup-final-focused.log",
+      "sha256": "738a3d5ba8a8a72b2cc7723cd6cdbab2353a0defe367a003467cc3f26fd935df",
+      "aggregate": {
+        "tests": 21,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "buildSuccess": true,
+      "classes": [
+        {
+          "class": "com.custoking.ims.platformservice.application.GenericNotificationReportServiceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91SmsV3ReportCodecTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.GenericNotificationReportIntegrationTest",
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    {
+      "path": "tmp/platform-provider-followup-frozen-final.log",
+      "sha256": "926a90fdbd33f6bbf0d2146d22d26ffc19f2cf8e57ba4000badf82097b5fde1c",
+      "aggregate": {
+        "tests": 448,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "buildSuccess": true,
+      "classes": [
+        {
+          "class": "com.custoking.ims.migration.MigrationDisabledConfigurationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.migration.MigrationOnlyMainIntegrationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.migration.MigrationRuntimePolicyTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.AuditIngestControllerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.AuditTenantScopingTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.compat.AuditPublicCompatibilityControllerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.compat.ReportingApprovalsCompatibilityControllerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.AsyncWorkTriggerControllerTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.GenericNotificationReportControllerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.GenericNotificationReportHttpIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.NotificationDeliveryCommandControllerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.PubSubPushControllerTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.Msg91BroadcastReportControllerTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.NotificationBroadcastCapabilitiesTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.NotificationStatusControllerTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.NotificationTenantScopingTest",
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.NotificationValidationTest",
+          "tests": 19,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.ReportingReadControllerTest",
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.ReportingTenantScopingTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.ReportingValidationTest",
+          "tests": 17,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.ReportingWorkspaceContractTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.AttendanceFactProjectionIntegrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.BillingInvoiceProjectionIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.BroadcastDeliveryWorkerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.BroadcastDispatchServiceTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.BroadcastLiveDispatchServiceTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.BroadcastLiveWorkerTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.CatalogFactProjectionIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.CurrentNotificationRecipientPolicyTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.DimensionProjectionIntegrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.FeeFactProjectionIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.FirefightingFactProjectionIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.GenericNotificationReportServiceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.GenericNotificationSubmissionWorkerTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationDeliveryBroadcastDedupeTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationDeliveryCommandServiceTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationDeliveryServiceTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationInboxProcessorTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationPolicyGuardAbsenteeContractTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.NotificationSubmissionResultTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.ReportingEventInboxProcessorRetryTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.StudentDimensionProjectionIntegrationTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.application.StudentReviewFactProjectionIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.config.RequestCorrelationFilterTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91BroadcastLiveProviderTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91GenericSubmissionTransportTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91NotificationDeliveryProviderTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91SmsV3ReportCodecTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.SchoolCoreBroadcastRecipientPolicyTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.observability.TracingAutoConfigTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.BroadcastDispatchRepositoryIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.BroadcastLiveRepositoryIntegrationTest",
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.GenericNotificationReportIntegrationTest",
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.GenericNotificationSubmissionIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.NotificationBroadcastDispatchPolicyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingApprovalRepositoryTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingDimensionReadIntegrationTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingFactReadIntegrationTest",
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingReadRepositoryInvoiceListIntegrationTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingReadRepositoryInvoiceMetricsIntegrationTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.ReportingTenantKeyMigrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.CallerIdentityTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.InternalCallerAuthenticatorTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.MachineCallerFilterTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.NotificationRlsIntegrationTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.PubSubPushAuthenticatorTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.ReportingCommandCenterRlsIntegrationTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.ReportingFactRlsIntegrationTest",
+          "tests": 18,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.ReportingRlsIntegrationTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.RuntimeDbRoleGuardIntegrationTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.TenantScopeTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    }
+  ],
+  "sourceProvenanceLimit": "Retrospective file hashes are not signed build attestations. Final full448 rerun used the complete frozen Java/test/migration source, including V18 event index, resolving the earlier full-run resource-copy timing caveat. All11platform owned source/test hashes match the earlier local proof; no Java/migration/test edits occurred during this final run.",
+  "copiedFinalMigrationMatchesCurrentSource": true,
+  "ciWorkflow": {
+    "path": ".github/workflows/ci-pr.yml",
+    "sha256": "7c482130edb2ae442db15fefaaada11e0fa03c63b52c2e8096a9c046a79813b2",
+    "yamlParsed": true,
+    "restoreCoverage": [
+      {
+        "job": "static-architecture-audits",
+        "name": "Verify restore-target rejection, historical coverage and real PostgreSQL TLS under optimization",
+        "command": "python3 -O -m unittest scripts.tests.dev_restore_target_verifier_test scripts.tests.dev_restore_target_verifier_postgres_test scripts.tests.dev_erasure_coverage_test",
+        "optimized": true
+      },
+      {
+        "job": "windows-security-helper-validation",
+        "name": "Verify optimized restore-verifier deadlines and historical coverage on Windows",
+        "command": "python -O -m unittest scripts.tests.dev_restore_target_verifier_test scripts.tests.dev_erasure_coverage_test",
+        "optimized": true
+      }
+    ],
+    "review": "Linux runs both verifier suites plus historical erasure coverage under python optimization, pinned psycopg3.3.4; Windows runs deadline/coverage suites under optimization. V18 body/shape/ACL/FORCE regressions reside in the included restore suites. This is source review, not a remote CI success claim."
+  },
+  "staticAudits": [
+    {
+      "script": "scripts/audit-service-authorization-boundaries.ps1",
+      "exitCode": 0,
+      "log": "tmp/provider-audit-audit-service-authorization-boundaries.ps1.log",
+      "logSha256": "0bdf8b66b89de6e5556c2cdc16183d9d317b6fc7b08f3b90f749c3d1a75d8174",
+      "scriptSha256": "bc5cacfc9a70eda5a7b5414f6165565e8c703f859447fa39a318acf9aeef13c0"
+    },
+    {
+      "script": "scripts/audit-microservice-runtime-boundaries.ps1",
+      "exitCode": 0,
+      "log": "tmp/provider-audit-audit-microservice-runtime-boundaries.ps1.log",
+      "logSha256": "2bfcca545e483b6fc235f9acecc6989b85ea2f2c433076aeac105ed20256706a",
+      "scriptSha256": "d7939d0716e548ce91f6d33da812af2acdd097d4fded53bbcd5fbabc45d46608"
+    },
+    {
+      "script": "scripts/audit-deployment-boundaries.ps1",
+      "exitCode": 0,
+      "log": "tmp/provider-audit-audit-deployment-boundaries.ps1.log",
+      "logSha256": "4da948e8c8ad006d0c9f40d0ea8d28ad19b1e01b6535fa4bad34e172e3e75c35",
+      "scriptSha256": "c2a9b3b5e086ea9e7dfa9e9f76fb7bd528351b40b740fdb1cf6144affa0416fe"
+    },
+    {
+      "script": "scripts/audit-microservice-build-catalog.ps1",
+      "exitCode": 0,
+      "log": "tmp/provider-audit-audit-microservice-build-catalog.ps1.log",
+      "logSha256": "5a2d17ebd683ab174abe4fcc647fe67f9b71263919ba9adc03e38488db2d6814",
+      "scriptSha256": "d3cea49d41e2f05906d1c82e249208fc6305cfdb47c04205eb91a620a2507a5a"
+    },
+    {
+      "script": "scripts/audit-service-contract-coverage.ps1",
+      "exitCode": 0,
+      "log": "tmp/provider-audit-audit-service-contract-coverage.ps1.log",
+      "logSha256": "dbccc8cfc8c04983a3d02a5447068421d05f75af8bc0f1f8120f4d710a8cddbb",
+      "scriptSha256": "8c4c74492465117f5bea0012e4f5b603eabad9a91453f2eaeccd82f958e6e3b5"
+    }
+  ],
+  "findings": [
+    {
+      "id": "factored-report-authority-static-audit",
+      "status": "resolved-source-verified",
+      "detail": "Narrow complete factored authority/OIDC/controller binding and ordering contract added, no bypass allowlist;14tamper/controltests+24offlineaudits pass. Source review and local tests only, not remote CI/live provider proof."
+    }
+  ],
+  "providerLimitations": [
+    "Normalized receiver remains disabled; UNVERIFIED assertions cannot promote UNKNOWN or authorize resend",
+    "SMS-v3 decoder is dormant only; vendor account/timezone/authenticated callback and controlled provider receipt are not proved"
+  ],
+  "previousLocalProofSha256": "a090a6adbf1dc46291e86b62d5481e9ecab5e19435427983ea728e237940117c",
+  "platformSourceUnchangedSincePreviousLocalProof": true,
+  "offlineAudit": {
+    "exitCode": 0,
+    "completedSteps": 24,
+    "log": "tmp/provider-followup-offline-audits.log",
+    "logSha256": "43cc02525272c14c4334c38652d49dc736b791c9bf544e74eceb0470fa82142d"
+  },
+  "authorizationRegression": {
+    "path": "tmp/provider-authorization-audit-regressions.log",
+    "sha256": "eec0db34ede64e820f0175bece58462fa4899a19aef09687cba7e7afa3c5bad4",
+    "tests": 14,
+    "success": true,
+    "scope": "Exact controller/helper/OIDC/purpose contract, weak token checks, commented old guard, removed/late body guards, extra PostMapping and RequestMapping methods, literal Bearer delimiter, wrong machine purpose"
+  }
+}

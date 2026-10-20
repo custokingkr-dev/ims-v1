@@ -97,6 +97,18 @@ class GuardianConsentRepositoryIntegrationTest {
         assertThat(studentValue("father_contact")).isNull();
     }
 
+    @Test void studentWritesAdvanceProjectionVersionAndCallerCannotRegressIt() {
+        JdbcClient jdbc = JdbcClient.create(dataSource);
+        long first = jdbc.sql("SELECT aggregate_version FROM student.students WHERE id = 1").query(Long.class).single();
+        jdbc.sql("UPDATE student.students SET full_name = 'Updated', aggregate_version = 1 WHERE id = 1").update();
+        long second = jdbc.sql("SELECT aggregate_version FROM student.students WHERE id = 1").query(Long.class).single();
+        assertThat(second).isEqualTo(first + 1);
+        repository.addGuardian(1L, Map.of("fullName", "Version Parent", "phone", "9876543210", "relationship", "FATHER", "primary", true));
+        var versions = jdbc.sql("SELECT (payload->>'aggregateVersion')::bigint FROM tenant_school.outbox_events WHERE event_type = 'student.upserted.v1'")
+                .query(Long.class).list();
+        assertThat(versions).isNotEmpty().allSatisfy(version -> assertThat(version).isGreaterThan(second));
+    }
+
     @Test
     void changingDestinationClearsPreviouslyVerifiedContactEvenWhenEditFormPostsTrue() {
         Map<String, Object> created = repository.addGuardian(1L, Map.of(

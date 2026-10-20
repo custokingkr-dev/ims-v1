@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import api from '../../../services/api';
+import { studentClient } from '../../../services/studentApi';
+import type { PromotionBatch, StudentDirectory, StudentDirectoryRow, StudentHistory, StudentWorkspaceDetail } from '../../../generated/studentClient';
+
+type StudentModalDetail = Partial<StudentWorkspaceDetail> & Pick<StudentWorkspaceDetail, 'id' | 'fullName'>;
 import Paginator from '../../../components/Paginator';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
@@ -53,36 +57,6 @@ interface AcademicYearOption {
   active?: boolean;
 }
 
-interface StudentHistoryPayload {
-  historyYears?: Array<{ id: string; label: string }>;
-  enrollments?: Array<Record<string, any>>;
-  imports?: Array<Record<string, any>>;
-  promotions?: Array<Record<string, any>>;
-  feeAssignments?: Array<Record<string, any>>;
-  feePayments?: Array<Record<string, any>>;
-}
-
-interface PromotionBatchItem {
-  id: string;
-  studentName: string;
-  admissionNumber: string;
-  sourceClassName?: string;
-  sourceSectionName?: string;
-  targetClassName?: string;
-  targetSectionName?: string;
-  action?: string;
-  status?: string;
-  reason?: string;
-}
-
-interface PromotionBatch {
-  id: string;
-  status: string;
-  promoted?: number;
-  skipped?: number;
-  items?: PromotionBatchItem[];
-}
-
 export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
@@ -95,10 +69,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [studentSearch, setStudentSearch] = useWorkspaceDraft('students.search', '');
   const [studentsPage, setStudentsPage] = useWorkspaceDraft('students.page', 0);
   const PAGE_SIZE = 50;
-  const [studentsView, setStudentsView] = useState<any>({ items: [], filteredCount: 0, filteredSections: 0, totalPages: 1, filters: { classes: [], sections: [], feeStatuses: ['Paid', 'Overdue', 'Pending', 'Partial'] } });
+  const [studentsView, setStudentsView] = useState<StudentDirectory>({ items: [], page: 0, size: PAGE_SIZE, totalItems: 0, search: '', filteredCount: 0, filteredSections: 0, totalPages: 1, filters: { classes: [], sections: [], feeStatuses: ['Paid', 'Overdue', 'Pending', 'Partial'] } });
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentsLoaded, setStudentsLoaded] = useState(false);
-  const [studentDetail, setStudentDetail] = useWorkspaceDraft<any | null>('students.detail', null);
+  const [studentDetail, setStudentDetail] = useWorkspaceDraft<StudentModalDetail | null>('students.detail', null);
   const [studentModalOpen, setStudentModalOpen] = useWorkspaceDraft('students.detailOpen', false);
   const [studentModalLoading, setStudentModalLoading] = useState(false);
   const [studentsError, setStudentsError] = useState<string | null>(null);
@@ -109,7 +83,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [modalError, setModalError] = useState<string | null>(null);
   const [classOptions, setClassOptions] = useWorkspaceDraft<StudentClassOption[]>('students.editClasses', []);
   const [sectionOptions, setSectionOptions] = useWorkspaceDraft<StudentSectionOption[]>('students.editSections', []);
-  const [studentHistory, setStudentHistory] = useState<StudentHistoryPayload | null>(null);
+  const [studentHistory, setStudentHistory] = useState<StudentHistory | null>(null);
   const [studentHistoryLoading, setStudentHistoryLoading] = useState(false);
   const [studentHistoryError, setStudentHistoryError] = useState<string | null>(null);
   const [historyYearFilter, setHistoryYearFilter] = useState('all');
@@ -138,27 +112,54 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const clearProfileDirty = useDraftDirty('student-profile', profileDirty);
   useDialogFocus(studentDialogRef, studentModalOpen, () => closeStudentModal(), saving);
 
+  const mounted = useRef(true);
+  const selectionEpoch = useRef(0);
+  const selectedStudentId = useRef<number | null>(studentModalOpen ? studentDetail?.id ?? null : null);
+  const historyRequestId = useRef(0);
+  const verificationRequestId = useRef(0);
+  const sectionRequestId = useRef(0);
+  const directoryQuery = useRef({ filters: studentFilters, page: studentsPage, search: studentSearch });
+  directoryQuery.current = { filters: studentFilters, page: studentsPage, search: studentSearch };
+  const selectionCurrent = (epoch: number, id: number) => mounted.current
+    && selectionEpoch.current === epoch && selectedStudentId.current === id;
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      selectionEpoch.current += 1;
+      studentsRequestId.current += 1;
+      historyRequestId.current += 1;
+      verificationRequestId.current += 1;
+      sectionRequestId.current += 1;
+    };
+  }, []);
+
   const loadStudents = async (filters = studentFilters, page = studentsPage, search = studentSearch) => {
     const requestId = ++studentsRequestId.current;
     try {
       setStudentsLoading(true);
       setStudentsError(null);
-      const params: Record<string, any> = { page, size: PAGE_SIZE };
+      const params: NonNullable<Parameters<typeof studentClient.getStudentDirectory>[0]> = { page, size: PAGE_SIZE, ...(schoolScopedParams || {}) };
       if (filters.className !== 'All') params.class = filters.className;
       if (filters.sectionName !== 'All') params.section = filters.sectionName;
       if (filters.feeStatus !== 'All') params.feeStatus = filters.feeStatus;
       const trimmedSearch = search.trim();
       if (trimmedSearch) params.q = trimmedSearch;
-      const res = await api.get('/students', { params: { ...params, ...(schoolScopedParams || {}) } });
-      if (requestId !== studentsRequestId.current) return;
-      setStudentsView(res.data);
+      const data = await studentClient.getStudentDirectory(params);
+      if (!mounted.current || requestId !== studentsRequestId.current) return;
+      setStudentsView(data);
       setStudentsLoaded(true);
     } catch {
-      if (requestId !== studentsRequestId.current) return;
+      if (!mounted.current || requestId !== studentsRequestId.current) return;
       setStudentsError('Failed to load students. Please try again.');
     } finally {
-      if (requestId === studentsRequestId.current) setStudentsLoading(false);
+      if (mounted.current && requestId === studentsRequestId.current) setStudentsLoading(false);
     }
+  };
+
+  const refreshStudents = () => {
+    const current = directoryQuery.current;
+    return loadStudents(current.filters, current.page, current.search);
   };
 
   /** When filters change, reset to page 0 and reload. */
@@ -198,156 +199,184 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     return () => window.clearTimeout(timer);
   }, [studentSearchInput, studentSearch, studentFilters]);
 
-  const enterEditMode = (detail: any) => {
+  const enterEditMode = (detail: StudentModalDetail) => {
+    const epoch = selectionEpoch.current;
+    const id = detail.id;
+    const sectionRequest = ++sectionRequestId.current;
     setModalError(null);
     setForm(studentDetailToProfileForm(detail));
     setEditing(true);
     void api.get('/classes', { params: schoolScopedParams })
-      .then((r) => setClassOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setClassOptions([]));
+      .then((r) => { if (selectionCurrent(epoch, id)) setClassOptions(Array.isArray(r.data) ? r.data : []); })
+      .catch(() => { if (selectionCurrent(epoch, id)) setClassOptions([]); });
     if (detail.classId) {
       void api.get(`/classes/${encodeURIComponent(detail.classId)}/sections`, { params: schoolScopedParams })
-        .then((r) => setSectionOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setSectionOptions([]));
-    } else {
-      setSectionOptions([]);
-    }
+        .then((r) => { if (selectionCurrent(epoch, id) && sectionRequest === sectionRequestId.current) setSectionOptions(Array.isArray(r.data) ? r.data : []); })
+        .catch(() => { if (selectionCurrent(epoch, id) && sectionRequest === sectionRequestId.current) setSectionOptions([]); });
+    } else setSectionOptions([]);
   };
 
-  const openStudentModal = async (student: any, editMode = false) => {
-    setStudentDetailLimited(false);
+  const openStudentModal = async (student: StudentDirectoryRow, editMode = false): Promise<boolean> => {
+    const id = student.id;
+    const epoch = ++selectionEpoch.current;
+    selectedStudentId.current = id;
+    historyRequestId.current += 1;
+    verificationRequestId.current += 1;
+    setStudentDetail(student);
+    setStudentDetailLimited(true);
     setEditing(false);
     setModalError(null);
     setVerificationSummary(null);
     setVerificationError(null);
+    setVerificationLoading(false);
+    setEditPhotoBusy(false);
+    setVerificationBusy('');
     setVerificationPanelOpen(false);
     setStudentHistory(null);
+    setStudentHistoryLoading(false);
     setStudentHistoryError(null);
     setHistoryYearFilter('all');
     setHistorySearchInput('');
     setHistorySearch('');
-    let detail = student;
+    let detail: StudentModalDetail = student;
+    setStudentModalOpen(true);
+    setStudentModalLoading(true);
     try {
-      setStudentModalOpen(true);
-      setStudentModalLoading(true);
-      const res = await api.get(`/students/${student.id}/workspace`);
-      detail = res.data;
+      const next = await studentClient.getStudentWorkspace({ id });
+      if (!selectionCurrent(epoch, id)) return false;
+      if (next.id !== id) throw new Error('Student details did not match the selected student.');
+      detail = next;
       setStudentDetail(detail);
+      setStudentDetailLimited(false);
     } catch {
-      detail = student;
-      setStudentDetail(detail);
+      if (!selectionCurrent(epoch, id)) return false;
+      setStudentDetail(student);
       setStudentDetailLimited(true);
     } finally {
-      setStudentModalLoading(false);
-      if (editMode) enterEditMode(detail);
+      if (selectionCurrent(epoch, id)) {
+        setStudentModalLoading(false);
+        if (editMode) enterEditMode(detail);
+      }
     }
+    return selectionCurrent(epoch, id);
   };
 
-  const openStudentVerification = async (student: any) => {
-    await openStudentModal(student);
+  const openStudentVerification = async (student: StudentDirectoryRow) => {
+    if (!await openStudentModal(student)) return;
     setVerificationPanelOpen(true);
-    void loadStudentVerification(Number(student.id));
+    void loadStudentVerification(student.id);
   };
 
   const closeStudentModal = () => {
     if (saving || (profileDirty && !window.confirm('Discard unsaved changes to this student profile?'))) return;
+    selectionEpoch.current += 1;
+    selectedStudentId.current = null;
+    historyRequestId.current += 1;
+    verificationRequestId.current += 1;
+    sectionRequestId.current += 1;
     clearProfileDirty();
     setStudentModalOpen(false);
+    setStudentModalLoading(false);
     setEditing(false);
     setModalError(null);
     setVerificationSummary(null);
     setVerificationError(null);
+    setVerificationLoading(false);
     setVerificationPanelOpen(false);
     setVerificationBusy('');
     setStudentHistory(null);
+    setStudentHistoryLoading(false);
     setStudentHistoryError(null);
     setHistoryYearFilter('all');
     setHistorySearchInput('');
     setHistorySearch('');
   };
 
-  // NOTE: GET /api/v1/students/{id}/workspace returns the rich `workspaceStudentDetail`
-  // shape — field names are `admissionNumber`, `boardRegistrationNumber`, `dateOfBirth`,
-  // and address is a nested object `{houseNumber, street, locality, city, state, pinCode, full}`.
-  // The edit form below is pre-filled/saved using these workspace keys; `updateStudent` on the
-  // backend accepts both flat and workspace-shaped keys via `firstPresent(...)`.
   const editPhotoInputRef = useRef<HTMLInputElement | null>(null);
   const [editPhotoBusy, setEditPhotoBusy] = useState(false);
 
   const uploadEditPhoto = async (file: File) => {
     if (!studentDetail) return;
+    const id = studentDetail.id;
+    const epoch = selectionEpoch.current;
     const validationError = validateStudentPhotoFile(file);
     if (validationError) { setModalError(validationError); return; }
     setEditPhotoBusy(true);
     setModalError(null);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      await api.post(`/students/${studentDetail.id}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      const res = await api.get(`/students/${studentDetail.id}/workspace`);
-      setStudentDetail(res.data);
-      setVerificationSummary(null);
-      setVerificationPanelOpen(false);
-      await loadStudents(studentFilters, studentsPage);
+      await studentClient.uploadStudentPhoto({ id }, { file });
+      if (selectionCurrent(epoch, id)) {
+        const next = await studentClient.getStudentWorkspace({ id });
+        if (selectionCurrent(epoch, id)) {
+          if (next.id !== id) throw new Error('Student details did not match the selected student.');
+          setStudentDetail(next);
+          setVerificationSummary(null);
+          setVerificationPanelOpen(false);
+        }
+      }
+      if (mounted.current) await refreshStudents();
     } catch (err: unknown) {
-      setModalError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      if (selectionCurrent(epoch, id)) setModalError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
         || (err instanceof Error ? err.message : 'Could not update photo.'));
     } finally {
-      setEditPhotoBusy(false);
-      if (editPhotoInputRef.current) editPhotoInputRef.current.value = '';
+      if (selectionCurrent(epoch, id)) {
+        setEditPhotoBusy(false);
+        if (editPhotoInputRef.current) editPhotoInputRef.current.value = '';
+      }
     }
   };
 
-  const loadStudentVerification = async (studentId = Number(studentDetail?.id)) => {
+  const loadStudentVerification = async (studentId = studentDetail?.id) => {
     if (!studentId || !can('student:update') || !schoolScopedParams) return;
+    const epoch = selectionEpoch.current;
+    const requestId = ++verificationRequestId.current;
+    const current = () => selectionCurrent(epoch, studentId) && requestId === verificationRequestId.current;
     setVerificationLoading(true);
     setVerificationError(null);
     try {
       const next = await fetchStudentVerificationSummary(studentId);
-      setVerificationSummary(next);
+      if (current()) setVerificationSummary(next);
     } catch (err: unknown) {
-      setVerificationError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      if (current()) setVerificationError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
         || (err instanceof Error ? err.message : 'Could not load verification status.'));
-    } finally {
-      setVerificationLoading(false);
-    }
+    } finally { if (current()) setVerificationLoading(false); }
   };
 
   const openVerificationPanel = () => {
     setVerificationPanelOpen(true);
-    if (!verificationSummary && !verificationLoading) {
-      void loadStudentVerification();
-    }
+    if (!verificationSummary && !verificationLoading) void loadStudentVerification();
   };
 
   const markStudentVerified = async (kind: 'profile' | 'photo') => {
     if (!studentDetail?.id) return;
+    const id = studentDetail.id;
+    const epoch = selectionEpoch.current;
     setVerificationBusy(kind);
     setVerificationError(null);
     try {
-      const item = kind === 'profile'
-        ? await verifyStudentProfile(Number(studentDetail.id))
-        : await verifyStudentPhoto(Number(studentDetail.id));
-      setVerificationSummary((current) => ({
+      const item = kind === 'profile' ? await verifyStudentProfile(id) : await verifyStudentPhoto(id);
+      if (selectionCurrent(epoch, id)) setVerificationSummary((current) => ({
         profile: kind === 'profile' ? item : current?.profile ?? null,
         photo: kind === 'photo' ? item : current?.photo ?? null,
       }));
-      await loadStudents(studentFilters, studentsPage, studentSearch);
-      onRefresh();
+      if (mounted.current) { await refreshStudents(); onRefresh(); }
     } catch (err: unknown) {
-      setVerificationError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      if (selectionCurrent(epoch, id)) setVerificationError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
         || (err instanceof Error ? err.message : 'Could not save verification.'));
-    } finally {
-      setVerificationBusy('');
-    }
+    } finally { if (selectionCurrent(epoch, id)) setVerificationBusy(''); }
   };
 
   const onClassChange = (classId: string) => {
+    const id = studentDetail?.id;
+    const epoch = selectionEpoch.current;
+    const requestId = ++sectionRequestId.current;
     setForm((f) => ({ ...f, classId, sectionId: '' }));
-    if (!classId) {
-      setSectionOptions([]);
-      return;
-    }
+    setSectionOptions([]);
+    if (!classId || !id) return;
+    const current = () => selectionCurrent(epoch, id) && requestId === sectionRequestId.current;
     void api.get(`/classes/${encodeURIComponent(classId)}/sections`, { params: schoolScopedParams })
-      .then((r) => setSectionOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setSectionOptions([]));
+      .then((r) => { if (current()) setSectionOptions(Array.isArray(r.data) ? r.data : []); })
+      .catch(() => { if (current()) setSectionOptions([]); });
   };
 
   const updateStudentForm = (patch: Partial<StudentProfileFormState>) => {
@@ -356,55 +385,66 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
 
   const saveStudent = async () => {
     if (!studentDetail) return;
+    const id = studentDetail.id;
+    const epoch = selectionEpoch.current;
     setSaving(true);
     setModalError(null);
     try {
-      await api.put(`/students/${studentDetail.id}`, { ...studentProfileFormToUpdatePayload(form), ...(schoolScopedParams || {}) });
-      const res = await api.get(`/students/${studentDetail.id}/workspace`);
-      setStudentDetail(res.data);
-      setVerificationSummary(null);
-      setVerificationPanelOpen(false);
-      setEditing(false);
-      await loadStudents(studentFilters, studentsPage);
+      const payload = studentProfileFormToUpdatePayload(form);
+      if (!payload.phone) throw new Error('Phone is required');
+      await studentClient.updateStudent({ id }, { ...payload, phone: payload.phone, ...(schoolScopedParams || {}) });
+      if (selectionCurrent(epoch, id)) {
+        const next = await studentClient.getStudentWorkspace({ id });
+        if (selectionCurrent(epoch, id)) {
+          if (next.id !== id) throw new Error('Student details did not match the selected student.');
+          setStudentDetail(next);
+          setVerificationSummary(null);
+          setVerificationPanelOpen(false);
+          setEditing(false);
+        }
+      }
+      if (mounted.current) await refreshStudents();
     } catch (err: unknown) {
-      setModalError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      if (selectionCurrent(epoch, id)) setModalError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
         || (err instanceof Error ? err.message : 'Could not save changes.'));
-    } finally {
-      setSaving(false);
-    }
+    } finally { if (selectionCurrent(epoch, id)) setSaving(false); }
   };
 
   const handleGuardianProfileChanged = async () => {
+    const id = studentDetail?.id;
+    const epoch = selectionEpoch.current;
+    if (!id || !selectionCurrent(epoch, id)) return;
     setVerificationSummary(null);
     setVerificationPanelOpen(false);
-    await loadStudents(studentFilters, studentsPage, studentSearch);
+    await refreshStudents();
     try {
-      const response = await api.get(`/students/${studentDetail?.id}/workspace`);
-      setStudentDetail(response.data);
+      if (!selectionCurrent(epoch, id)) return;
+      const next = await studentClient.getStudentWorkspace({ id });
+      if (selectionCurrent(epoch, id) && next.id === id) setStudentDetail(next);
     } catch {
-      // The guardian card keeps its saved state; the student summary can be refreshed later.
+      // The saved guardian state remains available for a deliberate summary refresh.
     }
-    onRefresh();
+    if (mounted.current) onRefresh();
   };
 
   const loadStudentHistory = async () => {
     if (!studentDetail?.id) return;
+    const id = studentDetail.id;
+    const epoch = selectionEpoch.current;
+    const requestId = ++historyRequestId.current;
+    const current = () => selectionCurrent(epoch, id) && requestId === historyRequestId.current;
+    setStudentHistoryLoading(true);
+    setStudentHistoryError(null);
     try {
-      setStudentHistoryLoading(true);
-      setStudentHistoryError(null);
-      const res = await api.get(`/students/${studentDetail.id}/history`);
-      const payload = res.data || {};
+      const payload = await studentClient.getStudentHistory({ id });
+      if (!current()) return;
+      if (payload.student.id !== id) throw new Error('History did not match the selected student.');
       setStudentHistory(payload);
-      setHistoryYearFilter((current) => {
-        if (current === 'all') return current;
-        const years = Array.isArray(payload.historyYears) ? payload.historyYears : [];
-        return years.some((year: { id: string }) => year.id === current) ? current : 'all';
-      });
+      setHistoryYearFilter((value) => value === 'all' || payload.historyYears.some(year => year.id === value) ? value : 'all');
     } catch (err: unknown) {
-      setStudentHistoryError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not load student history.'));
-    } finally {
-      setStudentHistoryLoading(false);
-    }
+      if (current()) setStudentHistoryError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || (err instanceof Error ? err.message : 'Could not load student history.'));
+    } finally { if (current()) setStudentHistoryLoading(false); }
   };
 
   const requestDeleteStudent = (student: any = studentDetail, options: { closeModal?: boolean } = {}) => {
@@ -428,15 +468,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       setModalError(null);
       setDeleteConfirmError(null);
       if (closeModal === false) setStudentsError(null);
-      await api.delete(`/students/${student.id}`, {
-        headers: {
-          'X-Student-Delete-Confirmation': encodeURIComponent(deleteConfirmText.trim()),
-        },
-      });
+      await studentClient.deleteStudent({ id: student.id, confirmation: deleteConfirmText.trim() });
       setDeleteConfirm(null);
       setDeleteConfirmText('');
-      if (closeModal !== false) closeStudentModal();
-      await loadStudents(studentFilters, studentsPage);
+      if (closeModal !== false && selectedStudentId.current === student.id) { closeStudentModal(); setStudentDetail(null); }
+      if (mounted.current) await refreshStudents();
       onRefresh();
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not delete student.');
@@ -504,11 +540,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     try {
       setPromotionLoading(true);
       setPromotionError(null);
-      const res = await api.post('/students/promotion-batches', {
+      const batch = await studentClient.createPromotionBatch({
         ...promotionForm,
         ...(schoolScopedParams || {}),
       });
-      setPromotionBatch(res.data);
+      setPromotionBatch(batch);
     } catch (err: unknown) {
       setPromotionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not create promotion batch.'));
     } finally {
@@ -521,11 +557,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     try {
       setPromotionLoading(true);
       setPromotionError(null);
-      const res = await api.patch(`/students/promotion-batches/${encodeURIComponent(promotionBatch.id)}/items/${encodeURIComponent(itemId)}`, {
+      const batch = await studentClient.updatePromotionItem({ batchId: promotionBatch.id, itemId }, {
         action,
         reason: action === 'HOLD' ? 'Held from promotion wizard' : '',
       });
-      setPromotionBatch(res.data);
+      setPromotionBatch(batch);
     } catch (err: unknown) {
       setPromotionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not update promotion item.'));
     } finally {
@@ -541,9 +577,9 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     try {
       setPromotionLoading(true);
       setPromotionError(null);
-      const res = await api.post(`/students/promotion-batches/${encodeURIComponent(promotionBatch.id)}/apply`);
-      setPromotionBatch(res.data);
-      await loadStudents(studentFilters, studentsPage);
+      const batch = await studentClient.applyPromotionBatch({ batchId: promotionBatch.id });
+      setPromotionBatch(batch);
+      if (mounted.current) await refreshStudents();
       onRefresh();
     } catch (err: unknown) {
       setPromotionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not apply promotion batch.'));
@@ -597,11 +633,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       0,
     ) / visibleStudentItems.length)
     : 0;
-  const feeFollowUpCount = visibleStudentItems.filter((student: any) =>
+  const feeFollowUpCount = visibleStudentItems.filter((student: StudentDirectoryRow) =>
     ['overdue', 'partial', 'pending'].includes(String(student.feeStatus || '').toLowerCase()),
   ).length;
-  const missingContactCount = visibleStudentItems.filter((student: any) =>
-    !(student.fatherContact || student.parentPhone || student.phone),
+  const missingContactCount = visibleStudentItems.filter((student: StudentDirectoryRow) =>
+    !(student.fatherContact),
   ).length;
 
   function feeStatusClass(status: string): string {
@@ -799,7 +835,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
             )}
             {studentsLoaded && (
               <tbody>
-                {(studentsView.items || []).map((student: any) => {
+                {(studentsView.items || []).map((student: StudentDirectoryRow) => {
                   const fullyVerified = student.profileVerificationStatus === 'COMPLETED'
                     && student.photoVerificationStatus === 'COMPLETED';
                   return (
@@ -831,7 +867,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       <td>
                         <div className="tb">{student.fatherName || '—'}</div>
                       </td>
-                      <td>{student.fatherContact || student.parentPhone || '—'}</td>
+                      <td>{student.fatherContact || '—'}</td>
                       {/* Change 4: Improved fee status badge */}
                       <td>
                         <span className={`ck-status ${feeStatusClass(student.feeStatus ?? '')}`}>
@@ -1050,11 +1086,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                     </div>
                   ) : null}
                   <div className="ck-student-modal-info">
-                    <Info label="Admission No" value={studentDetail.admissionNumber} />
-                    <Info label="Roll No" value={studentDetail.rollNo} />
+                    <Info label="Admission No" value={studentDetail.admissionNumber || '-'} />
+                    <Info label="Roll No" value={studentDetail.rollNo || '-'} />
                     <Info label="Board Registration No" value={studentDetail.boardRegistrationNumber || '—'} />
                     <Info label="Father name" value={studentDetail.fatherName || '—'} />
-                    <Info label="Father contact" value={studentDetail.fatherContact || studentDetail.parentPhone || '—'} />
+                    <Info label="Father contact" value={studentDetail.fatherContact || '—'} />
                     <Info label="Mother name" value={studentDetail.motherName || '—'} />
                     <Info label="Date of birth" value={studentDetail.dateOfBirth || '—'} />
                   </div>

@@ -23,7 +23,7 @@ public class PasswordResetService {
             PasswordEncoder encoder, AuthAbuseProtection abuse,
             @Value("${identity.password-reset.worker-ready:false}") boolean workerReady) {
         if (mailer.enabled() && !workerReady) throw new IllegalArgumentException(
-                "Password reset requires an always-allocated worker with a minimum running instance; verify runtime configuration before enabling it.");
+                "Password reset requires a verified authenticated scheduler or an always-allocated worker before enabling it.");
         this.repository = repository; this.mailer = mailer; this.encoder = encoder; this.abuse = abuse;
     }
 
@@ -37,8 +37,14 @@ public class PasswordResetService {
 
     @Scheduled(fixedDelayString = "${identity.password-reset.delivery-delay-ms:5000}")
     public void deliverPending() {
+        drainPending();
+    }
+
+    /** Request-driven scheduler path; SMTP has bounded connect/read/write timeouts, outside database locks. */
+    public void drainPending() {
         if (!enabled()) return;
-        for (int i = 0; i < 10; i++) {
+        // One leased message per request bounds SMTP occupancy; future scheduler calls resume the durable queue.
+        for (int i = 0; i < 1; i++) {
             var pending = repository.claim();
             if (pending.isEmpty()) return;
             var delivery = pending.get();

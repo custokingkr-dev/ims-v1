@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:35:27.276597+00:00",
+  "decision": "PASS_SCOPED_STATIC_INVENTORY",
+  "blockers": [],
+  "executorPath": "tmp/inspect-current-native-20261009.py",
+  "executorRawSha256": "038a03ff330d8bbeb4514d26704c1af471e9c47dce30abab8d2c63130184c2df",
+  "inventoryPath": "tmp/current-native-binary-inventory-20261009.json",
+  "inventoryRawSha256": "cdb0d8dd45d614f46d842014e31f573d5c1117cb9305e8226f8a7030cfb8265d",
+  "acceptedProofRawSha256": "7c80a89d1a2e2bc54993dd6a272314dfa7f36b5c99324113b9da5f7483d68eab",
+  "independentChecks": [
+    {
+      "service": "platform-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:d3bcbdaef1b1784b1986ac4f923c50c9d5f5d0f7004c6b45cabcb4daef63c6ec",
+      "archiveBytesVerified": 391892992,
+      "regularElfFilesIndependentlyHashed": 808,
+      "recursiveJarsIndependentlyHashed": 136,
+      "extensionSelectedNativeResourcesIndependentlyHashed": 0,
+      "imageIoServiceDeclarationsIndependentlyVerified": 0
+    },
+    {
+      "service": "school-core-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:65e838d902386f8aa5ab2cc121a2984f61745fca88464971730c2bec98e043c6",
+      "archiveBytesVerified": 467507712,
+      "regularElfFilesIndependentlyHashed": 808,
+      "recursiveJarsIndependentlyHashed": 215,
+      "extensionSelectedNativeResourcesIndependentlyHashed": 10,
+      "imageIoServiceDeclarationsIndependentlyVerified": 2
+    }
+  ],
+  "lifecycleReview": "The reviewed executor issues fixed docker image inspect, create --pull=never --network=none --read-only --cap-drop=ALL --security-opt=no-new-privileges --entrypoint=/bin/false, export and exact created-container rm only. It has no start/run/exec command, bind mount, cloud call or native execution. Never-started means through this executor; this peer performed no independent daemon lifecycle readback.",
+  "archiveReview": "Tar members are parsed into memory rather than extracted into filesystem paths; independent review verified all regular-file ELF bytes and recursively enumerated every .jar-suffix archive through depth four, comparing every selected native resource and ImageIO SPI declaration. Archive bounds/ambiguity and CRC read failures are fail-closed.",
+  "requiredClaimLimits": [
+    "Only the two exact accepted runtime images are inspected; five retained images and host/live process inventories remain outside this record.",
+    "Regular-file ELF coverage excludes non-regular links as separate files; recursive JAR coverage means .jar-suffix entries, not every possible archive format or encrypted/generated runtime resource.",
+    "Native JAR resource discovery is extension-selected (.so/.so.*, .dll, .dylib). Zero selected platform native resources is not proof that every native dependency or dynamically loaded/extensionless resource is absent.",
+    "Selected undefined symbols and DT_NEEDED identify potential static consumers; dlsym/dlopen, Java bindings, JDK code, runtime configuration, inputs and actual call traces remain unproved.",
+    "Named daemon/helper path/package absence is image-local, not a live host/process absence or blanket CVE/VEX closure.",
+    "The exact package records and source-backport observations do not attest upstream signature, distribution build provenance or deployed-binary patch correspondence. No scanner finding is suppressed or vendor disagreement resolved.",
+    "Original Docker metadata bytes were hashed in the reviewed executor but are not separately retained by this inventory. The peer validates exact saved image binding and archive bytes, not an independent fresh daemon RepoDigest read."
+  ],
+  "nativeApplicabilityComplete": false,
+  "wholeSavedSecurityPlanComplete": false,
+  "cloudCallsByReviewer": 0,
+  "dockerCallsByReviewer": 0,
+  "nativeExecutionsByReviewer": 0,
+  "testsDuplicated": false,
+  "historicalEvidenceOverwritten": false
+}

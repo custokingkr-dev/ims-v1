@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "createdAtUtc": "2026-10-09T18:01:37.954063+00:00",
+  "decision": "OFFLINE_UNSET_ADAPTER_PREPARATION_ONLY",
+  "approvedPr": 342,
+  "approvedHead": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+  "expectedParent": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+  "expectedTests": {
+    "platform-service": 498,
+    "school-core-service": 986
+  },
+  "donorRawSha256": {
+    "collect-remaining-round-postmerge.py": "649c9a043c1a7e5b4b8835b24f71aede5a4ce5b5715bd941366df3e49cc679fc",
+    "verify-remaining-round-dev-release.py": "685e76f83508785b979285c4a96f6f843dfcca9c4d164403e23f771c81670d69",
+    "protect-remaining-round-dev-images.py": "8115ee3649766df57f68d25939592621301b5fc7aa2f682709f9851886cf4705",
+    "run-remaining-round-public-smoke.py": "90fc639ebd684def66678e730e674f1e96b1e31aa90a4594dfa61de23a37b6fb"
+  },
+  "outputs": {
+    "collect-owner-execution-postmerge-unset.py": "605f3895d8c8efc105c4cd8a371b1887f019115cbf80f6d46f4e0e0f7c9a9f2e",
+    "verify-owner-execution-dev-release-unset.py": "40e9f9773c09d160549bbbda5a81d910e2133b0eaba90ad662c5530a378ec1a7",
+    "protect-owner-execution-dev-images-unset.py": "c71b862821e5863ed0eb33bb613e0658bae6f92280627f87f07488b8edafa4f1",
+    "run-owner-execution-public-smoke-unset.py": "67d057f9a53ea5be20ad08f2f33ef390e1fa375a684bf718d92d65d943541ac9"
+  },
+  "generatorRawSha256": "657b90b00b616dd064f1820c1febd4468d9e0b68e6ee1f3f9becd48caf2fbb0c",
+  "fixedCiProofPath": "tmp/owner-execution-source-ci-proof.json",
+  "fixedArtifactProofPath": "tmp/owner-execution-postmerge-artifact-proof.json",
+  "fixedReleaseProofPath": "tmp/acceptance-owner-execution-dev-release.json",
+  "immediatePreviousProofPath": "docs/security-remediation/acceptance-remaining-round-dev-release.json",
+  "immediatePreviousRawSha256": "7c80a89d1a2e2bc54993dd6a272314dfa7f36b5c99324113b9da5f7483d68eab",
+  "retainedFiveBaselineRawSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f",
+  "futureCollectorTuple": {
+    "source": null,
+    "parent": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+    "tree": null,
+    "cdRun": null,
+    "codeqlRun": null,
+    "tests": {
+      "platform-service": 498,
+      "school-core-service": 986
+    },
+    "ciProofSha256": null
+  },
+  "unsetVerifierPins": [
+    "PINNED_COLLECTOR_SHA",
+    "PINNED_ARTIFACT_PROOF_SHA256",
+    "SOURCE",
+    "RUN",
+    "CODEQL_RUN"
+  ],
+  "unsetProtectionPins": [
+    "SOURCE",
+    "RUN",
+    "PROOF_SHA256"
+  ],
+  "unsetSmokePins": [
+    "SOURCE",
+    "RUN",
+    "PROOF_SHA256",
+    "PROTECTION_HELPER_SHA256"
+  ],
+  "changes": [
+    "Exact fresh TMP namespaces",
+    "Known approved PR342 head and parent",
+    "Expected498/986 Linux counts",
+    "Immediate previous changed-runtime proof415\u21927c80",
+    "Future workflow/proof pins remainNone",
+    "Verifier explicit future gate and exact artifact-proof raw hash",
+    "Smoke explicit future protection helper hash guard"
+  ],
+  "inheritedBlocksPreserved": [
+    "Collector lower CI head/base/tree provenance",
+    "Actual2truncatedREST build names",
+    "ZIP server digest/entry/type/path/expansion bounds",
+    "Two positive CodeQL uploads and bounded window",
+    "Seven Ready current/desired100 traffic and exact2changed/5retained runtimes",
+    "Roles/provider/journal/edge/bootstrap/ownerjob absence",
+    "Two fresh scans and positive installed libpng evidence",
+    "Four additive source/runtime KEEP tags without policy changes",
+    "Fifteen scoped public denials and real browserCSP"
+  ],
+  "compileAndAstPassed": true,
+  "originalHelpersModified": false,
+  "trackedSourceChanged": false,
+  "cloudCalls": 0,
+  "githubCalls": 0,
+  "artifactDownloads": 0,
+  "tagsCreated": 0,
+  "publicProbes": 0,
+  "executionAuthorizedByThisProof": false,
+  "runtimeAcceptanceProven": false,
+  "wholePlanComplete": false
+}

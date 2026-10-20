@@ -62,8 +62,9 @@ public class StudentDimensionProjector implements ReportingEventProjector {
         boolean active = PayloadJson.boolOrFalse(payload, "active");
         java.math.BigDecimal attendancePercent = PayloadJson.decimalOrNull(payload, "attendancePercent");
         String fatherName = PayloadJson.textOrNull(payload, "fatherName");
-        dims.upsertStudent(id, schoolId, admissionNo, fullName, rollNo, classId, sectionId,
-                parentContact, phone, active, attendancePercent, fatherName);
+        Long version = PayloadJson.longOrNull(payload, "aggregateVersion");
+        dims.upsertStudentVersioned(id, schoolId, admissionNo, fullName, rollNo, classId, sectionId,
+                parentContact, phone, active, attendancePercent, fatherName, version == null ? 0L : version, eventTime(event), event.eventId());
     }
 
     private static OffsetDateTime eventTime(

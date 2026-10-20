@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "evidenceWorktreeCommit": "25eb41d9bd0915c9fe9ec60e5078f6492f118380",
+  "hashAlgorithm": "SHA-256 of UTF-8 source normalized CRLF/CR to LF",
+  "sources": {
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/infrastructure/StudentPhotoStorage.java": "f365d7994cad322474e80a958281a68e7f69e08eab7fdcdc6ac86cf030b8b410",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/StudentReadRepository.java": "2cd9e77d2da529fd55666fa13aea2211d76ff34a410e087bf8ab5ada6892ad8b",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/AttendanceReadRepository.java": "691f5e17d996901669ef524554d6b9b66c5cb26ca1bd9dbf1fd9f4e985ef8c6d",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/studentexport/StudentExportRepository.java": "b16a92801a48004a75d551b9b92f771c2cf476423919d943c3496b4aeb3c01b2",
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/studentexport/StudentExportArchiveWriter.java": "aa33647a8f7d21a125e1214522c18694636c739859b163507d67e66b97ed6c0c",
+    "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/infrastructure/StudentPhotoOwnershipTest.java": "f4a1486413b300ba255e1097dda33f1aae912d4e9f9d8e5c14b55561d28df3d5",
+    "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/infrastructure/MediaSecurityTest.java": "d2552de465eba9a4d105548921e9468699059dacd9eb0422c9c9fc8964bcdfec",
+    "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/persistence/StudentImportPhotoIntegrationTest.java": "ad6e865b0e6f9f2808a3edfe9da9502d809203148318b5b26d5a62e00072dbea",
+    "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/api/compat/StudentWorkspaceCompatibilityControllerTest.java": "f9ed555318242d4826cefb9142be2ca74303c9c23d23ec7e677052dcea049b0b",
+    "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/studentexport/StudentExportArchiveWriterTest.java": "19b0aafe558c497c8e0d8df1b607369f86ffa93ff92f1cb6f837b2b405225b3a"
+  },
+  "checkedAtUtc": "2026-10-07T16:14:09.386334+00:00",
+  "scope": "Local finalized photo-owner source; no cloud or deployment acceptance",
+  "tests": {
+    "fullSchool": {
+      "reported": 952,
+      "passed": 951,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "skipReason": "Windows unsupported symlink fixture"
+    },
+    "photoOwnership": 9,
+    "focusedCheckpoint": {
+      "tests": 86,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "overlapsFullSuite": true
+    }
+  },
+  "gates": {
+    "packageShape": "PASSED",
+    "runtimeSchemaBoundary": "PASSED",
+    "diffWhitespace": "PASSED",
+    "encodingComparedWithHead": "PASSED"
+  },
+  "limits": [
+    "No dev cloud probe or live exploit",
+    "Signing/uploads/credential refresh network deadlines unchanged",
+    "Saturated bounded reader fails closed; export reports missing photos",
+    "Existing unrelated external HTTP(S) references are not fetched by the scoped reader",
+    "No malware or all-viewer certification"
+  ]
+}

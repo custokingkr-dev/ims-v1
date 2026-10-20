@@ -51,7 +51,7 @@ public class NotificationInboxRetryService {
             inboxProcessor.process(event);
             log.info("notification.inbox.retry.processed eventId={}", event.getEventId());
         } catch (RuntimeException ex) {
-            log.warn("notification.inbox.retry.failed eventId={} error={}", event.getEventId(), ex.getMessage());
+            log.warn("notification.inbox.retry.failed eventId={} error={}", event.getEventId(), ex.getClass().getSimpleName());
         }
     }
 }

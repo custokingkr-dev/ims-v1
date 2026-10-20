@@ -97,6 +97,9 @@ internal:
     service-accounts: ${INTERNAL_OIDC_SERVICE_ACCOUNTS:}
 
 notification:
+  report-reconciliation:
+    enabled: ${NOTIFICATION_REPORT_RECONCILIATION_ENABLED:false}
+    token: ${NOTIFICATION_REPORT_RECONCILIATION_TOKEN:}
   broadcast:
     # OFF by default. DRY_RUN uses the existing policy/inbox pipeline but never enables live delivery.
     mode: ${BROADCAST_DISPATCH_MODE:OFF}
@@ -169,3 +172,7 @@ catalog:
 
 firefighting:
   read-token: ${FIREFIGHTING_READ_TOKEN:}
+
+app:
+  runtime-db-role: ${RUNTIME_DB_ROLE:app_rt}
+  runtime-db-schemas: reporting,notification,audit
