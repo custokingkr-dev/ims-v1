@@ -38,8 +38,9 @@ import java.util.Set;
 
 /**
  * Orchestrates the notebook order tracker (spec v4): the pure rules in {@code application.tracker} decide what is
- * allowed, this class loads and saves the state inside one transaction per call, with the order's tracker row locked
- * so two people cannot move the same order at once.
+ * allowed, this class loads and saves the state inside one transaction per change, with the order's tracker row locked
+ * so two people cannot move the same order at once. Peers (identity, the catalogue) are asked before that transaction
+ * opens or after it commits, never while the lock is held.
  */
 @Service
 public class NotebookTrackerService {
@@ -86,9 +87,22 @@ public class NotebookTrackerService {
         try {
             return createInTransaction(cmd, zone);
         } catch (org.springframework.dao.DuplicateKeyException duplicate) {
-            // Order ids are globally unique; an order already tracked under another school is not visible to this scope.
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Order is already tracked");
+            // A concurrent call for the same order committed first and this attempt rolled back: return what it created.
+            return existingAfterRace(cmd);
         }
+    }
+
+    /**
+     * Read in a fresh transaction, scoped to the order's school. Order ids are globally unique, so finding nothing means
+     * the order is already tracked under another school, which this scope cannot see.
+     */
+    private Created existingAfterRace(CreateTracker cmd) {
+        return tx.execute(status -> {
+            repo.applySchoolScope(cmd.schoolId());
+            return repo.findByOrder(cmd.orderId(), false).filter(existing -> existing.schoolId() == cmd.schoolId())
+                    .map(existing -> new Created(existing.instanceId(), false))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Order is already tracked"));
+        });
     }
 
     private Created createInTransaction(CreateTracker cmd, ZoneId zone) {
@@ -157,8 +171,9 @@ public class NotebookTrackerService {
             requireWorker(actor, row);
             requireEditable(progress.canEditDetails(actor.role(), step), progress, step, actor);
             Map<String, Object> clean = StepData.validate(step, data);
-            // The sign-off record is written only by its own action, so a draft save must not wipe it.
-            if (row.data().containsKey(StepData.SIGN_OFF_KEY)) clean.put(StepData.SIGN_OFF_KEY, row.data().get(StepData.SIGN_OFF_KEY));
+            // A sign-off approves the data it saw (spec §3.4): saving the same values keeps it, changed values need a new one.
+            Object signOff = row.data().get(StepData.SIGN_OFF_KEY);
+            if (signOff != null && StepData.sameValues(row.data(), clean)) clean.put(StepData.SIGN_OFF_KEY, signOff);
             requireSaved(repo.saveStepData(t.instanceId(), step.number(), clean, actor.userId(), expectedVersion));
         });
     }
@@ -174,8 +189,10 @@ public class NotebookTrackerService {
                         : "Stage notes can be edited only while the step is active");
             }
             NoteRules.requireWithin(note, NoteRules.STAGE_NOTE_MAX_WORDS, "A stage note");
-            requireSaved(repo.saveStageNote(t.instanceId(), step.number(), note == null || note.isBlank() ? null : note.strip(),
-                    actor.userId(), expectedVersion));
+            String clean = note == null || note.isBlank() ? null : note.strip();
+            // A few long words pass the word limit; the column holds 4000 characters.
+            if (clean != null && clean.length() > 4000) throw bad("A stage note is limited to 4000 characters");
+            requireSaved(repo.saveStageNote(t.instanceId(), step.number(), clean, actor.userId(), expectedVersion));
         });
     }
 
@@ -200,15 +217,24 @@ public class NotebookTrackerService {
         });
     }
 
-    /** Superadmin only. The reopened step restarts its clock; later steps revert to not-completed with data kept. */
+    /**
+     * Superadmin only. The reopened step restarts its clock; later steps revert to not-completed with data kept. What
+     * the reverted steps approved is taken back (spec §3.4): their sign-offs are cleared, and reverting step 2 (directly
+     * or from step 1) needs the design sent again, reverting only step 3 needs it approved again.
+     */
     public TrackerView reopenStep(String orderId, int stepNumber) {
         return mutate(orderId, (actor, t, progress, rows) -> {
             TrackerStep step = stepOnPath(progress, stepNumber);
             progress.reopen(step, actor.role());
+            // Lock the later steps (the active one among them) before activating this one: one active step per tracker (V11).
             repo.lockStepsAfter(t.instanceId(), step.number());
             OffsetDateTime now = now();
             Optional<Sla> sla = effectiveSla(t.schoolId()).getOrDefault(step.number(), Optional.empty());
             repo.activateStep(t.instanceId(), step.number(), now, due(now, sla, zone(t.timeZone())));
+            repo.clearSignOffsFrom(t.instanceId(), step.number());
+            if (t.customised() && step.number() <= TrackerStep.HEAD_APPROVAL.number()) {
+                repo.resetDesignState(t.instanceId(), step.number() <= TrackerStep.DESIGNING_ACTIVITY.number() ? "NOT_SENT" : "SENT");
+            }
             repo.setInstanceProgress(t.instanceId(), step.number(), "IN_PROGRESS", false);
             repo.recordAction(t.instanceId(), t.schoolId(), step.number(), "STEP_REOPENED", null);
         });
@@ -244,14 +270,17 @@ public class NotebookTrackerService {
 
     /** The operator (or superadmin) sends the drafts for approval; allowed in step 2 and again after changes were requested. */
     public TrackerView sendDesign(String orderId) {
-        return mutate(orderId, (actor, t, progress, rows) -> {
+        Mutation allowed = (actor, t, progress, rows) -> {
             requireCustomised(t);
-            StepRow designing = row(rows, TrackerStep.DESIGNING_ACTIVITY);
-            requireWorker(actor, designing);
+            requireWorker(actor, row(rows, TrackerStep.DESIGNING_ACTIVITY));
             boolean changesRequested = "CHANGES_REQUESTED".equals(t.designState());
             if (!progress.canManageDraftImages(actor.role(), changesRequested)) throw conflict("Step 2 is not open for sending a design");
             if (!"NOT_SENT".equals(t.designState()) && !changesRequested) throw conflict("The design has already been sent for approval");
-            requireDraftImages(t.orderId(), null);
+        };
+        List<CatalogOrderGateway.DraftImage> drafts = draftsIfAllowed(orderId, allowed);
+        return mutate(orderId, (actor, t, progress, rows) -> {
+            allowed.apply(actor, t, progress, rows);
+            requireDraft(drafts, null);
             repo.setDesignState(t.instanceId(), "SENT", null, actor.userId(), null);
             repo.recordAction(t.instanceId(), t.schoolId(), TrackerStep.DESIGNING_ACTIVITY.number(), "DESIGN_SENT", null);
         });
@@ -259,13 +288,18 @@ public class NotebookTrackerService {
 
     /** Superadmin approves a draft; still allowed while a change request is pending. */
     public TrackerView approveDesign(String orderId, long draftRef, String comment) {
-        return mutate(orderId, (actor, t, progress, rows) -> {
+        Mutation allowed = (actor, t, progress, rows) -> {
             requireCustomised(t);
             requireSuperadmin(actor, "Only superadmin can approve a design");
             requireHeadApprovalOpen(progress, t);
             if (draftRef <= 0) throw bad("draftRef is required");
+            optionalComment(comment);
+        };
+        List<CatalogOrderGateway.DraftImage> drafts = draftsIfAllowed(orderId, allowed);
+        return mutate(orderId, (actor, t, progress, rows) -> {
+            allowed.apply(actor, t, progress, rows);
+            requireDraft(drafts, draftRef);
             String note = optionalComment(comment);
-            requireDraftImages(t.orderId(), draftRef);
             repo.setDesignState(t.instanceId(), "APPROVED", note, actor.userId(), draftRef);
             repo.recordAction(t.instanceId(), t.schoolId(), TrackerStep.HEAD_APPROVAL.number(), "DESIGN_APPROVED", note);
         });
@@ -485,14 +519,29 @@ public class NotebookTrackerService {
         return progress.finished() ? "COMPLETED" : TrackerStep.ofNumber(progress.currentStep()).orElseThrow().name();
     }
 
-    /** A design is only sent or approved against drafts that exist; the catalogue owns the images. */
-    private void requireDraftImages(String orderId, Long draftRef) {
-        List<CatalogOrderGateway.DraftImage> drafts;
+    /**
+     * The order's current drafts, which the catalogue owns. A design send or approval first runs its checks in a short read
+     * without a lock, then asks the catalogue with no transaction open, so a slow peer never holds the tracker row; the
+     * caller runs the same checks again under the lock in {@link #mutate}, against the drafts fetched here.
+     */
+    private List<CatalogOrderGateway.DraftImage> draftsIfAllowed(String orderId, Mutation checks) {
+        String order = tx.execute(status -> {
+            begin();
+            Actor actor = actor(true);
+            TrackerRow t = tracker(orderId, false);
+            List<StepRow> rows = repo.steps(t.instanceId());
+            checks.apply(actor, t, progress(t, rows), rows);
+            return t.orderId();
+        });
         try {
-            drafts = catalog.draftImages(orderId);
+            return catalog.draftImages(order);
         } catch (IllegalStateException unavailable) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "The order catalogue is unavailable; try again");
         }
+    }
+
+    /** A design is only sent or approved against drafts that exist. */
+    private static void requireDraft(List<CatalogOrderGateway.DraftImage> drafts, Long draftRef) {
         if (drafts.isEmpty()) throw bad("Upload at least one design draft first");
         if (draftRef != null && drafts.stream().noneMatch(draft -> draft.id() == draftRef)) {
             throw bad("That draft is not a current draft of this order");

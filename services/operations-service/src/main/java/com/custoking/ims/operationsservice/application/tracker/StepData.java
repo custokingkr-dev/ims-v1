@@ -1,13 +1,16 @@
 package com.custoking.ims.operationsservice.application.tracker;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeSet;
 
 /**
@@ -92,6 +95,27 @@ public final class StepData {
     /** The sign-off record superadmin's action writes next to the saved data. */
     public static Map<String, Object> signOff(long userId, Instant at) {
         return Map.of("by", userId, "at", at.toString());
+    }
+
+    /**
+     * Whether two work areas hold the same values, ignoring the sign-off record. Numbers compare by value: a save's
+     * validated longs and doubles come back from JSON as whatever width fits.
+     */
+    public static boolean sameValues(Map<String, Object> saved, Map<String, Object> other) {
+        Map<String, Object> left = new HashMap<>(saved), right = new HashMap<>(other);
+        left.remove(SIGN_OFF_KEY);
+        right.remove(SIGN_OFF_KEY);
+        return left.keySet().equals(right.keySet()) && left.keySet().stream().allMatch(key -> sameValue(left.get(key), right.get(key)));
+    }
+
+    private static boolean sameValue(Object a, Object b) {
+        if (a instanceof Number x && b instanceof Number y) return new BigDecimal(x.toString()).compareTo(new BigDecimal(y.toString())) == 0;
+        if (a instanceof List<?> x && b instanceof List<?> y) {
+            if (x.size() != y.size()) return false;
+            for (int i = 0; i < x.size(); i++) if (!sameValue(x.get(i), y.get(i))) return false;
+            return true;
+        }
+        return Objects.equals(a, b);
     }
 
     private static Object clean(String name, Field field, Object value) {

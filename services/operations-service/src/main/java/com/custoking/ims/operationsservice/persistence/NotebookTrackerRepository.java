@@ -1,6 +1,7 @@
 package com.custoking.ims.operationsservice.persistence;
 
 import com.custoking.ims.operationsservice.application.tracker.Sla;
+import com.custoking.ims.operationsservice.application.tracker.StepData;
 import com.custoking.ims.operationsservice.security.TenantContext;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
@@ -211,6 +212,17 @@ public class NotebookTrackerRepository {
                 .param("id", instanceId).param("state", state).param("note", note).param("user", userId).param("ref", approvedDraftRef).update();
     }
 
+    /**
+     * A reopened design step takes the design back to {@code state} ({@code NOT_SENT} or {@code SENT}): the approved draft
+     * and the decision's comment go, and the reopening user is recorded as the one who changed the state.
+     */
+    public void resetDesignState(long instanceId, String state) {
+        if (!"NOT_SENT".equals(state) && !"SENT".equals(state)) throw new IllegalArgumentException("A design resets to NOT_SENT or SENT");
+        jdbc.sql("UPDATE " + trackers + " SET design_state = :state, design_state_note = NULL, design_state_at = now(), "
+                        + "design_state_by = :user, approved_draft_ref = NULL, version = version + 1 WHERE instance_id = :id")
+                .param("id", instanceId).param("state", state).param("user", TenantContext.get().userId()).update();
+    }
+
     /** One row of the worklist: an order's progress and its active step. */
     public record ListRow(String orderId, long schoolId, String schoolName, boolean customised, int orderedCount,
                           OffsetDateTime placedAt, String instanceStatus, Integer activeStep, Long assigneeUserId,
@@ -281,6 +293,13 @@ public class NotebookTrackerRepository {
         jdbc.sql("UPDATE " + instanceSteps + " SET data = data || CAST(:data AS jsonb), data_saved_at = now(), data_saved_by = :user, version = version + 1 "
                         + "WHERE instance_id = :id AND step_order = :step")
                 .param("id", instanceId).param("step", stepOrder).param("data", writeJson(additions)).param("user", userId).update();
+    }
+
+    /** Removes the sign-off from this step and every later one; the rest of their saved data is kept. */
+    public void clearSignOffsFrom(long instanceId, int stepOrder) {
+        jdbc.sql("UPDATE " + instanceSteps + " SET data = data - CAST(:key AS text), version = version + 1 "
+                        + "WHERE instance_id = :id AND step_order >= :step AND data -> CAST(:key AS text) IS NOT NULL")
+                .param("id", instanceId).param("step", stepOrder).param("key", StepData.SIGN_OFF_KEY).update();
     }
 
     public int saveStageNote(long instanceId, int stepOrder, String note, long userId, long expectedVersion) {

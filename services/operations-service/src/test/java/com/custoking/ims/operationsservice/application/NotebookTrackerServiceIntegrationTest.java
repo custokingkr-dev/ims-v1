@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.DockerClientFactory;
@@ -77,19 +78,36 @@ class NotebookTrackerServiceIntegrationTest {
     static volatile boolean catalogDown = false;
     /** Runs once, inside the next status push, before it reaches the catalogue: lets a test act while a push is in flight. */
     static final AtomicReference<Runnable> DURING_PUSH = new AtomicReference<>();
+    /** Whether a transaction was open at each draft fetch, in order: a fetch inside one would hold the tracker row lock. */
+    static final java.util.List<Boolean> DRAFT_FETCH_IN_TRANSACTION = new java.util.concurrent.CopyOnWriteArrayList<>();
+    /** Runs once, inside the next draft fetch: lets a test act while a design send or approval waits for the catalogue. */
+    static final AtomicReference<Runnable> DURING_DRAFT_FETCH = new AtomicReference<>();
+    static final Clock CLOCK = new Clock() {
+        @Override public ZoneOffset getZone() { return ZoneOffset.UTC; }
+        @Override public Clock withZone(ZoneId zone) { return this; }
+        @Override public Instant instant() { return now; }
+    };
+    static final com.custoking.ims.operationsservice.infrastructure.OperatorEligibility ELIGIBILITY = (userId, schoolId, category) -> {
+        if (identityDown) throw new IllegalStateException("identity is down");
+        return "NOTEBOOKS".equals(category) && schoolId == 10 && ELIGIBLE_FOR_10.contains(userId);
+    };
+    static com.custoking.ims.operationsservice.infrastructure.CatalogOrderGateway catalog;
 
     @BeforeAll
     static void setUp() throws Exception {
         Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker not available");
         PG = new PostgreSQLContainer<>("postgres:16").withUsername("owner").withPassword("owner");
         PG.start();
+        // The runtime role exists before the migrations, as in production, so it holds exactly the grants they leave it.
+        try (var c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner"); var st = c.createStatement()) {
+            st.execute("CREATE ROLE app_rt LOGIN PASSWORD 'app_rt' NOINHERIT NOCREATEROLE NOCREATEDB NOBYPASSRLS");
+            st.execute("ALTER DEFAULT PRIVILEGES GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_rt");
+            st.execute("ALTER DEFAULT PRIVILEGES GRANT USAGE, SELECT ON SEQUENCES TO app_rt");
+        }
         Flyway.configure().dataSource(PG.getJdbcUrl(), "owner", "owner").schemas("workflow").defaultSchema("workflow")
                 .locations("classpath:db/migration/workflow").load().migrate();
         try (var c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner"); var st = c.createStatement()) {
-            st.execute("CREATE ROLE app_rt LOGIN PASSWORD 'app_rt' NOINHERIT NOCREATEROLE NOCREATEDB NOBYPASSRLS");
             st.execute("GRANT USAGE ON SCHEMA workflow TO app_rt");
-            st.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA workflow TO app_rt");
-            st.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA workflow TO app_rt");
         }
         HikariDataSource pool = new HikariDataSource();
         pool.setJdbcUrl(PG.getJdbcUrl());
@@ -98,17 +116,15 @@ class NotebookTrackerServiceIntegrationTest {
         pool.setMaximumPoolSize(3);
         TenantAwareDataSource ds = new TenantAwareDataSource(pool);
         dataSource = ds;
-        Clock clock = new Clock() {
-            @Override public ZoneOffset getZone() { return ZoneOffset.UTC; }
-            @Override public Clock withZone(ZoneId zone) { return this; }
-            @Override public Instant instant() { return now; }
-        };
         DRAFT_IDS.addAll(java.util.List.of(501L, 777L));
         owner = JdbcClient.create(new DriverManagerDataSource(PG.getJdbcUrl(), "owner", "owner"));
         DataSourceTransactionManager manager = new DataSourceTransactionManager(ds);
         transactions = new TransactionTemplate(manager);
-        var catalog = new com.custoking.ims.operationsservice.infrastructure.CatalogOrderGateway() {
+        catalog = new com.custoking.ims.operationsservice.infrastructure.CatalogOrderGateway() {
             @Override public java.util.List<DraftImage> draftImages(String orderId) {
+                DRAFT_FETCH_IN_TRANSACTION.add(TransactionSynchronizationManager.isActualTransactionActive());
+                Runnable during = DURING_DRAFT_FETCH.getAndSet(null);
+                if (during != null) during.run();
                 if (catalogDown) throw new IllegalStateException("catalogue is down");
                 return DRAFT_IDS.stream().map(id -> new DraftImage(id, "image/png", "draft-" + id + ".png")).toList();
             }
@@ -123,10 +139,7 @@ class NotebookTrackerServiceIntegrationTest {
         statuses = new TrackerStatusOutbox(JdbcClient.create(ds), catalog, manager, "workflow");
         service = new NotebookTrackerService(
                 new NotebookTrackerRepository(JdbcClient.create(ds), JsonMapper.builder().build(), "workflow"),
-                transactions, clock, (userId, schoolId, category) -> {
-                    if (identityDown) throw new IllegalStateException("identity is down");
-                    return "NOTEBOOKS".equals(category) && schoolId == 10 && ELIGIBLE_FOR_10.contains(userId);
-                }, catalog, statuses);
+                transactions, CLOCK, ELIGIBILITY, catalog, statuses);
     }
 
     @AfterAll
@@ -145,6 +158,8 @@ class NotebookTrackerServiceIntegrationTest {
         PUSHED.clear();
         PUSHED_VERSIONS.clear();
         DURING_PUSH.set(null);
+        DRAFT_FETCH_IN_TRANSACTION.clear();
+        DURING_DRAFT_FETCH.set(null);
         // Tests share the database; a status one test left queued must not be delivered by another test's drain.
         owner.sql("DELETE FROM workflow.workflow_tracker_status_outbox").update();
         DRAFT_IDS.clear();
@@ -250,6 +265,29 @@ class NotebookTrackerServiceIntegrationTest {
         asNobody();
         assertEquals(409, http(() -> service.create(new CreateTracker(order, 20, true, 1000,
                 OffsetDateTime.parse("2026-10-19T09:30:00+05:30"), "Asia/Kolkata", 77L, null))).status());
+    }
+
+    @Test
+    void concurrentCreateReturnsExisting() {
+        String order = "ORD-RACE-" + ORDERS.incrementAndGet();
+        CreateTracker placed = new CreateTracker(order, 10, true, 1000, OffsetDateTime.parse("2026-10-19T09:30:00+05:30"), "Asia/Kolkata", 77L, OP_A);
+        AtomicReference<NotebookTrackerService.Created> winner = new AtomicReference<>();
+        // A second request for the same order commits its tracker after this one looked and found none, so this one's
+        // insert runs into the unique keys.
+        NotebookTrackerRepository racing = new NotebookTrackerRepository(JdbcClient.create(dataSource), JsonMapper.builder().build(), "workflow") {
+            @Override public long insertInstance(long schoolId, String orderId, int currentStep, Long initiatedBy) {
+                if (winner.get() == null) winner.set(java.util.concurrent.CompletableFuture.supplyAsync(() -> service.create(placed)).join());
+                return super.insertInstance(schoolId, orderId, currentStep, initiatedBy);
+            }
+        };
+        asNobody();
+        NotebookTrackerService.Created result = new NotebookTrackerService(racing, transactions, CLOCK, ELIGIBILITY, catalog, statuses).create(placed);
+
+        assertTrue(winner.get().created());
+        assertFalse(result.created(), "the loser reports the tracker that already exists");
+        assertEquals(winner.get().instanceId(), result.instanceId());
+        assertEquals(1L, owner.sql("SELECT count(*) FROM workflow.workflow_instances WHERE entity_id = :order").param("order", order)
+                .query(Long.class).single(), "the losing attempt left nothing behind");
     }
 
     @Test
@@ -487,6 +525,59 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals("STEP_NOT_COMPLETED", codeOf(() -> service.reopenStep(order, 6)), "a step that is not completed cannot be reopened");
     }
 
+    /** Reverting step 2 means the drafts may be replaced, so the old approval must not carry over (spec §3.4). */
+    @Test
+    void reopenDesigningResetsApproval() {
+        String order = create(true, 10L, OP_A);
+        advance(order, 3); // sent, draft 501 approved with a comment, step 4 active
+        asSuper();
+        TrackerView reopened = service.reopenStep(order, 2);
+        assertEquals(2, reopened.progress().currentStep());
+        assertEquals("NOT_SENT", reopened.design().state());
+        assertNull(reopened.design().approvedDraftRef());
+        assertNull(reopened.design().comment(), "the approval's comment went with it");
+        assertEquals(SUPER, reopened.design().by());
+
+        asOperator(OP_A, 10L);
+        assertEquals("DESIGN_NOT_SENT", codeOf(() -> service.completeStep(order, 2, step(reopened, 2).version())));
+        service.sendDesign(order);
+        TrackerView atThree = service.completeStep(order, 2, step(service.view(order), 2).version());
+        asSuper();
+        assertEquals("DESIGN_NOT_APPROVED", codeOf(() -> service.completeStep(order, 3, step(atThree, 3).version())),
+                "step 3 cannot complete until the design is approved again");
+        TrackerView approved = service.approveDesign(order, 777, null);
+        assertEquals(4, service.completeStep(order, 3, step(approved, 3).version()).progress().currentStep());
+
+        // Reopening step 1 reverts step 2 as well, so it takes the same rule.
+        String fromStart = create(true, 10L, OP_A);
+        advance(fromStart, 3);
+        asSuper();
+        TrackerView restarted = service.reopenStep(fromStart, 1);
+        assertEquals("NOT_SENT", restarted.design().state());
+        assertNull(restarted.design().approvedDraftRef());
+    }
+
+    @Test
+    void reopenHeadApprovalRequiresReapproval() {
+        String order = create(true, 10L, OP_A);
+        advance(order, 4);
+        asSuper();
+        // A step after the design steps leaves the approval alone.
+        TrackerView atFour = service.reopenStep(order, 4);
+        assertEquals("APPROVED", atFour.design().state());
+        assertEquals(501L, atFour.design().approvedDraftRef());
+
+        TrackerView reopened = service.reopenStep(order, 3);
+        assertEquals(3, reopened.progress().currentStep());
+        assertEquals("SENT", reopened.design().state(), "the sent design waits for a decision again");
+        assertNull(reopened.design().approvedDraftRef());
+        assertEquals("DESIGN_NOT_APPROVED", codeOf(() -> service.completeStep(order, 3, step(reopened, 3).version())));
+
+        TrackerView approved = service.approveDesign(order, 777, "Second draft is better");
+        assertEquals(777L, approved.design().approvedDraftRef());
+        assertEquals(4, service.completeStep(order, 3, step(approved, 3).version()).progress().currentStep());
+    }
+
     @Test
     void stageNotesBelongToTheOperatorWhileTheStepIsActiveAndLockOnCompletion() {
         String order = create(false, 10L, OP_A);
@@ -509,6 +600,18 @@ class NotebookTrackerServiceIntegrationTest {
         asOperator(OP_A, 10L);
         long reopenedVersion = step(service.view(order), 1).version();
         assertEquals("again", step(service.saveStageNote(order, 1, "again", reopenedVersion), 1).stageNote());
+    }
+
+    @Test
+    void longStageNoteIs400() {
+        String order = create(false, 10L, OP_A);
+        asOperator(OP_A, 10L);
+        long v = step(service.view(order), 1).version();
+        // One long word passes the 100-word limit but not the 4000-character column.
+        ResponseStatusException tooLong = assertThrows(ResponseStatusException.class, () -> service.saveStageNote(order, 1, "x".repeat(4001), v));
+        assertEquals(400, tooLong.getStatusCode().value());
+        assertEquals("A stage note is limited to 4000 characters", tooLong.getReason());
+        assertEquals(4000, step(service.saveStageNote(order, 1, "x".repeat(4000), v), 1).stageNote().length());
     }
 
     @Test
@@ -541,15 +644,50 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals("COMPLETED", finished.instanceStatus());
     }
 
+    /** A sign-off approves the data it saw (spec §3.4): saving the same values keeps it, changed values take it back. */
     @Test
-    void aDraftSaveNeverWipesTheSignOff() {
+    void editingSignedStepClearsSignOff() {
         String order = create(false, 10L, OP_A);
         advance(order, 7);
         asSuper();
+        TrackerView drafted = service.saveDraft(order, 8, Map.of("sampleLink", "https://example.test/sample", "checks", List.of(0, 2)),
+                step(service.view(order), 8).version());
         TrackerView signed = service.signOff(order, 8);
-        TrackerView saved = service.saveDraft(order, 8, Map.of("sampleLink", "https://example.test/sample"), step(signed, 8).version());
-        assertNotNull(step(saved, 8).data().get("signOff"));
-        assertEquals("https://example.test/sample", step(saved, 8).data().get("sampleLink"));
+
+        // The form sends every value again; the same values, in any order and as whole numbers of any width, are not a change.
+        TrackerView same = service.saveDraft(order, 8, Map.of("checks", List.of(2L, 0L), "sampleLink", " https://example.test/sample "),
+                step(signed, 8).version());
+        assertNotNull(step(same, 8).data().get("signOff"), "an unchanged save keeps the sign-off");
+        assertEquals(step(drafted, 8).data().get("sampleLink"), step(same, 8).data().get("sampleLink"));
+
+        TrackerView changed = service.saveDraft(order, 8, Map.of("sampleLink", "https://example.test/other", "checks", List.of(0, 2)),
+                step(same, 8).version());
+        assertNull(step(changed, 8).data().get("signOff"), "changed data needs a new sign-off");
+        assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 8, step(changed, 8).version())));
+        TrackerView resigned = service.signOff(order, 8);
+        assertEquals(9, service.completeStep(order, 8, step(resigned, 8).version()).progress().currentStep());
+    }
+
+    @Test
+    void reopenClearsLaterSignOffs() {
+        String order = create(false, 10L, OP_A);
+        advance(order, 12); // steps 8 and 12 signed off, every step completed
+        asSuper();
+        TrackerView reopened = service.reopenStep(order, 7);
+        assertNull(step(reopened, 8).data().get("signOff"));
+        assertNull(step(reopened, 12).data().get("signOff"));
+        assertEquals(1000L, ((Number) step(reopened, 11).data().get("producedCount")).longValue(), "the rest of the later data is kept");
+
+        TrackerView atEight = service.completeStep(order, 7, step(reopened, 7).version());
+        assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 8, step(atEight, 8).version())),
+                "a step reverted by the reopen is signed off again");
+
+        // Reopening a signed step itself takes its own sign-off back too.
+        TrackerView signed = service.signOff(order, 8);
+        service.completeStep(order, 8, step(signed, 8).version());
+        TrackerView eightReopened = service.reopenStep(order, 8);
+        assertEquals("ACTIVE", step(eightReopened, 8).status());
+        assertNull(step(eightReopened, 8).data().get("signOff"));
     }
 
     @Test
@@ -769,6 +907,55 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals(400, http(() -> service.approveDesign(order, 999, null)).status(), "999 is not a current draft");
         assertEquals(501L, service.approveDesign(order, 501, null).design().approvedDraftRef());
         assertEquals(3, atThree.progress().currentStep());
+    }
+
+    @Test
+    void designSendFetchesDraftsBeforeLock() {
+        String order = create(true, 10L, OP_A);
+        advance(order, 1);
+        asOperator(OP_A, 10L);
+        service.sendDesign(order);
+        service.completeStep(order, 2, step(service.view(order), 2).version());
+        asSuper();
+        service.approveDesign(order, 501, null);
+        assertEquals(List.of(false, false), DRAFT_FETCH_IN_TRANSACTION,
+                "send and approval ask the catalogue with no transaction open, so no tracker row lock is held");
+    }
+
+    /** Runs {@code action} as superadmin while the next draft fetch is waiting, then restores the caller's identity. */
+    static void meanwhileSuperadmin(Runnable action) {
+        DURING_DRAFT_FETCH.set(() -> {
+            TenantContext caller = TenantContext.get();
+            try {
+                asSuper();
+                action.run();
+            } finally {
+                TenantContext.set(caller);
+            }
+        });
+    }
+
+    @Test
+    void designChecksRunAgainUnderTheLock() {
+        String order = create(true, 10L, OP_A);
+        advance(order, 1);
+        // Superadmin sends the design while the operator's own send waits for the catalogue.
+        meanwhileSuperadmin(() -> service.sendDesign(order));
+        asOperator(OP_A, 10L);
+        assertEquals(409, http(() -> service.sendDesign(order)).status(), "the design was sent meanwhile");
+        assertEquals(1L, owner.sql("SELECT count(*) FROM workflow.workflow_actions a JOIN workflow.workflow_notebook_trackers t "
+                + "ON t.instance_id = a.instance_id WHERE t.order_id = :order AND a.action = 'DESIGN_SENT'").param("order", order)
+                .query(Long.class).single(), "sent once");
+
+        asOperator(OP_A, 10L);
+        service.completeStep(order, 2, step(service.view(order), 2).version());
+        // Superadmin reopens step 2 while an approval waits for the catalogue: Head Approval is no longer the active step.
+        asSuper();
+        meanwhileSuperadmin(() -> service.reopenStep(order, 2));
+        assertEquals(409, http(() -> service.approveDesign(order, 501, null)).status());
+        TrackerView after = service.view(order);
+        assertEquals("NOT_SENT", after.design().state());
+        assertNull(after.design().approvedDraftRef());
     }
 
     @Test

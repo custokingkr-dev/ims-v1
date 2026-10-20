@@ -99,6 +99,23 @@ class StepDataTest {
     }
 
     @Test
+    void savedDataComparesByValueIgnoringTheSignOff() {
+        // A save's validated values against the same values read back from JSON, where whole numbers come back narrower.
+        Map<String, Object> clean = StepData.validate(TrackerStep.BOARD_PROCUREMENT,
+                Map.of("totalTitleUnits", 1000, "wastagePercent", 2.5, "procurementReference", "PO-1"));
+        Map<String, Object> saved = Map.of("totalTitleUnits", 1000, "wastagePercent", 2.5, "procurementReference", "PO-1",
+                StepData.SIGN_OFF_KEY, Map.of("by", 1));
+        assertTrue(StepData.sameValues(saved, clean));
+        assertTrue(StepData.sameValues(Map.of("checks", List.of(0, 2)), Map.of("checks", List.of(0L, 2L))));
+        assertTrue(StepData.sameValues(Map.of("wastagePercent", 2), Map.of("wastagePercent", 2.0)));
+
+        assertFalse(StepData.sameValues(saved, Map.of("totalTitleUnits", 1001L, "wastagePercent", 2.5, "procurementReference", "PO-1")));
+        assertFalse(StepData.sameValues(saved, Map.of("totalTitleUnits", 1000L, "wastagePercent", 2.5)), "a cleared field is a change");
+        assertFalse(StepData.sameValues(Map.of("checks", List.of(0, 2)), Map.of("checks", List.of(0L))));
+        assertFalse(StepData.sameValues(Map.of("paperGsm", "70"), Map.of("paperGsm", 70L)), "text is not a number");
+    }
+
+    @Test
     void signOffRecordCarriesWhoAndWhen() {
         Map<String, Object> signOff = StepData.signOff(9L, Instant.parse("2026-10-19T10:00:00Z"));
         assertEquals(9L, signOff.get("by"));
