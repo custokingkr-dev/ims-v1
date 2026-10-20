@@ -1,6 +1,10 @@
 # Notebook Order Workflow Tracker
 
-Version: **v4** (2026-10-19). Status: **specified, not implemented.** No open questions remain;
+Version: **v4** (2026-10-19). Status: **implemented on branch `feat/notebook-order-tracker`; not yet merged or
+deployed.** Built in `b83f4b1a`, then corrected by the
+[2026-10-20 review fixes](../superpowers/specs/2026-10-20-notebook-tracker-review-fixes-design.md), whose owner decisions
+D1 and D2 take precedence over this document; deployment steps are in the
+[deploy runbook](../runbooks/notebook-tracker-deploy.md). No open questions remain;
 everything below is decided by the product owner.
 Supersedes [v3](notebook-order-workflow-tracker-v3.md), [v2](notebook-order-workflow-tracker-v2.md) and
 [v1](notebook-order-workflow-tracker-v1.md), all kept unchanged. Revisions are new files; an earlier version

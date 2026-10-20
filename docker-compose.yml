@@ -48,7 +48,6 @@ services:
       OTEL_TRACES_EXPORTER: none
       IDENTITY_DB_SCHEMA: identity
       IDENTITY_INTROSPECTION_TOKEN: local-dev-identity-token
-      IDENTITY_OPERATOR_DIRECTORY_TOKEN: local-dev-operator-directory-token
       TENANT_SCHOOL_BASE_URL: http://school-core-service:8080
       TENANT_SCHOOL_READ_TOKEN: local-dev-tenant-school-token
       TENANT_SCHOOL_CLOUD_RUN_AUTH: never
@@ -86,16 +85,8 @@ services:
       ATTENDANCE_READ_TOKEN: local-dev-attendance-token
       FEE_READ_TOKEN: local-dev-fee-token
       CATALOG_READ_TOKEN: local-dev-catalog-token
-      # Order attachments (artwork, design drafts) are stored on the container's disk locally; deployed environments use a private bucket.
-      CATALOG_ASSETS_MODE: local
-      CATALOG_ASSETS_LOCAL_DIRECTORY: /tmp/catalog-assets
       CATALOG_TRACKER_BASE_URL: http://operations-service:8080
-      CATALOG_TRACKER_TOKEN: local-dev-notebook-tracker-token
-      CATALOG_TRACKER_MACHINE_TOKEN: local-dev-notebook-tracker-token
-      CATALOG_TRACKER_CLOUD_RUN_AUTH: never
       CATALOG_OPERATOR_DIRECTORY_BASE_URL: http://identity-service:8080
-      CATALOG_OPERATOR_DIRECTORY_TOKEN: local-dev-operator-directory-token
-      CATALOG_OPERATOR_DIRECTORY_CLOUD_RUN_AUTH: never
     ports:
       - "8084:8080"
     depends_on:
@@ -129,12 +120,8 @@ services:
       OPERATIONS_TENANT_SCHOOL_BASE_URL: http://school-core-service:8080
       OPERATIONS_TENANT_SCHOOL_TOKEN: local-dev-tenant-school-token
       OPERATIONS_TENANT_SCHOOL_CLOUD_RUN_AUTH: never
-      OPERATIONS_TENANT_SCHOOL_TRACKER_TOKEN: local-dev-notebook-tracker-token
       OPERATIONS_IDENTITY_BASE_URL: http://identity-service:8080
-      OPERATIONS_IDENTITY_OPERATOR_DIRECTORY_TOKEN: local-dev-operator-directory-token
-      OPERATIONS_IDENTITY_CLOUD_RUN_AUTH: never
       WORKFLOW_READ_TOKEN: local-dev-workflow-token
-      WORKFLOW_TRACKER_CREATE_TOKEN: local-dev-notebook-tracker-token
       FIREFIGHTING_READ_TOKEN: local-dev-firefighting-token
     ports:
       - "8089:8080"

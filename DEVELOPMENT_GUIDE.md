@@ -83,8 +83,21 @@ npm run build        # production build to dist/
 
 ### Local full stack (root) - docker-compose with profiles
 
-Prefer the setup script for local Docker runs because it validates JDK 25+, handles
-stale local data cleanup, and applies `app_rt` runtime DB grants after migrations:
+On a developer machine, run the stack with the local overlay:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile full up -d --build
+```
+
+`docker-compose.local.yml` holds every local-only setting, each explained in the file: the `local` Spring profile (the
+baseline's `prod` profile rejects the gateway's forwarded principal), the OpenTelemetry SDK enabled (with the baseline's
+disabled SDK the services do not start), `MACHINE_CALLER_LOCAL_TRUST` so services can call each other's
+`/api/v1/internal/**` routes without a Google-signed identity token, order attachments on the container's disk instead of
+GCS, and the structured order form (the notebook form and its tracker) enabled.
+
+`docker-compose.yml` on its own is the shared baseline (`prod` profile, GCS uploads, signed machine callers). The setup
+script and the commands below use it. The setup script validates JDK 25+, handles stale local data cleanup, and applies
+`app_rt` runtime DB grants after migrations:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\setup-local-dev.ps1 -ComposeProfile core -SkipDependencyInstall
@@ -99,13 +112,6 @@ docker compose --profile core up -d --build
 
 # Full split-service stack (everything) - needed for complete migration smoke
 docker compose --profile full up -d --build
-```
-
-On a developer machine, add the local overlay to run the services with the `local` profile and the structured order form enabled
-(the baseline's `prod` profile rejects the gateway's forwarded principal, and its disabled OpenTelemetry SDK stops the services starting):
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.local.yml --profile full up -d --build
 ```
 
 Local service ports:

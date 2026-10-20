@@ -33,7 +33,8 @@ public class NotebookTrackerMachineController {
     public record ImageAccessRequest(Long userId, String role) { }
 
     /** Idempotent: 201 for a new tracker, 200 with the existing one when the order already has a tracker. */
-    @PostMapping public ResponseEntity<CreateResponse> create(@RequestBody CreateRequest request) {
+    @PostMapping("")
+    public ResponseEntity<CreateResponse> create(@RequestBody CreateRequest request) {
         if (request.schoolId() == null || request.customised() == null || request.orderedCount() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId, customised and orderedCount are required");
         }

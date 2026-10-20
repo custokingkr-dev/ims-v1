@@ -135,6 +135,16 @@ spec:
               value: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${platform_url}
             - name: PLATFORM_CLOUD_RUN_AUTH
               value: auto
+            # Notebook tracker: tracker creation and draft access on operations, operator lookup on identity, both on
+            # internal routes (run.invoker granted by scripts/configure-runtime-service-accounts.ps1).
+            - name: CATALOG_TRACKER_BASE_URL
+              value: https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${operations_url}
+            - name: CATALOG_TRACKER_CLOUD_RUN_AUTH
+              value: auto
+            - name: CATALOG_OPERATOR_DIRECTORY_BASE_URL
+              value: https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${identity_url}
+            - name: CATALOG_OPERATOR_DIRECTORY_CLOUD_RUN_AUTH
+              value: auto
             - name: GCP_PROJECT
               value: custoking # from-param: ${project_id}
             - name: GOOGLE_CLOUD_PROJECT

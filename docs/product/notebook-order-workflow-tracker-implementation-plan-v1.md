@@ -1,6 +1,10 @@
 # Notebook Order Workflow Tracker — Implementation Plan
 
 Version: **v1** (2026-10-19). Implements [spec v4](notebook-order-workflow-tracker-v4.md).
+Status: **implemented on branch `feat/notebook-order-tracker` (`b83f4b1a`); not yet merged or deployed.** The
+[2026-10-20 review fixes](../superpowers/specs/2026-10-20-notebook-tracker-review-fixes-design.md) replace this plan's
+shared-token peer calls and synchronous tracker creation; deployment steps are in the
+[deploy runbook](../runbooks/notebook-tracker-deploy.md).
 Branch: `notebook-order-form`, created from `origin/dev` at `8cb87e5b`. Revisions of this plan are new
 files; this one is not edited in place.
 
@@ -47,7 +51,7 @@ product decision before that phase.
 
 Each phase ends with tests run and the stack rebuilt and exercised, and is reported before the next begins.
 
-### Phase 1 — Tracker rules (operations-service, pure logic) — **starting now**
+### Phase 1 — Tracker rules (operations-service, pure logic)
 Step catalogue and the 12-step / 9-step paths; sequence enabling; complete, reopen (later steps revert); working-day
 deadline and overdue calculation with weekend pause; 100-word note validation; step-11 mismatch; image-cap and
 email-intent rule. Unit tests for each.
