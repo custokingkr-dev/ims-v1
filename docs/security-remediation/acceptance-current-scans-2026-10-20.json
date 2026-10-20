@@ -1,0 +1,799 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-20T13:49:18.712359+00:00",
+  "scope": "Downloaded fresh scan evidence, source-index/runtime manifest mapping, and independent Ready runtime metadata; no new scanner execution or native consumer analysis.",
+  "releaseRun": 39423059832,
+  "releaseUrl": "https://github.com/custokingkr-dev/ims-v1/actions/runs/39423059832",
+  "sourceCommit": "42a2761112128f025d4d2e921f7d1c7f4452e3a6",
+  "artifactId": 12266084147,
+  "artifactName": "release-evidence-dev-42a2761112128f025d4d2e921f7d1c7f4452e3a6",
+  "imagesManifestSha256": "9c43ad12473bbed824f77bd40fdd9274857d80fd0bab5aed694f2068aec07b6b",
+  "exactScanManifestSha256": "241f12a71a2bb2e5994ee4e54241f8ed9a34a94acac77b8dc82f58068a4fa314",
+  "scanCapturedAtUtc": "2026-10-20T12:53:53.9444260Z",
+  "freshScanCount": 7,
+  "cachedScanCount": 0,
+  "services": [
+    {
+      "service": "api-gateway",
+      "scannedImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:955ea6b43265a17f88ef39aa38a1a6dba2eb1fd5d05a4a1f066222e1b3e9e97a",
+      "manifestRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:d2f0a2a4f84918331f8f6223af6dff106a132e83f5de8c1e4441c3bb0d4dc365",
+      "matchesObservedReadyRuntime": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifSha256": "8cedfa83686d38773ba7b0c00a47f50a8f856056b10c6ef435eba881091561b7",
+      "findingsBySeverity": {},
+      "findings": 0
+    },
+    {
+      "service": "billing-service",
+      "scannedImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a88da3b832d689f758f866edffa33be8719a342b7e9bd75dfa91e67d2d6d1703",
+      "manifestRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "matchesObservedReadyRuntime": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifSha256": "5ac6a7e7d56d4eda21954be426707d0662a7537f7adc9d440cdf5c6fa653d1cd",
+      "findingsBySeverity": {
+        "LOW": 22,
+        "MEDIUM": 26
+      },
+      "findings": 48
+    },
+    {
+      "service": "frontend",
+      "scannedImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:8f1d084a9649b8927328d7c1b270d9f4b59e206cf385bf80501a5d7b011e4f06",
+      "manifestRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:dd0d6cff1037c667c4b258e7a5fef7e2bd94f86e6f38d80e709cb75314b00bd4",
+      "matchesObservedReadyRuntime": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifSha256": "a7ffcf3647feeff45f1481f2c01c6e357b434020f6f6f8900bdfcfede11ae009",
+      "findingsBySeverity": {},
+      "findings": 0
+    },
+    {
+      "service": "identity-service",
+      "scannedImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:15a81abee368161451064554a485cfe94dbafd8c5dd5adb72076c87356b25a41",
+      "manifestRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "matchesObservedReadyRuntime": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifSha256": "1f2720ba37e237ed9b638390b584a13d18cc460cb7bbfe75b52e3b2e044e87e9",
+      "findingsBySeverity": {
+        "LOW": 22,
+        "MEDIUM": 26
+      },
+      "findings": 48
+    },
+    {
+      "service": "operations-service",
+      "scannedImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:7c5cfb8810446b78f4e07fcb3179dba1eb516ecdcf7d62013ef860cbde0a3327",
+      "manifestRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "matchesObservedReadyRuntime": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifSha256": "863d71a3cb653611d38157d74977d65c34c1279691b0bcda922f8a730361bc37",
+      "findingsBySeverity": {
+        "LOW": 22,
+        "MEDIUM": 26
+      },
+      "findings": 48
+    },
+    {
+      "service": "platform-service",
+      "scannedImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:2f5cd9d7ec1ad8bcce62b87177602de00fb536bcc294914e37703f80777599b6",
+      "manifestRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:bd01b334e248f85b414110821e2848ffaf1782ebf885371dca8fd16b9c248074",
+      "matchesObservedReadyRuntime": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifSha256": "ecd36900289f702ca05d535bc2318c57f1f7e37a61d131b88d3b7588bf04a1e7",
+      "findingsBySeverity": {
+        "LOW": 22,
+        "MEDIUM": 26
+      },
+      "findings": 48
+    },
+    {
+      "service": "school-core-service",
+      "scannedImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:98c9af354d32c6f9296cef8ad28f3027331870e6ecb9ad97b7b507f54c971202",
+      "manifestRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:2962b28d113c1970251b28a4f6b056c8c92d989e35111ba72bf78dba6aa98877",
+      "matchesObservedReadyRuntime": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifSha256": "9f3412e084727aa74211984e1ead77a607c99ad6cd73be62450467acca837fbe",
+      "findingsBySeverity": {
+        "LOW": 22,
+        "MEDIUM": 26
+      },
+      "findings": 48
+    }
+  ],
+  "findingRowsBySeverity": {
+    "LOW": 110,
+    "MEDIUM": 130
+  },
+  "findingRowCount": 240,
+  "uniqueCveCount": 32,
+  "groupedFindings": [
+    {
+      "cve": "CVE-2024-56433",
+      "severityReported": "LOW",
+      "package": "login",
+      "installedVersionReported": "1:4.13+dfsg1-4ubuntu3.2",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2024-56433",
+      "severityReported": "LOW",
+      "package": "passwd",
+      "installedVersionReported": "1:4.13+dfsg1-4ubuntu3.2",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2025-66382",
+      "severityReported": "MEDIUM",
+      "package": "libexpat1",
+      "installedVersionReported": "2.6.1-2ubuntu0.6",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-102473",
+      "severityReported": "MEDIUM",
+      "package": "dash",
+      "installedVersionReported": "0.5.12-6ubuntu5",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-102474",
+      "severityReported": "MEDIUM",
+      "package": "dash",
+      "installedVersionReported": "0.5.12-6ubuntu5",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-103111",
+      "severityReported": "MEDIUM",
+      "package": "libpcre2-8-0",
+      "installedVersionReported": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-107161",
+      "severityReported": "MEDIUM",
+      "package": "libsasl2-2",
+      "installedVersionReported": "2.1.28+dfsg1-5ubuntu3.1",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-107161",
+      "severityReported": "MEDIUM",
+      "package": "libsasl2-modules-db",
+      "installedVersionReported": "2.1.28+dfsg1-5ubuntu3.1",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-18374",
+      "severityReported": "MEDIUM",
+      "package": "libc-bin",
+      "installedVersionReported": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-18374",
+      "severityReported": "MEDIUM",
+      "package": "libc6",
+      "installedVersionReported": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-18374",
+      "severityReported": "MEDIUM",
+      "package": "locales",
+      "installedVersionReported": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-18477",
+      "severityReported": "MEDIUM",
+      "package": "tar",
+      "installedVersionReported": "1.35+dfsg-3ubuntu0.4",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-18508",
+      "severityReported": "MEDIUM",
+      "package": "tar",
+      "installedVersionReported": "1.35+dfsg-3ubuntu0.4",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-40228",
+      "severityReported": "LOW",
+      "package": "libsystemd0",
+      "installedVersionReported": "255.4-1ubuntu8.17",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-40228",
+      "severityReported": "LOW",
+      "package": "libudev1",
+      "installedVersionReported": "255.4-1ubuntu8.17",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-67693",
+      "severityReported": "MEDIUM",
+      "package": "libgnutls30t64",
+      "installedVersionReported": "3.8.3-1.1ubuntu3.6",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-85091",
+      "severityReported": "MEDIUM",
+      "package": "zlib1g",
+      "installedVersionReported": "1:1.3.dfsg-3.1ubuntu2.2",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-86145",
+      "severityReported": "MEDIUM",
+      "package": "libpcre2-8-0",
+      "installedVersionReported": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-86409",
+      "severityReported": "LOW",
+      "package": "curl",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-86409",
+      "severityReported": "LOW",
+      "package": "libcurl4t64",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-86414",
+      "severityReported": "LOW",
+      "package": "curl",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-86414",
+      "severityReported": "LOW",
+      "package": "libcurl4t64",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-87862",
+      "severityReported": "LOW",
+      "package": "curl",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-87862",
+      "severityReported": "LOW",
+      "package": "libcurl4t64",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-87863",
+      "severityReported": "LOW",
+      "package": "curl",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-87863",
+      "severityReported": "LOW",
+      "package": "libcurl4t64",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-87864",
+      "severityReported": "LOW",
+      "package": "curl",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-87864",
+      "severityReported": "LOW",
+      "package": "libcurl4t64",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-88647",
+      "severityReported": "MEDIUM",
+      "package": "libgnutls30t64",
+      "installedVersionReported": "3.8.3-1.1ubuntu3.6",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-89092",
+      "severityReported": "MEDIUM",
+      "package": "libc-bin",
+      "installedVersionReported": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-89092",
+      "severityReported": "MEDIUM",
+      "package": "libc6",
+      "installedVersionReported": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-89092",
+      "severityReported": "MEDIUM",
+      "package": "locales",
+      "installedVersionReported": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-89156",
+      "severityReported": "MEDIUM",
+      "package": "libpcre2-8-0",
+      "installedVersionReported": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-89157",
+      "severityReported": "MEDIUM",
+      "package": "libpcre2-8-0",
+      "installedVersionReported": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-89158",
+      "severityReported": "MEDIUM",
+      "package": "libpcre2-8-0",
+      "installedVersionReported": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-89160",
+      "severityReported": "MEDIUM",
+      "package": "libpcre2-8-0",
+      "installedVersionReported": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-89161",
+      "severityReported": "MEDIUM",
+      "package": "libpcre2-8-0",
+      "installedVersionReported": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-92388",
+      "severityReported": "LOW",
+      "package": "curl",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-92388",
+      "severityReported": "LOW",
+      "package": "libcurl4t64",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-92389",
+      "severityReported": "LOW",
+      "package": "curl",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-92389",
+      "severityReported": "LOW",
+      "package": "libcurl4t64",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-92391",
+      "severityReported": "LOW",
+      "package": "curl",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-92391",
+      "severityReported": "LOW",
+      "package": "libcurl4t64",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-94266",
+      "severityReported": "LOW",
+      "package": "curl",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-94266",
+      "severityReported": "LOW",
+      "package": "libcurl4t64",
+      "installedVersionReported": "8.5.0-2ubuntu10.15",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-95184",
+      "severityReported": "MEDIUM",
+      "package": "libgnutls30t64",
+      "installedVersionReported": "3.8.3-1.1ubuntu3.6",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-95209",
+      "severityReported": "MEDIUM",
+      "package": "libgnutls30t64",
+      "installedVersionReported": "3.8.3-1.1ubuntu3.6",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    },
+    {
+      "cve": "CVE-2026-95210",
+      "severityReported": "MEDIUM",
+      "package": "libgnutls30t64",
+      "installedVersionReported": "3.8.3-1.1ubuntu3.6",
+      "fixedVersionReported": "",
+      "services": [
+        "billing-service",
+        "identity-service",
+        "operations-service",
+        "platform-service",
+        "school-core-service"
+      ]
+    }
+  ],
+  "historicalSelectedIndicesStillInCurrentManifest": 1,
+  "limits": [
+    "Index digest and platform runtime digest are different identifiers; compare via the release manifest mapping, not direct string equality.",
+    "All seven manifest runtime refs match fresh Cloud Run Ready metadata; this capture does not independently re-fetch OCI manifests.",
+    "LOW/MEDIUM findings are retained; successful high/critical gates do not establish native advisory applicability.",
+    "No supported fix or not-affected conclusion is inferred from scanner fixed-version fields alone."
+  ],
+  "applicabilityClosed": false,
+  "mutations": 0,
+  "findingsSuppressed": 0
+}

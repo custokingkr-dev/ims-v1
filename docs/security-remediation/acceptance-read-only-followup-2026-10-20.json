@@ -1,0 +1,476 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-20T13:42:30.976599+00:00",
+  "completedAtUtc": "2026-10-20T13:46:08.933735+00:00",
+  "project": "custoking-dev",
+  "records": [
+    {
+      "scope": "dashboard-service-exact-rest",
+      "observedAtUtc": "2026-10-20T13:42:39.985166+00:00",
+      "method": "GET",
+      "url": "https://run.googleapis.com/v2/projects/custoking-dev/locations/asia-south2/services/custoking-dashboard-dev",
+      "httpStatus": 404,
+      "status": "NOT_FOUND"
+    },
+    {
+      "scope": "dashboard-exact-expired-fixture",
+      "observedAtUtc": "2026-10-20T13:42:40.422294+00:00",
+      "method": "GET",
+      "url": "https://firestore.googleapis.com/v1/projects/custoking-dev/databases/ims-dashboard-dev/documents/dashboardSecurityState/expired-5d010f4bf88d45efb59105858cdf18aa69b1ae9c93dcd41b0c69924f5b4680ad",
+      "httpStatus": 404,
+      "status": "NOT_FOUND"
+    },
+    {
+      "scope": "database/cpu/utilization",
+      "observedAtUtc": "2026-10-20T13:42:40.749801+00:00",
+      "method": "GET",
+      "url": "https://monitoring.googleapis.com/v3/projects/custoking-dev/timeSeries?filter=metric.type%3D%22cloudsql.googleapis.com%2Fdatabase%2Fcpu%2Futilization%22+AND+resource.type%3D%22cloudsql_database%22+AND+resource.labels.database_id%3D%22custoking-dev%3Acustoking-db-dev%22&interval.startTime=2026-10-20T13%3A27%3A30.976599%2B00%3A00&interval.endTime=2026-10-20T13%3A42%3A30.976599%2B00%3A00&view=FULL&pageSize=1000",
+      "httpStatus": 200,
+      "rawResponseSha256": "8c4ab5281139a080edca3ad88e056186368aabb33919912b7f70143c86713d59",
+      "metadata": {
+        "series": [
+          {
+            "resourceLabels": {
+              "database_id": "custoking-dev:custoking-db-dev",
+              "project_id": "custoking-dev",
+              "region": "asia-south2"
+            },
+            "metricLabels": {},
+            "latestAtUtc": "2026-10-20T13:41:00+00:00",
+            "ageSeconds": 91,
+            "freshWithin5Minutes": true,
+            "latestValue": 0.10730464276530256,
+            "windowMax": 0.10730464276530256,
+            "points": 14
+          }
+        ],
+        "truncated": false
+      },
+      "status": "READ"
+    },
+    {
+      "scope": "database/memory/utilization",
+      "observedAtUtc": "2026-10-20T13:42:41.286921+00:00",
+      "method": "GET",
+      "url": "https://monitoring.googleapis.com/v3/projects/custoking-dev/timeSeries?filter=metric.type%3D%22cloudsql.googleapis.com%2Fdatabase%2Fmemory%2Futilization%22+AND+resource.type%3D%22cloudsql_database%22+AND+resource.labels.database_id%3D%22custoking-dev%3Acustoking-db-dev%22&interval.startTime=2026-10-20T13%3A27%3A30.976599%2B00%3A00&interval.endTime=2026-10-20T13%3A42%3A30.976599%2B00%3A00&view=FULL&pageSize=1000",
+      "httpStatus": 200,
+      "rawResponseSha256": "e6356b192e1efa09f6929db9f1fe68a95e2647f81d67a012db293cc15f84258d",
+      "metadata": {
+        "series": [
+          {
+            "resourceLabels": {
+              "project_id": "custoking-dev",
+              "region": "asia-south2",
+              "database_id": "custoking-dev:custoking-db-dev"
+            },
+            "metricLabels": {},
+            "latestAtUtc": "2026-10-20T13:41:00+00:00",
+            "ageSeconds": 91,
+            "freshWithin5Minutes": true,
+            "latestValue": 1.0,
+            "windowMax": 1.0,
+            "points": 14
+          }
+        ],
+        "truncated": false
+      },
+      "status": "READ"
+    },
+    {
+      "scope": "database/postgresql/num_backends",
+      "observedAtUtc": "2026-10-20T13:42:41.824725+00:00",
+      "method": "GET",
+      "url": "https://monitoring.googleapis.com/v3/projects/custoking-dev/timeSeries?filter=metric.type%3D%22cloudsql.googleapis.com%2Fdatabase%2Fpostgresql%2Fnum_backends%22+AND+resource.type%3D%22cloudsql_database%22+AND+resource.labels.database_id%3D%22custoking-dev%3Acustoking-db-dev%22&interval.startTime=2026-10-20T13%3A27%3A30.976599%2B00%3A00&interval.endTime=2026-10-20T13%3A42%3A30.976599%2B00%3A00&view=FULL&pageSize=1000",
+      "httpStatus": 200,
+      "rawResponseSha256": "9551034c26e373c9204dbb5c9056b9d8761da43296a3c8215ca2153862a0b08a",
+      "metadata": {
+        "series": [
+          {
+            "resourceLabels": {
+              "project_id": "custoking-dev",
+              "region": "asia-south2",
+              "database_id": "custoking-dev:custoking-db-dev"
+            },
+            "metricLabels": {
+              "database": "cloudsqladmin"
+            },
+            "latestAtUtc": "2026-10-20T13:41:00+00:00",
+            "ageSeconds": 91,
+            "freshWithin5Minutes": true,
+            "latestValue": 2.0,
+            "windowMax": 2.0,
+            "points": 14
+          },
+          {
+            "resourceLabels": {
+              "database_id": "custoking-dev:custoking-db-dev",
+              "project_id": "custoking-dev",
+              "region": "asia-south2"
+            },
+            "metricLabels": {
+              "database": "custoking_dev"
+            },
+            "latestAtUtc": "2026-10-20T13:41:00+00:00",
+            "ageSeconds": 91,
+            "freshWithin5Minutes": true,
+            "latestValue": 8.0,
+            "windowMax": 8.0,
+            "points": 14
+          },
+          {
+            "resourceLabels": {
+              "region": "asia-south2",
+              "database_id": "custoking-dev:custoking-db-dev",
+              "project_id": "custoking-dev"
+            },
+            "metricLabels": {
+              "database": "postgres"
+            },
+            "latestAtUtc": "2026-10-20T13:41:00+00:00",
+            "ageSeconds": 91,
+            "freshWithin5Minutes": true,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 14
+          },
+          {
+            "resourceLabels": {
+              "region": "asia-south2",
+              "database_id": "custoking-dev:custoking-db-dev",
+              "project_id": "custoking-dev"
+            },
+            "metricLabels": {
+              "database": "template1"
+            },
+            "latestAtUtc": "2026-10-20T13:41:00+00:00",
+            "ageSeconds": 91,
+            "freshWithin5Minutes": true,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 14
+          }
+        ],
+        "truncated": false
+      },
+      "status": "READ"
+    },
+    {
+      "scope": "run-instance-count",
+      "observedAtUtc": "2026-10-20T13:42:42.365725+00:00",
+      "method": "GET",
+      "url": "https://monitoring.googleapis.com/v3/projects/custoking-dev/timeSeries?filter=metric.type%3D%22run.googleapis.com%2Fcontainer%2Finstance_count%22+AND+resource.type%3D%22cloud_run_revision%22+AND+resource.labels.location%3D%22asia-south2%22&interval.startTime=2026-10-20T13%3A27%3A30.976599%2B00%3A00&interval.endTime=2026-10-20T13%3A42%3A30.976599%2B00%3A00&view=FULL&pageSize=1000",
+      "httpStatus": 200,
+      "rawResponseSha256": "f4e4d07c4c0ea00bc3bbd5a84a71a65be5aabae5cd99905b1005ef4f76a85e30",
+      "metadata": {
+        "series": [
+          {
+            "resourceLabels": {
+              "configuration_name": "custoking-api-gateway-dev",
+              "service_name": "custoking-api-gateway-dev",
+              "project_id": "custoking-dev",
+              "revision_name": "custoking-api-gateway-dev-mvgoq2uo",
+              "location": "asia-south2"
+            },
+            "metricLabels": {
+              "state": "active"
+            },
+            "latestAtUtc": "2026-10-20T13:30:00+00:00",
+            "ageSeconds": 751,
+            "freshWithin5Minutes": false,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 3
+          },
+          {
+            "resourceLabels": {
+              "configuration_name": "custoking-api-gateway-dev",
+              "service_name": "custoking-api-gateway-dev",
+              "revision_name": "custoking-api-gateway-dev-mvgoq2uo",
+              "project_id": "custoking-dev",
+              "location": "asia-south2"
+            },
+            "metricLabels": {
+              "state": "idle"
+            },
+            "latestAtUtc": "2026-10-20T13:30:00+00:00",
+            "ageSeconds": 751,
+            "freshWithin5Minutes": false,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 3
+          },
+          {
+            "resourceLabels": {
+              "project_id": "custoking-dev",
+              "configuration_name": "custoking-billing-service-dev",
+              "service_name": "custoking-billing-service-dev",
+              "revision_name": "custoking-billing-service-dev-mvgp1svd",
+              "location": "asia-south2"
+            },
+            "metricLabels": {
+              "state": "active"
+            },
+            "latestAtUtc": "2026-10-20T13:42:00+00:00",
+            "ageSeconds": 31,
+            "freshWithin5Minutes": true,
+            "latestValue": 1.0,
+            "windowMax": 1.0,
+            "points": 15
+          },
+          {
+            "resourceLabels": {
+              "service_name": "custoking-billing-service-dev",
+              "revision_name": "custoking-billing-service-dev-mvgp1svd",
+              "project_id": "custoking-dev",
+              "configuration_name": "custoking-billing-service-dev",
+              "location": "asia-south2"
+            },
+            "metricLabels": {
+              "state": "idle"
+            },
+            "latestAtUtc": "2026-10-20T13:42:00+00:00",
+            "ageSeconds": 31,
+            "freshWithin5Minutes": true,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 15
+          },
+          {
+            "resourceLabels": {
+              "revision_name": "custoking-frontend-dev-mvgous7c",
+              "location": "asia-south2",
+              "service_name": "custoking-frontend-dev",
+              "configuration_name": "custoking-frontend-dev",
+              "project_id": "custoking-dev"
+            },
+            "metricLabels": {
+              "state": "active"
+            },
+            "latestAtUtc": "2026-10-20T13:30:00+00:00",
+            "ageSeconds": 751,
+            "freshWithin5Minutes": false,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 3
+          },
+          {
+            "resourceLabels": {
+              "project_id": "custoking-dev",
+              "service_name": "custoking-frontend-dev",
+              "configuration_name": "custoking-frontend-dev",
+              "revision_name": "custoking-frontend-dev-mvgous7c",
+              "location": "asia-south2"
+            },
+            "metricLabels": {
+              "state": "idle"
+            },
+            "latestAtUtc": "2026-10-20T13:30:00+00:00",
+            "ageSeconds": 751,
+            "freshWithin5Minutes": false,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 3
+          },
+          {
+            "resourceLabels": {
+              "service_name": "custoking-identity-service-dev",
+              "configuration_name": "custoking-identity-service-dev",
+              "revision_name": "custoking-identity-service-dev-mvgosi8y",
+              "project_id": "custoking-dev",
+              "location": "asia-south2"
+            },
+            "metricLabels": {
+              "state": "active"
+            },
+            "latestAtUtc": "2026-10-20T13:42:00+00:00",
+            "ageSeconds": 31,
+            "freshWithin5Minutes": true,
+            "latestValue": 1.0,
+            "windowMax": 1.0,
+            "points": 15
+          },
+          {
+            "resourceLabels": {
+              "configuration_name": "custoking-identity-service-dev",
+              "project_id": "custoking-dev",
+              "service_name": "custoking-identity-service-dev",
+              "location": "asia-south2",
+              "revision_name": "custoking-identity-service-dev-mvgosi8y"
+            },
+            "metricLabels": {
+              "state": "idle"
+            },
+            "latestAtUtc": "2026-10-20T13:42:00+00:00",
+            "ageSeconds": 31,
+            "freshWithin5Minutes": true,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 15
+          },
+          {
+            "resourceLabels": {
+              "project_id": "custoking-dev",
+              "configuration_name": "custoking-operations-service-dev",
+              "location": "asia-south2",
+              "revision_name": "custoking-operations-service-dev-mvgp0mif",
+              "service_name": "custoking-operations-service-dev"
+            },
+            "metricLabels": {
+              "state": "active"
+            },
+            "latestAtUtc": "2026-10-20T13:42:00+00:00",
+            "ageSeconds": 31,
+            "freshWithin5Minutes": true,
+            "latestValue": 1.0,
+            "windowMax": 1.0,
+            "points": 15
+          },
+          {
+            "resourceLabels": {
+              "configuration_name": "custoking-operations-service-dev",
+              "project_id": "custoking-dev",
+              "service_name": "custoking-operations-service-dev",
+              "revision_name": "custoking-operations-service-dev-mvgp0mif",
+              "location": "asia-south2"
+            },
+            "metricLabels": {
+              "state": "idle"
+            },
+            "latestAtUtc": "2026-10-20T13:42:00+00:00",
+            "ageSeconds": 31,
+            "freshWithin5Minutes": true,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 15
+          },
+          {
+            "resourceLabels": {
+              "location": "asia-south2",
+              "service_name": "custoking-platform-service-dev",
+              "configuration_name": "custoking-platform-service-dev",
+              "revision_name": "custoking-platform-service-dev-mvgp4ms2",
+              "project_id": "custoking-dev"
+            },
+            "metricLabels": {
+              "state": "active"
+            },
+            "latestAtUtc": "2026-10-20T13:42:00+00:00",
+            "ageSeconds": 31,
+            "freshWithin5Minutes": true,
+            "latestValue": 1.0,
+            "windowMax": 1.0,
+            "points": 15
+          },
+          {
+            "resourceLabels": {
+              "service_name": "custoking-platform-service-dev",
+              "configuration_name": "custoking-platform-service-dev",
+              "revision_name": "custoking-platform-service-dev-mvgp4ms2",
+              "location": "asia-south2",
+              "project_id": "custoking-dev"
+            },
+            "metricLabels": {
+              "state": "idle"
+            },
+            "latestAtUtc": "2026-10-20T13:42:00+00:00",
+            "ageSeconds": 31,
+            "freshWithin5Minutes": true,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 15
+          },
+          {
+            "resourceLabels": {
+              "location": "asia-south2",
+              "service_name": "custoking-school-core-service-dev",
+              "configuration_name": "custoking-school-core-service-dev",
+              "project_id": "custoking-dev",
+              "revision_name": "custoking-school-core-service-dev-mvgoxgrd"
+            },
+            "metricLabels": {
+              "state": "active"
+            },
+            "latestAtUtc": "2026-10-20T13:42:00+00:00",
+            "ageSeconds": 31,
+            "freshWithin5Minutes": true,
+            "latestValue": 1.0,
+            "windowMax": 1.0,
+            "points": 15
+          },
+          {
+            "resourceLabels": {
+              "location": "asia-south2",
+              "configuration_name": "custoking-school-core-service-dev",
+              "project_id": "custoking-dev",
+              "service_name": "custoking-school-core-service-dev",
+              "revision_name": "custoking-school-core-service-dev-mvgoxgrd"
+            },
+            "metricLabels": {
+              "state": "idle"
+            },
+            "latestAtUtc": "2026-10-20T13:42:00+00:00",
+            "ageSeconds": 31,
+            "freshWithin5Minutes": true,
+            "latestValue": 0.0,
+            "windowMax": 0.0,
+            "points": 15
+          }
+        ],
+        "truncated": false
+      },
+      "status": "READ"
+    },
+    {
+      "scope": "database/memory/components",
+      "observedAtUtc": "2026-10-20T13:45:34.511039+00:00",
+      "method": "GET",
+      "url": "https://monitoring.googleapis.com/v3/projects/custoking-dev/timeSeries?filter=metric.type%3D%22cloudsql.googleapis.com%2Fdatabase%2Fmemory%2Fcomponents%22+AND+resource.type%3D%22cloudsql_database%22+AND+resource.labels.database_id%3D%22custoking-dev%3Acustoking-db-dev%22&interval.startTime=2026-10-20T13%3A30%3A34.511039%2B00%3A00&interval.endTime=2026-10-20T13%3A45%3A34.511039%2B00%3A00&view=FULL&pageSize=1000",
+      "httpStatus": 200,
+      "status": "READ",
+      "rawResponseSha256": "5d8e20f34934b2a85736318c27920b4b07324541af45c97066548f91bf330540",
+      "metadata": {
+        "series": [
+          {
+            "metricLabels": {
+              "component": "Cache"
+            },
+            "latestValue": 8.792953187250996,
+            "latestAtUtc": "2026-10-20T13:45:00+00:00",
+            "ageSeconds": 35,
+            "freshWithin5Minutes": true
+          },
+          {
+            "metricLabels": {
+              "component": "Free"
+            },
+            "latestValue": 77.97559760956176,
+            "latestAtUtc": "2026-10-20T13:45:00+00:00",
+            "ageSeconds": 35,
+            "freshWithin5Minutes": true
+          },
+          {
+            "metricLabels": {
+              "component": "Usage"
+            },
+            "latestValue": 13.231449203187251,
+            "latestAtUtc": "2026-10-20T13:45:00+00:00",
+            "ageSeconds": 35,
+            "freshWithin5Minutes": true
+          }
+        ],
+        "truncated": false
+      }
+    }
+  ],
+  "readOnly": true,
+  "workloadStarted": false,
+  "loadCertification": false,
+  "physicalDrainProven": false,
+  "ttlDeletionAttributionProven": false,
+  "secretPayloadsRead": false,
+  "literalEnvironmentValuesRead": false,
+  "mutations": 0,
+  "productionResourcesAccessed": false,
+  "collectorSha256": "c296a1f2348100b4ee81cb374b386fdf3fde1e8acbf78d46942d354c4eff9843",
+  "memoryInterpretation": "Utilization and components are separate sampled gauges; no memory headroom or workload certification is inferred."
+}
