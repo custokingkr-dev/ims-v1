@@ -29,7 +29,7 @@ class NotebookTrackerControllerTest {
 
     @BeforeEach void setup() {
         service = mock(NotebookTrackerService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new NotebookTrackerController(service, "workflow-token", "machine-token")).build();
+        mvc = MockMvcBuilders.standaloneSetup(new NotebookTrackerController(service, "workflow-token")).build();
     }
 
     @Test void everyUserEndpointNeedsTheWorkflowServiceToken() throws Exception {
@@ -39,20 +39,15 @@ class NotebookTrackerControllerTest {
         verifyNoInteractions(service);
     }
 
-    @Test void theMachineEndpointsNeedTheMachineTokenNotTheWorkflowToken() throws Exception {
+    @Test void theMachineEndpointsAreNoLongerOnTheUserFacingPath() throws Exception {
         String body = "{\"orderId\":\"CK-1\",\"schoolId\":1,\"customised\":true,\"orderedCount\":10,\"placedAt\":\"2026-10-19T09:30:00+05:30\",\"timeZone\":\"Asia/Kolkata\"}";
-        mvc.perform(post("/api/v1/workflows/notebook-orders").contentType("application/json").content(body)).andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/v1/workflows/notebook-orders").header("X-Notebook-Tracker-Service-Token", "workflow-token")
-                .contentType("application/json").content(body)).andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/v1/workflows/notebook-orders/CK-1/design/image-access").header("X-Workflow-Service-Token", "workflow-token")
-                .contentType("application/json").content("{\"userId\":1,\"role\":\"OPERATIONS\"}")).andExpect(status().isUnauthorized());
-        verifyNoInteractions(service);
-    }
-
-    @Test void aBlankConfiguredMachineTokenDisablesCreation() throws Exception {
-        MockMvc disabled = MockMvcBuilders.standaloneSetup(new NotebookTrackerController(service, "workflow-token", "")).build();
-        disabled.perform(post("/api/v1/workflows/notebook-orders").header("X-Notebook-Tracker-Service-Token", "")
-                .contentType("application/json").content("{}")).andExpect(status().isUnauthorized());
+        for (String header : new String[]{"X-Notebook-Tracker-Service-Token", "X-Workflow-Service-Token"}) {
+            String token = header.startsWith("X-Workflow") ? "workflow-token" : "machine-token";
+            mvc.perform(post("/api/v1/workflows/notebook-orders").header(header, token).contentType("application/json").content(body))
+                    .andExpect(status().isMethodNotAllowed());
+            mvc.perform(post("/api/v1/workflows/notebook-orders/CK-1/design/image-access").header(header, token)
+                    .contentType("application/json").content("{\"userId\":1,\"role\":\"OPERATIONS\"}")).andExpect(status().isNotFound());
+        }
         verifyNoInteractions(service);
     }
 

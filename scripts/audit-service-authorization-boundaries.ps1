@@ -68,6 +68,27 @@ $iamOnlyControllerContracts["services/school-core-service/src/main/java/com/cust
     CallerEnv = "IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS"; DirectoryPeer = $true; Scheduler = $false
 }
 
+# Notebook order tracker peer calls (spec 3.1): six exact routes, each its own contract with its own caller allow-list.
+# A controller that serves several routes lists one contract per route; together they must account for every mapping.
+$iamOnlyControllerContracts["services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/NotebookTrackerMachineController.java"] = @(
+    @{ MethodMappings = @('@PostMapping public ResponseEntity<CreateResponse> create('); Route = "/api/v1/internal/notebook-trackers"; Service = "operations-service"
+       CallerEnv = "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false },
+    @{ MethodMappings = @('@PostMapping("/{orderId}/image-access")'); Route = '/api/v1/internal/notebook-trackers/[A-Za-z0-9_-]{1,255}/image-access'; Service = "operations-service"
+       CallerEnv = "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false }
+)
+$iamOnlyControllerContracts["services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/CatalogTrackerMachineController.java"] = @(
+    @{ MethodMappings = @('@GetMapping("/{orderId}/draft-images")'); Route = '/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/draft-images'; Service = "school-core-service"
+       CallerEnv = "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false },
+    @{ MethodMappings = @('@PutMapping("/{orderId}/tracker-status")'); Route = '/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/tracker-status'; Service = "school-core-service"
+       CallerEnv = "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false }
+)
+$iamOnlyControllerContracts["services/identity-service/src/main/java/com/custoking/ims/identityservice/api/internal/OperatorDirectoryController.java"] = @(
+    @{ MethodMappings = @('@GetMapping("/resolve")'); Route = "/api/v1/internal/operator-directory/resolve"; Service = "identity-service"
+       CallerEnv = "OPERATOR_DIRECTORY_RESOLVE_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false },
+    @{ MethodMappings = @('@GetMapping("/eligible")'); Route = "/api/v1/internal/operator-directory/eligible"; Service = "identity-service"
+       CallerEnv = "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false }
+)
+
 # A small number of controllers intentionally centralize a compound authorization contract
 # in a private helper instead of repeating it in every mapped method. Keep these contracts
 # explicit and exact so adding a helper named "authorize" cannot accidentally bypass the
@@ -124,41 +145,46 @@ foreach ($file in $controllerFiles) {
 
     $iamOnlyContract = $iamOnlyControllerContracts[$normalizedRelative]
     if ($null -ne $iamOnlyContract) {
+        # One contract, or one per route; every route contract is checked on its own below.
+        $routeContracts = @($iamOnlyContract)
         $mappedMethodCount = [regex]::Matches($source, "@(GetMapping|PostMapping|PutMapping|PatchMapping|DeleteMapping)").Count
-        $expectedMappings = @($iamOnlyContract.MethodMappings)
-        if ($null -ne $iamOnlyContract.MethodMapping) { $expectedMappings = @([string]$iamOnlyContract.MethodMapping) }
+        $expectedMappings = @($routeContracts | ForEach-Object {
+            if ($null -ne $_.MethodMapping) { [string]$_.MethodMapping } else { $_.MethodMappings }
+        })
         if ($mappedMethodCount -ne $expectedMappings.Count -or @($expectedMappings | Where-Object { -not $source.Contains($_) }).Count -gt 0) {
             $violations.Add("IAM-only controller mapping drifted from its single approved method: $relative")
         }
         if (-not $source.Contains("Cloud Run IAM")) {
             $violations.Add("IAM-only controller does not declare its transport authentication boundary: $relative")
         }
-        if ($gateway.Contains([string]$iamOnlyContract.Route)) {
-            $violations.Add("IAM-only controller route is exposed through the API gateway: $($iamOnlyContract.Route)")
-        }
-        if ($iamOnlyContract.Scheduler -ne $false -and (-not $asyncScheduler.Contains([string]$iamOnlyContract.Route) -or
-            -not $asyncScheduler.Contains('roles/run.invoker') -or
-            -not $asyncScheduler.Contains('--oidc-service-account-email='))) {
-            $violations.Add("IAM-only controller lacks OIDC Scheduler/run.invoker wiring: $relative")
-        }
-        $callerEnv = [string]$iamOnlyContract.CallerEnv
-        if ([string]::IsNullOrEmpty($callerEnv)) {
-            $callerEnv = if ($iamOnlyContract.Service -eq "platform-service") { "ASYNC_DRAIN_CALLER_SERVICE_ACCOUNTS" } else { "OUTBOX_RELAY_CALLER_SERVICE_ACCOUNTS" }
-        }
         $securityRoot = Join-Path (Split-Path (Split-Path $file.FullName -Parent) -Parent) "../security"
         $filterPath = Join-Path $securityRoot "MachineCallerFilter.java"
         $filter = Read-RequiredFile $filterPath
-        foreach ($required in @('@Component','extends OncePerRequestFilter','GOOGLE.verify(token)','https://accounts.google.com','email_verified','SERVICE_OIDC_AUDIENCES','getHeader("Authorization")','verifier.apply','allowedServiceAccountPlaceholder')) {
-            if ($required -eq 'allowedServiceAccountPlaceholder') { $required = $callerEnv }
-            if (-not $filter.Contains($required)) { $violations.Add("Machine caller proof missing in ${relative}: $required") }
-        }
-        if (-not $filter.Contains([string]$iamOnlyContract.Route)) { $violations.Add("Machine route lacks exact signed caller filter: $relative") }
-        $manifest = Read-RequiredFile (Join-Path $CloudRunDirectory "$($iamOnlyContract.Service).yaml")
-        if (-not $manifest.Contains($callerEnv) -or -not $manifest.Contains("SERVICE_OIDC_AUDIENCES")) { $violations.Add("Machine route lacks exact caller/audience deployment configuration: $relative") }
-        if ($iamOnlyContract.DirectoryPeer) {
-            $peer=Read-RequiredFile "services/identity-service/src/main/java/com/custoking/ims/identityservice/infrastructure/TenantSchoolClient.java"
-            foreach ($required in @('/api/v1/internal/identity-directory/schools/','/api/v1/internal/identity-directory/zones/','headers.setBearerAuth(identityToken)')) {
-                if (-not $peer.Contains($required)) { $violations.Add("Directory route lacks signed identity peer proof: $required") }
+        foreach ($routeContract in $routeContracts) {
+            if ($gateway.Contains([string]$routeContract.Route)) {
+                $violations.Add("IAM-only controller route is exposed through the API gateway: $($routeContract.Route)")
+            }
+            if ($routeContract.Scheduler -ne $false -and (-not $asyncScheduler.Contains([string]$routeContract.Route) -or
+                -not $asyncScheduler.Contains('roles/run.invoker') -or
+                -not $asyncScheduler.Contains('--oidc-service-account-email='))) {
+                $violations.Add("IAM-only controller lacks OIDC Scheduler/run.invoker wiring: $relative")
+            }
+            $callerEnv = [string]$routeContract.CallerEnv
+            if ([string]::IsNullOrEmpty($callerEnv)) {
+                $callerEnv = if ($routeContract.Service -eq "platform-service") { "ASYNC_DRAIN_CALLER_SERVICE_ACCOUNTS" } else { "OUTBOX_RELAY_CALLER_SERVICE_ACCOUNTS" }
+            }
+            foreach ($required in @('@Component','extends OncePerRequestFilter','GOOGLE.verify(token)','https://accounts.google.com','email_verified','SERVICE_OIDC_AUDIENCES','getHeader("Authorization")','verifier.apply','allowedServiceAccountPlaceholder')) {
+                if ($required -eq 'allowedServiceAccountPlaceholder') { $required = $callerEnv }
+                if (-not $filter.Contains($required)) { $violations.Add("Machine caller proof missing in ${relative}: $required") }
+            }
+            if (-not $filter.Contains([string]$routeContract.Route)) { $violations.Add("Machine route lacks exact signed caller filter: $relative") }
+            $manifest = Read-RequiredFile (Join-Path $CloudRunDirectory "$($routeContract.Service).yaml")
+            if (-not $manifest.Contains($callerEnv) -or -not $manifest.Contains("SERVICE_OIDC_AUDIENCES")) { $violations.Add("Machine route lacks exact caller/audience deployment configuration: $relative") }
+            if ($routeContract.DirectoryPeer) {
+                $peer=Read-RequiredFile "services/identity-service/src/main/java/com/custoking/ims/identityservice/infrastructure/TenantSchoolClient.java"
+                foreach ($required in @('/api/v1/internal/identity-directory/schools/','/api/v1/internal/identity-directory/zones/','headers.setBearerAuth(identityToken)')) {
+                    if (-not $peer.Contains($required)) { $violations.Add("Directory route lacks signed identity peer proof: $required") }
+                }
             }
         }
         continue

@@ -19,7 +19,8 @@ class MachineProofAuditTest(unittest.TestCase):
             self.copy(ROOT / "services/api-gateway" / name)
         for path in ROOT.glob("services/*-service/src/main/java/**/MachineCallerFilter.java"):
             self.copy(path)
-        names = {"OutboxRelayTriggerController.java", "AsyncWorkTriggerController.java", "PasswordResetDrainController.java", "IdentityDirectoryController.java", "TenantSchoolClient.java", "GenericNotificationReportController.java", "NotificationReportAuthority.java", "GoogleIdentityTokenVerifier.java"}
+        names = {"OutboxRelayTriggerController.java", "AsyncWorkTriggerController.java", "PasswordResetDrainController.java", "IdentityDirectoryController.java", "TenantSchoolClient.java", "GenericNotificationReportController.java", "NotificationReportAuthority.java", "GoogleIdentityTokenVerifier.java",
+                 "NotebookTrackerMachineController.java", "CatalogTrackerMachineController.java", "OperatorDirectoryController.java"}
         for path in ROOT.glob("services/*-service/src/main/java/**/*.java"):
             if path.name in names: self.copy(path)
     def tearDown(self): self.temp.cleanup()
@@ -71,6 +72,12 @@ class MachineProofAuditTest(unittest.TestCase):
     def test_added_internal_method_cannot_borrow_controller_exception(self):
         self.alter("PasswordResetDrainController.java", "@PostMapping(\"/drain\")", "@PostMapping(\"/extra\") public void extra() {}\n @PostMapping(\"/drain\")")
         result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("mapping drifted", result.stdout)
+    def test_added_method_on_a_multi_route_machine_controller_fails(self):
+        self.alter("OperatorDirectoryController.java", '@GetMapping("/resolve")', '@GetMapping("/extra") public void extra() {}\n @GetMapping("/resolve")')
+        result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("mapping drifted", result.stdout)
+    def test_every_route_of_a_multi_route_machine_controller_needs_its_own_caller_list(self):
+        self.alter("MachineCallerFilter.java", 'return "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS";', 'return "OPERATOR_DIRECTORY_RESOLVE_CALLER_SERVICE_ACCOUNTS";')
+        result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("proof missing", result.stdout)
     def alter_platform(self, name, before, after):
         path = next(self.root.glob("services/platform-service/src/main/java/**/" + name))
         self.assertIn(before, path.read_text())

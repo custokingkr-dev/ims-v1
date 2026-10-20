@@ -151,18 +151,15 @@ catalog:
   read-token: ${CATALOG_READ_TOKEN:}
   product-form:
     enabled: ${CATALOG_PRODUCT_FORM_ENABLED:false}
-  # Notebook order tracker (operations-service). Placement creates the tracker and draft uploads ask it for access.
-  # base-url/token are what school-core sends; machine-token is what school-core accepts from the tracker.
+  # Notebook order tracker (operations-service). Placement creates the tracker and draft uploads ask it for access,
+  # on operations' internal routes with this service's Cloud Run identity token.
   # Blank = the tracker is not reachable: notebook orders still place and are marked so the tracker is created later.
   tracker:
     base-url: ${CATALOG_TRACKER_BASE_URL:}
-    token: ${CATALOG_TRACKER_TOKEN:}
-    machine-token: ${CATALOG_TRACKER_MACHINE_TOKEN:}
     cloud-run-auth: ${CATALOG_TRACKER_CLOUD_RUN_AUTH:auto}
-  # Operator directory (identity-service): which operator a new notebook order is assigned to.
+  # Operator directory (identity-service's internal route): which operator a new notebook order is assigned to.
   operator-directory:
     base-url: ${CATALOG_OPERATOR_DIRECTORY_BASE_URL:}
-    token: ${CATALOG_OPERATOR_DIRECTORY_TOKEN:}
     cloud-run-auth: ${CATALOG_OPERATOR_DIRECTORY_CLOUD_RUN_AUTH:auto}
   assets:
     mode: ${CATALOG_ASSETS_MODE:gcs}

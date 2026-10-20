@@ -1,7 +1,6 @@
 package com.custoking.ims.operationsservice.api;
 
 import com.custoking.ims.operationsservice.application.NotebookTrackerService;
-import com.custoking.ims.operationsservice.application.NotebookTrackerService.CreateTracker;
 import com.custoking.ims.operationsservice.application.NotebookTrackerService.SlaRow;
 import com.custoking.ims.operationsservice.application.tracker.Sla;
 import com.custoking.ims.operationsservice.application.tracker.TrackerRuleViolation;
@@ -26,34 +25,28 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
 /**
  * Notebook order tracker API (spec v4). Every call carries the gateway's workflow service token; the caller's role
- * and scope are enforced in {@link NotebookTrackerService}. Creating a tracker is machine-only: it needs a separate
- * token that the gateway never injects and strips from client requests, so only school-core can send it.
+ * and scope are enforced in {@link NotebookTrackerService}. School-core's machine calls (creating a tracker, design
+ * draft access) live on the internal route in {@code api.internal.NotebookTrackerMachineController}.
  */
 @RestController
 @RequestMapping("/api/v1/workflows/notebook-orders")
 public class NotebookTrackerController {
     private final NotebookTrackerService tracker;
     private final String workflowToken;
-    private final String createToken;
 
     public NotebookTrackerController(NotebookTrackerService tracker,
-                                     @Value("${workflow.read-token:}") String workflowToken,
-                                     @Value("${workflow.tracker-create-token:}") String createToken) {
+                                     @Value("${workflow.read-token:}") String workflowToken) {
         this.tracker = tracker;
         this.workflowToken = workflowToken == null ? "" : workflowToken.trim();
-        this.createToken = createToken == null ? "" : createToken.trim();
     }
 
     // ---- request bodies ---------------------------------------------------------------------------------------------
 
-    public record CreateRequest(String orderId, Long schoolId, Boolean customised, Integer orderedCount,
-                                OffsetDateTime placedAt, String timeZone, Long placedBy, Long assigneeUserId, String schoolName) { }
     public record DraftRequest(Map<String, Object> data, Long expectedVersion) { }
     public record NoteRequest(String note, Long expectedVersion) { }
     public record VersionRequest(Long expectedVersion) { }
@@ -67,36 +60,6 @@ public class NotebookTrackerController {
     public record DesignerRequest(String name, String phone, Boolean active) { }
     /** Both null means "no timer for this school and step". */
     public record SlaRequest(Integer value, String unit) { }
-    public record CreateResponse(long instanceId, boolean created) { }
-
-    // ---- creation (machine) ------------------------------------------------------------------------------------------
-
-    @PostMapping
-    public ResponseEntity<CreateResponse> create(
-            @RequestHeader(value = "X-Notebook-Tracker-Service-Token", required = false) String token,
-            @RequestBody CreateRequest request) {
-        requireMachineToken(token);
-        if (request.schoolId() == null || request.customised() == null || request.orderedCount() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId, customised and orderedCount are required");
-        }
-        NotebookTrackerService.Created created = tracker.create(new CreateTracker(request.orderId(), request.schoolId(),
-                request.customised(), request.orderedCount(), request.placedAt(), request.timeZone(), request.placedBy(), request.assigneeUserId(),
-                request.schoolName()));
-        return ResponseEntity.status(created.created() ? HttpStatus.CREATED : HttpStatus.OK)
-                .body(new CreateResponse(created.instanceId(), created.created()));
-    }
-
-    public record ImageAccessRequest(Long userId, String role) { }
-
-    /** Machine call from school-core before it stores or deletes a design draft. */
-    @PostMapping("/{orderId}/design/image-access")
-    public NotebookTrackerService.ImageAccessResult imageAccess(
-            @RequestHeader(value = "X-Notebook-Tracker-Service-Token", required = false) String token,
-            @PathVariable String orderId, @RequestBody ImageAccessRequest request) {
-        requireMachineToken(token);
-        if (request == null || request.userId() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
-        return tracker.designImageAccess(orderId, request.userId(), request.role());
-    }
 
     // ---- reads ---------------------------------------------------------------------------------------------------------
 
@@ -107,7 +70,7 @@ public class NotebookTrackerController {
                                            @org.springframework.web.bind.annotation.RequestParam(required = false) Long schoolId,
                                            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean includeFinished,
                                            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "100") int limit) {
-        requireToken(token);
+        requireToken(token, "workflow:read");
         if (!"mine".equals(scope) && !"all".equals(scope)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "scope must be mine or all");
         return tracker.list("mine".equals(scope), schoolId, includeFinished, limit);
     }
@@ -115,7 +78,7 @@ public class NotebookTrackerController {
     @GetMapping("/{orderId}")
     public TrackerView view(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                             @PathVariable String orderId) {
-        requireToken(token);
+        requireToken(token, "workflow:read");
         return tracker.view(orderId);
     }
 
@@ -124,56 +87,56 @@ public class NotebookTrackerController {
     @PutMapping("/{orderId}/steps/{step}/draft")
     public TrackerView saveDraft(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                  @PathVariable String orderId, @PathVariable int step, @RequestBody DraftRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.saveDraft(orderId, step, request.data(), version(request.expectedVersion()));
     }
 
     @PutMapping("/{orderId}/steps/{step}/stage-note")
     public TrackerView saveStageNote(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                      @PathVariable String orderId, @PathVariable int step, @RequestBody NoteRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.saveStageNote(orderId, step, request.note(), version(request.expectedVersion()));
     }
 
     @PostMapping("/{orderId}/steps/{step}/complete")
     public TrackerView complete(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                 @PathVariable String orderId, @PathVariable int step, @RequestBody VersionRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.completeStep(orderId, step, version(request.expectedVersion()));
     }
 
     @PostMapping("/{orderId}/steps/{step}/reopen")
     public TrackerView reopen(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                               @PathVariable String orderId, @PathVariable int step) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.reopenStep(orderId, step);
     }
 
     @PostMapping("/{orderId}/steps/{step}/sign-off")
     public TrackerView signOff(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                @PathVariable String orderId, @PathVariable int step) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.signOff(orderId, step);
     }
 
     @PutMapping("/{orderId}/steps/{step}/assignee")
     public TrackerView assignStep(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                   @PathVariable String orderId, @PathVariable int step, @RequestBody AssigneeRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.assignStep(orderId, step, assignee(request));
     }
 
     @PutMapping("/{orderId}/assignee")
     public TrackerView assignOrder(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                    @PathVariable String orderId, @RequestBody AssigneeRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.assignOrder(orderId, assignee(request));
     }
 
     @PostMapping("/{orderId}/follow-ups")
     public TrackerView addFollowUp(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                    @PathVariable String orderId, @RequestBody FollowUpRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         if (request.percentComplete() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "percentComplete is required");
         return tracker.addFollowUp(orderId, request.percentComplete(), request.nextFollowUpOn(), request.contactPhone());
     }
@@ -183,14 +146,14 @@ public class NotebookTrackerController {
     @PostMapping("/{orderId}/design/send")
     public TrackerView sendDesign(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                   @PathVariable String orderId) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.sendDesign(orderId);
     }
 
     @PostMapping("/{orderId}/design/approve")
     public TrackerView approveDesign(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                      @PathVariable String orderId, @RequestBody ApproveRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         if (request.draftRef() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "draftRef is required");
         return tracker.approveDesign(orderId, request.draftRef(), request.comment());
     }
@@ -198,7 +161,7 @@ public class NotebookTrackerController {
     @PostMapping("/{orderId}/design/request-changes")
     public TrackerView requestChanges(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                       @PathVariable String orderId, @RequestBody(required = false) CommentRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.requestChanges(orderId, request == null ? null : request.comment());
     }
 
@@ -207,14 +170,14 @@ public class NotebookTrackerController {
     @PutMapping("/{orderId}/vendor")
     public TrackerView setVendor(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                  @PathVariable String orderId, @RequestBody VendorRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.setVendor(orderId, request.name(), request.phone());
     }
 
     @PutMapping("/{orderId}/designer")
     public TrackerView setDesigner(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                    @PathVariable String orderId, @RequestBody DesignerChoice request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         if (request.designerId() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "designerId is required");
         return tracker.setDesigner(orderId, request.designerId());
     }
@@ -222,7 +185,7 @@ public class NotebookTrackerController {
     @PostMapping("/{orderId}/internal-notes")
     public TrackerView addInternalNote(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                        @PathVariable String orderId, @RequestBody BodyRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.addInternalNote(orderId, request.body());
     }
 
@@ -230,35 +193,35 @@ public class NotebookTrackerController {
 
     @GetMapping("/designers")
     public List<DesignerRow> designers(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token) {
-        requireToken(token);
+        requireToken(token, "workflow:read");
         return tracker.designers();
     }
 
     @PostMapping("/designers")
     public ResponseEntity<DesignerRow> createDesigner(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                                       @RequestBody DesignerRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return ResponseEntity.status(HttpStatus.CREATED).body(tracker.createDesigner(request.name(), request.phone()));
     }
 
     @PutMapping("/designers/{id}")
     public DesignerRow updateDesigner(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                       @PathVariable long id, @RequestBody DesignerRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         return tracker.updateDesigner(id, request.name(), request.phone(), request.active() == null || request.active());
     }
 
     @GetMapping("/time-slots/{schoolId}")
     public List<SlaRow> timeSlots(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                   @PathVariable long schoolId) {
-        requireToken(token);
+        requireToken(token, "workflow:read");
         return tracker.timeSlots(schoolId);
     }
 
     @PutMapping("/time-slots/{schoolId}/{step}")
     public ResponseEntity<Void> setTimeSlot(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                             @PathVariable long schoolId, @PathVariable int step, @RequestBody SlaRequest request) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         Sla sla = null;
         if (request.value() != null || request.unit() != null) {
             if (request.value() == null || request.unit() == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "value and unit go together");
@@ -272,7 +235,7 @@ public class NotebookTrackerController {
     @DeleteMapping("/time-slots/{schoolId}/{step}")
     public ResponseEntity<Void> clearTimeSlot(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
                                               @PathVariable long schoolId, @PathVariable int step) {
-        requireToken(token);
+        requireToken(token, "workflow:write");
         tracker.clearTimeSlot(schoolId, step);
         return ResponseEntity.noContent().build();
     }
@@ -305,13 +268,10 @@ public class NotebookTrackerController {
 
     // ---- helpers ---------------------------------------------------------------------------------------------------------
 
-    private void requireMachineToken(String token) {
-        if (createToken.isEmpty() || !constantTimeEquals(createToken, token)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid notebook tracker service token");
+    private void requireToken(String token, String requiredScope) {
+        if (!StringUtils.hasText(requiredScope)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing internal route scope");
         }
-    }
-
-    private void requireToken(String token) {
         if (workflowToken.isEmpty() || !constantTimeEquals(workflowToken, token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid workflow service token");
         }

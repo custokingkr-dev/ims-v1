@@ -68,6 +68,10 @@ spec:
               value: https://custoking-identity-service-dev-1087017280590.asia-south2.run.app # from-param: ${service_oidc_audiences}
             - name: PASSWORD_RESET_DRAIN_CALLER_SERVICE_ACCOUNTS
               value: ims-async-scheduler-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${password_reset_drain_caller_service_accounts}
+            - name: OPERATOR_DIRECTORY_RESOLVE_CALLER_SERVICE_ACCOUNTS
+              value: ims-school-core-dev@custoking-dev.iam.gserviceaccount.com # from-param: ims-school-core-${env}@${project_id}.iam.gserviceaccount.com
+            - name: OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS
+              value: ims-operations-dev@custoking-dev.iam.gserviceaccount.com # from-param: ims-operations-${env}@${project_id}.iam.gserviceaccount.com
             - name: IDENTITY_WEBAUTHN_RP_ID
               value: custoking-frontend-dev-hd4wfwk7mq-em.a.run.app # from-param: ${webauthn_rp_id}
             - name: IDENTITY_WEBAUTHN_ORIGINS

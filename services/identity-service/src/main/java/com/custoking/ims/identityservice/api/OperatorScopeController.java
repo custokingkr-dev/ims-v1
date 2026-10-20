@@ -1,7 +1,6 @@
 package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.application.OperatorDirectory;
-import com.custoking.ims.identityservice.application.OperatorSelection;
 import com.custoking.ims.identityservice.persistence.OperatorDirectoryRepository.OperatorRow;
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
 import com.custoking.ims.identityservice.security.TenantContext;
@@ -26,9 +25,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Operators scoped to a school and a catalogue item (spec v4). Superadmin manages the scopes; the two directory
- * lookups are machine-only, for school-core (choosing the operator at order placement) and operations-service
- * (checking that a step is only ever assigned to an eligible operator).
+ * Operators scoped to a school and a catalogue item (spec v4). Superadmin manages the scopes; the machine directory
+ * lookups for school-core and operations-service live on the internal route in
+ * {@code api.internal.OperatorDirectoryController}.
  */
 @RestController
 @RequestMapping("/api/v1/rbac")
@@ -39,22 +38,15 @@ public class OperatorScopeController {
     private final RbacCommandRepository commands;
     private final OperatorDirectory directory;
     private final String serviceToken;
-    private final String directoryToken;
 
     public OperatorScopeController(RbacCommandRepository commands, OperatorDirectory directory,
-                                   @Value("${identity.introspection-token:}") String serviceToken,
-                                   @Value("${identity.operator-directory-token:}") String directoryToken) {
+                                   @Value("${identity.introspection-token:}") String serviceToken) {
         this.commands = commands;
         this.directory = directory;
         this.serviceToken = serviceToken == null ? "" : serviceToken.trim();
-        this.directoryToken = directoryToken == null ? "" : directoryToken.trim();
     }
 
     public record ScopeRequest(Long schoolId, String catalogCategory) { }
-
-    public record Resolved(String outcome, Long userId, List<Long> candidates) { }
-
-    public record Eligibility(boolean eligible) { }
 
     // ---- superadmin ------------------------------------------------------------------------------------------------
 
@@ -64,7 +56,7 @@ public class OperatorScopeController {
     public Map<String, Object> assignScope(
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long userId, @RequestBody ScopeRequest request) {
-        requireToken(token);
+        requireToken(token, "identity:write");
         TenantScope.requirePermissionIfAuthenticated(ROLE_ASSIGN);
         TenantScope.requireSuperAdmin();
         return commands.assignOperatorScope(userId, request.schoolId(), request.catalogCategory(), TenantContext.get().userId());
@@ -75,7 +67,7 @@ public class OperatorScopeController {
     public List<OperatorRow> operators(
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId, @RequestParam(required = false) String catalogCategory) {
-        requireToken(token);
+        requireToken(token, "identity:read");
         TenantScope.requirePermissionIfAuthenticated(ROLE_READ);
         TenantScope.requireSuperAdmin();
         try {
@@ -85,44 +77,13 @@ public class OperatorScopeController {
         }
     }
 
-    // ---- machine ---------------------------------------------------------------------------------------------------
-
-    /** Which operator gets a new order for this school and catalogue item, or why none was picked. */
-    @GetMapping("/operator-directory/resolve")
-    public Resolved resolve(
-            @RequestHeader(value = "X-Operator-Directory-Service-Token", required = false) String token,
-            @RequestParam long schoolId, @RequestParam String catalogCategory) {
-        requireDirectoryToken(token);
-        try {
-            OperatorSelection.Result result = directory.resolve(schoolId, catalogCategory);
-            return new Resolved(result.outcome().name(), result.userId(), result.candidates());
-        } catch (IllegalArgumentException invalid) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
-        }
-    }
-
-    /** Whether a user may be assigned work for this school and catalogue item. */
-    @GetMapping("/operator-directory/eligible")
-    public Eligibility eligible(
-            @RequestHeader(value = "X-Operator-Directory-Service-Token", required = false) String token,
-            @RequestParam long userId, @RequestParam long schoolId, @RequestParam String catalogCategory) {
-        requireDirectoryToken(token);
-        try {
-            return new Eligibility(directory.eligible(userId, schoolId, catalogCategory));
-        } catch (IllegalArgumentException invalid) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
-        }
-    }
-
     // ---- helpers ---------------------------------------------------------------------------------------------------
 
-    private void requireToken(String token) {
+    private void requireToken(String token, String requiredScope) {
+        if (!StringUtils.hasText(requiredScope)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing internal route scope");
+        }
         if (!matches(serviceToken, token)) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid identity service token");
-    }
-
-    /** The gateway strips every inbound *-service-token header and never injects this one, so only services can send it. */
-    private void requireDirectoryToken(String token) {
-        if (!matches(directoryToken, token)) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid operator directory token");
     }
 
     private static boolean matches(String expected, String actual) {

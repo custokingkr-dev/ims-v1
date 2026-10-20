@@ -72,6 +72,8 @@ spec:
               value: ims-platform-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${broadcast_policy_caller_service_accounts}
             - name: IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS
               value: ims-identity-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${identity_directory_caller_service_accounts}
+            - name: CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS
+              value: ims-operations-dev@custoking-dev.iam.gserviceaccount.com # from-param: ims-operations-${env}@${project_id}.iam.gserviceaccount.com
             - name: SCHOOL_CORE_MERGED
               value: "true"
             - name: SCHOOL_CORE_DATASOURCE_SCHEMAS

@@ -11,11 +11,11 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 51,
-    "endpoints": 485,
-    "canonicalEndpoints": 381,
+    "controllers": 54,
+    "endpoints": 483,
+    "canonicalEndpoints": 373,
     "compatibilityEndpoints": 90,
-    "internalEndpoints": 14,
+    "internalEndpoints": 20,
     "diagnosticAliases": 12,
     "gatewayRoutes": 70,
     "frontendCompatibilityCalls": 0,
@@ -1025,12 +1025,22 @@
     },
     {
       "service": "identity-service",
+      "controller": "OperatorDirectoryController",
+      "classification": "internal",
+      "basePaths": [
+        "/api/v1/internal/operator-directory"
+      ],
+      "endpointCount": 2,
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/internal/OperatorDirectoryController.java"
+    },
+    {
+      "service": "identity-service",
       "controller": "OperatorScopeController",
       "classification": "canonical",
       "basePaths": [
         "/api/v1/rbac"
       ],
-      "endpointCount": 4,
+      "endpointCount": 2,
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/OperatorScopeController.java"
     },
     {
@@ -1110,8 +1120,18 @@
       "basePaths": [
         "/api/v1/workflows/notebook-orders"
       ],
-      "endpointCount": 24,
+      "endpointCount": 22,
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java"
+    },
+    {
+      "service": "operations-service",
+      "controller": "NotebookTrackerMachineController",
+      "classification": "internal",
+      "basePaths": [
+        "/api/v1/internal/notebook-trackers"
+      ],
+      "endpointCount": 2,
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/NotebookTrackerMachineController.java"
     },
     {
       "service": "operations-service",
@@ -1321,7 +1341,7 @@
         "/api/v1/supply/orders",
         "/api/v1/catalog/orders"
       ],
-      "endpointCount": 22,
+      "endpointCount": 18,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java"
     },
     {
@@ -1353,6 +1373,16 @@
       ],
       "endpointCount": 23,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java"
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogTrackerMachineController",
+      "classification": "internal",
+      "basePaths": [
+        "/api/v1/internal/catalog-orders"
+      ],
+      "endpointCount": 2,
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/CatalogTrackerMachineController.java"
     },
     {
       "service": "school-core-service",
@@ -1784,6 +1814,24 @@
     },
     {
       "service": "identity-service",
+      "controller": "OperatorDirectoryController",
+      "method": "GET",
+      "path": "/api/v1/internal/operator-directory/eligible",
+      "classification": "internal",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/internal/OperatorDirectoryController.java",
+      "line": 45
+    },
+    {
+      "service": "identity-service",
+      "controller": "OperatorDirectoryController",
+      "method": "GET",
+      "path": "/api/v1/internal/operator-directory/resolve",
+      "classification": "internal",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/internal/OperatorDirectoryController.java",
+      "line": 34
+    },
+    {
+      "service": "identity-service",
       "controller": "PasswordResetDrainController",
       "method": "POST",
       "path": "/api/v1/internal/password-reset/drain",
@@ -1804,28 +1852,10 @@
       "service": "identity-service",
       "controller": "OperatorScopeController",
       "method": "GET",
-      "path": "/api/v1/rbac/operator-directory/eligible",
-      "classification": "canonical",
-      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/OperatorScopeController.java",
-      "line": 105
-    },
-    {
-      "service": "identity-service",
-      "controller": "OperatorScopeController",
-      "method": "GET",
-      "path": "/api/v1/rbac/operator-directory/resolve",
-      "classification": "canonical",
-      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/OperatorScopeController.java",
-      "line": 91
-    },
-    {
-      "service": "identity-service",
-      "controller": "OperatorScopeController",
-      "method": "GET",
       "path": "/api/v1/rbac/operators",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/OperatorScopeController.java",
-      "line": 74
+      "line": 66
     },
     {
       "service": "identity-service",
@@ -1906,7 +1936,7 @@
       "path": "/api/v1/rbac/users/{userId}/operator-scopes",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/OperatorScopeController.java",
-      "line": 62
+      "line": 54
     },
     {
       "service": "identity-service",
@@ -2270,6 +2300,24 @@
     },
     {
       "service": "operations-service",
+      "controller": "NotebookTrackerMachineController",
+      "method": "POST",
+      "path": "/api/v1/internal/notebook-trackers",
+      "classification": "internal",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/NotebookTrackerMachineController.java",
+      "line": 36
+    },
+    {
+      "service": "operations-service",
+      "controller": "NotebookTrackerMachineController",
+      "method": "POST",
+      "path": "/api/v1/internal/notebook-trackers/{orderId}/image-access",
+      "classification": "internal",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/NotebookTrackerMachineController.java",
+      "line": 48
+    },
+    {
+      "service": "operations-service",
       "controller": "OutboxRelayTriggerController",
       "method": "POST",
       "path": "/api/v1/internal/outbox/relay",
@@ -2410,16 +2458,7 @@
       "path": "/api/v1/workflows/notebook-orders",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 104
-    },
-    {
-      "service": "operations-service",
-      "controller": "NotebookTrackerController",
-      "method": "POST",
-      "path": "/api/v1/workflows/notebook-orders",
-      "classification": "canonical",
-      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 74
+      "line": 67
     },
     {
       "service": "operations-service",
@@ -2428,7 +2467,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 115
+      "line": 78
     },
     {
       "service": "operations-service",
@@ -2437,7 +2476,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/assignee",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 166
+      "line": 129
     },
     {
       "service": "operations-service",
@@ -2446,16 +2485,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/design/approve",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 190
-    },
-    {
-      "service": "operations-service",
-      "controller": "NotebookTrackerController",
-      "method": "POST",
-      "path": "/api/v1/workflows/notebook-orders/{orderId}/design/image-access",
-      "classification": "canonical",
-      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 92
+      "line": 153
     },
     {
       "service": "operations-service",
@@ -2464,7 +2494,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/design/request-changes",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 198
+      "line": 161
     },
     {
       "service": "operations-service",
@@ -2473,7 +2503,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/design/send",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 183
+      "line": 146
     },
     {
       "service": "operations-service",
@@ -2482,7 +2512,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/designer",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 214
+      "line": 177
     },
     {
       "service": "operations-service",
@@ -2491,7 +2521,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/follow-ups",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 173
+      "line": 136
     },
     {
       "service": "operations-service",
@@ -2500,7 +2530,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/internal-notes",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 222
+      "line": 185
     },
     {
       "service": "operations-service",
@@ -2509,7 +2539,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/assignee",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 159
+      "line": 122
     },
     {
       "service": "operations-service",
@@ -2518,7 +2548,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/complete",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 138
+      "line": 101
     },
     {
       "service": "operations-service",
@@ -2527,7 +2557,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/draft",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 124
+      "line": 87
     },
     {
       "service": "operations-service",
@@ -2536,7 +2566,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/reopen",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 145
+      "line": 108
     },
     {
       "service": "operations-service",
@@ -2545,7 +2575,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/sign-off",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 152
+      "line": 115
     },
     {
       "service": "operations-service",
@@ -2554,7 +2584,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/stage-note",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 131
+      "line": 94
     },
     {
       "service": "operations-service",
@@ -2563,7 +2593,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/vendor",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 207
+      "line": 170
     },
     {
       "service": "operations-service",
@@ -2572,7 +2602,7 @@
       "path": "/api/v1/workflows/notebook-orders/designers",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 231
+      "line": 194
     },
     {
       "service": "operations-service",
@@ -2581,7 +2611,7 @@
       "path": "/api/v1/workflows/notebook-orders/designers",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 237
+      "line": 200
     },
     {
       "service": "operations-service",
@@ -2590,7 +2620,7 @@
       "path": "/api/v1/workflows/notebook-orders/designers/{id}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 244
+      "line": 207
     },
     {
       "service": "operations-service",
@@ -2599,7 +2629,7 @@
       "path": "/api/v1/workflows/notebook-orders/time-slots/{schoolId}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 251
+      "line": 214
     },
     {
       "service": "operations-service",
@@ -2608,7 +2638,7 @@
       "path": "/api/v1/workflows/notebook-orders/time-slots/{schoolId}/{step}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 272
+      "line": 235
     },
     {
       "service": "operations-service",
@@ -2617,7 +2647,7 @@
       "path": "/api/v1/workflows/notebook-orders/time-slots/{schoolId}/{step}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 258
+      "line": 221
     },
     {
       "service": "operations-service",
@@ -3508,7 +3538,7 @@
       "path": "/api/v1/catalog/orders/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 60
+      "line": 51
     },
     {
       "service": "school-core-service",
@@ -3517,7 +3547,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 114
+      "line": 84
     },
     {
       "service": "school-core-service",
@@ -3526,7 +3556,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 121
+      "line": 91
     },
     {
       "service": "school-core-service",
@@ -3535,7 +3565,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets/{assetId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 132
+      "line": 102
     },
     {
       "service": "school-core-service",
@@ -3544,7 +3574,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets/{assetId}/content",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 140
+      "line": 110
     },
     {
       "service": "school-core-service",
@@ -3568,19 +3598,10 @@
       "service": "school-core-service",
       "controller": "CatalogOrderFormController",
       "method": "GET",
-      "path": "/api/v1/catalog/orders/{id}/draft-images",
-      "classification": "canonical",
-      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 97
-    },
-    {
-      "service": "school-core-service",
-      "controller": "CatalogOrderFormController",
-      "method": "GET",
       "path": "/api/v1/catalog/orders/{id}/form",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 53
+      "line": 44
     },
     {
       "service": "school-core-service",
@@ -3598,7 +3619,7 @@
       "path": "/api/v1/catalog/orders/{id}/quote",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 68
+      "line": 59
     },
     {
       "service": "school-core-service",
@@ -3630,20 +3651,11 @@
     {
       "service": "school-core-service",
       "controller": "CatalogOrderFormController",
-      "method": "PUT",
-      "path": "/api/v1/catalog/orders/{id}/tracker-status",
-      "classification": "canonical",
-      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 106
-    },
-    {
-      "service": "school-core-service",
-      "controller": "CatalogOrderFormController",
       "method": "GET",
       "path": "/api/v1/catalog/orders/{id}/tracker-summary",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 86
+      "line": 77
     },
     {
       "service": "school-core-service",
@@ -3652,7 +3664,7 @@
       "path": "/api/v1/catalog/orders/{id}/tracker/ensure",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 78
+      "line": 69
     },
     {
       "service": "school-core-service",
@@ -4211,6 +4223,24 @@
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
       "line": 98
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogTrackerMachineController",
+      "method": "GET",
+      "path": "/api/v1/internal/catalog-orders/{orderId}/draft-images",
+      "classification": "internal",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/CatalogTrackerMachineController.java",
+      "line": 31
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogTrackerMachineController",
+      "method": "PUT",
+      "path": "/api/v1/internal/catalog-orders/{orderId}/tracker-status",
+      "classification": "internal",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/CatalogTrackerMachineController.java",
+      "line": 36
     },
     {
       "service": "school-core-service",
@@ -5164,7 +5194,7 @@
       "path": "/api/v1/supply/orders/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 60
+      "line": 51
     },
     {
       "service": "school-core-service",
@@ -5173,7 +5203,7 @@
       "path": "/api/v1/supply/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 114
+      "line": 84
     },
     {
       "service": "school-core-service",
@@ -5182,7 +5212,7 @@
       "path": "/api/v1/supply/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 121
+      "line": 91
     },
     {
       "service": "school-core-service",
@@ -5191,7 +5221,7 @@
       "path": "/api/v1/supply/orders/{id}/assets/{assetId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 132
+      "line": 102
     },
     {
       "service": "school-core-service",
@@ -5200,7 +5230,7 @@
       "path": "/api/v1/supply/orders/{id}/assets/{assetId}/content",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 140
+      "line": 110
     },
     {
       "service": "school-core-service",
@@ -5224,19 +5254,10 @@
       "service": "school-core-service",
       "controller": "CatalogOrderFormController",
       "method": "GET",
-      "path": "/api/v1/supply/orders/{id}/draft-images",
-      "classification": "canonical",
-      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 97
-    },
-    {
-      "service": "school-core-service",
-      "controller": "CatalogOrderFormController",
-      "method": "GET",
       "path": "/api/v1/supply/orders/{id}/form",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 53
+      "line": 44
     },
     {
       "service": "school-core-service",
@@ -5254,7 +5275,7 @@
       "path": "/api/v1/supply/orders/{id}/quote",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 68
+      "line": 59
     },
     {
       "service": "school-core-service",
@@ -5286,20 +5307,11 @@
     {
       "service": "school-core-service",
       "controller": "CatalogOrderFormController",
-      "method": "PUT",
-      "path": "/api/v1/supply/orders/{id}/tracker-status",
-      "classification": "canonical",
-      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 106
-    },
-    {
-      "service": "school-core-service",
-      "controller": "CatalogOrderFormController",
       "method": "GET",
       "path": "/api/v1/supply/orders/{id}/tracker-summary",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 86
+      "line": 77
     },
     {
       "service": "school-core-service",
@@ -5308,7 +5320,7 @@
       "path": "/api/v1/supply/orders/{id}/tracker/ensure",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 78
+      "line": 69
     },
     {
       "service": "school-core-service",

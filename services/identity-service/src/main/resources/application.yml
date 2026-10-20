@@ -101,9 +101,6 @@ identity:
   db:
     schema: ${IDENTITY_DB_SCHEMA:identity}
   introspection-token: ${IDENTITY_INTROSPECTION_TOKEN:}
-  # Machine-only token for the operator directory (school-core at placement, operations-service on assignment). The
-  # gateway strips every inbound *-service-token header and never injects this one. Blank = the lookups are disabled.
-  operator-directory-token: ${IDENTITY_OPERATOR_DIRECTORY_TOKEN:}
   tenant-school:
     base-url: ${TENANT_SCHOOL_BASE_URL:}
     token: ${TENANT_SCHOOL_READ_TOKEN:}

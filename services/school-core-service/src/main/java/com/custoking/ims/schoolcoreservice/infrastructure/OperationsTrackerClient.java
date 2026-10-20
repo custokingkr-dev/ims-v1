@@ -1,35 +1,37 @@
 package com.custoking.ims.schoolcoreservice.infrastructure;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClientException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Calls the notebook order tracker in operations-service with a machine token that the gateway strips from client
- * requests and never injects, so only services can use it. Every failure surfaces as {@link IllegalStateException}.
+ * Calls the notebook order tracker's internal routes in operations-service. Operations' Cloud Run IAM and
+ * MachineCallerFilter admit only school-core's service account, proven by the identity token {@link PeerHttp} adds.
+ * Every failure surfaces as {@link IllegalStateException}.
  */
 @Component
 public class OperationsTrackerClient implements TrackerGateway {
     private static final ParameterizedTypeReference<Map<String, Object>> BODY = new ParameterizedTypeReference<>() { };
 
     private final PeerHttp http;
-    private final String token;
 
+    @Autowired
     public OperationsTrackerClient(
             @Value("${catalog.tracker.base-url:}") String baseUrl,
-            @Value("${catalog.tracker.token:}") String token,
             @Value("${catalog.tracker.cloud-run-auth:auto}") String cloudRunAuthMode,
             @Value("${catalog.tracker.connect-timeout-ms:3000}") int connectTimeoutMs,
             @Value("${catalog.tracker.read-timeout-ms:5000}") int readTimeoutMs) {
-        this.http = new PeerHttp(baseUrl, cloudRunAuthMode, connectTimeoutMs, readTimeoutMs);
-        this.token = token == null ? "" : token.trim();
+        this(new PeerHttp(baseUrl, cloudRunAuthMode, connectTimeoutMs, readTimeoutMs));
+    }
+
+    OperationsTrackerClient(PeerHttp http) {
+        this.http = http;
     }
 
     @Override
@@ -46,8 +48,8 @@ public class OperationsTrackerClient implements TrackerGateway {
         body.put("assigneeUserId", tracker.assigneeUserId());
         body.put("schoolName", tracker.schoolName());
         try {
-            http.client.post().uri("/api/v1/workflows/notebook-orders").contentType(MediaType.APPLICATION_JSON)
-                    .headers(this::headers).body(body).retrieve().toBodilessEntity();
+            http.client.post().uri("/api/v1/internal/notebook-trackers").contentType(MediaType.APPLICATION_JSON)
+                    .headers(http::authorize).body(body).retrieve().toBodilessEntity();
         } catch (RestClientException failure) {
             throw new IllegalStateException("notebook tracker is unavailable", failure);
         }
@@ -58,8 +60,8 @@ public class OperationsTrackerClient implements TrackerGateway {
         requireConfigured();
         try {
             Map<String, Object> answer = http.client.post()
-                    .uri("/api/v1/workflows/notebook-orders/{order}/design/image-access", orderId)
-                    .contentType(MediaType.APPLICATION_JSON).headers(this::headers)
+                    .uri("/api/v1/internal/notebook-trackers/{order}/image-access", orderId)
+                    .contentType(MediaType.APPLICATION_JSON).headers(http::authorize)
                     .body(Map.of("userId", userId, "role", role == null ? "" : role))
                     .retrieve().body(BODY);
             boolean allowed = answer != null && Boolean.TRUE.equals(answer.get("allowed"));
@@ -71,12 +73,6 @@ public class OperationsTrackerClient implements TrackerGateway {
     }
 
     private void requireConfigured() {
-        if (!http.configured() || !StringUtils.hasText(token)) throw new IllegalStateException("notebook tracker is not configured");
-    }
-
-    private void headers(HttpHeaders headers) {
-        headers.set("X-Notebook-Tracker-Service-Token", token);
-        String identityToken = http.cloudRunIdentityToken();
-        if (StringUtils.hasText(identityToken)) headers.setBearerAuth(identityToken);
+        if (!http.configured()) throw new IllegalStateException("notebook tracker is not configured");
     }
 }
