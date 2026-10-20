@@ -384,11 +384,40 @@ class GitHubGovernanceChecksTest(unittest.TestCase):
             else:
                 self.assertEqual(87, ctypes.get_last_error())  # Exact owned process already gone.
         else:
-            try: os.kill(pid, 0)
-            except ProcessLookupError: return
-            # A terminated orphan can remain a zombie until init reaps it; it cannot hold pipes.
             state = pathlib.Path(f"/proc/{pid}/stat")
-            self.assertTrue(state.exists() and state.read_text().rsplit(")", 1)[1].strip().startswith("Z"))
+            while True:
+                try:
+                    os.kill(pid, 0)
+                    # A terminated orphan can remain a zombie until init reaps it.
+                    if state.read_text().rsplit(")", 1)[1].strip().startswith("Z"):
+                        return
+                except (ProcessLookupError, FileNotFoundError):
+                    return
+                remaining = deadline - time.monotonic()
+                self.assertGreater(remaining, 0, f"Owned process {pid} is still running at cleanup deadline")
+                time.sleep(min(0.01, remaining))
+
+    @unittest.skipIf(os.name == "nt", "Linux process-state observation")
+    def test_owned_process_check_accepts_exit_between_pid_and_stat_reads(self):
+        with patch.object(os, "kill", return_value=None), \
+                patch.object(pathlib.Path, "exists", return_value=True), \
+                patch.object(pathlib.Path, "read_text", side_effect=FileNotFoundError):
+            self.assert_owned_process_stopped(123, time.monotonic() + 1)
+
+    @unittest.skipIf(os.name == "nt", "Linux process-state observation")
+    def test_owned_process_check_waits_for_termination_within_deadline(self):
+        with patch.object(os, "kill", return_value=None), \
+                patch.object(pathlib.Path, "exists", return_value=True), \
+                patch.object(pathlib.Path, "read_text", side_effect=["123 (child) R 1", "123 (child) Z 1"]):
+            self.assert_owned_process_stopped(123, time.monotonic() + 1)
+
+    @unittest.skipIf(os.name == "nt", "Linux process-state observation")
+    def test_owned_process_check_rejects_a_live_process_at_deadline(self):
+        with patch.object(os, "kill", return_value=None), \
+                patch.object(pathlib.Path, "exists", return_value=True), \
+                patch.object(pathlib.Path, "read_text", return_value="123 (child) R 1"):
+            with self.assertRaises(AssertionError):
+                self.assert_owned_process_stopped(123, time.monotonic())
 
     def test_actual_descendant_holding_pipes_is_stopped_after_parent_exit(self):
         module = self.module
