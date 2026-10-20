@@ -88,6 +88,12 @@ jobs:
         run: node --test scripts/tests/signed_transport_probe.test.cjs
       - name: Test immutable GitHub governance check verification
         run: python3 -m unittest scripts.tests.test_verify_github_governance_checks
+      - name: Test bounded Cloud Deploy dependency groups
+        shell: pwsh
+        run: ./scripts/tests/clouddeploy-rollout-groups-test.ps1
+      - name: Test parallel image promotion trust boundaries
+        shell: pwsh
+        run: ./scripts/tests/resolve-release-images-test.ps1
       - name: Test explicit dashboard release target and publication controls without Docker
         run: python3 -m unittest scripts.tests.dashboard_release_test
       - name: Test offline GCP governance audits
@@ -323,17 +329,19 @@ jobs:
         # Release file whose hashes don't match its index (seen repeatedly, not a
         # transient blip). Playwright's own Chromium download comes from Microsoft's
         # CDN, not this apt repo, so removing the source list has no effect on what the
-        # tests need — Chrome itself (already installed) is untouched. Do not delete
+        # tests need â€” Chrome itself (already installed) is untouched. Do not delete
         # this step; without it, --with-deps deterministically fails apt-get update.
         if: ${{ matrix.tool == 'npm' }}
         run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list
       - name: Install Playwright Chromium
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps --only-shell chromium
       - name: Run authenticated frontend browser tests
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
+        env:
+          PLAYWRIGHT_USE_PREBUILT: "1"
         run: npm run test:e2e
 
   docker-build:
