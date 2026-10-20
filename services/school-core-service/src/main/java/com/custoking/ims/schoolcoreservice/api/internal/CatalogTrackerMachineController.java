@@ -26,7 +26,8 @@ public class CatalogTrackerMachineController {
         this.forms = forms;
     }
 
-    public record TrackerStatusRequest(String status) { }
+    /** {@code trackerVersion} orders the tracker's retried pushes; an older or repeated one is accepted and changes nothing. */
+    public record TrackerStatusRequest(String status, Long trackerVersion) { }
 
     @GetMapping("/{orderId}/draft-images")
     public List<Map<String, Object>> draftImages(@PathVariable String orderId) {
@@ -35,7 +36,7 @@ public class CatalogTrackerMachineController {
 
     @PutMapping("/{orderId}/tracker-status")
     public ResponseEntity<Void> trackerStatus(@PathVariable String orderId, @RequestBody TrackerStatusRequest request) {
-        forms.applyTrackerStatus(orderId, request == null ? null : request.status());
+        forms.applyTrackerStatus(orderId, request == null ? null : request.status(), request == null ? null : request.trackerVersion());
         return ResponseEntity.noContent().build();
     }
 }

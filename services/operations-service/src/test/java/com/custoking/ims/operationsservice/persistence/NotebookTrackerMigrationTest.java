@@ -22,7 +22,10 @@ import java.sql.Statement;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** V8 notebook tracker schema: seed, row-level security (including the operator disjunct), tenant-safe keys, checks. */
+/**
+ * V8 notebook tracker schema and the V10 status outbox: seed, row-level security (including the operator disjunct),
+ * tenant-safe keys, checks.
+ */
 class NotebookTrackerMigrationTest {
 
     static PostgreSQLContainer<?> PG;
@@ -55,6 +58,8 @@ class NotebookTrackerMigrationTest {
                         + "VALUES (" + row[0] + "," + row[1] + ", 1, 'ACTIVE', now())");
                 st.execute("INSERT INTO workflow.workflow_actions (instance_id, step_order, action, school_id) "
                         + "VALUES (" + row[0] + ", 1, 'STEP_ASSIGNED'," + row[1] + ")");
+                st.execute("INSERT INTO workflow.workflow_tracker_status_outbox (order_id, school_id, status, tracker_version) "
+                        + "VALUES ('ORD-" + row[1] + "'," + row[1] + ", 'PRODUCTION_PLANNING', 1)");
             }
         }
         HikariDataSource pool = new HikariDataSource();
@@ -92,7 +97,8 @@ class NotebookTrackerMigrationTest {
         }
     }
 
-    private static final String[] TENANT_TABLES = {"workflow_notebook_trackers", "workflow_instance_steps", "workflow_instances", "workflow_actions"};
+    private static final String[] TENANT_TABLES = {"workflow_notebook_trackers", "workflow_instance_steps", "workflow_instances", "workflow_actions",
+            "workflow_tracker_status_outbox"};
 
     @Test
     void theSeededStepsMatchTheJavaCatalogue() throws Exception {

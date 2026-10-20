@@ -16,10 +16,9 @@ import com.custoking.ims.operationsservice.persistence.NotebookTrackerRepository
 import com.custoking.ims.operationsservice.persistence.NotebookTrackerRepository.DefinitionStep;
 import com.custoking.ims.operationsservice.persistence.NotebookTrackerRepository.StepRow;
 import com.custoking.ims.operationsservice.persistence.NotebookTrackerRepository.TrackerRow;
+import com.custoking.ims.operationsservice.persistence.TrackerStatusOutbox;
 import com.custoking.ims.operationsservice.security.TenantContext;
 import com.custoking.ims.operationsservice.security.TenantScope;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -49,16 +48,16 @@ public class NotebookTrackerService {
     private final Clock clock;
     private final OperatorEligibility eligibility;
     private final CatalogOrderGateway catalog;
-
-    private static final Logger LOG = LoggerFactory.getLogger(NotebookTrackerService.class);
+    private final TrackerStatusOutbox statuses;
 
     public NotebookTrackerService(NotebookTrackerRepository repo, TransactionTemplate tx, Clock clock,
-                                  OperatorEligibility eligibility, CatalogOrderGateway catalog) {
+                                  OperatorEligibility eligibility, CatalogOrderGateway catalog, TrackerStatusOutbox statuses) {
         this.repo = repo;
         this.tx = tx;
         this.clock = clock;
         this.eligibility = eligibility;
         this.catalog = catalog;
+        this.statuses = statuses;
     }
 
     /** Who is acting, reduced to the two roles the tracker knows. */
@@ -453,8 +452,13 @@ public class NotebookTrackerService {
 
     private interface Mutation { void apply(Actor actor, TrackerRow tracker, TrackerProgress progress, List<StepRow> rows); }
 
+    /**
+     * Runs one change with the order's tracker row locked. When the change moves the current step, the order's new status
+     * is queued in the same transaction, versioned by the instance version every step change increments, and delivered
+     * to the catalogue once the change has committed; the relay trigger retries a delivery that fails.
+     */
     private TrackerView mutate(String orderId, Mutation mutation) {
-        String[] newStatus = new String[1];
+        boolean[] statusQueued = new boolean[1];
         TrackerView view = tx.execute(status -> {
             begin();
             Actor actor = actor(true);
@@ -466,29 +470,19 @@ public class NotebookTrackerService {
             TrackerView assembled = assemble(actor, fresh);
             Integer before = progress.current().map(TrackerStep::number).orElse(null);
             if (!Objects.equals(before, assembled.progress().currentStep()) || progress.finished() != assembled.progress().finished()) {
-                newStatus[0] = statusOf(assembled.progress());
+                statuses.record(t.orderId(), t.schoolId(), statusOf(assembled.progress()), repo.instanceVersion(t.instanceId()));
+                statusQueued[0] = true;
             }
             return assembled;
         });
-        if (newStatus[0] != null) pushStatus(orderId, newStatus[0]);
+        // After commit, with no lock held: a failed push never undoes the user's action and stays queued for the relay.
+        if (statusQueued[0]) statuses.attempt(orderId);
         return view;
     }
 
     /** The order's status is the current step's code, or COMPLETED once every step is. */
     static String statusOf(TrackerView.Progress progress) {
         return progress.finished() ? "COMPLETED" : TrackerStep.ofNumber(progress.currentStep()).orElseThrow().name();
-    }
-
-    /**
-     * Shown on the order after the change is committed. A failure is logged and does not undo the user's action; the
-     * status is pushed again the next time the step changes.
-     */
-    private void pushStatus(String orderId, String status) {
-        try {
-            catalog.pushStatus(orderId, status);
-        } catch (IllegalStateException unavailable) {
-            LOG.warn("Order {} moved to {} but its status could not be shown: {}", orderId, status, unavailable.getMessage());
-        }
     }
 
     /** A design is only sent or approved against drafts that exist; the catalogue owns the images. */

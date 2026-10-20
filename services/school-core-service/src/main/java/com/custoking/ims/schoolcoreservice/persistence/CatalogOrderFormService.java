@@ -48,6 +48,13 @@ public class CatalogOrderFormService {
     private static final String NOTEBOOKS = "NOTEBOOKS";
     /** The first tracker step, which is the status of a freshly placed notebook order. */
     static final String FIRST_TRACKER_STATUS = "ORDER_DETAILS";
+    /**
+     * The statuses the tracker may show on an order. The source is operations-service's {@code TrackerStep} enum (its
+     * twelve names, in step order) plus COMPLETED once every step is; keep this copy in step with it.
+     */
+    static final Set<String> TRACKER_STATUSES = Set.of(FIRST_TRACKER_STATUS, "DESIGNING_ACTIVITY", "HEAD_APPROVAL", "CDR_CONVERSION",
+            "PRODUCTION_PLANNING", "BOARD_PROCUREMENT", "PRINTING_PRESS", "PRE_PRINT_QUALITY_GATE", "FACTORY_HANDOVER",
+            "PRODUCTION_FOLLOW_UP", "VALIDATION_COUNT", "DELIVERY_INVOICING", "COMPLETED");
 
     public CatalogOrderFormService(JdbcClient jdbc, ProductCatalogRepository products, ProductFormRuleEngine rules,
                                    CatalogOrderAssetStorage storage, OutboxWriter outbox, ModuleEntitlementGuard moduleGuard) {
@@ -529,12 +536,15 @@ public class CatalogOrderFormService {
 
     /**
      * Machine write from the tracker: the order's status shows the current tracker step. Draft orders keep "Draft" and a
-     * cancelled order keeps "Cancelled"; only a placed notebook order follows the tracker.
+     * cancelled order keeps "Cancelled"; only a placed, tracker-managed notebook order follows the tracker.
+     * {@code trackerVersion} orders the tracker's pushes, which are retried and can arrive late or twice: a version no
+     * newer than the order's {@code attributes.trackerStatusVersion} is already reflected and changes nothing.
      */
     @Transactional
-    public void applyTrackerStatus(String id, String status) {
+    public void applyTrackerStatus(String id, String status, Long trackerVersion) {
         String next = string(status).trim().toUpperCase(Locale.ROOT);
-        if (!next.matches("[A-Z][A-Z0-9_]{1,40}")) throw bad("A tracker status is an upper-case code such as PRINTING_PRESS");
+        if (!TRACKER_STATUSES.contains(next)) throw bad("A tracker status is a tracker step code such as PRINTING_PRESS, or COMPLETED");
+        if (trackerVersion == null || trackerVersion < 0) throw bad("A trackerVersion of 0 or more is required");
         jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
         Map<String, Object> order = jdbc.sql("SELECT * FROM catalog.catalog_orders WHERE id = :id FOR UPDATE").param("id", id)
                 .query().listOfRows().stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
@@ -542,8 +552,15 @@ public class CatalogOrderFormService {
         String current = string(order.get("status"));
         if ("DRAFT".equals(current) || "CANCELLED".equals(current)) throw new ResponseStatusException(HttpStatus.CONFLICT, "A " + current.toLowerCase(Locale.ROOT) + " order has no tracker status");
         if (!trackerManaged(order)) throw bad("This notebook order was placed before the tracker and follows order approval");
-        if (next.equals(current)) return;
-        jdbc.sql("UPDATE catalog.catalog_orders SET status = :status, version = version + 1 WHERE id = :id").param("id", id).param("status", next).update();
+        if (map(order.get("attributes")).get("trackerStatusVersion") instanceof Number applied && trackerVersion <= applied.longValue()) return;
+        boolean changed = !next.equals(current);
+        // A newer version that repeats the shown status still records its version, so an older push cannot follow it.
+        jdbc.sql("""
+                UPDATE catalog.catalog_orders SET status = :status, version = version + CASE WHEN :changed THEN 1 ELSE 0 END,
+                    attributes = attributes || jsonb_build_object('trackerStatusVersion', CAST(:trackerVersion AS bigint))
+                WHERE id = :id
+                """).param("id", id).param("status", next).param("changed", changed).param("trackerVersion", trackerVersion).update();
+        if (!changed) return;
         order.put("status", next);
         order.put("version", number(order.get("version")) + 1);
         emitOrder(order);

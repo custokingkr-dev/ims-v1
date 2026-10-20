@@ -190,6 +190,11 @@ public class NotebookTrackerRepository {
                 .param("id", instanceId).param("current", currentStep).param("status", status).param("finished", finished).update();
     }
 
+    /** The instance's version: every step change increments it, so it orders the order's status deliveries. */
+    public long instanceVersion(long instanceId) {
+        return jdbc.sql("SELECT version FROM " + instances + " WHERE id = :id").param("id", instanceId).query(Long.class).single();
+    }
+
     public void setVendor(long instanceId, String name, String phone) {
         jdbc.sql("UPDATE " + trackers + " SET vendor_name = :name, vendor_phone = :phone, version = version + 1 WHERE instance_id = :id")
                 .param("id", instanceId).param("name", name).param("phone", phone).update();

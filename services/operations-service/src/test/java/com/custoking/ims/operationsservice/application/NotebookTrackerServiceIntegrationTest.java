@@ -5,6 +5,7 @@ import com.custoking.ims.operationsservice.application.tracker.Sla;
 import com.custoking.ims.operationsservice.application.tracker.TrackerRuleViolation;
 import com.custoking.ims.operationsservice.application.tracker.TrackerView;
 import com.custoking.ims.operationsservice.persistence.NotebookTrackerRepository;
+import com.custoking.ims.operationsservice.persistence.TrackerStatusOutbox;
 import com.custoking.ims.operationsservice.persistence.WorkflowReadRepository;
 import com.custoking.ims.operationsservice.security.TenantAwareDataSource;
 import com.custoking.ims.operationsservice.security.TenantContext;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.DockerClientFactory;
@@ -30,8 +32,10 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -55,7 +59,11 @@ class NotebookTrackerServiceIntegrationTest {
 
     static PostgreSQLContainer<?> PG;
     static javax.sql.DataSource dataSource;
+    /** The database owner, which row-level security does not apply to: for looking at the status outbox directly. */
+    static JdbcClient owner;
+    static TransactionTemplate transactions;
     static NotebookTrackerService service;
+    static TrackerStatusOutbox statuses;
     static Instant now = Instant.parse("2026-10-19T04:00:00Z"); // Monday 09:30 in Kolkata
     static final AtomicInteger ORDERS = new AtomicInteger();
     /** Users identity would call eligible for school 10 notebooks; school 20 has no eligible operators. */
@@ -64,7 +72,11 @@ class NotebookTrackerServiceIntegrationTest {
     /** Drafts the catalogue would report for any order; default has two current drafts. */
     static final java.util.List<Long> DRAFT_IDS = new java.util.concurrent.CopyOnWriteArrayList<>();
     static final java.util.List<String> PUSHED = new java.util.concurrent.CopyOnWriteArrayList<>();
+    /** The tracker version each delivered status in {@link #PUSHED} carried, in the same order. */
+    static final java.util.List<Long> PUSHED_VERSIONS = new java.util.concurrent.CopyOnWriteArrayList<>();
     static volatile boolean catalogDown = false;
+    /** Runs once, inside the next status push, before it reaches the catalogue: lets a test act while a push is in flight. */
+    static final AtomicReference<Runnable> DURING_PUSH = new AtomicReference<>();
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -92,21 +104,29 @@ class NotebookTrackerServiceIntegrationTest {
             @Override public Instant instant() { return now; }
         };
         DRAFT_IDS.addAll(java.util.List.of(501L, 777L));
+        owner = JdbcClient.create(new DriverManagerDataSource(PG.getJdbcUrl(), "owner", "owner"));
+        DataSourceTransactionManager manager = new DataSourceTransactionManager(ds);
+        transactions = new TransactionTemplate(manager);
+        var catalog = new com.custoking.ims.operationsservice.infrastructure.CatalogOrderGateway() {
+            @Override public java.util.List<DraftImage> draftImages(String orderId) {
+                if (catalogDown) throw new IllegalStateException("catalogue is down");
+                return DRAFT_IDS.stream().map(id -> new DraftImage(id, "image/png", "draft-" + id + ".png")).toList();
+            }
+            @Override public void pushStatus(String orderId, String status, long trackerVersion) {
+                Runnable during = DURING_PUSH.getAndSet(null);
+                if (during != null) during.run();
+                if (catalogDown) throw new IllegalStateException("catalogue is down");
+                PUSHED.add(orderId + ":" + status);
+                PUSHED_VERSIONS.add(trackerVersion);
+            }
+        };
+        statuses = new TrackerStatusOutbox(JdbcClient.create(ds), catalog, manager, "workflow");
         service = new NotebookTrackerService(
                 new NotebookTrackerRepository(JdbcClient.create(ds), JsonMapper.builder().build(), "workflow"),
-                new TransactionTemplate(new DataSourceTransactionManager(ds)), clock, (userId, schoolId, category) -> {
+                transactions, clock, (userId, schoolId, category) -> {
                     if (identityDown) throw new IllegalStateException("identity is down");
                     return "NOTEBOOKS".equals(category) && schoolId == 10 && ELIGIBLE_FOR_10.contains(userId);
-                }, new com.custoking.ims.operationsservice.infrastructure.CatalogOrderGateway() {
-                    @Override public java.util.List<DraftImage> draftImages(String orderId) {
-                        if (catalogDown) throw new IllegalStateException("catalogue is down");
-                        return DRAFT_IDS.stream().map(id -> new DraftImage(id, "image/png", "draft-" + id + ".png")).toList();
-                    }
-                    @Override public void pushStatus(String orderId, String status) {
-                        if (catalogDown) throw new IllegalStateException("catalogue is down");
-                        PUSHED.add(orderId + ":" + status);
-                    }
-                });
+                }, catalog, statuses);
     }
 
     @AfterAll
@@ -123,6 +143,10 @@ class NotebookTrackerServiceIntegrationTest {
         ELIGIBLE_FOR_10.clear();
         catalogDown = false;
         PUSHED.clear();
+        PUSHED_VERSIONS.clear();
+        DURING_PUSH.set(null);
+        // Tests share the database; a status one test left queued must not be delivered by another test's drain.
+        owner.sql("DELETE FROM workflow.workflow_tracker_status_outbox").update();
         DRAFT_IDS.clear();
         DRAFT_IDS.addAll(java.util.List.of(501L, 777L));
     }
@@ -774,6 +798,7 @@ class NotebookTrackerServiceIntegrationTest {
         asSuper();
         service.reopenStep(order, 1);
         assertEquals(order + ":ORDER_DETAILS", PUSHED.get(PUSHED.size() - 1));
+        assertTrue(PUSHED_VERSIONS.get(1) > PUSHED_VERSIONS.get(0), "a reopen carries a newer version than the completion before it");
     }
 
     @Test
@@ -783,6 +808,9 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals(order + ":COMPLETED", PUSHED.get(PUSHED.size() - 1));
         assertTrue(PUSHED.contains(order + ":PRE_PRINT_QUALITY_GATE"));
         assertTrue(PUSHED.contains(order + ":DELIVERY_INVOICING"));
+        for (int i = 1; i < PUSHED_VERSIONS.size(); i++) {
+            assertTrue(PUSHED_VERSIONS.get(i) > PUSHED_VERSIONS.get(i - 1), "every step change carries a newer version");
+        }
     }
 
     @Test
@@ -794,6 +822,134 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals("COMPLETED", step(done, 1).status());
         assertEquals(5, done.progress().currentStep());
         assertTrue(PUSHED.isEmpty());
+    }
+
+    // ---- status delivery: a retried, versioned outbox (review fix, spec §3.3) -------------------------------------------
+
+    record Queued(String status, long trackerVersion, int attempts) { }
+
+    static Optional<Queued> queued(String order) {
+        return owner.sql("SELECT status, tracker_version, attempts FROM workflow.workflow_tracker_status_outbox WHERE order_id = :order")
+                .param("order", order)
+                .query((rs, n) -> new Queued(rs.getString("status"), rs.getLong("tracker_version"), rs.getInt("attempts"))).optional();
+    }
+
+    static long instanceVersion(String order) {
+        return owner.sql("SELECT i.version FROM workflow.workflow_instances i JOIN workflow.workflow_notebook_trackers t ON t.instance_id = i.id "
+                + "WHERE t.order_id = :order").param("order", order).query(Long.class).single();
+    }
+
+    /** Lets the backoff of a failed attempt elapse. */
+    static void due(String order) {
+        owner.sql("UPDATE workflow.workflow_tracker_status_outbox SET next_attempt_at = now() - interval '1 second' WHERE order_id = :order")
+                .param("order", order).update();
+    }
+
+    @Test
+    void statusQueuedInSameTransaction() {
+        String order = create(false, 10L, OP_A);
+        catalogDown = true;
+        asOperator(OP_A, 10L);
+        long before = instanceVersion(order);
+        TrackerView done = service.completeStep(order, 1, step(service.view(order), 1).version());
+        assertEquals(5, done.progress().currentStep(), "the user's action stands although the push failed");
+        Queued queued = queued(order).orElseThrow(() -> new AssertionError("the step change queued its status"));
+        assertEquals("PRODUCTION_PLANNING", queued.status());
+        assertEquals(instanceVersion(order), queued.trackerVersion(), "the instance version after the change");
+        assertTrue(queued.trackerVersion() > before);
+        assertEquals(1, queued.attempts(), "one push was tried after commit");
+        assertTrue(PUSHED.isEmpty());
+
+        // The status is written by the step change's own transaction: when it cannot be queued, the step does not move.
+        owner.sql("CREATE FUNCTION workflow.test_refuse_status() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'outbox refused'; END $$").update();
+        owner.sql("CREATE TRIGGER test_refuse_status BEFORE INSERT OR UPDATE ON workflow.workflow_tracker_status_outbox "
+                + "FOR EACH ROW EXECUTE FUNCTION workflow.test_refuse_status()").update();
+        try {
+            long v = step(service.view(order), 5).version();
+            assertThrows(RuntimeException.class, () -> service.completeStep(order, 5, v));
+        } finally {
+            owner.sql("DROP TRIGGER test_refuse_status ON workflow.workflow_tracker_status_outbox").update();
+            owner.sql("DROP FUNCTION workflow.test_refuse_status()").update();
+        }
+        assertEquals(5, service.view(order).progress().currentStep(), "rolled back together with the status");
+        assertEquals("PRODUCTION_PLANNING", queued(order).orElseThrow().status());
+    }
+
+    @Test
+    void drainDeliversAndDeletes() {
+        String order = create(false, 10L, OP_A);
+        catalogDown = true;
+        asOperator(OP_A, 10L);
+        service.completeStep(order, 1, step(service.view(order), 1).version());
+        TenantContext.clear();
+        catalogDown = false;
+        long version = queued(order).orElseThrow().trackerVersion();
+        assertEquals(0, statuses.drain(10), "a failed attempt waits out its backoff");
+
+        due(order);
+        assertEquals(1, statuses.drain(10));
+        assertEquals(List.of(order + ":PRODUCTION_PLANNING"), PUSHED);
+        assertEquals(List.of(version), PUSHED_VERSIONS);
+        assertTrue(queued(order).isEmpty(), "a delivered status leaves the outbox");
+        assertEquals(0, statuses.drain(10), "and is delivered once");
+    }
+
+    @Test
+    void newerVersionReplacesQueuedStatus() {
+        String order = create(false, 10L, OP_A);
+        catalogDown = true;
+        asSuper();
+        service.completeStep(order, 1, step(service.view(order), 1).version());
+        Queued first = queued(order).orElseThrow();
+        due(order);
+        statuses.drain(10);
+        assertEquals(2, queued(order).orElseThrow().attempts(), "the relay retried it");
+
+        service.completeStep(order, 5, step(service.view(order), 5).version());
+        Queued replaced = queued(order).orElseThrow();
+        assertEquals("BOARD_PROCUREMENT", replaced.status());
+        assertEquals(instanceVersion(order), replaced.trackerVersion());
+        assertTrue(replaced.trackerVersion() > first.trackerVersion());
+        assertEquals(1, replaced.attempts(), "the newer status was due at once and was tried after its own commit");
+
+        // An older version never replaces a newer one.
+        transactions.executeWithoutResult(status -> statuses.record(order, 10L, "PRODUCTION_PLANNING", first.trackerVersion()));
+        assertEquals(replaced, queued(order).orElseThrow());
+
+        catalogDown = false;
+        due(order);
+        assertEquals(1, statuses.drain(10));
+        assertEquals(List.of(order + ":BOARD_PROCUREMENT"), PUSHED, "only the newest status is delivered");
+    }
+
+    @Test
+    void rowSurvivesWhenNewerVersionArrivesMidPush() {
+        String order = create(false, 10L, OP_A);
+        // While step 1's status is in flight, superadmin completes step 5 and that newer status cannot be delivered yet.
+        DURING_PUSH.set(() -> {
+            TenantContext operator = TenantContext.get();
+            catalogDown = true;
+            try {
+                as(() -> asSuper(), () -> service.completeStep(order, 5, step(service.view(order), 5).version()));
+            } finally {
+                catalogDown = false;
+                TenantContext.set(operator);
+            }
+        });
+        asOperator(OP_A, 10L);
+        service.completeStep(order, 1, step(service.view(order), 1).version());
+        TenantContext.clear();
+
+        assertEquals(List.of(order + ":PRODUCTION_PLANNING"), PUSHED, "step 1's status arrived");
+        Queued survivor = queued(order).orElseThrow(() -> new AssertionError("delivering the older version must not delete the newer one"));
+        assertEquals("BOARD_PROCUREMENT", survivor.status());
+        assertEquals(instanceVersion(order), survivor.trackerVersion());
+
+        due(order);
+        assertEquals(1, statuses.drain(10));
+        assertEquals(order + ":BOARD_PROCUREMENT", PUSHED.get(PUSHED.size() - 1));
+        assertEquals(survivor.trackerVersion(), PUSHED_VERSIONS.get(PUSHED_VERSIONS.size() - 1));
+        assertTrue(queued(order).isEmpty());
     }
 
     @Test

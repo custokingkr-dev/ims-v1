@@ -50,16 +50,16 @@ class SchoolCoreCatalogClientTest {
 
     @Test
     void theStatusIsPutOnTheInternalCatalogueRoute() throws Exception {
-        clientFor(204, "").pushStatus("CK-1", "PRINTING_PRESS");
+        clientFor(204, "").pushStatus("CK-1", "PRINTING_PRESS", 7);
         assertEquals(List.of("PUT /api/v1/internal/catalog-orders/CK-1/tracker-status"), requests);
-        assertEquals("{\"status\":\"PRINTING_PRESS\"}", bodies.get(0));
+        assertEquals("{\"status\":\"PRINTING_PRESS\",\"trackerVersion\":7}", bodies.get(0));
     }
 
     @Test
     void noCallCarriesASharedTokenOrForwardedUserContext() throws Exception {
         var client = clientFor(200, "[]");
         client.draftImages("CK-1");
-        client.pushStatus("CK-1", "PRINTING_PRESS");
+        client.pushStatus("CK-1", "PRINTING_PRESS", 7);
         for (String name : headerNames) {
             String lower = name.toLowerCase(Locale.ROOT);
             assertFalse(lower.endsWith("-service-token") || lower.startsWith("x-authenticated-") || lower.equals("x-ims-principal-carrier-token"), name);
@@ -70,8 +70,9 @@ class SchoolCoreCatalogClientTest {
     void failuresAndMisconfigurationFailClosed() throws Exception {
         var client = clientFor(500, "{}");
         assertThrows(IllegalStateException.class, () -> client.draftImages("CK-1"));
-        assertThrows(IllegalStateException.class, () -> client.pushStatus("CK-1", "PRINTING_PRESS"));
+        assertEquals("the order catalogue answered HTTP 500",
+                assertThrows(IllegalStateException.class, () -> client.pushStatus("CK-1", "PRINTING_PRESS", 7)).getMessage());
         assertThrows(IllegalStateException.class, () -> new SchoolCoreCatalogClient("", "never", 300, 300).draftImages("CK-1"));
-        assertThrows(IllegalStateException.class, () -> new SchoolCoreCatalogClient(null, null, 300, 300).pushStatus("CK-1", "PRINTING_PRESS"));
+        assertThrows(IllegalStateException.class, () -> new SchoolCoreCatalogClient(null, null, 300, 300).pushStatus("CK-1", "PRINTING_PRESS", 7));
     }
 }

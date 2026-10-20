@@ -539,17 +539,17 @@ class NotebookTrackerIntegrationTest {
         TenantContext.clear();
         tx(() -> jdbc.sql("DELETE FROM tenant_school.outbox_events").update());
 
-        tx(() -> { forms.applyTrackerStatus(order, "printing_press"); return null; });
+        tx(() -> { forms.applyTrackerStatus(order, "printing_press", 1L); return null; });
         assertThat(status(order)).isEqualTo("PRINTING_PRESS");
         var event = jdbc.sql("SELECT payload::text FROM tenant_school.outbox_events WHERE event_type = 'catalog-order.upserted.v1' ORDER BY id DESC LIMIT 1")
                 .query(String.class).single();
         assertThat(event).contains("PRINTING_PRESS");
 
         long events = jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events").query(Long.class).single();
-        tx(() -> { forms.applyTrackerStatus(order, "PRINTING_PRESS"); return null; });
+        tx(() -> { forms.applyTrackerStatus(order, "PRINTING_PRESS", 2L); return null; });
         assertThat(jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events").query(Long.class).single()).as("no change, no event").isEqualTo(events);
 
-        tx(() -> { forms.applyTrackerStatus(order, "COMPLETED"); return null; });
+        tx(() -> { forms.applyTrackerStatus(order, "COMPLETED", 3L); return null; });
         assertThat(status(order)).isEqualTo("COMPLETED");
     }
 
@@ -557,13 +557,13 @@ class NotebookTrackerIntegrationTest {
     void aTrackerStatusIsRefusedForDraftsBadCodesAndOtherCategories() {
         var draft = notebook(true);
         TenantContext.clear();
-        assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(draft, "PRINTING_PRESS"); return null; }))
+        assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(draft, "PRINTING_PRESS", 1L); return null; }))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
         school(1);
         var placed = placedNotebook(true);
         TenantContext.clear();
         for (String bad : new String[]{"", "lower case", "1ABC", "A;DROP", "X".repeat(50)}) {
-            assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(placed, bad); return null; }), bad).isInstanceOf(ResponseStatusException.class);
+            assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(placed, bad, 1L); return null; }), bad).isInstanceOf(ResponseStatusException.class);
         }
         var data = Map.of("orderSelections", Map.of(), "lines", List.of(
                 Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 3, "pageCount", 99)));
@@ -571,7 +571,56 @@ class NotebookTrackerIntegrationTest {
         var trophy = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", data)));
         tx(() -> orders.placeOrder(trophy.id(), 7L));
         TenantContext.clear();
-        assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(trophy.id(), "PRINTING_PRESS"); return null; })).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(trophy.id(), "PRINTING_PRESS", 1L); return null; })).isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void staleTrackerVersionIsIgnored() {
+        var order = placedNotebook(true);
+        TenantContext.clear();
+        tx(() -> { forms.applyTrackerStatus(order, "PRINTING_PRESS", 5L); return null; });
+        long events = jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events").query(Long.class).single();
+
+        // A push that arrives late, or twice, succeeds and changes nothing.
+        tx(() -> { forms.applyTrackerStatus(order, "BOARD_PROCUREMENT", 4L); return null; });
+        assertThat(status(order)).isEqualTo("PRINTING_PRESS");
+        tx(() -> { forms.applyTrackerStatus(order, "PRE_PRINT_QUALITY_GATE", 5L); return null; });
+        assertThat(status(order)).as("an equal version is already applied").isEqualTo("PRINTING_PRESS");
+        assertThat(trackerStatusVersion(order)).isEqualTo(5L);
+        assertThat(jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events").query(Long.class).single()).isEqualTo(events);
+
+        // A newer version that repeats the shown status still raises the bar for older ones.
+        tx(() -> { forms.applyTrackerStatus(order, "PRINTING_PRESS", 7L); return null; });
+        tx(() -> { forms.applyTrackerStatus(order, "PRE_PRINT_QUALITY_GATE", 6L); return null; });
+        assertThat(status(order)).isEqualTo("PRINTING_PRESS");
+        assertThat(trackerStatusVersion(order)).isEqualTo(7L);
+
+        tx(() -> { forms.applyTrackerStatus(order, "PRE_PRINT_QUALITY_GATE", 8L); return null; });
+        assertThat(status(order)).isEqualTo("PRE_PRINT_QUALITY_GATE");
+        assertThat(trackerStatusVersion(order)).isEqualTo(8L);
+    }
+
+    @Test
+    void unknownStatusCodeRejected() {
+        var order = placedNotebook(true);
+        TenantContext.clear();
+        // Well-formed codes that are not tracker steps, including the old approval flow's statuses.
+        for (String unknown : new String[]{"NOT_A_STEP", "DESIGN_APPROVAL", "PROCESSING", "DELIVERED", "CANCELLED", "DRAFT"}) {
+            assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(order, unknown, 9L); return null; }), unknown)
+                    .isInstanceOfSatisfying(ResponseStatusException.class, refused -> assertThat(refused.getStatusCode().value()).isEqualTo(400));
+        }
+        assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(order, "PRINTING_PRESS", null); return null; }), "no version")
+                .isInstanceOfSatisfying(ResponseStatusException.class, refused -> assertThat(refused.getStatusCode().value()).isEqualTo(400));
+        assertThat(status(order)).isEqualTo("ORDER_DETAILS");
+        // Every one of operations' TrackerStep codes and COMPLETED is accepted.
+        long version = 10;
+        for (String code : new String[]{"ORDER_DETAILS", "DESIGNING_ACTIVITY", "HEAD_APPROVAL", "CDR_CONVERSION", "PRODUCTION_PLANNING",
+                "BOARD_PROCUREMENT", "PRINTING_PRESS", "PRE_PRINT_QUALITY_GATE", "FACTORY_HANDOVER", "PRODUCTION_FOLLOW_UP",
+                "VALIDATION_COUNT", "DELIVERY_INVOICING", "COMPLETED"}) {
+            long next = ++version;
+            tx(() -> { forms.applyTrackerStatus(order, code, next); return null; });
+            assertThat(status(order)).isEqualTo(code);
+        }
     }
 
     // ---- row-level security, through the restricted runtime role ---------------------------------------------------------------
@@ -843,6 +892,11 @@ class NotebookTrackerIntegrationTest {
 
     private String status(String order) {
         return jdbc.sql("SELECT status FROM catalog.catalog_orders WHERE id = :id").param("id", order).query(String.class).single();
+    }
+
+    private Long trackerStatusVersion(String order) {
+        return jdbc.sql("SELECT (attributes ->> 'trackerStatusVersion')::bigint FROM catalog.catalog_orders WHERE id = :id")
+                .param("id", order).query(Long.class).single();
     }
 
     private static <T> T tx(Supplier<T> operation) { return transaction.execute(status -> operation.get()); }

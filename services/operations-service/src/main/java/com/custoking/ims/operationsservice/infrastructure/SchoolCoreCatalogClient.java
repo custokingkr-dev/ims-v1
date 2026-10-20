@@ -6,6 +6,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
 import java.util.Map;
@@ -49,15 +50,20 @@ public class SchoolCoreCatalogClient implements CatalogOrderGateway {
     }
 
     @Override
-    public void pushStatus(String orderId, String status) {
+    public void pushStatus(String orderId, String status, long trackerVersion) {
         requireConfigured();
         try {
             http.client.put().uri("/api/v1/internal/catalog-orders/{id}/tracker-status", orderId).contentType(MediaType.APPLICATION_JSON)
-                    .headers(http::authorize).body(Map.of("status", status)).retrieve().toBodilessEntity();
+                    .headers(http::authorize).body(new StatusBody(status, trackerVersion)).retrieve().toBodilessEntity();
+        } catch (RestClientResponseException refused) {
+            // Kept as the queued status's last error, so a status the catalogue keeps refusing is told apart from an outage.
+            throw new IllegalStateException("the order catalogue answered HTTP " + refused.getStatusCode().value(), refused);
         } catch (RestClientException failure) {
             throw new IllegalStateException("the order catalogue is unavailable", failure);
         }
     }
+
+    private record StatusBody(String status, long trackerVersion) { }
 
     private void requireConfigured() {
         if (!http.configured()) throw new IllegalStateException("the order catalogue is not configured");

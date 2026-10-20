@@ -10,6 +10,9 @@ public interface CatalogOrderGateway {
     /** The order's current design drafts. Throws {@link IllegalStateException} when school-core cannot be asked. */
     List<DraftImage> draftImages(String orderId);
 
-    /** Shows the tracker's current step as the order's status. Throws {@link IllegalStateException} on failure. */
-    void pushStatus(String orderId, String status);
+    /**
+     * Shows the tracker's current step as the order's status. {@code trackerVersion} orders the pushes: the catalogue
+     * ignores one no newer than the last it applied. Throws {@link IllegalStateException} on failure.
+     */
+    void pushStatus(String orderId, String status, long trackerVersion);
 }

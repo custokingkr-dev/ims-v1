@@ -36,9 +36,10 @@ class CatalogTrackerMachineControllerTest {
                 .andExpect(jsonPath("$[0].originalFilename").value("d.png"));
     }
 
-    @Test void trackerStatusIsPassedOnAndAnswersNoContent() throws Exception {
-        mvc.perform(put("/api/v1/internal/catalog-orders/CK-1/tracker-status").contentType("application/json").content("{\"status\":\"PRINTING_PRESS\"}"))
+    @Test void trackerStatusIsPassedOnWithItsVersionAndAnswersNoContent() throws Exception {
+        mvc.perform(put("/api/v1/internal/catalog-orders/CK-1/tracker-status").contentType("application/json")
+                        .content("{\"status\":\"PRINTING_PRESS\",\"trackerVersion\":12}"))
                 .andExpect(status().isNoContent());
-        verify(forms).applyTrackerStatus("CK-1", "PRINTING_PRESS");
+        verify(forms).applyTrackerStatus("CK-1", "PRINTING_PRESS", 12L);
     }
 }
