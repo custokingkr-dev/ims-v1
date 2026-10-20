@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:57:09.683630+00:00",
+  "curationVerdict": "PASS",
+  "helperVerdict": "BOUNDED_DEV_GENERATOR_PROVENANCE_CHANGE_REQUIRED_BEFORE_USE",
+  "curation": {
+    "path": "tmp/remaining-round-source-curation.json",
+    "digestSha256": "74185224019b44f6befb28c5804b54378a2be80768aecedf6f17cfd2030d2211"
+  },
+  "localIndex": {
+    "path": "docs/security-remediation/acceptance-remaining-round-local.json",
+    "digestSha256": "d400880acbde231f9f512b7e00c2f6d987396c5bd532d352510b1848a53cb0f5"
+  },
+  "sourceBase": "a5aef69b58b59f32f4c3862cd7aa0b60a14ec217",
+  "changedWhitelistPathCount": 23,
+  "sourceLfPins": [
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+      "normalizedLfSha256": "33acffd49cc2d93fe39d2ebf2fdf5b19395a6401b2f5e355dc89b0137a82ac76"
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+      "normalizedLfSha256": "ea408e201e9950f524e5678dc4743e35da4a956a1f228819710d60a12b322104"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "normalizedLfSha256": "21a11f7e4887464b96304a7f5fe1d4e72a989cdf0f334f30c415f9ae805eaca0"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorizationTest.java",
+      "normalizedLfSha256": "bc939586c42fdc26ec82615258449af8e2ba73f7ae757825d5178f0141b53c9b"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91GenericSubmissionTransport.java",
+      "normalizedLfSha256": "563c0b688b055144ae618a4270a34dd243ad13818c13d5256df6d12a499d8e43"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91GenericSubmissionTransportTest.java",
+      "normalizedLfSha256": "0eb60717db20945d396b7919c2a322f6ba6438f113fbf6389e02cd3a0b6c01e7"
+    }
+  ],
+  "historicalEvidence": {
+    "count": 186,
+    "allRawHashesMatch": true,
+    "gitBlobRepresentationHashesMatch": true,
+    "rawBlobMatches": 54,
+    "lfNormalizedBlobMatches": 132,
+    "gitCommandsExecuted": 0
+  },
+  "copiedProofs": {
+    "count": 10,
+    "originalBytesMatch": true
+  },
+  "localTestEvidence": [
+    {
+      "service": "platform-service",
+      "savedProof": {
+        "path": "tmp/remaining-round-platform-service-full-proof.json",
+        "digestSha256": "48cddbfe3972474781a7d2430dc6eebdf942b3b8251163320a4a975a67d8efde"
+      },
+      "xmlTotalsIndependentlySummed": {
+        "tests": 496,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 496
+      },
+      "skippedCases": [],
+      "newTestRun": false
+    },
+    {
+      "service": "school-core-service",
+      "savedProof": {
+        "path": "tmp/remaining-round-school-core-service-full-proof.json",
+        "digestSha256": "56e81980258f4dae75203269baf8af89c64553518a0b4c4b98c19cfd3b610c77"
+      },
+      "xmlTotalsIndependentlySummed": {
+        "tests": 979,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1,
+        "passed": 978
+      },
+      "skippedCases": [
+        {
+          "class": "com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorageTest",
+          "case": "rejectsSymbolicParentsAndEncodedTraversal"
+        }
+      ],
+      "newTestRun": false
+    }
+  ],
+  "ordinaryBootManifestPreservedInCuration": true,
+  "sourceCIPassed": false,
+  "devReleaseAccepted": false,
+  "wholeSecurityPlanComplete": false,
+  "ownerGroupsOpen": 9,
+  "additionalFindingsOpen": 2,
+  "nativeMatrix": {
+    "copiedOriginalBytesMatch": true,
+    "findings": 34,
+    "advisories": 11,
+    "previousRelease": 37803078011,
+    "newScans": 0,
+    "nativeApplicabilityClosed": false
+  },
+  "reviewedDocs": [
+    {
+      "path": "docs/security-remediation/remaining-security-completion-2026-10-08.md",
+      "digestSha256": "705dd1e93e8a89acb4c73812de01032aefdf4c37a3cdf221222c423623747310"
+    },
+    {
+      "path": "docs/security-remediation/remaining-round-native-advisory-research.md",
+      "digestSha256": "98cf39aafb011f8442fec5b8cb8239aca628d78c9668bf1f14d8a22088ab640e"
+    },
+    {
+      "path": "docs/security-remediation/IMPLEMENTATION-STATUS.md",
+      "digestSha256": "866804ca7d14a8101b43bf1932fa7ac304b6656946c38c4894c9462dbab61036"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-actions.md",
+      "digestSha256": "4396bba8039ec607b5587af88422d34eaec0c07aea9f7d0af4fb87cab4bbca0f"
+    },
+    {
+      "path": "docs/SECURITY-FINDINGS-AND-FIX-PLAN-2026-10-06.md",
+      "digestSha256": "8dcfe9d56839ea3845edb1d46caf7d121d87257c125c0e423243b4b422a57249"
+    }
+  ],
+  "helpers": [
+    {
+      "path": "tmp/collect-new-source-ci-acceptance.py",
+      "digestSha256": "7b0b4a7c2b5259e6329670bb1e4148ea854bf5e8bb1c0e6f20b3a6a17f5988ba"
+    },
+    {
+      "path": "tmp/generate-remaining-round-acceptance-bounded.py",
+      "digestSha256": "e6f75b9463a08b57db4fe6d278595a0f43ff215386699f493d6cc247222162c6"
+    }
+  ],
+  "staticHelperPositiveFindings": [
+    "Source CI collector validates exact head/base/branch/synthetic parents/tree; accepted job scope and two actual CodeQL analyses; manifest path/blob equality; actual Linux496/979 zero-skip final logs; final CLEAN readback. Maven-wrapper conditional skip is appropriate for this whitelist.",
+    "Bounded generator validates explicit future tuple and exact count fields, donor/base raw hashes, bounded ordinary-file identity/caps, exact artifact ZIP and member hashes before inherited verifier calls, separate preview/protection stage, exclusive new namespace, four create-only tags and15denial/CSP scope.",
+    "No helper or generated executable was run during this independent review; compilation/AST and source dataflow only."
+  ],
+  "blockingHelperFindings": [
+    {
+      "scope": "TMP bounded generator and generated collector; source curation is unaffected",
+      "problem": "Accepted CI proof decision and sourceHead are checked, but accepted baseHead and mergeTree are not bound to supplied parent/tree. Generated source_binding validates actual squash parent/tree against operator-supplied tuple, so a different self-consistent parent is not tied to accepted CI base.",
+      "requiredFix": "Bind accepted CI baseHead==tuple.parent and accepted mergeTree==tuple.tree before generation and again before generated collector Transport construction. Add controlled wrong-parent/wrong-tree rejection.",
+      "currentGeneratorSha256": "e6f75b9463a08b57db4fe6d278595a0f43ff215386699f493d6cc247222162c6"
+    }
+  ],
+  "limits": [
+    "Inherited cloud/GitHub helpers retain their reviewed process/API boundaries; this review does not execute or freshly stress their transports.",
+    "Review sums saved XML and verifies saved hashes; it does not independently rerun Maven, package boot or any service.",
+    "Git blob representations are computed offline from exact bytes; no refs/index/Git history enumeration is performed."
+  ],
+  "cloudCalls": 0,
+  "githubCalls": 0,
+  "sourceWrites": 0,
+  "permanentDocumentationWrites": 0,
+  "privateUntrackedFilesRead": false
+}

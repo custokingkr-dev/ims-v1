@@ -143,6 +143,7 @@ public class AbsenteeNotificationDeliveryRepository {
                         SELECT (SELECT count(*) FROM %1$s WHERE status = '%2$s') AS queued,
                                (SELECT count(*) FROM %1$s WHERE status = '%3$s') AS failed,
                                (SELECT count(*) FROM %1$s WHERE status = '%4$s') AS dead_letter,
+                               (SELECT count(*) FROM %1$s WHERE status = 'UNKNOWN') AS reconciliation,
                                COALESCE((SELECT EXTRACT(EPOCH FROM (now() - created_at))::bigint FROM %1$s
                                          WHERE status IN ('%2$s', '%3$s') ORDER BY created_at LIMIT 1), 0) AS oldest_age
                         FROM bypass
@@ -152,6 +153,7 @@ public class AbsenteeNotificationDeliveryRepository {
                         "queuedCount", rs.getLong("queued"),
                         "failedCount", rs.getLong("failed"),
                         "deadLetterCount", rs.getLong("dead_letter"),
+                        "needsReconciliationCount", rs.getLong("reconciliation"),
                         "oldestPendingAgeSeconds", rs.getLong("oldest_age")))
                 .single();
     }

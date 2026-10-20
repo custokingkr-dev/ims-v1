@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "capturedAtUtc": "2026-10-07T18:57:36.484211+00:00",
+  "sourceHeadSha": "62777c1889609a7ca3518098f134759f40c19e1a",
+  "releaseRunId": 37666279301,
+  "inventorySha256": "a194d47dd15b1efd1b7dfcdc9d61f127ffb58ef31d6bfb50333492ea55dd8986",
+  "readOnly": true,
+  "candidateCount": 198,
+  "remainingCount": 198,
+  "preflightPassed": true,
+  "revisionsDeleted": 0,
+  "deletionApprovalReceived": false,
+  "noActiveRollouts": true,
+  "currentLatestPins": [
+    {
+      "service": "custoking-identity-service-dev",
+      "latestReady": "custoking-identity-service-dev-muyggcda",
+      "latestCreated": "custoking-identity-service-dev-muyggcda"
+    },
+    {
+      "service": "custoking-school-core-service-dev",
+      "latestReady": "custoking-school-core-service-dev-muygjlsn",
+      "latestCreated": "custoking-school-core-service-dev-muygjlsn"
+    },
+    {
+      "service": "custoking-operations-service-dev",
+      "latestReady": "custoking-operations-service-dev-muygn3hk",
+      "latestCreated": "custoking-operations-service-dev-muygn3hk"
+    },
+    {
+      "service": "custoking-platform-service-dev",
+      "latestReady": "custoking-platform-service-dev-muygtf5u",
+      "latestCreated": "custoking-platform-service-dev-muygtf5u"
+    },
+    {
+      "service": "custoking-billing-service-dev",
+      "latestReady": "custoking-billing-service-dev-muygq95i",
+      "latestCreated": "custoking-billing-service-dev-muygq95i"
+    },
+    {
+      "service": "custoking-api-gateway-dev",
+      "latestReady": "custoking-api-gateway-dev-muygd9m7",
+      "latestCreated": "custoking-api-gateway-dev-muygd9m7"
+    },
+    {
+      "service": "custoking-frontend-dev",
+      "latestReady": "custoking-frontend-dev-muy1s1uk",
+      "latestCreated": "custoking-frontend-dev-muy1s1uk"
+    }
+  ],
+  "physicalDrainCertified": false,
+  "productionChanged": false
+}

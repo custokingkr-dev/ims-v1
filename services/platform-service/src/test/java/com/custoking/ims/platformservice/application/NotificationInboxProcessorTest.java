@@ -38,6 +38,7 @@ class NotificationInboxProcessorTest {
 
         assertThat(event.getStatus()).isEqualTo(NotificationInboxEvent.STATUS_FAILED);
         assertThat(event.getAttemptCount()).isEqualTo(1);
+        assertThat(event.getLastError()).isEqualTo("DELIVERY_ATTEMPT_FAILED");
         assertThat(event.getNextAttemptAt()).isAfter(event.getLastAttemptAt().plusSeconds(29));
         assertThat(event.getDeadLetteredAt()).isNull();
         verify(inbox).save(event);
@@ -138,5 +139,18 @@ class NotificationInboxProcessorTest {
         event.setEventType("attendance.absentee.notification.v1");
         event.setPayload("{\"channel\":\"SMS\",\"mobile\":\"919999999999\"}");
         return event;
+    }
+    @Test void liveMsg91AlwaysUsesDurableWorkerBeforeLegacyRepositoryOrProvider() {
+        var worker=mock(GenericNotificationSubmissionWorker.class);
+        processor.configureSubmissionWorker(worker,false);
+        processor.process(event());
+        verify(worker).process("event-1");
+        org.mockito.Mockito.verifyNoInteractions(inbox,delivery,attempts);
+    }
+    @Test void uncertainSubmissionRemainsTerminalAfterSwitchingToDryRun() {
+        var event=event();event.setStatus("UNKNOWN");
+        when(inbox.findByIdForUpdate("event-1")).thenReturn(Optional.of(event));
+        processor.process(event());org.mockito.Mockito.verifyNoInteractions(delivery,attempts);
+        assertThat(event.getStatus()).isEqualTo("UNKNOWN");
     }
 }

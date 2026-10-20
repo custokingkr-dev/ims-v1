@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "capturedAtUtc": "2026-10-07T18:19:25.351725+00:00",
+  "readOnly": true,
+  "globalForwardingRuleCount": 0,
+  "globalSslCertificateCount": 0,
+  "cloudDnsApiEnabled": false,
+  "ownedHostnameVerified": false,
+  "infrastructureApplied": false,
+  "costApprovalReceived": false,
+  "conditionalCostEstimate": {
+    "currency": "USD",
+    "hoursPerMonthAssumed": 730,
+    "assumptions": [
+      "Cloud Armor Standard; no Enterprise subscription",
+      "One global forwarding rule; no prior global forwarding rules",
+      "One policy with eight rules as prepared module; no infrastructure provisioned"
+    ],
+    "fixedMonthly": {
+      "forwardingRules": 18.25,
+      "policy": 5.0,
+      "eightRules": 8.0,
+      "totalApproximate": 31.25
+    },
+    "excludes": [
+      "Request and data processing",
+      "Internet data transfer",
+      "DNS/domain and logs",
+      "Existing application resources",
+      "Taxes, currency conversion and contracted discounts"
+    ],
+    "sources": [
+      "https://cloud.google.com/armor/pricing",
+      "https://cloud.google.com/vpc/network-pricing"
+    ]
+  },
+  "productionChanged": false
+}

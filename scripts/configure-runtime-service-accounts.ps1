@@ -4,7 +4,8 @@ param(
   [ValidateSet("dev", "prod")]
   [string]$Environment = "dev",
   [switch]$Apply,
-  [switch]$AllowProduction
+  [switch]$AllowProduction,
+  [switch]$RuntimeDatabaseRolesPrepared
 )
 
 $ErrorActionPreference = "Stop"
@@ -13,11 +14,17 @@ $GcloudCommand = if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" 
 if ($Apply -and $Environment -eq "prod" -and -not $AllowProduction) {
   throw "Production runtime IAM changes require -AllowProduction."
 }
+if ($ProjectId -ne "custoking-$Environment") { throw "ProjectId must match the explicit runtime environment." }
+if ($Apply -and $Environment -eq 'prod' -and -not $RuntimeDatabaseRolesPrepared) {
+  throw "Production requires separately prepared and verified five service database roles/secrets; pass -RuntimeDatabaseRolesPrepared only after that evidence exists."
+}
 
 function Invoke-Gcloud {
   param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
-  $output = & $GcloudCommand @Arguments
-  if ($LASTEXITCODE -ne 0) {
+  $previousPreference=$ErrorActionPreference
+  try { $ErrorActionPreference='Continue';$output = & $GcloudCommand @Arguments 2>$null;$nativeExitCode=$LASTEXITCODE }
+  finally { $ErrorActionPreference=$previousPreference }
+  if ($nativeExitCode -ne 0) {
     throw "gcloud command failed: $($Arguments -join ' ')"
   }
   return $output
@@ -60,15 +67,13 @@ $accountNames = [ordered]@{
 
 $secretMatrix = [ordered]@{
   "identity-service" = @(
-    "app-rt-password-$Environment",
-    "db-password-$Environment",
+    "identity-runtime-db-password-$Environment",
     "jwt-secret-$Environment",
     "identity-introspection-token-$Environment",
     "tenant-school-read-token-$Environment"
   )
   "school-core-service" = @(
-    "app-rt-password-$Environment",
-    "db-password-$Environment",
+    "school-core-runtime-db-password-$Environment",
     "tenant-school-read-token-$Environment",
     "student-read-token-$Environment",
     "attendance-read-token-$Environment",
@@ -79,15 +84,13 @@ $secretMatrix = [ordered]@{
     "student-photo-import-drive-oauth-refresh-token-$Environment"
   )
   "operations-service" = @(
-    "app-rt-password-$Environment",
-    "db-password-$Environment",
+    "operations-runtime-db-password-$Environment",
     "workflow-read-token-$Environment",
     "firefighting-read-token-$Environment",
     "tenant-school-read-token-$Environment"
   )
   "platform-service" = @(
-    "app-rt-password-$Environment",
-    "db-password-$Environment",
+    "platform-runtime-db-password-$Environment",
     "reporting-read-token-$Environment",
     "audit-ingest-token-$Environment",
     "notification-status-token-$Environment",
@@ -96,8 +99,7 @@ $secretMatrix = [ordered]@{
     "firefighting-read-token-$Environment"
   )
   "billing-service" = @(
-    "app-rt-password-$Environment",
-    "db-password-$Environment",
+    "billing-runtime-db-password-$Environment",
     "billing-service-token-$Environment"
   )
   "api-gateway" = @(
@@ -112,8 +114,7 @@ $secretMatrix = [ordered]@{
     "reporting-read-token-$Environment",
     "billing-service-token-$Environment",
     "audit-ingest-token-$Environment",
-    "notification-status-token-$Environment",
-    "jwt-secret-$Environment"
+    "notification-status-token-$Environment"
   )
   "frontend" = @()
 }
@@ -168,6 +169,8 @@ $summary = [ordered]@{
   environment = $Environment
   applyRequested = [bool]$Apply
   productionAuthorized = [bool]$AllowProduction
+  runtimeDatabaseRolesPrepared = [bool]$RuntimeDatabaseRolesPrepared
+  existingObsoleteSecretGrantsRevoked = $false
   serviceAccounts = @($serviceNames | ForEach-Object {
     $service = $_
     [string[]]$invokeTargets = @()
@@ -178,6 +181,7 @@ $summary = [ordered]@{
       service = $service
       email = "$($accountNames[$service])@$ProjectId.iam.gserviceaccount.com"
       secretCount = @($secretMatrix[$service]).Count
+      secretNames = @($secretMatrix[$service])
       projectRoles = @($projectRoles[$service])
       invokes = [object[]]$invokeTargets
     }

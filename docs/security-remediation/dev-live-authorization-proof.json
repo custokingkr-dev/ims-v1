@@ -1,0 +1,190 @@
+{
+  "release": {
+    "runId": 37524985447,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37524985447",
+    "commit": "9509d20c4413dafd1196eaf9815f83cf4d3d2fb8"
+  },
+  "capturedAtUtc": "2026-10-06T21:01:28.346916+00:00",
+  "signedTransport": {
+    "sourceEvidenceSha256": "sha256:f6d2a2ad2173202de357995cdcf7dbba80f13b45175172911a301cd6e934d629",
+    "callerServiceAccount": "ims-api-gateway-dev",
+    "cases": [
+      {
+        "service": "billing-service",
+        "case": "forged_principal_no_carrier",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "gateway_not_machine_relay_caller",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "signed_health_control",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_principal_no_carrier",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "gateway_not_machine_relay_caller",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "signed_health_control",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "forged_principal_no_carrier",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "gateway_not_machine_relay_caller",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "signed_health_control",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "forged_principal_no_carrier",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "gateway_not_machine_relay_caller",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "signed_health_control",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "forged_principal_no_carrier",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "gateway_not_machine_relay_caller",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "signed_health_control",
+        "status": 200,
+        "passed": true
+      }
+    ],
+    "completionVerified": true,
+    "temporaryJobAbsent": true,
+    "scope": "Five actual signed Cloud IAM health200 controls; five forged-principal/no-carrier403 denials on the same health endpoint; five GET internal relay wrong-machine-caller403 denials. GET cannot execute POST relay."
+  },
+  "anonymousNegatives": {
+    "sourceEvidenceSha256": "sha256:2c1d715c18a9e0a50393d00d75ee9c7552d16e0cfea90f5df7ba152365185101",
+    "cases": [
+      {
+        "service": "identity-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "school-core-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "operations-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "platform-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "anonymous_private",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "billing-service",
+        "case": "forged_user_without_id_token",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "identity-service",
+        "case": "forged_internal_machine",
+        "status": 403,
+        "passed": true
+      },
+      {
+        "service": "api-gateway",
+        "case": "anonymous_protected_gateway",
+        "status": 401,
+        "passed": true
+      }
+    ],
+    "scope": "Anonymous Cloud IAM denial, forged headers without ID token, wrong machine request and gateway unauthorized401."
+  },
+  "authenticatedTenantUserMatrix": false,
+  "realWebAuthnEnrollment": false,
+  "responseBodiesLogged": false,
+  "credentialValuesStored": false,
+  "earlierAttempts": "Earlier bounded signed probes had request/transport failures; final passing probe does not certify those attempts."
+}

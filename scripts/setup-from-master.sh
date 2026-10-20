@@ -65,12 +65,12 @@ FULL_CONTAINERS=(
     "custoking-operations-service:8089"
         "custoking-platform-service:8091"
     "custoking-billing-service:8092"
-    "custoking-api-gateway:80"
+    "custoking-api-gateway:8080"
 )
 CORE_CONTAINERS=(
     "custoking-postgres:"
     "custoking-identity-service:8083"
-    "custoking-api-gateway:80"
+    "custoking-api-gateway:8080"
 )
 
 # --- 1. Preconditions -------------------------------------------------------

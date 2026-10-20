@@ -4,11 +4,13 @@ param(
   [string]$SchedulerLocation = "asia-south1",
   [ValidateSet("dev", "prod")]
   [string]$Environment = "dev",
-  [ValidateSet("school-core-service", "operations-service", "billing-service", "platform-service")]
+  [ValidateSet("school-core-service", "operations-service", "billing-service", "platform-service", "identity-service")]
   [string[]]$Service = @("school-core-service", "operations-service", "billing-service", "platform-service"),
   [string]$Schedule = "* * * * *",
   [ValidateRange(60, 600)]
   [int]$DeliveryVerificationTimeoutSeconds = 180,
+  # Opt in explicitly; successful Scheduler delivery alone does not establish SMTP readiness.
+  [switch]$IncludeIdentityPasswordReset,
   [switch]$Apply,
   [switch]$EnableCloudSchedulerApi,
   [switch]$AllowProduction
@@ -25,8 +27,13 @@ if ($EnableCloudSchedulerApi -and -not $Apply) {
 
 function Invoke-Gcloud {
   param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
-  & $gcloud @Arguments
-  if ($LASTEXITCODE -ne 0) { throw "gcloud command failed: $($Arguments -join ' ')" }
+  $previous=$ErrorActionPreference
+  try {
+    $ErrorActionPreference="Continue"
+    $nativeOutput=@(& $gcloud @Arguments 2>$null)
+    if ($LASTEXITCODE -ne 0) { throw "gcloud command failed: $($Arguments -join ' ')" }
+    return $nativeOutput
+  } finally { $ErrorActionPreference=$previous }
 }
 
 function Test-GcloudResource([string[]]$Arguments) {
@@ -46,11 +53,12 @@ $apiEnabled = -not [string]::IsNullOrWhiteSpace(((Invoke-Gcloud services list `
 $serviceAccountName = "ims-async-scheduler-$Environment"
 $serviceAccount = "$serviceAccountName@$ProjectId.iam.gserviceaccount.com"
 $targets = @(
+  [ordered]@{ service = "identity-service"; path = "/api/v1/internal/password-reset/drain" },
   [ordered]@{ service = "school-core-service"; path = "/api/v1/internal/outbox/relay" },
   [ordered]@{ service = "operations-service"; path = "/api/v1/internal/outbox/relay" },
   [ordered]@{ service = "billing-service"; path = "/api/v1/internal/outbox/relay" },
   [ordered]@{ service = "platform-service"; path = "/api/v1/internal/async/drain" }
-) | Where-Object { $_.service -in $Service }
+) | Where-Object { $_.service -in $Service -and ($_.service -ne "identity-service" -or $IncludeIdentityPasswordReset) }
 if (@($targets).Count -eq 0) { throw "Select at least one async relay service." }
 
 $resolved = @()
@@ -113,13 +121,14 @@ foreach ($target in $resolved) {
     "scheduler", "jobs", "describe", $target.job, "--project=$ProjectId", "--location=$SchedulerLocation"
   )
   $verb = if ($jobExists) { "update" } else { "create" }
+  $headerArgument = if ($jobExists) { "--update-headers=Content-Type=application/json" } else { "--headers=Content-Type=application/json" }
   Invoke-Gcloud scheduler jobs $verb http $target.job `
     "--project=$ProjectId" "--location=$SchedulerLocation" `
     "--schedule=$Schedule" --time-zone=Etc/UTC `
     "--uri=$($target.uri)" --http-method=POST `
     "--oidc-service-account-email=$serviceAccount" `
     "--oidc-token-audience=$($target.audience)" `
-    --headers=Content-Type=application/json --message-body="{}" `
+    $headerArgument --message-body="{}" `
     --attempt-deadline=300s --max-retry-attempts=3 `
     --min-backoff=10s --max-backoff=300s --max-doublings=3
 }

@@ -84,4 +84,26 @@ class JwtServiceTest {
         assertNull(claims.get("sid"));
         assertNull(claims.get("ver"));
     }
+
+    @Test
+    void rejectsWrongPurposeIssuerAudienceAndAlgorithmAndSupportsExplicitRotation() {
+        var user=user(42L,"ADMIN",7L,3L);
+        String previous="old-signing-key-at-least-32-characters-AAAA";
+        var rotated=new JwtService(SECRET,900000,604800000,previous,"ims-identity","ims-api");
+        var old=new JwtService(previous,900000,604800000);
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(()->rotated.claims(old.generateAccessToken(user)));
+        org.junit.jupiter.api.Assertions.assertThrows(io.jsonwebtoken.JwtException.class,()->jwtService.claims(old.generateAccessToken(user)));
+        for(String[] values:new String[][]{{"wrong","ims-api","access"},{"ims-identity","wrong","access"},{"ims-identity","ims-api","recovery"}}) {
+            String token=io.jsonwebtoken.Jwts.builder().issuer(values[0]).audience().add(values[1]).and().claim("type",values[2])
+                    .subject("user@example.com").id("id").issuedAt(new java.util.Date()).expiration(new java.util.Date(System.currentTimeMillis()+60000))
+                    .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(SECRET.getBytes(java.nio.charset.StandardCharsets.UTF_8)),io.jsonwebtoken.Jwts.SIG.HS256).compact();
+            org.junit.jupiter.api.Assertions.assertThrows(io.jsonwebtoken.JwtException.class,()->jwtService.claims(token));
+        }
+        String longSecret="A".repeat(80);
+        var service=new JwtService(longSecret,900000,604800000);
+        String token=io.jsonwebtoken.Jwts.builder().issuer("ims-identity").audience().add("ims-api").and().claim("type","access")
+                .subject("user@example.com").id("id").issuedAt(new java.util.Date()).expiration(new java.util.Date(System.currentTimeMillis()+60000))
+                .signWith(io.jsonwebtoken.security.Keys.hmacShaKeyFor(longSecret.getBytes()),io.jsonwebtoken.Jwts.SIG.HS512).compact();
+        org.junit.jupiter.api.Assertions.assertThrows(io.jsonwebtoken.JwtException.class,()->service.claims(token));
+    }
 }

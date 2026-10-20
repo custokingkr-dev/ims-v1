@@ -6,6 +6,8 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * Sets the per-request tenant GUCs on every borrowed connection so PostgreSQL RLS
@@ -47,6 +49,28 @@ public class TenantAwareDataSource extends DelegatingDataSource {
             connection.close();
             throw e;
         }
-        return connection;
+        return (Connection) Proxy.newProxyInstance(Connection.class.getClassLoader(),
+                new Class<?>[]{Connection.class}, (proxy, method, arguments) -> {
+                    if ("close".equals(method.getName())) {
+                        try {
+                            if (!connection.isClosed()) {
+                                // Roll back abandoned transactions before clearing session state.
+                                if (!connection.getAutoCommit()) connection.rollback();
+                                try (PreparedStatement reset = connection.prepareStatement(
+                                        "SELECT set_config('app.current_school_id', '', false), set_config('app.bypass_rls', 'off', false), set_config('app.operator_schools', '', false), set_config('app.current_zone_id', '', false)")) {
+                                    reset.execute();
+                                }
+                                if (!connection.getAutoCommit()) connection.commit();
+                            }
+                        } catch (SQLException failure) {
+                            // A failed reset must not return a contaminated physical connection.
+                            try { connection.abort(Runnable::run); } catch (SQLException ignored) { }
+                            throw failure;
+                        } finally { connection.close(); }
+                        return null;
+                    }
+                    try { return method.invoke(connection, arguments); }
+                    catch (InvocationTargetException failure) { throw failure.getCause(); }
+                });
     }
 }

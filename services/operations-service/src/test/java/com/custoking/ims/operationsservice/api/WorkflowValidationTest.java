@@ -46,6 +46,17 @@ class WorkflowValidationTest {
     // --- POST /instances (create-or-get) ---
 
     @Test
+    void decisionVersionRejectsFractionalStringAndOverflowBeforeMutation() throws Exception {
+        for (String version : java.util.List.of("1.5", "\"1\"", "9223372036854775808")) {
+            mvc.perform(post("/api/v1/workflows/instances/1/approve")
+                    .header("X-Workflow-Service-Token", VALID_TOKEN)
+                    .contentType("application/json").content("{\"expectedVersion\":" + version + "}"))
+                    .andExpect(status().isBadRequest());
+        }
+        verify(repo, never()).approve(anyLong(), anyMap());
+    }
+
+    @Test
     void createInstance_blankEntityType_returns400() throws Exception {
         mvc.perform(post("/api/v1/workflows/instances")
                         .header("X-Workflow-Service-Token", VALID_TOKEN)

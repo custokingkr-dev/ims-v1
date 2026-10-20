@@ -91,6 +91,7 @@ operations:
       fixed-delay-ms: ${OPERATIONS_OUTBOX_RELAY_FIXED_DELAY_MS:10000}
       initial-delay-ms: ${OPERATIONS_OUTBOX_RELAY_INITIAL_DELAY_MS:0}
     pubsub:
+      publish-timeout-ms: ${OPERATIONS_OUTBOX_PUBLISH_TIMEOUT_MS:5000}
       # topic-id is intentionally NOT given a default here (not even an empty
       # string): @ConditionalOnProperty(name = "operations.outbox.pubsub.topic-id")
       # on PubSubDomainEventPublisher must see this property as ABSENT unless
@@ -103,3 +104,7 @@ operations:
       # Adding an entry here with a `:` default would make the property "present"
       # (empty string) and wrongly satisfy the condition, so we omit it.
       project-id: ${OPERATIONS_OUTBOX_PUBSUB_PROJECT_ID:${GOOGLE_CLOUD_PROJECT:${GCP_PROJECT:}}}
+
+app:
+  runtime-db-role: ${RUNTIME_DB_ROLE:app_rt}
+  runtime-db-schemas: workflow,firefighting

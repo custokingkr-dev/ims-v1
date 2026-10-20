@@ -42,7 +42,7 @@ public class NotificationAsyncHealthReporter {
                     "oldestFailedAgeSeconds", oldestFailedAgeSeconds);
             log.info("notification.async.health {}", kv("health", Map.of("notificationInbox", notificationInbox)));
         } catch (RuntimeException ex) {
-            log.warn("notification.async.health.failed error={}", ex.getMessage());
+            log.warn("notification.async.health.failed error={}", ex.getClass().getSimpleName());
         }
     }
 }

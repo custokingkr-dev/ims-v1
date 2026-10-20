@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "sourceHeadSha": "01522d74d039b9f46162572ddafd1a5c90d6e7ee",
+  "runId": 37651698357,
+  "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37651698357",
+  "status": "completed",
+  "conclusion": "success",
+  "createdAt": "2026-10-07T16:23:54Z",
+  "updatedAt": "2026-10-07T16:35:09Z",
+  "checkedAtUtc": "2026-10-07T16:36:10.662406+00:00",
+  "services": [
+    {
+      "service": "api-gateway",
+      "revision": "custoking-api-gateway-dev-muy1nc06",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8",
+      "sourceImage": null,
+      "runtimeDigestMatchesManifest": null,
+      "changedFromBaseline": false
+    },
+    {
+      "service": "billing-service",
+      "revision": "custoking-billing-service-dev-muyac2uc",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:0123ac05060ea6c10af6a81aaa94cbede70857f4de1e08c9b41b8f0898df88cb",
+      "sourceImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:762ae62c2a94ee4951f72cfc970bfcea0e37623012819ffba3aaed83f70fdd98",
+      "runtimeDigestMatchesManifest": null,
+      "changedFromBaseline": false
+    },
+    {
+      "service": "frontend",
+      "revision": "custoking-frontend-dev-muy1s1uk",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+      "sourceImage": null,
+      "runtimeDigestMatchesManifest": null,
+      "changedFromBaseline": false
+    },
+    {
+      "service": "identity-service",
+      "revision": "custoking-identity-service-dev-muya2gx1",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:de80a851e23d5986df716f96dfd60971daabf54ab24504085c5c74bb33eb620d",
+      "sourceImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:ec9a4381d3e814068f35de1e4069503f6a0072f3c5cc635047534e6e989abf94",
+      "runtimeDigestMatchesManifest": null,
+      "changedFromBaseline": false
+    },
+    {
+      "service": "operations-service",
+      "revision": "custoking-operations-service-dev-muya8x4v",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:6f806ccffa97e3327870464b40b1244e4d7b60ba675c44a9c9e592612bef469c",
+      "sourceImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:bb54cbd6cf461d331395a37e35ce2cb808d992430c256ec1a659da449750f9be",
+      "runtimeDigestMatchesManifest": null,
+      "changedFromBaseline": false
+    },
+    {
+      "service": "platform-service",
+      "revision": "custoking-platform-service-dev-muyaf7rv",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:455166a055eff70275105365b79cba1d625adb6aeac05e77e398eb7a9a4a2a9a",
+      "sourceImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:92a3ee43b6e364258b131df10281d184fe9e9f0425a9a2dc00bfd40c6cf7f8dc",
+      "runtimeDigestMatchesManifest": null,
+      "changedFromBaseline": false,
+      "providerConfiguration": {
+        "MSG91_DRY_RUN": "true",
+        "NOTIFICATION_DELIVERY_PROVIDER": "logging"
+      }
+    },
+    {
+      "service": "school-core-service",
+      "revision": "custoking-school-core-service-dev-00072-mhh",
+      "ready": true,
+      "trafficPercent": 100,
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:4b0fae8287c757b6300d4255e87237189defd9f84118a4a18e55308964fc9018",
+      "sourceImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:90167a839e47f4619562da0ad162aed911373ff3ba0e1b71d3991d82f6786a9c",
+      "runtimeDigestMatchesManifest": true,
+      "changedFromBaseline": true,
+      "journalEnvironment": {
+        "STUDENT_ERASURE_JOURNAL_ENABLED": "true",
+        "STUDENT_ERASURE_JOURNAL_PROJECT_ID": "custoking-dev",
+        "STUDENT_ERASURE_JOURNAL_BUCKET": "custoking-dev-erasure-journal",
+        "STUDENT_ERASURE_JOURNAL_SOURCE_LINEAGE_ID": "58bc724a-592f-49f1-b22f-0e5f95aa6808",
+        "STUDENT_ERASURE_JOURNAL_RESTORE_EPOCH": "d9c4f31c-3420-48a7-8fbe-7fc26d2065bf",
+        "STUDENT_ERASURE_JOURNAL_EPOCH_GENERATION": "1791384645925940",
+        "STUDENT_ERASURE_JOURNAL_EPOCH_SHA256": "aae5c2aedd259b60e7cdff757508a4a0584bb6ab26def2e5eddd148ede7ab108"
+      },
+      "journalEnvironmentMatchesReviewedControl": true
+    }
+  ],
+  "ownerJobs": [
+    {
+      "name": "ims-migrate-school-core-dev-20261007163254-8d9ad0d2",
+      "independentlyAbsent": true
+    }
+  ],
+  "exactDigestScan": {
+    "commit": "01522d74d039b9f46162572ddafd1a5c90d6e7ee",
+    "environment": "dev",
+    "scanner": "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25",
+    "scannedAtUtc": "2026-10-07T16:32:44.5401272Z",
+    "verdictCacheTtlHours": 24.0,
+    "scannedCount": 1,
+    "cachedCount": 0,
+    "services": [
+      {
+        "service": "school-core-service",
+        "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:90167a839e47f4619562da0ad162aed911373ff3ba0e1b71d3991d82f6786a9c",
+        "digestKey": "sha256-90167a839e47f4619562da0ad162aed911373ff3ba0e1b71d3991d82f6786a9c",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "source": "scanned",
+        "tableEvidence": "release-evidence/trivy/school-core-service-sha256-90167a839e47f4619562da0ad162aed911373ff3ba0e1b71d3991d82f6786a9c.table.txt",
+        "sarifEvidence": "release-evidence/trivy/school-core-service-sha256-90167a839e47f4619562da0ad162aed911373ff3ba0e1b71d3991d82f6786a9c.sarif",
+        "passed": true
+      }
+    ]
+  },
+  "deployment": {
+    "mode": "cloud-run-direct",
+    "environment": "dev",
+    "deployedAtUtc": "2026-10-07T16:34:24.8626944Z",
+    "services": [
+      {
+        "service": "school-core-service",
+        "cloudRunService": "custoking-school-core-service-dev",
+        "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:90167a839e47f4619562da0ad162aed911373ff3ba0e1b71d3991d82f6786a9c",
+        "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:4b0fae8287c757b6300d4255e87237189defd9f84118a4a18e55308964fc9018",
+        "status": "submitted"
+      }
+    ]
+  },
+  "scope": "One changed school service for photo ownership; six unchanged exact PR323 revisions. Prior actual journal DELETE remains separately dated source25eb evidence, not rerun.",
+  "productionChanged": false
+}

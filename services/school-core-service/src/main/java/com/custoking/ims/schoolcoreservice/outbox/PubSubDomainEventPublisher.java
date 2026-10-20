@@ -24,14 +24,14 @@ import java.util.concurrent.TimeUnit;
  * (per {@code docs/EVENT-ENVELOPE-CONTRACT.md}) to Google Cloud Pub/Sub.
  *
  * <p>Only active when {@code school-core.outbox.pubsub.topic-id} (env
- * {@code SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID}) is configured — i.e. in deployed
+ * {@code SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID}) is configured â€” i.e. in deployed
  * environments. Locally/in tests, where the topic is unset, this component
  * does not register and {@link LoggingDomainEventPublisher} (registered via
  * {@link OutboxPublisherConfiguration}'s {@code @ConditionalOnMissingBean})
  * remains the {@link DomainEventPublisher}.
  *
  * <p>Authenticates via Application Default Credentials (the Cloud Run
- * service account) — no key files are read or handled here.
+ * service account) â€” no key files are read or handled here.
  *
  * <p><b>At-least-once contract:</b> {@link #publish} blocks on the publish
  * future and lets any failure propagate as an unchecked exception. The
@@ -48,6 +48,8 @@ public class PubSubDomainEventPublisher implements DomainEventPublisher {
 
     private final ObjectMapper objectMapper;
     private final Publisher publisher;
+    @Value("${school-core.outbox.pubsub.publish-timeout-ms:5000}")
+    private long publishTimeoutMs = 5000;
 
     public PubSubDomainEventPublisher(
             ObjectMapper objectMapper,
@@ -62,10 +64,14 @@ public class PubSubDomainEventPublisher implements DomainEventPublisher {
 
     @Override
     public void publish(EventEnvelope envelope) {
+        publishWithin(envelope, publishTimeoutMs);
+    }
+
+    void publishWithin(EventEnvelope envelope, long remainingBudgetMs) {
         PubsubMessage message = buildMessage(envelope, objectMapper);
         ApiFuture<String> future = publisher.publish(message);
         try {
-            String messageId = future.get();
+            String messageId = awaitPublish(future, Math.min(publishTimeoutMs, remainingBudgetMs));
             log.debug("Published event {} ({}) as Pub/Sub message {}",
                     envelope.eventId(), envelope.eventType(), messageId);
         } catch (InterruptedException ex) {
@@ -75,6 +81,17 @@ public class PubSubDomainEventPublisher implements DomainEventPublisher {
         } catch (ExecutionException ex) {
             throw new IllegalStateException(
                     "Failed to publish event " + envelope.eventId() + " to Pub/Sub", ex.getCause() != null ? ex.getCause() : ex);
+        }
+    }
+
+    static String awaitPublish(ApiFuture<String> future, long timeoutMs) throws InterruptedException, ExecutionException {
+        try { return future.get(Math.max(1, Math.min(timeoutMs, 10_000)), TimeUnit.MILLISECONDS); }
+        catch (java.util.concurrent.TimeoutException ex) {
+            future.cancel(true);
+            throw new IllegalStateException("Pub/Sub publish deadline exceeded", ex);
+        } catch (InterruptedException ex) {
+            future.cancel(true);
+            throw ex;
         }
     }
 

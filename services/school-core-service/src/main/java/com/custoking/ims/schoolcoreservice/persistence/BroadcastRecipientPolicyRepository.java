@@ -18,8 +18,14 @@ public class BroadcastRecipientPolicyRepository {
     private final GuardianCommunicationPolicy policy;
 
     public BroadcastRecipientPolicyRepository(JdbcClient jdbc) {
+        this(jdbc, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public BroadcastRecipientPolicyRepository(JdbcClient jdbc,
+            com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournal erasureJournal) {
         this.jdbc = jdbc;
-        this.policy = new GuardianCommunicationPolicy(jdbc);
+        this.policy = new GuardianCommunicationPolicy(jdbc, erasureJournal);
     }
 
     @Transactional(readOnly = true)

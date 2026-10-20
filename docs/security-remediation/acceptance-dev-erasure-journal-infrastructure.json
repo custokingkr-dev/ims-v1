@@ -1,0 +1,90 @@
+{
+  "project": "custoking-dev",
+  "backend": {
+    "bucket": "custoking-dev-terraform-state",
+    "prefix": "security/erasure-journal/dev"
+  },
+  "applied": true,
+  "cloudRunChanged": false,
+  "productionChanged": false,
+  "controlObjectCreated": false,
+  "reviewedChanges": [
+    {
+      "address": "google_project_iam_custom_role.control_reader",
+      "actions": [
+        "no-op"
+      ]
+    },
+    {
+      "address": "google_project_iam_custom_role.writer",
+      "actions": [
+        "no-op"
+      ]
+    },
+    {
+      "address": "google_storage_bucket.journal",
+      "actions": [
+        "no-op"
+      ]
+    },
+    {
+      "address": "google_storage_bucket_iam_member.control_reader",
+      "actions": [
+        "create"
+      ]
+    },
+    {
+      "address": "google_storage_bucket_iam_member.writer",
+      "actions": [
+        "create"
+      ]
+    }
+  ],
+  "configurationSha256": "63a745b377402fa34aa09f56ac40ff96f8693d517ff679e51bf83c75748dc2ae",
+  "temporaryCredentialsAndPlanAbsent": true,
+  "checkedAtUtc": "2026-10-07T14:18:23.284214+00:00",
+  "independentNoDriftPlan": [
+    {
+      "address": "google_project_iam_custom_role.control_reader",
+      "actions": [
+        "no-op"
+      ]
+    },
+    {
+      "address": "google_project_iam_custom_role.writer",
+      "actions": [
+        "no-op"
+      ]
+    },
+    {
+      "address": "google_storage_bucket.journal",
+      "actions": [
+        "no-op"
+      ]
+    },
+    {
+      "address": "google_storage_bucket_iam_member.control_reader",
+      "actions": [
+        "no-op"
+      ]
+    },
+    {
+      "address": "google_storage_bucket_iam_member.writer",
+      "actions": [
+        "no-op"
+      ]
+    }
+  ],
+  "status": "APPLIED_AND_NO_DRIFT_VERIFIED",
+  "finalReadbackUtc": "2026-10-07T14:19:07.965137+00:00",
+  "initialFailures": [
+    {
+      "phase": "first apply",
+      "result": "CLI failed; cause unavailable because output was withheld; next readback and retry reused actual partial state."
+    },
+    {
+      "phase": "post-apply readback",
+      "result": "Harness rejected provider-normalized b/ bucket identity; normalized exact identity accepted and no-drift verified."
+    }
+  ]
+}

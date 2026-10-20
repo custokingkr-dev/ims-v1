@@ -97,9 +97,11 @@ class Msg91BroadcastLiveProviderTest {
     }
 
     @Test void definiteRejectionIsNeverReportedAsDeliveryOrRetried() {
-        for (int code : List.of(400, 401, 403, 404, 405, 413, 415, 422)) {
+        for (int code : List.of(401, 403, 404, 422)) {
             AtomicInteger calls = new AtomicInteger();
-            var f = fixture(request -> { calls.incrementAndGet(); return new Msg91BroadcastLiveProvider.Reply(code, "sensitive upstream error"); });
+            // Synthetic JSON control for the documented HTTP refusal semantics, not a
+            // claim that this is the selected account's vendor-specific error schema.
+            var f = fixture(request -> { calls.incrementAndGet(); return new Msg91BroadcastLiveProvider.Reply(code, "{\"message\":\"sensitive upstream error\"}"); });
             var result = f.provider.submit(f.provider.prepare(row(), decision()));
             assertThat(result.status()).isEqualTo("REJECTED");
             assertThat(result.providerMessageId()).isNull();
@@ -109,7 +111,7 @@ class Msg91BroadcastLiveProviderTest {
     }
 
     @Test void ambiguousHttpResponsesAreUnknownWithNoRetry() {
-        for (int code : List.of(201, 202, 301, 307, 408, 409, 425, 429, 500, 502, 503)) {
+        for (int code : List.of(201, 202, 301, 307, 400, 402, 405, 408, 409, 413, 415, 425, 429, 500, 502, 503)) {
             AtomicInteger calls = new AtomicInteger();
             var f = fixture(request -> { calls.incrementAndGet(); return new Msg91BroadcastLiveProvider.Reply(code, ACCEPTED); });
             assertThat(f.provider.submit(f.provider.prepare(row(), decision())).status()).isEqualTo("UNKNOWN");
@@ -139,6 +141,57 @@ class Msg91BroadcastLiveProviderTest {
             assertThat(result.toString()).doesNotContain("secret", DESTINATION);
             assertThat(calls).hasValue(1);
         }
+    }
+    @Test void ambiguousJsonAcknowledgementsCannotBePromotedToAcceptance() {
+        for(String response:List.of(
+                ACCEPTED.replace("\"hasError\":false", "\"hasError\":true,\"hasError\":false"),
+                ACCEPTED.replace("\"status\":\"success\"", "\"status\":\"error\",\"stat\\u0075s\":\"success\""),
+                ACCEPTED.replace("\"unique_id\":", "\"unique_id\":\"unconfirmed\",\"unique_id\":"),
+                ACCEPTED+" {}", ACCEPTED+" null", ACCEPTED+" trailing")) {
+            AtomicInteger calls=new AtomicInteger();
+            var f=fixture(request->{calls.incrementAndGet();return new Msg91BroadcastLiveProvider.Reply(200,response);});
+            var result=f.provider.submit(f.provider.prepare(row(),decision()));
+            assertThat(result.status()).as("ambiguous acknowledgement").isEqualTo("UNKNOWN");
+            assertThat(result.providerMessageId()).isNull();
+            assertThat(calls).hasValue(1);
+        }
+    }
+
+    @Test void httpRefusalCannotShortCircuitAmbiguousOrContradictoryBodyParsing() {
+        for(int code:List.of(401,403,404,422)) {
+            for(String response:List.of("sensitive upstream error","[]","null",ACCEPTED,
+                    "{\"status\":\"success\"}","{\"hasError\":false}","{\"hasError\":\"true\"}",
+                    "{\"data\":{\"unique_id\":\"queued\"}}",
+                    "{\"status\":\"error\",\"status\":\"error\"}",
+                    "{\"status\":\"error\"} {}","{\"status\":\"error\"} trailing")) {
+                AtomicInteger calls=new AtomicInteger();
+                var f=fixture(request->{calls.incrementAndGet();return new Msg91BroadcastLiveProvider.Reply(code,response);});
+                var result=f.provider.submit(f.provider.prepare(row(),decision()));
+                assertThat(result.status()).as("uncertain refusal for HTTP %s",code).isEqualTo("UNKNOWN");
+                assertThat(result.providerMessageId()).isNull();assertThat(calls).hasValue(1);
+                assertThat(result.toString()).doesNotContain("sensitive");
+            }
+        }
+    }
+
+    @Test void malformedUtf8ResponseIsRejectedInsteadOfReplacingItsBytes() {
+        var body=new Msg91BroadcastLiveProvider.LimitedBodySubscriber(16_384);
+        body.onSubscribe(new Flow.Subscription(){public void request(long n){}public void cancel(){}});
+        body.onNext(List.of(ByteBuffer.wrap(new byte[]{(byte)0xc3,(byte)0x28})));
+        body.onComplete();
+        assertThat(body.getBody().toCompletableFuture()).isCompletedExceptionally();
+        assertThatThrownBy(()->body.getBody().toCompletableFuture().join())
+                .hasCauseInstanceOf(IOException.class).hasMessageNotContaining("secret");
+    }
+
+    @Test void validUtf8MaySpanResponseChunksWithoutChangingItsContents() {
+        String text="{\"message\":\"\u0938\u0942\u091a\u0928\u093e \ud83c\udfc6\"}";
+        var body=new Msg91BroadcastLiveProvider.LimitedBodySubscriber(16_384);
+        body.onSubscribe(new Flow.Subscription(){public void request(long n){}public void cancel(){}});
+        for(byte value:text.getBytes(StandardCharsets.UTF_8))
+            body.onNext(List.of(ByteBuffer.wrap(new byte[]{value})));
+        body.onComplete();
+        assertThat(body.getBody().toCompletableFuture().join()).isEqualTo(text);
     }
 
     @Test void interruptedSubmissionPreservesInterruptAndDoesNotRetry() {

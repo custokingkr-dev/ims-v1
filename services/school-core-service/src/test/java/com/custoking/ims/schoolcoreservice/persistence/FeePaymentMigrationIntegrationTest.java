@@ -35,13 +35,23 @@ class FeePaymentMigrationIntegrationTest {
             jdbc.sql("ALTER SCHEMA fee OWNER TO fee_migrator").update();
             jdbc.sql("ALTER TABLE fee.flyway_schema_history OWNER TO fee_migrator").update();
             jdbc.sql("ALTER TABLE fee.payment_records OWNER TO fee_migrator").update();
+            // Forward schema migrations require ownership of every existing table, as in the
+            // deployed migration role. Retain NOSUPERUSER/NOBYPASSRLS for the backfill proof.
+            jdbc.sql("""
+                DO $$ DECLARE t record; BEGIN
+                  FOR t IN SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+                    WHERE n.nspname='fee' AND c.relkind IN ('r','p')
+                  LOOP EXECUTE format('ALTER TABLE fee.%I OWNER TO fee_migrator', t.relname); END LOOP;
+                END $$
+                """).update();
             jdbc.sql("ALTER TABLE fee.payment_records FORCE ROW LEVEL SECURITY").update();
             try (var migrationPool = new HikariDataSource()) {
                 migrationPool.setJdbcUrl(pg.getJdbcUrl());
                 migrationPool.setUsername("fee_migrator");
                 migrationPool.setPassword("fixture-only");
-                // Flyway keeps its schema-history connection while running migrations.
-                migrationPool.setMaximumPoolSize(2);
+                // Flyway retains history + migration connections while SQL callbacks open
+                // their connection; do not starve the real owner migration at pool size two.
+                migrationPool.setMaximumPoolSize(3);
                 migrationPool.setMinimumIdle(1);
                 migrationPool.setConnectionInitSql("SELECT set_config('app.current_school_id', '10', false), set_config('app.bypass_rls', 'off', false)");
                 var scopedJdbc = JdbcClient.create(migrationPool);
@@ -51,6 +61,10 @@ class FeePaymentMigrationIntegrationTest {
                 // Reused migration connections must retain their original tenant scope.
                 assertThat(scopedJdbc.sql("SELECT current_setting('app.bypass_rls')").query(String.class).single()).isEqualTo("off");
                 assertThat(scopedJdbc.sql("SELECT count(*) FROM fee.payment_records").query(Long.class).single()).isEqualTo(1);
+                assertThat(scopedJdbc.sql("""
+                    SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+                    WHERE n.nspname='fee' AND c.relrowsecurity AND NOT c.relforcerowsecurity
+                    """).query(Long.class).single()).isZero();
             }
             assertThat(jdbc.sql("SELECT count(*) FROM fee.payment_records WHERE receipt_number = 'RCPT-OLD' AND legacy_receipt_collision").query(Long.class).single()).isEqualTo(2);
             assertThat(jdbc.sql("SELECT nextval('fee.payment_receipt_seq')").query(Long.class).single()).isEqualTo(13);

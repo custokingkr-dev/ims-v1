@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:34:44.865761+00:00",
+  "verdict": "PASS_SCOPED_SOURCE_REVIEW",
+  "sources": [
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+      "normalizedLfSha256": "33acffd49cc2d93fe39d2ebf2fdf5b19395a6401b2f5e355dc89b0137a82ac76"
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+      "normalizedLfSha256": "ea408e201e9950f524e5678dc4743e35da4a956a1f228819710d60a12b322104"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "normalizedLfSha256": "21a11f7e4887464b96304a7f5fe1d4e72a989cdf0f334f30c415f9ae805eaca0"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorizationTest.java",
+      "normalizedLfSha256": "bc939586c42fdc26ec82615258449af8e2ba73f7ae757825d5178f0141b53c9b"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91GenericSubmissionTransport.java",
+      "normalizedLfSha256": "563c0b688b055144ae618a4270a34dd243ad13818c13d5256df6d12a499d8e43"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91GenericSubmissionTransportTest.java",
+      "normalizedLfSha256": "0eb60717db20945d396b7919c2a322f6ba6438f113fbf6389e02cd3a0b6c01e7"
+    }
+  ],
+  "recoveryFrozenProofRawSha256": "8022b5f039d3d89ac8c2736211a0c76af8d3cad61a8b9dfe02caa7bd55defdab",
+  "reviewerTestsRun": false,
+  "observedOwnerRecoveryFocusedTests": {
+    "unit": 14,
+    "realLocalPostgres": 9,
+    "total": 23,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0
+  },
+  "providerFinalFocusedResult": "Not asserted in this capture; root focused execution is separate.",
+  "reviewedControls": [
+    "Recovery commit admission rereads exact lineage current control; generation/hash/exact fixed context/RECONCILING must match approved epoch, no adopting newer epoch.",
+    "Single control worker and semaphore prevent timeout retry accumulation; 4-second Future wait cancels caller, slot remains owned until underlying read exits; rejected submission releases slot.",
+    "Final authority freshness rechecked after external/target reads; exact Duration comparison rejects fractional excess age/validity and stale target evidence measured against current clock.",
+    "Real PostgreSQL regression changes generation, state or removes control after source work and verifies source/dependents retained and receipts/photo/outbox absent.",
+    "SMS transport matches bridge canonical subset: payload/wire objects, strict ASCII string destination, alias presence rejected, nonnull passthrough rejected, one object recipient/string mobiles exact, CRQID preserved.",
+    "Provider rejection precedes semaphore/network I/O; existing capacity, transaction prohibition, request bounds and live disable unchanged; supported null passthrough and boundary strings preserved."
+  ],
+  "blockingFindings": [],
+  "remainingLimits": [
+    "External control read and SQL commit are not atomic; global freeze and downstream/provider resume remain unproved and unauthorized.",
+    "Cancelled read may outlive wait; one daemon worker/slot contains admission but is not a hard underlying SDK cancellation guarantee.",
+    "Local PostgreSQL plus controlled store tests do not establish live physical clone lineage/coverage or full multi-service recovery.",
+    "Canonical routing validation does not select vendor template/profile or prove external provider/report delivery; live sending remains disabled."
+  ],
+  "sourceMutations": 0,
+  "cloudGithubMavenCalls": 0
+}

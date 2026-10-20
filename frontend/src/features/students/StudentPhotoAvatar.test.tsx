@@ -4,10 +4,12 @@ import api from '../../services/api';
 import { StudentPhotoAvatar, __studentPhotoAvatarTestHooks } from './StudentPhotoAvatar';
 
 vi.mock('../../services/api', () => ({
+  getAuthSessionVersion: vi.fn(() => 1),
   default: {
     get: vi.fn(),
   },
 }));
+const NativeURL = URL;
 
 afterEach(cleanup);
 
@@ -16,9 +18,9 @@ describe('StudentPhotoAvatar', () => {
     vi.clearAllMocks();
     __studentPhotoAvatarTestHooks.objectUrlCache.clear();
     __studentPhotoAvatarTestHooks.pendingLoads.clear();
-    vi.stubGlobal('URL', {
-      createObjectURL: vi.fn(() => 'blob:student-photo'),
-      revokeObjectURL: vi.fn(),
+    vi.stubGlobal('URL', class extends NativeURL {
+      static createObjectURL = vi.fn(() => 'blob:student-photo');
+      static revokeObjectURL = vi.fn();
     });
   });
 
@@ -35,12 +37,19 @@ describe('StudentPhotoAvatar', () => {
     }));
   });
 
-  it('uses the same full-frame contract for signed and external photo URLs', async () => {
-    render(<StudentPhotoAvatar photoUrl="https://photos.example/aman.jpg" name="Aman Verma" className="ck-att-avatar" />);
+  it('uses the full-frame contract for HTTPS storage photo URLs without referrers', async () => {
+    render(<StudentPhotoAvatar photoUrl="https://storage.googleapis.com/custoking-dev-student-photos/aman.jpg" name="Aman Verma" className="ck-att-avatar" />);
 
     const image = await screen.findByRole('img', { name: 'Aman Verma' });
-    expect(image).toHaveAttribute('src', 'https://photos.example/aman.jpg');
+    expect(image).toHaveAttribute('src', 'https://storage.googleapis.com/custoking-dev-student-photos/aman.jpg');
+    expect(image).toHaveAttribute('referrerpolicy', 'no-referrer');
     expect(image).toHaveClass('ck-att-avatar', 'ck-student-photo-full-frame');
+    expect(api.get).not.toHaveBeenCalled();
+  });
+  it.each(['http://storage.googleapis.com/photo.jpg', 'https://photos.example/aman.jpg', 'javascript:alert(1)', '//evil.example/photo'])('blocks unapproved photo reference %s', async photoUrl => {
+    render(<StudentPhotoAvatar photoUrl={photoUrl} name="Aman Verma" />);
+    await waitFor(() => expect(screen.queryByRole('img')).not.toBeInTheDocument());
+    expect(screen.getByText('AV')).toBeInTheDocument();
     expect(api.get).not.toHaveBeenCalled();
   });
 

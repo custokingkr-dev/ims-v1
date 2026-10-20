@@ -35,6 +35,15 @@ import { fileURLToPath } from "node:url";
 import { PANELS, GROUPS, AUDIENCE } from "./panels.mjs";
 import { COST_INPUTS, estimateDailyInr, COST_FILTER_EXCLUDE_SELF } from "./cost.mjs";
 import * as auth from "./auth.mjs";
+import { securityConfiguration } from './security-config.mjs';
+import { firestoreSecurityState } from './security-state.mjs';
+import { queryParameters, concurrencyBudget, snapshotCache, wholeResponseDeadline } from './query-budget.mjs';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { setMaxListeners } from 'node:events';
+const SECURITY = securityConfiguration();
+const QUERY_CONTEXT = new AsyncLocalStorage();
+const limitedQuery = concurrencyBudget();
+const cachedSnapshot = snapshotCache();
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT = process.env.DASHBOARD_PROJECT || "custoking-prod";
@@ -43,7 +52,7 @@ const ON_CLOUD_RUN = Boolean(process.env.K_SERVICE);
 const configuredUpstreamTimeout = Number(process.env.DASHBOARD_UPSTREAM_TIMEOUT_MS || 10_000);
 const UPSTREAM_TIMEOUT_MS = Number.isFinite(configuredUpstreamTimeout) && configuredUpstreamTimeout > 0
   ? configuredUpstreamTimeout : 10_000;
-const MAX_API_RESPONSE_BYTES = 10 * 1024 * 1024;
+const MAX_API_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 // ---------------------------------------------------------------------------------------------------
 // Credentials
@@ -68,6 +77,8 @@ function metadataToken() {
         headers: { "Metadata-Flavor": "Google" },
       },
       (res) => {
+        res.once('error', reject);
+        res.once('aborted', () => reject(new Error('Upstream response aborted')));
         let body = "";
         res.on("data", (c) => {
           body += c;
@@ -88,6 +99,7 @@ function metadataToken() {
         });
       },
     );
+    wholeResponseDeadline(req, UPSTREAM_TIMEOUT_MS);
     req.on("error", reject);
     req.setTimeout(UPSTREAM_TIMEOUT_MS, () =>
       req.destroy(new Error(`metadata token request timed out after ${UPSTREAM_TIMEOUT_MS}ms`)));
@@ -120,10 +132,16 @@ function gcloudToken() {
 // Cloud Monitoring
 
 function monitoringRequest(urlPath, token) {
+  return limitedQuery(() => monitoringRequestHttp(urlPath, token), QUERY_CONTEXT.getStore());
+}
+
+function monitoringRequestHttp(urlPath, token) {
   return new Promise((resolve, reject) => {
     const req = https.request(
-      { host: "monitoring.googleapis.com", path: urlPath, headers: { Authorization: `Bearer ${token}` } },
+      { host: "monitoring.googleapis.com", path: urlPath, signal: QUERY_CONTEXT.getStore(), headers: { Authorization: `Bearer ${token}` } },
       (res) => {
+        res.once('error', reject);
+        res.once('aborted', () => reject(new Error('Upstream response aborted')));
         let body = "";
         res.on("data", (c) => {
           body += c;
@@ -146,6 +164,7 @@ function monitoringRequest(urlPath, token) {
         });
       },
     );
+    wholeResponseDeadline(req, UPSTREAM_TIMEOUT_MS);
     req.on("error", reject);
     req.setTimeout(UPSTREAM_TIMEOUT_MS, () =>
       req.destroy(new Error(`monitoring API timed out after ${UPSTREAM_TIMEOUT_MS}ms`)));
@@ -156,6 +175,7 @@ function monitoringRequest(urlPath, token) {
 function buildQuery(panel, startIso, endIso, alignmentPeriod) {
   const params = new URLSearchParams();
   params.set("filter", panel.filter);
+  params.set("pageSize", "100");
   params.set("interval.startTime", startIso);
   params.set("interval.endTime", endIso);
   params.set("aggregation.alignmentPeriod", alignmentPeriod);
@@ -204,8 +224,9 @@ async function fetchPanel(panel, token, windowMinutes) {
   try {
     response = await monitoringRequest(buildQuery(panel, start.toISOString(), end.toISOString(), alignment), token);
   } catch (err) {
-    return { ...base, state: "failed", error: err.message };
+    return { ...base, state: "failed", error: "Monitoring data is temporarily unavailable" };
   }
+  if (response.nextPageToken) return { ...base, state: 'failed', error: 'Monitoring series exceeds the dashboard query budget' };
 
   // Two corrections, both consequences of carrying a gauge through a distribution and reading it at a
   // percentile. The percentile interpolates WITHIN a bucket, so it never returns the recorded value:
@@ -240,6 +261,7 @@ async function fetchPanel(panel, token, windowMinutes) {
         buildQuery(panel, wideStart.toISOString(), end.toISOString(), "3600s"),
         token,
       );
+      if (wide.nextPageToken) return { ...base, state: 'failed', error: 'Monitoring series exceeds the dashboard query budget' };
       const wideSeries = (wide.timeSeries || []).map((s) => readPoints(s)).filter((p) => p.length);
       if (!wideSeries.length) {
         // For a counter filtered to one label value, no series means that value has never occurred --
@@ -271,7 +293,7 @@ async function fetchPanel(panel, token, windowMinutes) {
       }
       return { ...base, state: "stale", lastSeen: last.t, value: last.v };
     } catch (err) {
-      return { ...base, state: "failed", error: err.message };
+      return { ...base, state: "failed", error: "Monitoring data is temporarily unavailable" };
     }
   }
 
@@ -354,7 +376,7 @@ async function estimateCost(token) {
 // Auth is required unless explicitly disabled for local use. Defaulting to REQUIRED matters: a
 // misconfigured deployment must refuse people, never admit them. `DASHBOARD_AUTH=off` is only for
 // running on a workstation, where the process is already behind the machine's own login.
-const AUTH_REQUIRED = process.env.DASHBOARD_AUTH !== "off";
+const AUTH_REQUIRED = SECURITY.authRequired;
 
 // Where sign-in is allowed to land. An allowlist rather than sanitisation, because this replaced a
 // sanitiser that did not work and carried a comment claiming it did.
@@ -396,19 +418,27 @@ function safeDest(candidate) {
 // read stays in that path: Cloud Run terminates TLS upstream, so an inbound request looks like plain
 // http, and building an http:// callback produces a confusing OAuth mismatch rather than an obvious
 // scheme problem.
-const PUBLIC_URL = (process.env.DASHBOARD_PUBLIC_URL || "").replace(/\/+$/, "");
+const PUBLIC_URL = SECURITY.publicUrl;
+if (SECURITY.deployed) auth.configureSecurityState(firestoreSecurityState({
+  project: PROJECT, database: process.env.DASHBOARD_STATE_DATABASE, accessToken,
+}));
 
 function externalOrigin(req) {
   if (PUBLIC_URL) return PUBLIC_URL;
-  const proto = req.headers["x-forwarded-proto"] || "http";
-  return `${proto}://${req.headers.host}`;
+  return `http://localhost:${PORT}`;
 }
 
 export const server = http.createServer(async (req, res) => {
+  res.setHeader('x-content-type-options', 'nosniff');
+  res.setHeader('x-frame-options', 'DENY');
+  res.setHeader('cache-control', 'no-store');
+  try {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
   if (url.pathname === "/auth/logout") {
-    auth.revokeSession(req.headers.cookie);
+    if (req.method !== 'POST') { res.writeHead(405); return res.end('Use POST to sign out'); }
+    if ((req.headers.origin && req.headers.origin !== externalOrigin(req)) || req.headers['sec-fetch-site'] === 'cross-site') { res.writeHead(403); return res.end('Forbidden'); }
+    await auth.revokeSessionAsync(req.headers.cookie);
     res.writeHead(303, {
       "set-cookie": [auth.clearSessionCookie, auth.expireAuthorizationCookie],
       "cache-control": "no-store",
@@ -422,14 +452,14 @@ export const server = http.createServer(async (req, res) => {
 
     if (!auth.configured) {
       res.writeHead(503, { "content-type": "text/plain" });
-      return res.end("Dashboard auth is not configured: OAUTH_CLIENT_ID and OAUTH_CLIENT_SECRET are unset.");
+      return res.end("Dashboard sign-in is temporarily unavailable");
     }
 
     if (url.pathname === "/auth/callback") {
       try {
         const code = url.searchParams.get("code");
         if (!code) throw new Error("no code");
-        const transaction = auth.consumeAuthorization(req.headers.cookie, url.searchParams.get("state"));
+        const transaction = await auth.consumeAuthorizationAsync(req.headers.cookie, url.searchParams.get("state"));
         const tokens = await auth.exchangeCode(code, redirectUri, transaction.codeVerifier);
         const email = await auth.verifyIdToken(tokens.id_token, transaction.nonce);
         if (!auth.isAllowed(email)) {
@@ -439,7 +469,7 @@ export const server = http.createServer(async (req, res) => {
             "cache-control": "no-store",
           });
           return res.end(`<p style="font:16px system-ui;padding:2rem">
-            <strong>${email}</strong> is not on the allowlist for this dashboard.<br>
+            Your account is not permitted to access this dashboard.<br>
             Ask the owner to add you, then sign in again.</p>`);
         }
         const dest = safeDest(transaction.destination);
@@ -458,14 +488,14 @@ export const server = http.createServer(async (req, res) => {
           "set-cookie": auth.expireAuthorizationCookie,
           "cache-control": "no-store",
         });
-        return res.end(`Sign-in failed: ${err.message}`);
+        return res.end("Sign-in failed; start a new sign-in attempt");
       }
     }
 
     // readSession accepts the identity only after AES-GCM authenticates and decrypts the cookie, then
     // re-checks expiry, shape, revocation, and the current email allowlist. Treating the raw browser
     // cookie as an identity here would turn this branch into an authentication bypass.
-    if (!auth.readSession(req.headers.cookie)) {
+    if (!await auth.readSessionAsync(req.headers.cookie)) {
       // Constrained on the way OUT as well as on the way back. Putting an arbitrary pathname into
       // state and validating only on return means the check has exactly one place to be wrong in.
       const transaction = auth.beginAuthorization(safeDest(url.pathname));
@@ -488,10 +518,16 @@ export const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === "/api/snapshot") {
-    const windowMinutes = Math.min(10080, Math.max(15, Number(url.searchParams.get("window") || 180)));
+    let query;
+    try { query = queryParameters(url); }
+    catch { res.writeHead(400, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ error: 'Unsupported dashboard query' })); }
+    const { windowMinutes, audience } = query;
     try {
+      const snapshot = await cachedSnapshot(windowMinutes, audience, () => {
+      const signal = AbortSignal.timeout(30000);
+      setMaxListeners(256, signal); // Six active + bounded queued monitoring operations share this budget.
+      return QUERY_CONTEXT.run(signal, async () => {
       const token = await accessToken();
-      const audience = url.searchParams.get("audience");
       const allowed = AUDIENCE[audience];
       // An unknown or absent audience returns everything rather than nothing. A dashboard that renders
       // empty because of a typo in a query string looks exactly like a dashboard whose backend is down.
@@ -501,29 +537,40 @@ export const server = http.createServer(async (req, res) => {
         Promise.all(selected.map((p) => fetchPanel(p, token, windowMinutes))),
         estimateCost(token).catch(() => null),
       ]);
-      res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
-      return res.end(JSON.stringify({
+      return {
         project: PROJECT,
         windowMinutes,
         generatedAt: new Date().toISOString(),
         groups: GROUPS,
-        audience: url.searchParams.get("audience") || "all",
+        audience,
         panels,
         cost,
-      }));
+      };
+      });
+      });
+      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      return res.end(JSON.stringify(snapshot));
     } catch (err) {
       res.writeHead(500, { "content-type": "application/json" });
-      return res.end(JSON.stringify({ error: err.message }));
+      return res.end(JSON.stringify({ error: "Monitoring data is temporarily unavailable" }));
     }
   }
 
   res.writeHead(404, { "content-type": "text/plain" });
   res.end("not found");
+  } catch (error) {
+    if (!res.headersSent) res.writeHead(503, { 'content-type': 'text/plain', 'cache-control': 'no-store' });
+    res.end('Dashboard temporarily unavailable');
+  }
 });
+server.headersTimeout = 5000;
+server.requestTimeout = 15000;
+server.keepAliveTimeout = 5000;
+server.maxRequestsPerSocket = 100;
 
 const IS_MAIN = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (IS_MAIN) {
-  server.listen(PORT, () => {
+  server.listen(PORT, SECURITY.deployed ? "0.0.0.0" : "127.0.0.1", () => {
     console.log(`live dashboard  →  http://localhost:${PORT}`);
     console.log(`project ${PROJECT}   auth: ${ON_CLOUD_RUN ? "metadata server" : "gcloud"}`);
   });

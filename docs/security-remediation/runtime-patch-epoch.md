@@ -1,0 +1,13 @@
+# Immutable runtime patch cycles
+
+The content-addressed source cache resolves an existing image before invoking Docker. Previously, the Docker OS patch argument used the workflow day but did not enter that earlier source identity. Selecting all services therefore reran tests/deployment while reusing the old images: release 37741308595 succeeded, but the independent patch verifier rejected it because four Java runtimes still had libpng ubuntu0.6.
+
+`deploy/runtime-patch-epoch.txt` now declares the reviewed patch cycle. The resolver reads its bounded ASCII Git blob from the exact selected commit, includes that blob in every image source fingerprint and emits the validated value as `securityPatchEpoch`. The Docker build uses that exact emitted value as `SECURITY_PATCH_EPOCH`. Release manifests record it. Dirty working trees, workflow clocks and unrelated documentation commits cannot silently choose another cycle.
+
+Values have the form `YYYY-MM-DD`, optionally followed by `-r1` through `-r999999` without leading zeros. The date must be real; it is an explicit patch-cycle identifier, not a claim about deployment time. A same-day new update can use a later `-r` cycle. Missing, non-ASCII, oversized, multiline or malformed blobs fail closed in the new resolver. The file has an explicit LF checkout policy.
+
+When a supported security update is available, change the committed cycle and review it through the normal PR gates. That file change selects all seven test/build targets without changing runtime configuration or forcing a Cloud Deploy routing cutover. Each cycle has a new immutable source identity; existing source, commit and approval tags keep their conflict checks. Both dev build and later production promotion derive the same identity from the selected commit, so promotion can verify the exact dev-approved signature/digest rather than recomputing a deployment-day identity.
+
+The fresh standalone eight-image scanner still uses its per-run/retry patch nonce. It discovers supported updates without automatically deploying them or replacing reviewed approval tags. A cycle bump and dev rollout are separate actions. Production has not been changed.
+
+The actual temp-Git regressions cover epoch changes across seven service contexts, same-day revision cycles, unrelated documentation, exact selected commits with dirty checkouts, invalid/missing blobs and stable dev/prod inputs. Workflow regressions cover the emitted argument, release metadata, fail-closed fresh-build behavior and preserved signed promotion/tag conflict checks. The original failed refresh and its successful test counts remain separate from the later patched-image acceptance.

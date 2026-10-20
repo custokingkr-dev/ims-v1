@@ -25,7 +25,9 @@ export default defineConfig({
         // Floors track the measured suite baseline and prevent silent regression while
         // browser coverage protects the auth/workspace shell behavior separately.
         statements: 30,
-        branches: 60,
+        // Vitest 4's V8 accounting measures 45.41% across this full source glob.
+        // Retain a floor at that baseline after upgrading the vulnerable runner.
+        branches: 45,
         functions: 40,
         lines: 30,
       },

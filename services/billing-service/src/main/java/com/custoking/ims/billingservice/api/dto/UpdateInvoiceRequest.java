@@ -21,9 +21,14 @@ import jakarta.validation.constraints.Size;
  */
 public record UpdateInvoiceRequest(
         @Size(max = 500) String description,
-        @PositiveOrZero Integer qty,
-        @PositiveOrZero Long rate,
+        @tools.jackson.databind.annotation.JsonDeserialize(using=StrictLedgerIntegerDeserializer.class) @jakarta.validation.constraints.Positive Integer qty,
+        @tools.jackson.databind.annotation.JsonDeserialize(using=StrictLedgerLongDeserializer.class) @PositiveOrZero Long rate,
         @Size(max = 500) String school,
         @Size(max = 100) String status,
         @Size(max = 2000) String notes) {
+    public java.util.Map<String,Object> toMap() {
+        var m=new java.util.LinkedHashMap<String,Object>();
+        Object[] fields={"description",description,"qty",qty,"rate",rate,"school",school,"status",status,"notes",notes};
+        for(int i=0;i<fields.length;i+=2)if(fields[i+1]!=null)m.put((String)fields[i],fields[i+1]);return m;
+}
 }

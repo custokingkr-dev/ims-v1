@@ -37,11 +37,12 @@ RUN echo "security patches for ${SECURITY_PATCH_EPOCH}" \
 USER node
 WORKDIR /app
 
-COPY --chown=node:node server.mjs panels.mjs cost.mjs auth.mjs ./
+COPY --chown=node:node server.mjs panels.mjs cost.mjs auth.mjs security-config.mjs security-state.mjs query-budget.mjs ./
 COPY --chown=node:node public ./public
 
 # Cloud Run supplies PORT; the default matches local use so the same command works in both places.
 ENV PORT=8080
+ENV NODE_ENV=production
 EXPOSE 8080
 
 CMD ["node", "server.mjs"]

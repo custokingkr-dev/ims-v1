@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:38:43.401181+00:00",
+  "decision": "PASS_SCOPED_RECOVERY_TERMINAL_PRIVILEGE_GUARD",
+  "blockers": [],
+  "proofs": {
+    "initial": {
+      "path": "tmp/recovery-terminal-acl-initial-proof.json",
+      "rawSha256": "f376de5c9d9a20bb66dbdce7bf1d570317c3f71a9e3f87fb325dc23a56553739",
+      "aggregate": {
+        "tests": 30,
+        "failures": 7,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failedCases": [
+        "terminalEvidenceColumnGrantAtPrecommitRoleRecheckRollsBackSourceWorkflow",
+        "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[1]",
+        "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[2]",
+        "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[3]",
+        "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[4]",
+        "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[5]",
+        "mutableTerminalEvidencePrivilegeRefusesBeforeSourceMutation(String)[6]"
+      ]
+    },
+    "final": {
+      "path": "tmp/recovery-terminal-acl-final-proof.json",
+      "rawSha256": "9d483ddf45fef574ffd7f4785a84ea22aaff87161c7d5517f83283dbd74f425d",
+      "aggregate": {
+        "tests": 30,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "failedCases": []
+    }
+  },
+  "finalSourceLfHashes": {
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java": "5164cf2df01bcb719dad7d8e25f51796d07050c1384b7a672347c33cb1109697",
+    "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java": "22c50e8900d17fd0bfbfcbc6fed246f5c393d5ff9fb40a85859d7a9301fc30e8"
+  },
+  "sourceReview": [
+    "requireTargetBinding adds only effective forbidden privileges: receipt UPDATE on any column, receipt DELETE/TRUNCATE, photo-cleanup DELETE/TRUNCATE. All relation names are fixed and fully qualified, using existing pg_catalog-only transaction search_path.",
+    "PostgreSQL has_any_column_privilege covers a whole-table UPDATE or any individual column UPDATE grant, avoiding the previous table-only blind spot. has_table_privilege covers effective DELETE/TRUNCATE privileges, including PUBLIC where applicable. Ownership/role-membership/DDL checks remain intact.",
+    "The unchanged isolated executor invokes requireTargetBinding initially before intent replay/source mutation and again after source reconciliation, freeze and epoch rereads before returning the transaction callback. Owner column grant at the second freeze is therefore observed by the precommit check and rolls back source/dependent/terminal writes.",
+    "V39__precommit_erasure_journal.sql requires receipt SELECT/INSERT and revokes all broader runtime privileges; terminal receipt evidence has no parent FK. Source replay inserts ON CONFLICT DO NOTHING and verifies full exact receipt binding, so receipt UPDATE/DELETE/TRUNCATE is not necessary for duplicate replay.",
+    "V30__durable_photo_cleanup.sql permits SELECT/INSERT/UPDATE and excludes DELETE/TRUNCATE for durable cleanup work. The guard preserves UPDATE because existing queue lease/generation/retry/completion transitions need it; isolated replay itself only inserts ON CONFLICT DO NOTHING.",
+    "Seven initial failures reproduce six initial forbidden table/column privilege cases and one precommit column-grant case with unchanged regression test bytes. Final actual local PostgreSQL XML/logs show all 30 passing, including safe TLS replay and duplicate idempotency, zero failures/errors/skips.",
+    "Parameterized privilege strings are fixed @ValueSource test fixtures only, not a user-supplied SQL/identifier surface. Each grant is revoked in finally, retaining baseline receipt immutability and cleanup UPDATE."
+  ],
+  "primaryGuidance": [
+    {
+      "url": "https://www.postgresql.org/docs/16/functions-info.html",
+      "verifiedClaim": "has_any_column_privilege succeeds for a table-wide privilege or the same privilege granted on at least one column; has_table_privilege supports DELETE and TRUNCATE."
+    }
+  ],
+  "recordingNote": "The retained recovery logs are UTF-16LE with BOM. Peer verifies their exact raw SHA256 and decodes BOM-aware for PostgreSQL/build checks; existing normalizedLfSha256 log fields describe byte replacement rather than decoded-text newline normalization and are not used as independent text digests.",
+  "requiredClaimLimits": [
+    "This is a dormant alternate isolated runner admission guard, not live IAM/SQL privilege provisioning or physical clone verification.",
+    "A before-commit ACL observation and SQL commit are not an atomic fence against subsequent administrator grants; an enforced governed freeze/owner protocol is still required.",
+    "Owner-controlled exact journal coverage, external-only/old-epoch intent reconciliation, complete multi-service/object/provider fencing, target lineage and governed resume remain unproved.",
+    "Preserving photo cleanup UPDATE preserves the prepared baseline, not proof that a broadly privileged isolated role cannot tamper with cleanup state. Separately governed privilege provisioning and the purpose runner, without arbitrary query APIs, remain part of the trust boundary.",
+    "These focused cases overlap later full-suite CI counts. No live restore, full RPO/RTO, physical object purge or provider recipient receipt is established."
+  ],
+  "sourceCiAcceptanceComplete": false,
+  "devDeploymentAcceptanceComplete": false,
+  "wholeRecoveryComplete": false,
+  "wholeSavedSecurityPlanComplete": false,
+  "testsRunByReviewer": 0,
+  "cloudCallsByReviewer": 0,
+  "dockerCallsByReviewer": 0,
+  "historicalEvidenceOverwritten": false
+}

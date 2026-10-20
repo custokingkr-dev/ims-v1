@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:45:02.733321+00:00",
+  "reviewer": "/root/recovery_remaining_execution",
+  "independentReview": true,
+  "testsExecutedByReviewer": 0,
+  "dockerCallsByReviewer": 0,
+  "cloudCallsByReviewer": 0,
+  "historicalEvidenceManifest": {
+    "path": "tmp/remaining-round-postpublication-integrity.json",
+    "rawSha256": "bff2a9b22507dc9c8f906d8713a701e74051cba405ab3a30f03e8237cd023a7f",
+    "normalizedLfSha256": "bff2a9b22507dc9c8f906d8713a701e74051cba405ab3a30f03e8237cd023a7f"
+  },
+  "historical206RawHashesUnchanged": true,
+  "linuxCiActualAcceptancePending": true,
+  "decision": "PASS",
+  "historicalReview": false,
+  "sourceBindings": [
+    {
+      "path": "tools/live-dashboard/release.sh",
+      "rawSha256": "daa306beb92641b3280c8a88c4a068ebc7b5fb2e6cf1205a8652edcc657d0320",
+      "normalizedLfSha256": "daa306beb92641b3280c8a88c4a068ebc7b5fb2e6cf1205a8652edcc657d0320"
+    },
+    {
+      "path": "tools/live-dashboard/README.md",
+      "rawSha256": "5ed7b1e8f0f8ad9277fdc1e6082ee4588bbae8a51114b3c8ccaf900d0ad1f254",
+      "normalizedLfSha256": "515d0a3728d3938ba149653ce1aaec37ce1d670692fdf767f56dcb3e2c22fe8d"
+    },
+    {
+      "path": "scripts/tests/dashboard_release_test.py",
+      "rawSha256": "05c87d28e17b67eb60201490f66b9c21b066ea64fe64e1671ee57f726c07335d",
+      "normalizedLfSha256": "05c87d28e17b67eb60201490f66b9c21b066ea64fe64e1671ee57f726c07335d"
+    },
+    {
+      "path": ".github/workflows/ci-pr.yml",
+      "rawSha256": "05adb86821155b229a7598adb0a4a7d1d5a0511d5c573bb6e6bde52e45811f16",
+      "normalizedLfSha256": "145100ac4953de813cdd30ced0d8f2275bb46fa94912d3dc7f6f76043e75d604"
+    }
+  ],
+  "proofAndLogBindings": [
+    {
+      "path": "tmp/dashboard-release-safety-initial-20261009.json",
+      "rawSha256": "f1f05527795355f777572ef2db6129b8986e723ea12ecb40c1ae94ee56bc8405",
+      "normalizedLfSha256": "91f6ee4c20b4cde55852b9e1030e5bd68e22a6c6b3d0f6039eeb68885272e0db"
+    },
+    {
+      "path": "tmp/dashboard-release-safety-fixed-20261009.json",
+      "rawSha256": "d2548eb7078a4b49a7aa8c6e7b1043e43cb6b67fca96fecee687c81f1b8bbeb0",
+      "normalizedLfSha256": "47a778bd014b412bbe82500f74458aceb4903c07a1f3640fdb30f1ce56cbcab3"
+    },
+    {
+      "path": "tmp/dashboard-release-safety-prefix-initial-20261009.json",
+      "rawSha256": "aac7e8e9d3cffd16f0ba3c19fd48b183aec1865e709860c298971219ff8a959e",
+      "normalizedLfSha256": "c92b76681fd2072caaddb7eadb7247bb4d9e26b84e3fd4aba55e190bec00502b"
+    },
+    {
+      "path": "tmp/dashboard-release-safety-prefix-fixed-20261009.json",
+      "rawSha256": "c7a69eff37e52abc90d7d6a76c2cd74c14ba4e497acb0013c71fc8a6917793a1",
+      "normalizedLfSha256": "a507125e796dd211c8a9ef93512b1ec26e58c4bea712677f666c986e9a044cf3"
+    },
+    {
+      "path": "tmp\\dashboard-release-safety-initial-20261009.log",
+      "rawSha256": "4c13f4023200651acbcd9bea11e60f0de51ab4d0479663cabfca59f21e1a88b0",
+      "normalizedLfSha256": "4c13f4023200651acbcd9bea11e60f0de51ab4d0479663cabfca59f21e1a88b0"
+    },
+    {
+      "path": "tmp/collect-dashboard-release-safety-proof-20261009.py",
+      "rawSha256": "e349d43811b14d9b9f81d342e2d5b7434ba9000e765cf6b04ea754afafc243b9",
+      "normalizedLfSha256": "e349d43811b14d9b9f81d342e2d5b7434ba9000e765cf6b04ea754afafc243b9"
+    },
+    {
+      "path": "tmp\\dashboard-release-safety-fixed-20261009.log",
+      "rawSha256": "9a516e5a8925bb98ab33bdda6db949761694802f1ce173ca1f0c8bd589671ad7",
+      "normalizedLfSha256": "9a516e5a8925bb98ab33bdda6db949761694802f1ce173ca1f0c8bd589671ad7"
+    },
+    {
+      "path": "tmp/collect-dashboard-release-safety-proof-20261009.py",
+      "rawSha256": "e349d43811b14d9b9f81d342e2d5b7434ba9000e765cf6b04ea754afafc243b9",
+      "normalizedLfSha256": "e349d43811b14d9b9f81d342e2d5b7434ba9000e765cf6b04ea754afafc243b9"
+    },
+    {
+      "path": "tmp\\dashboard-release-safety-prefix-initial-20261009.log",
+      "rawSha256": "029ee9cd3b01a624961d858bcddeb6de774fbfb64c36b0bdd08d4b4e341e4c69",
+      "normalizedLfSha256": "029ee9cd3b01a624961d858bcddeb6de774fbfb64c36b0bdd08d4b4e341e4c69"
+    },
+    {
+      "path": "tmp/collect-dashboard-release-prefix-safety-proof-20261009.py",
+      "rawSha256": "c4bda231f641d612729dfe81cfbb9ff33f41081927194d03c4999b6984e2b6da",
+      "normalizedLfSha256": "c4bda231f641d612729dfe81cfbb9ff33f41081927194d03c4999b6984e2b6da"
+    },
+    {
+      "path": "tmp\\dashboard-release-safety-prefix-fixed-20261009.log",
+      "rawSha256": "ccac347d99a52d0c5f7339b3296389fef126f0ae55df76b53cbad5f1a9af5972",
+      "normalizedLfSha256": "ccac347d99a52d0c5f7339b3296389fef126f0ae55df76b53cbad5f1a9af5972"
+    },
+    {
+      "path": "tmp/collect-dashboard-release-prefix-safety-proof-20261009.py",
+      "rawSha256": "c4bda231f641d612729dfe81cfbb9ff33f41081927194d03c4999b6984e2b6da",
+      "normalizedLfSha256": "c4bda231f641d612729dfe81cfbb9ff33f41081927194d03c4999b6984e2b6da"
+    }
+  ],
+  "verifiedControls": {
+    "explicitProjectAndSingleActionBeforeAnyDocker": true,
+    "unknownDuplicateConflictingArgumentsAndInvalidAsciiTagsRefused": true,
+    "noImplicitProductionProjectOrPush": true,
+    "exactSelectedRepositoryPrefixRemovedThenWholeSuffix64HexValidated": true,
+    "nestedDelimiterReproducedBeforeFixAndDeniedByCorrectedActualFakeDockerSuite": true,
+    "missingWrongRepositoryMalformedAndDuplicateDigestRefused": true,
+    "immutableReferenceOnlyAfterSuccessfulBuildGateAndPush": true,
+    "buildScanPushFailuresAndScanOnlyPreventWrongNextOperations": true,
+    "fakeDockerFirstPathIsolationAndElevenSavedPassingTestsVerified": true,
+    "noInfrastructureApplyOrCloudInvocation": true,
+    "alwaysRunLinuxArchitectureCiHasOneOfflineTestHook": true,
+    "oldSourceAndLogsPreservedAndVerified": true,
+    "deployedOAuthAndWholePlanCompletionClaimsFalse": true,
+    "reviewedWorkingSourceHashesUnchangedDuringReview": true
+  },
+  "blockers": [],
+  "recommendations": [],
+  "scope": "Read-only corrected source and preserved local fake-Docker proof review only. Actual Linux CI, real publication and dashboard OAuth deployment remain separate acceptance."
+}

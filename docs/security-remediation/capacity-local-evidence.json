@@ -1,0 +1,109 @@
+{
+  "date": "2026-10-06",
+  "environment": "isolated-local-and-checked-in-source-only",
+  "cloudLoadSent": false,
+  "connectionBudget": {
+    "environment": "dev",
+    "databaseMaxConnections": 200,
+    "reservedForMigrationsJobsAndOperators": 40,
+    "applicationBudget": 160,
+    "configuredFleetMaximum": 40,
+    "revisionOverlap": 2,
+    "overlappingRuntimeMaximum": 80,
+    "startupMigrationMaximum": 68,
+    "concurrentJobConnections": 10,
+    "configuredPeakConnections": 158,
+    "totalIncludingReserve": 198,
+    "remainingHeadroom": 2,
+    "assumptions": [
+      "Single-schema Flyway has at most two simultaneous connections per starting instance.",
+      "Custom Flyway pools may retain all schema pools until idle housekeeping drains them.",
+      "Instance caps are configured ceilings, not proof of live rollout/revision or Cloud SQL limits."
+    ],
+    "utilizationOfDatabaseLimit": 0.99,
+    "withinBudget": true,
+    "services": [
+      {
+        "service": "identity-service",
+        "maxInstances": 2,
+        "poolMax": 3,
+        "maximumConnections": 6,
+        "overlappingRuntimeConnections": 12,
+        "migrationPoolCount": 1,
+        "migrationPoolMax": 2,
+        "migrationConnectionsPerInstance": 2,
+        "concurrentStartingInstances": 2,
+        "startupMigrationConnections": 4,
+        "poolSource": "cloudrun manifest"
+      },
+      {
+        "service": "school-core-service",
+        "maxInstances": 2,
+        "poolMax": 8,
+        "maximumConnections": 16,
+        "overlappingRuntimeConnections": 32,
+        "migrationPoolCount": 5,
+        "migrationPoolMax": 3,
+        "migrationConnectionsPerInstance": 15,
+        "concurrentStartingInstances": 2,
+        "startupMigrationConnections": 30,
+        "poolSource": "cloudrun manifest"
+      },
+      {
+        "service": "operations-service",
+        "maxInstances": 2,
+        "poolMax": 3,
+        "maximumConnections": 6,
+        "overlappingRuntimeConnections": 12,
+        "migrationPoolCount": 2,
+        "migrationPoolMax": 3,
+        "migrationConnectionsPerInstance": 6,
+        "concurrentStartingInstances": 2,
+        "startupMigrationConnections": 12,
+        "poolSource": "cloudrun manifest"
+      },
+      {
+        "service": "platform-service",
+        "maxInstances": 2,
+        "poolMax": 3,
+        "maximumConnections": 6,
+        "overlappingRuntimeConnections": 12,
+        "migrationPoolCount": 3,
+        "migrationPoolMax": 3,
+        "migrationConnectionsPerInstance": 9,
+        "concurrentStartingInstances": 2,
+        "startupMigrationConnections": 18,
+        "poolSource": "cloudrun manifest"
+      },
+      {
+        "service": "billing-service",
+        "maxInstances": 2,
+        "poolMax": 3,
+        "maximumConnections": 6,
+        "overlappingRuntimeConnections": 12,
+        "migrationPoolCount": 1,
+        "migrationPoolMax": 2,
+        "migrationConnectionsPerInstance": 2,
+        "concurrentStartingInstances": 2,
+        "startupMigrationConnections": 4,
+        "poolSource": "cloudrun manifest"
+      }
+    ]
+  },
+  "poolMeasurement": {
+    "requests": 32,
+    "workers": 8,
+    "poolMax": 3,
+    "observedPhysicalPoolPeak": 3,
+    "durationMs": 595,
+    "p95Ms": 381,
+    "cancelledQueryMs": 1006,
+    "heapDeltaBytes": 9107344,
+    "activeConnectionsAfter": 0,
+    "environment": "isolated-local-postgresql16"
+  },
+  "meaningfulPolicyTests": {
+    "dbBudgetScenarios": 5,
+    "directReadonlySmokeScenarios": 4
+  }
+}

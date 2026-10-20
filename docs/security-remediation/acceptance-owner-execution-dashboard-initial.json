@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "phase": "initial",
+  "startedAtUtc": "2026-10-09T17:35:04.129980+00:00",
+  "completedAtUtc": "2026-10-09T17:35:04.760598+00:00",
+  "scope": "Actual shell invocations with an extensionless fake Docker at first PATH entry; no Docker daemon/registry/cloud calls",
+  "testsRun": 2,
+  "failures": 2,
+  "errors": 0,
+  "skipped": 0,
+  "testsPassed": 0,
+  "expectedFailedControlsReproduced": true,
+  "correctedSuitePassed": false,
+  "sourceBindings": [
+    {
+      "path": "tools/live-dashboard/release.sh",
+      "normalizedLfSha256": "29ac52a1b830ed415fea9058660adfdc1e92c722575f85b69494c29ccdec9fe3"
+    },
+    {
+      "path": "scripts/tests/dashboard_release_test.py",
+      "normalizedLfSha256": "e0d0cf08d7054848712eea18c36e8c6de38d65d94341a3065d79e299127298ca"
+    }
+  ],
+  "log": {
+    "path": "tmp\\dashboard-release-safety-initial-20261009.log",
+    "rawSha256": "4c13f4023200651acbcd9bea11e60f0de51ab4d0479663cabfca59f21e1a88b0"
+  },
+  "collectorRawSha256": "e349d43811b14d9b9f81d342e2d5b7434ba9000e765cf6b04ea754afafc243b9",
+  "actualDockerCalls": 0,
+  "registryPushes": 0,
+  "cloudMutations": 0,
+  "productionAccessed": false,
+  "secretsRead": false,
+  "dashboardOAuthDeploymentProven": false,
+  "overallSecurityPlanComplete": false
+}

@@ -2,12 +2,14 @@ param(
     [string]$GatewayTemplate = "services/api-gateway/server.js",
     [string]$DeploymentSmokeScript = "scripts/smoke-deployment-readiness.ps1",
     [string]$GatewaySmokeScript = "scripts/smoke-gateway-routes.ps1",
-    [string]$GatewayCloudRunManifest = "deploy/cloudrun/api-gateway.yaml"
+    [string]$GatewayCloudRunManifest = "deploy/cloudrun/api-gateway.yaml",
+    [string]$GatewayRoutesTemplate = "services/api-gateway/routing.js"
 )
 
 $ErrorActionPreference = "Stop"
 
 $gateway = Get-Content -Raw -Path $GatewayTemplate
+$gatewayRoutes = Get-Content -Raw -Path $GatewayRoutesTemplate
 $deploymentSmoke = Get-Content -Raw -Path $DeploymentSmokeScript
 $gatewaySmoke = Get-Content -Raw -Path $GatewaySmokeScript
 $gatewayDeployment = Get-Content -Raw -Path $GatewayCloudRunManifest
@@ -39,10 +41,10 @@ foreach ($contract in $contracts) {
         }
     }
 
-    if (-not $gateway.Contains($contract.GatewayPrefix)) {
+    if (-not $gatewayRoutes.Contains($contract.GatewayPrefix)) {
         $violations.Add("Gateway implementation missing diagnostic route prefix for $($contract.Name): $($contract.GatewayPrefix)")
     }
-    if (-not $gateway.Contains($contract.PublicPrefix)) {
+    if (-not $gatewayRoutes.Contains($contract.PublicPrefix)) {
         $violations.Add("Gateway implementation missing public compatibility route for $($contract.Name): $($contract.PublicPrefix)")
     }
     if (-not $gatewaySmoke.Contains($contract.GatewayPrefix)) {

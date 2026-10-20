@@ -7,6 +7,7 @@ const path = require('node:path');
 const repositoryRoot = path.resolve(__dirname, '..');
 const methods = ['get', 'post', 'put', 'patch', 'delete'];
 const identifier = /^[A-Za-z_$][\w$]*$/;
+const parameterName = (parameter) => parameter['x-ims-client-name'] || parameter.name;
 
 function operations(spec) {
   return Object.entries(spec.paths || {}).flatMap(([url, item]) => methods
@@ -22,6 +23,11 @@ function validateContract(spec, inventory) {
   }
   if (spec['x-ims-client-base-path'] !== '/api/v1') throw new Error('Browser client must retain the gateway /api/v1 base path.');
   if (!identifier.test(spec['x-ims-client-name'] || '')) throw new Error('Invalid TypeScript client name.');
+  const requestOptions = spec['x-ims-request-options'] === undefined ? [] : spec['x-ims-request-options'];
+  if (!Array.isArray(requestOptions) || new Set(requestOptions).size !== requestOptions.length
+    || requestOptions.some((name) => !['signal', 'timeout', 'onDownloadProgress'].includes(name))) {
+    throw new Error('Request options support only signal, timeout and onDownloadProgress.');
+  }
   const ids = new Set();
   for (const op of operations(spec)) {
     if (!op.url.startsWith('/api/v1/') || /\/internal\/|\/introspect(?:\/|$)/.test(op.url)) throw new Error(`Non-browser path: ${op.url}`);
@@ -42,16 +48,44 @@ function validateContract(spec, inventory) {
     const variables = [...op.url.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]);
     const names = new Set();
     for (const parameter of op.parameters) {
-      if (!identifier.test(parameter.name) || names.has(parameter.name) || !['path', 'query'].includes(parameter.in)) throw new Error(`Unsupported or duplicate parameter in ${op.operationId}`);
-      names.add(parameter.name);
+      const clientName = parameterName(parameter);
+      // Browser contracts may express only this user confirmation header. Peer,
+      // authentication and tenant identity headers remain owned by the transport.
+      const confirmation = parameter.in === 'header'
+        && op.method === 'delete' && op.url === '/api/v1/students/{id}'
+        && spec['x-ims-service'] === 'school-core-service'
+        && (op['x-ims-controller'] || spec['x-ims-controller']) === 'StudentReadController'
+        && parameter.name === 'X-Student-Delete-Confirmation'
+        && parameter['x-ims-client-name'] === 'confirmation'
+        && parameter['x-ims-header-encoding'] === 'uri-component'
+        && parameter.required === true && parameter.schema?.type === 'string';
+      if (!identifier.test(clientName) || names.has(clientName)
+        || (parameter.in === 'header' ? !confirmation
+          : !['path', 'query'].includes(parameter.in) || !identifier.test(parameter.name)
+            || parameter['x-ims-client-name'] || parameter['x-ims-header-encoding'])) {
+        throw new Error(`Unsupported or duplicate parameter in ${op.operationId}`);
+      }
+      names.add(clientName);
       if (parameter.in === 'path' && (!variables.includes(parameter.name) || !parameter.required)) throw new Error(`Path parameters must be present and required in ${op.operationId}`);
       typeFor(parameter.schema);
     }
+    if (requestOptions.length && names.has('requestOptions')) throw new Error('Reserved requestOptions parameter.');
     if (variables.some((name) => !op.parameters.some((p) => p.in === 'path' && p.name === name))) throw new Error(`Missing path parameter in ${op.operationId}`);
-    requestBody(op); successResponse(op);
+    const request = requestBody(op);
+    if (request?.mediaType === 'multipart/form-data') {
+      const schema = request.schema.$ref ? spec.components?.schemas?.[request.schema.$ref.split('/').at(-1)] : request.schema;
+      if (schema?.type !== 'object' || schema.additionalProperties !== false || !Object.keys(schema.properties || {}).length
+        || Object.keys(schema.properties).some((name) => !identifier.test(name))
+        || Object.values(schema.properties).some((field) => field.type !== 'string'
+          || (field.format && field.format !== 'binary'))) {
+        throw new Error(`Multipart generation supports explicit string or binary fields only in ${op.operationId}`);
+      }
+    }
+    successResponse(op);
   }
   if (!ids.size) throw new Error('Contract contains no client operations.');
   const schemas = spec.components?.schemas || {};
+  if (requestOptions.length && schemas[spec['x-ims-client-name'] + 'RequestOptions']) throw new Error('Reserved request options type.');
   function visit(value) {
     if (!value || typeof value !== 'object') return;
     if (value.$ref && (!value.$ref.startsWith('#/components/schemas/') || !schemas[value.$ref.split('/').at(-1)])) {
@@ -113,14 +147,18 @@ function typeFor(schema) {
 
 function renderClient(spec, sourceName) {
   const ops = operations(spec);
+  const requestOptions = spec['x-ims-request-options'] === undefined ? [] : spec['x-ims-request-options'];
+  const optionsType = spec['x-ims-client-name'] + 'RequestOptions';
   const lines = ['/* eslint-disable */', '// Generated by scripts/generate-openapi-typescript-client.js. Do not edit by hand.',
-    `// Source: contracts/openapi/${sourceName}`, '', "import type { AxiosInstance } from 'axios';", ''];
+    `// Source: contracts/openapi/${sourceName}`, '', `import type { AxiosInstance${requestOptions.length ? ', AxiosRequestConfig' : ''} } from 'axios';`, ''];
+  if (requestOptions.length) lines.push(`export type ${optionsType} = Pick<AxiosRequestConfig, ${requestOptions.map(JSON.stringify).join(' | ')}>;`, '');
   for (const [name, schema] of Object.entries(spec.components?.schemas || {})) lines.push(`export type ${name} = ${typeFor(schema)};`, '');
   function signature(op, implementation = false) {
     const required = op.parameters.some((p) => p.required);
-    const params = op.parameters.length ? [`parameters${!required && !implementation && !requestBody(op) ? '?' : ''}: { ${op.parameters.map((p) => `${p.name}${p.required ? '' : '?'}: ${typeFor(p.schema)};`).join(' ')} }${implementation && !required && !requestBody(op) ? ' = {}' : ''}`] : [];
+    const params = op.parameters.length ? [`parameters${!required && !implementation && !requestBody(op) ? '?' : ''}: { ${op.parameters.map((p) => `${parameterName(p)}${p.required ? '' : '?'}: ${typeFor(p.schema)};`).join(' ')} }${implementation && !required && !requestBody(op) ? ' = {}' : ''}`] : [];
     const request = requestBody(op);
     if (request) params.push(`request: ${typeFor(request.schema)}`);
+    if (requestOptions.length) params.push(`requestOptions?: ${optionsType}`);
     return params.join(', ');
   }
   const clientName = spec['x-ims-client-name'];
@@ -138,13 +176,17 @@ function renderClient(spec, sourceName) {
       const schema = body.schema.$ref ? spec.components.schemas[body.schema.$ref.split('/').at(-1)] : body.schema;
       lines.push('      const form = new FormData();');
       for (const [name, field] of Object.entries(schema.properties || {})) {
-        if (field.type !== 'string' || field.format !== 'binary') throw new Error('Multipart generation supports explicit binary fields only.');
+        if (field.type !== 'string' || (field.format && field.format !== 'binary')) throw new Error('Multipart generation supports explicit string or binary fields only.');
         lines.push(`      ${schema.required?.includes(name) ? '' : `if (request.${name} !== undefined) `}form.append(${JSON.stringify(name)}, request.${name});`);
       }
     }
     const options = [];
+    // Pick each allowed option; never spread arbitrary caller config over the wire contract.
+    requestOptions.forEach((name) => options.push(`${name}: requestOptions?.${name}`));
     const query = op.parameters.filter((p) => p.in === 'query');
     if (query.length) options.push(`params: { ${query.map((p) => `${p.name}: parameters.${p.name}`).join(', ')} }`);
+    const headers = op.parameters.filter((p) => p.in === 'header');
+    if (headers.length) options.push(`headers: { ${headers.map((p) => `${JSON.stringify(p.name)}: encodeURIComponent(String(parameters.${parameterName(p)}))`).join(', ')} }`);
     if (response.binary) options.push("responseType: 'blob'");
     const args = [url];
     if (['post', 'put', 'patch'].includes(op.method) && (body || options.length)) args.push(body ? (body.mediaType === 'multipart/form-data' ? 'form' : 'request') : 'undefined');
@@ -169,7 +211,7 @@ function validateJavaRecordSchema(schema, schemaName) {
   if (binding.requireAll && fields.some((field) => !schema.required?.includes(field[2]))) throw new Error(`${schemaName} serialized properties must remain required.`);
   for (const [, javaType, name] of fields) {
     const actual = typeFor(schema.properties[name]);
-    const expected = javaType === 'String' ? 'string' : /^(Long|Integer|int|long|Double|double|BigDecimal|java.math.BigDecimal)$/.test(javaType) ? 'number' : /^(Boolean|boolean)$/.test(javaType) ? 'boolean' : /^List<String>$/.test(javaType) ? 'Array<string>' : /^List<Long>$/.test(javaType) ? 'Array<number>' : null;
+    const expected = /^(String|UUID|LocalDate|OffsetDateTime|Instant)$/.test(javaType) ? 'string' : /^(Long|Integer|int|long|Double|double|BigDecimal|java.math.BigDecimal)$/.test(javaType) ? 'number' : /^(Boolean|boolean)$/.test(javaType) ? 'boolean' : /^List<String>$/.test(javaType) ? 'Array<string>' : /^List<Long>$/.test(javaType) ? 'Array<number>' : null;
     if (expected && !actual.split(' | ').includes(expected) && !schema.properties[name].enum) throw new Error(`${schemaName}.${name} type drifted from Java ${javaType}.`);
   }
 }
@@ -189,7 +231,7 @@ function main() {
     const output = path.join(repositoryRoot, 'frontend/src/generated', basename);
     const rendered = renderClient(spec, filename);
     if (check) {
-      if (!fs.existsSync(output) || fs.readFileSync(output, 'utf8') !== rendered) throw new Error(`Generated client ${basename} is stale. Run: node scripts/generate-openapi-typescript-client.js`);
+      if (!fs.existsSync(output) || fs.readFileSync(output, 'utf8').replace(/\r\n/g, '\n') !== rendered) throw new Error(`Generated client ${basename} is stale. Run: node scripts/generate-openapi-typescript-client.js`);
     } else { fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, rendered); }
     count += operations(spec).length;
   }

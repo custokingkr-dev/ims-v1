@@ -79,4 +79,9 @@ class TenantScopeTest {
                 () -> TenantScope.requirePermission("firefighting:approve"));
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
     }
+    @Test
+    void contextlessServiceTokenCannotSkipUserPermission() {
+        assertThrows(ResponseStatusException.class, () -> TenantScope.requirePermissionIfAuthenticated("workflow:act"));
+        assertThrows(ResponseStatusException.class, () -> TenantScope.requireAnyPermissionIfAuthenticated("a", "b"));
+    }
 }

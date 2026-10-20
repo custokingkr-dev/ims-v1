@@ -1,22 +1,28 @@
 'use strict';
 
 const { flushTracing } = require('./tracing');
-const { classifyCompatibilityRequest, applyDeprecationHeaders } = require('./api-contract');
+const { classifyCompatibilityRequest } = require('./api-contract');
+const { routes, route, diagnostic, isInternalUpstreamPath } = require('./routing');
+const { createQuotaControls } = require('./quota');
+const { createAuthentication } = require('./authentication');
+const { createProxyTransport, boundedMilliseconds, stringOrEmpty } = require('./transport');
 
 const http = require('http');
 const crypto = require('crypto');
 const { context: otelContext, trace: otelTrace, TraceFlags } = require('@opentelemetry/api');
 const { randomUUID } = crypto;
 
-const PORT = Number(process.env.PORT || 80);
+const PORT = Number(process.env.PORT || 8080);
 const AUTH_MODE = (process.env.GATEWAY_AUTH_MODE || 'enforce').toLowerCase();
 const CLOUD_RUN_AUTH = (process.env.GATEWAY_CLOUD_RUN_AUTH || 'auto').toLowerCase();
+if ((process.env.K_SERVICE || process.env.NODE_ENV === 'production') && AUTH_MODE !== 'enforce') {
+  throw new Error('Deployed gateways must enforce authentication');
+}
 
 // Optional signature prefilter. Current permissions and session revocation are always
 // resolved through identity; embedded claims are never authoritative for access scope.
-const LOCAL_JWT_VERIFY = (process.env.GATEWAY_LOCAL_JWT_VERIFY || 'enabled').toLowerCase() !== 'disabled';
+const LOCAL_JWT_VERIFY = (process.env.GATEWAY_LOCAL_JWT_VERIFY || 'disabled').toLowerCase() === 'enabled';
 const APP_JWT_SECRET = process.env.APP_JWT_SECRET || '';
-let warnedMissingJwtSecret = false;
 
 // --- Edge security controls (Phase 0 / SEC-P0-2) ---
 // Strict CORS: an explicit origin allowlist; never `*` together with credentials.
@@ -35,6 +41,8 @@ const CSP = process.env.GATEWAY_CSP
   + "frame-ancestors 'none'";
 const HSTS = process.env.GATEWAY_HSTS || 'max-age=63072000; includeSubDomains; preload';
 const REFERRER_POLICY = process.env.GATEWAY_REFERRER_POLICY || 'strict-origin-when-cross-origin';
+// Match the frontend policy, including its same-origin student photo capture.
+const PERMISSIONS_POLICY = 'geolocation=(), microphone=(), camera=(self)';
 
 // Max request body size in bytes (0 disables the check). Default 8 MiB to allow
 // 5 MiB file uploads plus multipart envelope overhead.
@@ -51,10 +59,13 @@ const MAX_BEARER_TOKEN_BYTES = Number.isSafeInteger(configuredMaxBearerTokenByte
 const RATE_LIMIT_RPS = Number(process.env.GATEWAY_RATE_LIMIT_RPS || 50);
 const RATE_LIMIT_BURST = Number(process.env.GATEWAY_RATE_LIMIT_BURST || 100);
 const RATE_LIMIT_MAX_KEYS = Number(process.env.GATEWAY_RATE_LIMIT_MAX_KEYS || 50_000);
-const rateBuckets = new Map();
+const TRUSTED_PROXY_HOPS = Math.max(0, Math.min(8, Number(process.env.GATEWAY_TRUSTED_PROXY_HOPS || 0) || 0));
+const PROXY_TIMEOUT_MS = boundedMilliseconds(process.env.GATEWAY_PROXY_TIMEOUT_MS, 30_000);
+const EXPORT_TIMEOUT_MS = boundedMilliseconds(process.env.GATEWAY_EXPORT_TIMEOUT_MS, 180_000);
+const AUTH_TIMEOUT_MS = boundedMilliseconds(process.env.GATEWAY_AUTH_TIMEOUT_MS, 60_000);
 
 const upstreams = {
-  frontend: envUrl('FRONTEND_UPSTREAM', 'http://frontend:80'),
+  frontend: envUrl('FRONTEND_UPSTREAM', 'http://frontend:8080'),
   identity: envUrl('IDENTITY_UPSTREAM', 'http://identity-service:8080'),
   tenant: envUrl('TENANT_SCHOOL_UPSTREAM', 'http://school-core-service:8080'),
   student: envUrl('STUDENT_UPSTREAM', 'http://school-core-service:8080'),
@@ -101,82 +112,23 @@ const tokenHeaders = {
   notification: 'X-Notification-Service-Token',
 };
 
-const routes = [
-  route('student', /^\/api\/v1\/classes\/[^/]+\/sections\/[^/]+\/students$/),
-  route('identity', '/api/v1/auth/'),
-  route('identity', '/api/v1/rbac/'),
-  route('identity', '/api/v1/users'),
-  route('identity', /^\/api\/v1\/schools\/[^/]+\/(admin|operations-user)$/, { methods: ['POST'] }),
-  route('identity', /^\/api\/v1\/zones\/[^/]+\/admin$/),
-  route('tenant', '/api/v1/classes/'),
-  route('tenant', '/api/v1/classes'),
-  route('tenant', '/api/v1/schools/'),
-  route('tenant', '/api/v1/schools'),
-  route('tenant', '/api/v1/zones/'),
-  route('tenant', '/api/v1/zones'),
-  route('tenant', '/api/v1/academic-years'),
-  route('student', '/api/v1/students/'),
-  route('student', '/api/v1/students'),
-  route('student', '/api/v1/workspace/students'),
-  route('student', '/api/v1/student-review-items/'),
-  route('student', '/api/v1/student-photo-imports/'),
-  route('student', '/api/v1/student-photo-imports'),
-  route('firefighting', '/api/v1/workspace/firefighting'),
-  route('tenant', '/api/v1/workspace/staff'),
-  route('tenant', '/api/v1/timetable/'),
-  route('tenant', '/api/v1/timetable'),
-  route('fee', '/api/v1/workspace/fees/'),
-  route('reporting', '/api/v1/workspace/'),
-  route('reporting', '/api/v1/workspace'),
-  route('reporting', '/api/v1/reporting/'),
-  route('attendance', '/api/v1/attendance/'),
-  route('fee', '/api/v1/fee-structure'),
-  route('fee', '/api/v1/fee-assignments'),
-  route('fee', '/api/v1/payments'),
-  route('fee', '/api/v1/fees/'),
-  route('fee', '/api/v1/receipts/'),
-  route('catalog', '/api/v1/supply/'),
-  route('catalog', '/api/v1/catalog/'),
-  route('billing', '/api/v1/billing/'),
-  route('billing', '/api/v1/sa/invoices/'),
-  route('billing', '/api/v1/sa/invoices'),
-  route('billing', '/api/v1/customers/'),
-  route('billing', '/api/v1/customers'),
-  route('billing', '/api/v1/invoices/'),
-  route('billing', '/api/v1/invoices'),
-  route('billing', '/api/v1/billing-payments/'),
-  route('billing', '/api/v1/billing-payments'),
-  route('catalog', '/api/v1/sa/orders'),
-  route('tenant', '/api/v1/sa/schools'),
-  route('workflow', '/api/v1/workflows/'),
-  route('firefighting', '/api/v1/ff/'),
-  route('audit', '/api/v1/audit-logs'),
-  route('notification', '/api/v1/notifications/'),
-  route('reporting', '/api/v1/approvals/'),
-  route('reporting', '/api/v1/approvals'),
-  route('catalog', /^\/api\/v1\/dashboard\/vendor-dues\/catalog-orders\/[^/]+\/mark-paid$/),
-  route('firefighting', /^\/api\/v1\/dashboard\/vendor-dues\/firefighting\/[^/]+\/mark-paid$/),
-  route('fee', '/api/v1/dashboard/finance/fee-defaulters/reminders'),
-  route('reporting', '/api/v1/dashboard/'),
-  route('reporting', '/api/v1/dashboard'),
-  route('reporting', '/api/v1/command-centre/'),
-  diagnostic('notification', '/notification-api/v1/'),
-  diagnostic('audit', '/audit-api/v1/'),
-  diagnostic('identity', '/identity-api/v1/'),
-  diagnostic('tenant', '/tenant-api/v1/'),
-  diagnostic('student', '/student-api/v1/'),
-  diagnostic('attendance', '/attendance-api/v1/'),
-  diagnostic('fee', '/fee-api/v1/'),
-  diagnostic('catalog', '/catalog-api/v1/'),
-  diagnostic('workflow', '/workflow-api/v1/'),
-  diagnostic('firefighting', '/firefighting-api/v1/'),
-  diagnostic('reporting', '/reporting-api/v1/'),
-  diagnostic('billing', '/billing-api/v1/'),
-];
+const { clientIp, rateLimitKey, preAuthRateLimitKey, rememberVerifiedRatePrincipal, forgetVerifiedRatePrincipal, checkVerifiedUserRateLimit, checkRateLimit, parseBearerToken } = createQuotaControls({
+  MAX_BEARER_TOKEN_BYTES, RATE_LIMIT_RPS, RATE_LIMIT_BURST, RATE_LIMIT_MAX_KEYS, TRUSTED_PROXY_HOPS,
+});
 
-const idTokenCache = new Map();
+const { proxyFrontend, proxy, proxyToUrl, proxyDeadline, proxyLifecycle, outboundHeaders, isClientSpoofableHeader, addCloudRunAuthorization, isRequestHopHeader, isResponseHopHeader, bodyTooLarge, boundedRequestBody, isPayloadTooLargeError, buildUpstreamTarget } = createProxyTransport({
+  upstreams, tokenHeaders, serviceTokens, CLOUD_RUN_AUTH, MAX_BODY_BYTES,
+  PROXY_TIMEOUT_MS, EXPORT_TIMEOUT_MS, AUTH_TIMEOUT_MS, activeSpanContext, formatTraceparent, sendJson,
+});
+
+const { requiresUserAuth, isCookieAuthPath, verifyJwtLocally, principalFromClaims, authenticate, introspect, requiresStepUp } = createAuthentication({
+  LOCAL_JWT_VERIFY, APP_JWT_SECRET, upstreams, tokenHeaders, serviceTokens,
+  parseBearerToken, addCloudRunAuthorization,
+});
 
 const server = http.createServer(async (req, res) => {
+  const requestLifecycle = proxyLifecycle(req, res, proxyDeadline(req.url));
+  req.gatewayAbortSignal = requestLifecycle.signal;
   let requestId = req.headers['x-request-id'] || randomUUID();
   let parsed = null;
   let matchedService = null;
@@ -269,13 +221,14 @@ const server = http.createServer(async (req, res) => {
     // Refresh and logout authenticate with a SameSite=None cookie. Unlike CORS response
     // filtering, rejecting a disallowed request Origin prevents a cross-site request from
     // rotating or revoking a user's refresh-token family.
-    if (corsDecision === 'blocked' && isCookieAuthPath(parsed.pathname)) {
+    if (isCookieAuthPath(parsed.pathname) && !cookieAuthRequestAllowed(req)) {
       sendJson(res, 403, { message: 'Origin not allowed' });
       return;
     }
 
     // Per-replica rate limit (token-bucket) before any upstream work.
-    const limit = checkRateLimit(req);
+    const preAuthBudgetKey = preAuthRateLimitKey(req);
+    const limit = checkRateLimit(req, { key: preAuthBudgetKey });
     if (!limit.allowed) {
       res.setHeader('Retry-After', String(limit.retryAfter));
       sendJson(res, 429, { message: 'Too many requests' });
@@ -305,11 +258,23 @@ const server = http.createServer(async (req, res) => {
       if (requiresUserAuth(parsed.pathname) && AUTH_MODE !== 'permissive') {
         const principal = await authenticate(req, requestId);
         if (!principal) {
+          forgetVerifiedRatePrincipal(req);
           sendJson(res, 401, { message: 'Unauthorized' });
+          return;
+        }
+        const actorLimit = checkVerifiedUserRateLimit(req, principal, preAuthBudgetKey);
+        if (!actorLimit.allowed) {
+          res.setHeader('Retry-After', String(actorLimit.retryAfter));
+          sendJson(res, 429, { message: 'Too many requests' });
           return;
         }
         schoolId = principal.branchId ?? null;
         userId = principal.userId ?? null;
+        if (requiresStepUp(parsed.pathname, req.method, principal)
+            && !(Date.parse(principal.stepUpExpiresAt) > Date.now())) {
+          sendJson(res, 403, { code: 'STEP_UP_REQUIRED', message: 'Verify your passkey before this action' });
+          return;
+        }
         await proxy(req, res, matched, parsed, requestId, principal, compatibility);
         return;
       }
@@ -325,6 +290,10 @@ const server = http.createServer(async (req, res) => {
     matchedService = 'frontend';
     await proxyFrontend(req, res, parsed, requestId);
   } catch (error) {
+    if (error?.code === 'STEP_UP_REQUIRED') {
+      sendJson(res, 403, { code: 'STEP_UP_REQUIRED', message: 'Verify your passkey before this action' });
+      return;
+    }
     if (error && error.code === 'IDENTITY_QUOTA_EXCEEDED') {
       res.setHeader('Retry-After', String(error.retryAfter));
       sendJson(res, 429, { message: 'Too many requests. Try again later.' });
@@ -345,10 +314,12 @@ const server = http.createServer(async (req, res) => {
       stack: error && error.stack ? error.stack : undefined,
     }, traceFields);
     if (!res.headersSent) {
-      sendJson(res, 502, { message: 'Gateway upstream error' });
+      sendJson(res, error?.code === 'GATEWAY_UPSTREAM_TIMEOUT' ? 504 : 502, { message: 'Gateway upstream error', requestId });
     } else {
       res.end();
     }
+  } finally {
+    requestLifecycle.dispose();
   }
 });
 
@@ -358,344 +329,16 @@ if (require.main === module) {
   });
 }
 
-function route(service, matcher, options = {}) {
-  const allowedMethods = Array.isArray(options.methods)
-    ? new Set(options.methods.map((method) => method.toUpperCase()))
-    : null;
-  return {
-    service,
-    rewritePrefix: null,
-    matches(pathname, method) {
-      if (allowedMethods && method && !allowedMethods.has(method.toUpperCase())) return false;
-      if (matcher instanceof RegExp) return matcher.test(pathname);
-      return pathname === matcher
-        || pathname.startsWith(matcher.endsWith('/') ? matcher : `${matcher}/`);
-    },
-    rewrite(pathname) {
-      return pathname;
-    },
-  };
-}
-
-function diagnostic(service, prefix) {
-  return {
-    service,
-    rewritePrefix: prefix,
-    matches(pathname) {
-      return pathname.startsWith(prefix);
-    },
-    rewrite(pathname) {
-      return `/api/v1/${pathname.slice(prefix.length)}`;
-    },
-  };
-}
-
-function isInternalUpstreamPath(upstreamPathname) {
-  return /^\/api\/v1\/(internal|pubsub)(\/|$)/.test(upstreamPathname);
-}
-
-function requiresUserAuth(pathname) {
-  // Exact provider callback only. Platform verifies both the injected service identity
-  // and its dedicated callback secret; sibling paths and compatibility aliases stay private.
-  if (pathname === '/api/v1/notifications/provider-reports/msg91/email') return false;
-  if (!pathname.startsWith('/api/v1/') && !/^\/[a-z-]+-api\/v1\//.test(pathname)) {
-    return false;
-  }
-  return ![
-    '/api/v1/auth/login',
-    '/api/v1/auth/refresh',
-    '/api/v1/auth/logout',
-    '/api/v1/auth/password-reset/capabilities',
-    '/api/v1/auth/password-reset/request',
-    '/api/v1/auth/password-reset/confirm',
-  ].some((publicPath) => pathname === publicPath || pathname.startsWith(`${publicPath}/`));
-}
-
-function isCookieAuthPath(pathname) {
-  return [
-    '/api/v1/auth/refresh',
-    '/api/v1/auth/logout',
-  ].some((cookiePath) => pathname === cookiePath || pathname.startsWith(`${cookiePath}/`));
-}
-
-const HMAC_JWT_ALGORITHMS = {
-  HS256: 'sha256',
-  HS384: 'sha384',
-  HS512: 'sha512',
-};
-
-// Verify an HMAC JWT locally with the shared secret; no network call.
-// Returns the decoded claims, or null on any failure. `nowSeconds` is injectable for tests.
-// `detail` is an optional out-parameter carrying why verification failed. It exists so a 401 can
-// say whether the token was expired, malformed or forged; it never carries the token itself.
-function verifyJwtLocally(token, secret, nowSeconds, detail = {}) {
-  const fail = (reason) => { detail.reason = reason; return null; };
-  if (typeof token !== 'string' || typeof secret !== 'string' || !secret) return fail('token_invalid');
-  const parts = token.split('.');
-  if (parts.length !== 3) return fail('token_malformed');
-  const [headerB64, payloadB64, sigB64] = parts;
-  let header;
-  let payload;
-  try {
-    header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8'));
-    payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
-  } catch {
-    return fail('token_malformed');
-  }
-  // Allow only HMAC JWT algorithms emitted by the identity service; reject "none" and asymmetric algs.
-  const digest = header && HMAC_JWT_ALGORITHMS[header.alg];
-  if (!digest) return fail('token_algorithm_rejected');
-  const expected = crypto.createHmac(digest, secret).update(`${headerB64}.${payloadB64}`).digest('base64url');
-  // base64url signatures are ASCII, so comparing the encoded text byte-for-byte is equivalent to comparing raw bytes.
-  const provided = Buffer.from(sigB64);
-  const expectedBuf = Buffer.from(expected);
-  if (provided.length !== expectedBuf.length) return fail('token_invalid');
-  if (!crypto.timingSafeEqual(provided, expectedBuf)) return fail('token_invalid');
-  if (typeof payload.exp === 'number' && nowSeconds >= payload.exp) return fail('token_expired');
-  if (typeof payload.nbf === 'number' && nowSeconds < payload.nbf) return fail('token_not_yet_valid');
-  return payload;
-}
-
-// Map verified JWT claims to the same principal shape introspect() returns.
-// Returns null for un-enriched tokens (ver < 2) so the caller falls back to introspection.
-function principalFromClaims(claims) {
-  if (!claims || typeof claims.ver !== 'number' || claims.ver < 2) return null;
-  return {
-    userId: claims.uid ?? null,
-    email: claims.sub ?? null,
-    role: claims.role ?? null,
-    branchId: claims.sid ?? null,
-    zoneId: claims.zid ?? null,
-    permissions: Array.isArray(claims.perms) ? claims.perms : [],
-    operatorSchools: Array.isArray(claims.ops_schools) ? claims.ops_schools : [],
-  };
-}
-
-// Resolve the caller's current principal through identity, after an optional local prefilter.
-// `opts` overrides are for deterministic unit tests.
-async function authenticate(req, requestId, opts = {}) {
-  const localVerify = opts.localVerify !== undefined ? opts.localVerify : LOCAL_JWT_VERIFY;
-  const secret = opts.secret !== undefined ? opts.secret : APP_JWT_SECRET;
-  const introspectFn = opts.introspect !== undefined ? opts.introspect : introspect;
-  const now = opts.now !== undefined ? opts.now : Math.floor(Date.now() / 1000);
-
-  // Every rejection path below records why, so a 401 in the request log is diagnosable.
-  const reject = (reason) => { req.authFailureReason = reason; return null; };
-
-  const token = parseBearerToken(req.headers.authorization);
-  if (!token) return reject('missing_bearer');
-
-  if (localVerify && secret) {
-    const detail = {};
-    const claims = verifyJwtLocally(token, secret, now, detail);
-    if (!claims) return reject(detail.reason || 'token_invalid'); // no fallback
-    // A refresh token is validly signed but is never a bearer credential. Do not send it to
-    // introspection as an "un-enriched legacy token"; identity enforces the same boundary too.
-    if (claims.type === 'refresh') return reject('refresh_token_as_bearer');
-    const introspected = await introspectFn(req, requestId);
-    return introspected || reject('introspection_rejected');
-  }
-  if (localVerify && !secret && !warnedMissingJwtSecret) {
-    warnedMissingJwtSecret = true;
-    console.warn('gateway.localjwt: GATEWAY_LOCAL_JWT_VERIFY enabled but APP_JWT_SECRET unset; using introspection');
-  }
-  const introspected = await introspectFn(req, requestId);
-  return introspected || reject('introspection_rejected');
-}
-
-async function introspect(req, requestId) {
-  const token = parseBearerToken(req.headers.authorization);
-  if (!token) return null;
-
-  const target = new URL('/api/v1/auth/introspect', upstreams.identity);
-  const headers = {
-    'content-type': 'application/json',
-    'x-request-id': requestId,
-    [tokenHeaders.identity]: serviceTokens.identity,
-  };
-  await addCloudRunAuthorization(headers, upstreams.identity);
-
-  const requestUrl = new URL(req.url || '/', 'http://gateway.local');
-  const requestPath = decodeURIComponent(requestUrl.pathname);
-  const schoolCandidate = /\/schools\/(\d+)(?:\/|$)/.exec(requestPath)?.[1] || requestUrl.searchParams.get('schoolId');
-  const schoolId = schoolCandidate && /^\d+$/.test(schoolCandidate) && Number.isSafeInteger(Number(schoolCandidate))
-    && Number(schoolCandidate) > 0 ? Number(schoolCandidate) : undefined;
-
-  const response = await fetch(target, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ token, method: req.method || 'GET', path: requestPath, ...(schoolId ? { schoolId } : {}) }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (response.status === 401 || response.status === 403) return null;
-  if (response.status === 429) {
-    const error = new Error('Identity request quota exceeded');
-    error.code = 'IDENTITY_QUOTA_EXCEEDED';
-    error.retryAfter = Math.max(1, Math.min(3600, Number(response.headers.get('retry-after')) || 60));
-    throw error;
-  }
-  if (!response.ok) throw new Error(`Identity introspection unavailable (${response.status})`);
-  const payload = await response.json();
-  return payload && payload.active ? payload.principal : null;
-}
-
-async function proxyFrontend(req, res, parsed, requestId) {
-  const target = buildUpstreamTarget(upstreams.frontend, parsed.pathname, parsed.search);
-  await proxyToUrl(req, res, target, requestId, null, null);
-}
-
-async function proxy(req, res, matched, parsed, requestId, principal, compatibility = null) {
-  const upstream = upstreams[matched.service];
-  const target = buildUpstreamTarget(upstream, matched.rewrite(parsed.pathname), parsed.search);
-  const report = parsed.pathname === '/api/v1/notifications/provider-reports/msg91/email';
-  if (report && Number(req.headers['content-length']) > 32768) {
-    return sendJson(res, 413, { error: 'Provider report is too large' });
-  }
-  await proxyToUrl(req, res, target, requestId, matched.service, principal, {
-    compatibility,
-    ...(report ? { maxBodyBytes: 32768 } : {}),
-  });
-}
-
-async function proxyToUrl(req, res, target, requestId, service, principal, opts = {}) {
-  const headers = outboundHeaders(req, requestId);
-  if (service) {
-    headers[tokenHeaders[service]] = serviceTokens[service];
-  }
-  if (principal) {
-    headers['x-authenticated-user-id'] = stringOrEmpty(principal.userId);
-    headers['x-authenticated-email'] = stringOrEmpty(principal.email);
-    headers['x-authenticated-role'] = stringOrEmpty(principal.role);
-    headers['x-authenticated-school-id'] = stringOrEmpty(principal.branchId);
-    headers['x-authenticated-zone-id'] = stringOrEmpty(principal.zoneId);
-    headers['x-authenticated-permissions'] =
-      Array.isArray(principal.permissions) ? principal.permissions.join(',') : '';
-    headers['x-authenticated-operator-schools'] =
-      Array.isArray(principal.operatorSchools) ? principal.operatorSchools.join(',') : '';
-  }
-  await addCloudRunAuthorization(headers, target);
-
-  const init = {
-    method: req.method,
-    headers,
-    redirect: 'manual',
-  };
-  if (!['GET', 'HEAD'].includes(req.method)) {
-    const maxBodyBytes = opts.maxBodyBytes !== undefined ? opts.maxBodyBytes : MAX_BODY_BYTES;
-    init.body = boundedRequestBody(req, maxBodyBytes);
-    init.duplex = 'half';
-  }
-
-  const response = await fetch(target, init);
-  res.statusCode = response.status;
-  response.headers.forEach((value, key) => {
-    if (!isResponseHopHeader(key)) {
-      res.setHeader(key, value);
-    }
-  });
-  if (typeof response.headers.getSetCookie === 'function') {
-    const cookies = response.headers.getSetCookie();
-    if (cookies.length) res.setHeader('set-cookie', cookies);
-  }
-  applyDeprecationHeaders(res, opts.compatibility);
-  if (response.body) {
-    for await (const chunk of response.body) {
-      res.write(chunk);
-    }
-  }
-  res.end();
-}
-
-function outboundHeaders(req, requestId, activeContext = otelContext.active()) {
-  const headers = {};
-  for (const [key, value] of Object.entries(req.headers)) {
-    if (!isRequestHopHeader(key) && !isClientSpoofableHeader(key)) {
-      headers[key] = Array.isArray(value) ? value.join(', ') : value;
-    }
-  }
-  headers['x-request-id'] = requestId;
-  headers['x-forwarded-for'] = appendForwardedFor(req);
-  headers['x-forwarded-proto'] = req.headers['x-forwarded-proto'] || 'https';
-  const spanContext = activeSpanContext(activeContext);
-  if (spanContext) {
-    headers.traceparent = formatTraceparent(spanContext);
-  }
-  return headers;
-}
-
-// Headers only the gateway may set — a client-supplied value is dropped so it can
-// never be trusted by an upstream. The gateway re-injects the authenticated identity
-// (from the verified JWT principal) and the correct per-service token after this.
-function isClientSpoofableHeader(name) {
-  const n = name.toLowerCase();
-  return n.startsWith('x-authenticated-') || n.endsWith('-service-token');
-}
-
-async function addCloudRunAuthorization(headers, target) {
-  const url = target instanceof URL ? target : new URL(target);
-  const shouldAdd = CLOUD_RUN_AUTH === 'always' || (CLOUD_RUN_AUTH === 'auto' && url.hostname.endsWith('.run.app'));
-  if (!shouldAdd) return;
-  headers.authorization = `Bearer ${await cloudRunIdToken(url.origin)}`;
-}
-
-async function cloudRunIdToken(audience) {
-  const cached = idTokenCache.get(audience);
-  const now = Date.now();
-  if (cached && cached.expiresAt > now + 60_000) {
-    return cached.token;
-  }
-  const metadataUrl = `http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${encodeURIComponent(audience)}&format=full`;
-  const response = await fetch(metadataUrl, { headers: { 'Metadata-Flavor': 'Google' } });
-  if (!response.ok) {
-    throw new Error(`metadata identity token request failed: ${response.status}`);
-  }
-  const token = await response.text();
-  idTokenCache.set(audience, { token, expiresAt: now + 45 * 60_000 });
-  return token;
-}
-
-function appendForwardedFor(req) {
-  const current = req.headers['x-forwarded-for'];
-  const remote = req.socket.remoteAddress;
-  return current ? `${current}, ${remote}` : remote;
-}
-
-function isRequestHopHeader(name) {
-  return [
-    'connection',
-    'content-length',
-    'expect',
-    'host',
-    'keep-alive',
-    'proxy-authenticate',
-    'proxy-authorization',
-    'te',
-    'trailer',
-    'transfer-encoding',
-    'upgrade',
-  ].includes(name.toLowerCase());
-}
-
-function isResponseHopHeader(name) {
-  return [
-    'connection',
-    'content-encoding',
-    'content-length',
-    'keep-alive',
-    'proxy-authenticate',
-    'proxy-authorization',
-    'te',
-    'trailer',
-    'transfer-encoding',
-    'upgrade',
-  ].includes(name.toLowerCase());
-}
-
 function setSecurityHeaders(res) {
+  // Private API/error responses must not become reusable browser cache entries.
+  // The transport retains explicit upstream policies for content-hashed assets
+  // and other deliberately cacheable representations.
+  res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Strict-Transport-Security', HSTS);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', REFERRER_POLICY);
+  res.setHeader('Permissions-Policy', PERMISSIONS_POLICY);
   res.setHeader('Content-Security-Policy', CSP);
 }
 
@@ -717,105 +360,12 @@ function applyCors(req, res) {
   return 'blocked';
 }
 
-function clientIp(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    return String(forwarded).split(',')[0].trim();
-  }
-  return (req.socket && req.socket.remoteAddress) || 'unknown';
-}
-
-function rateLimitKey(req) {
-  const token = parseBearerToken(req.headers.authorization);
-  if (token) {
-    const digest = crypto.createHash('sha256').update(token, 'ascii').digest('base64url');
-    return `tok-sha256:${digest}`;
-  }
-  return `ip:${clientIp(req)}`;
-}
-
-// Token-bucket limiter. `opts` (rps/burst/buckets/now) is for deterministic unit tests.
-function checkRateLimit(req, opts = {}) {
-  const rps = opts.rps !== undefined ? opts.rps : RATE_LIMIT_RPS;
-  const burst = opts.burst !== undefined ? opts.burst : RATE_LIMIT_BURST;
-  const buckets = opts.buckets || rateBuckets;
-  const now = opts.now !== undefined ? opts.now : Date.now();
-  const configuredMaxKeys = opts.maxKeys !== undefined ? opts.maxKeys : RATE_LIMIT_MAX_KEYS;
-  const maxKeys = Number.isFinite(configuredMaxKeys) && configuredMaxKeys > 0
-    ? Math.floor(configuredMaxKeys)
-    : 1;
-  if (!rps || rps <= 0) return { allowed: true };
-
-  const key = rateLimitKey(req);
-  let bucket = buckets.get(key);
-  if (!bucket) {
-    if (buckets.size >= maxKeys) pruneRateBuckets(buckets, now);
-    // A full map can contain only active buckets, so idle pruning alone is not a bound.
-    // Evict least-recently-used buckets until the configured hard cap has room.
-    while (buckets.size >= maxKeys) evictOldestRateBucket(buckets);
-    bucket = { tokens: burst, last: now };
-    buckets.set(key, bucket);
-  }
-  const elapsedSeconds = Math.max(0, (now - bucket.last) / 1000);
-  bucket.tokens = Math.min(burst, bucket.tokens + elapsedSeconds * rps);
-  bucket.last = now;
-  // Map insertion order is the LRU order used for constant-time eviction at capacity.
-  buckets.delete(key);
-  buckets.set(key, bucket);
-  if (bucket.tokens >= 1) {
-    bucket.tokens -= 1;
-    return { allowed: true };
-  }
-  return { allowed: false, retryAfter: Math.max(1, Math.ceil((1 - bucket.tokens) / rps)) };
-}
-
-// Drop buckets idle for >60s to bound memory under key churn (e.g. per-token keys).
-function pruneRateBuckets(buckets, now) {
-  for (const [key, bucket] of buckets) {
-    if (now - bucket.last <= 60_000) break;
-    buckets.delete(key);
-  }
-}
-
-function evictOldestRateBucket(buckets) {
-  const oldestKey = buckets.keys().next().value;
-  if (oldestKey !== undefined) buckets.delete(oldestKey);
-}
-
-function bodyTooLarge(req) {
-  if (!MAX_BODY_BYTES || MAX_BODY_BYTES <= 0) return false;
-  const length = Number(req.headers['content-length']);
-  return Number.isFinite(length) && length > MAX_BODY_BYTES;
-}
-
-class PayloadTooLargeError extends Error {
-  constructor() {
-    super('Request body exceeds the configured gateway limit');
-    this.name = 'PayloadTooLargeError';
-    this.code = 'GATEWAY_PAYLOAD_TOO_LARGE';
-  }
-}
-
-// Count the actual stream bytes so transfer-encoding: chunked requests cannot bypass the
-// Content-Length fast-path. The over-limit chunk is never forwarded to the upstream.
-async function* boundedRequestBody(req, maxBytes = MAX_BODY_BYTES) {
-  let received = 0;
-  for await (const chunk of req) {
-    if (maxBytes && maxBytes > 0) {
-      received += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
-      if (received > maxBytes) throw new PayloadTooLargeError();
-    }
-    yield chunk;
-  }
-}
-
-function isPayloadTooLargeError(error) {
-  let current = error;
-  while (current) {
-    if (current.code === 'GATEWAY_PAYLOAD_TOO_LARGE') return true;
-    current = current.cause;
-  }
-  return false;
+function cookieAuthRequestAllowed(req) {
+  if (req.headers.origin) return isOriginAllowed(req.headers.origin);
+  // Origin-less cookie requests must establish browser same-origin provenance.
+  // Nonbrowser callers send an explicit allowlisted Origin as part of the API contract.
+  if (req.headers['sec-fetch-site'] !== 'same-origin') return false;
+  try { return isOriginAllowed(new URL(req.headers.referer).origin); } catch { return false; }
 }
 
 function sendJson(res, status, payload) {
@@ -896,52 +446,6 @@ function isValidTraceContext(spanContext) {
     && !/^0+$/.test(spanContext.spanId);
 }
 
-function parseBearerToken(value) {
-  if (typeof value !== 'string' || value.length < 8) return null;
-  if (value.slice(0, 6).toLowerCase() !== 'bearer' || value.charCodeAt(6) !== 0x20) return null;
-
-  let tokenStart = 7;
-  while (tokenStart < value.length && value.charCodeAt(tokenStart) === 0x20) tokenStart += 1;
-  const token = value.slice(tokenStart);
-  if (!token || token.length > MAX_BEARER_TOKEN_BYTES) return null;
-  for (let index = 0; index < token.length; index += 1) {
-    const code = token.charCodeAt(index);
-    if (code <= 0x20 || code >= 0x7f) return null;
-  }
-  return token;
-}
-
-function buildUpstreamTarget(upstream, pathname, search = '') {
-  if (!(upstream instanceof URL)) throw new TypeError('Configured upstream must be a URL');
-  if (typeof pathname !== 'string' || !pathname.startsWith('/')) {
-    throw new TypeError('Proxy path must be absolute');
-  }
-
-  const encodedSegments = pathname.split('/').map((segment) => {
-    let decoded;
-    try {
-      decoded = decodeURIComponent(segment);
-    } catch {
-      throw new TypeError('Proxy path contains invalid percent encoding');
-    }
-    if (decoded === '.' || decoded === '..' || decoded.includes('/') || decoded.includes('\\')) {
-      throw new TypeError('Proxy path contains a forbidden segment');
-    }
-    return encodeURIComponent(decoded);
-  });
-
-  const encodedQuery = [];
-  for (const [key, value] of new URLSearchParams(search)) {
-    encodedQuery.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
-  }
-
-  const target = new URL(upstream.origin);
-  target.pathname = encodedSegments.join('/');
-  target.search = encodedQuery.length ? `?${encodedQuery.join('&')}` : '';
-  if (target.origin !== upstream.origin) throw new TypeError('Proxy target escaped its configured upstream');
-  return target;
-}
-
 function envUrl(name, fallback) {
   const configured = new URL(process.env[name] || fallback);
   if (!['http:', 'https:'].includes(configured.protocol)
@@ -961,10 +465,6 @@ function requiredEnv(name) {
     throw new Error(`Missing required gateway service token: ${name}`);
   }
   return value;
-}
-
-function stringOrEmpty(value) {
-  return value === null || value === undefined ? '' : String(value);
 }
 
 module.exports = {
@@ -988,6 +488,10 @@ module.exports = {
   buildUpstreamTarget,
   rateLimitKey,
   checkRateLimit,
+  preAuthRateLimitKey,
+  rememberVerifiedRatePrincipal,
+  forgetVerifiedRatePrincipal,
+  checkVerifiedUserRateLimit,
   bodyTooLarge,
   boundedRequestBody,
   isPayloadTooLargeError,
@@ -1002,4 +506,8 @@ module.exports = {
   authenticate,
   introspect,
   proxyToUrl,
+  proxyLifecycle,
+  proxyDeadline,
+  cookieAuthRequestAllowed,
+  requiresStepUp,
 };

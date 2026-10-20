@@ -1,0 +1,390 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "School owner current recipient policy and identity label capabilities",
+    "version": "1.0.0"
+  },
+  "x-ims-service": "school-core-service",
+  "x-ims-audience": "internal",
+  "x-ims-caller-policy": "Google signature/issuer/receiving audience/email_verified/exact route service-account allowlist; never forwarded user authority",
+  "paths": {
+    "/api/v1/internal/notifications/broadcast-recipients": {
+      "post": {
+        "operationId": "resolveBroadcastRecipients",
+        "x-ims-controller": "BroadcastRecipientPolicyController",
+        "security": [
+          {
+            "googleOidc": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner-scoped current policy result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecipientDecision"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid peer credential"
+          },
+          "403": {
+            "description": "Signed caller identity, exact audience or account scope rejected"
+          },
+          "400": {
+            "description": "Unsupported purpose, channel or audience"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Broadcast-Policy-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BroadcastResolveRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/notifications/broadcast-recipients/fee-reminders": {
+      "post": {
+        "operationId": "resolveFeeReminderRecipients",
+        "x-ims-controller": "BroadcastRecipientPolicyController",
+        "security": [
+          {
+            "googleOidc": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner-scoped current policy result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RecipientDecision"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid peer credential"
+          },
+          "403": {
+            "description": "Signed caller identity, exact audience or account scope rejected"
+          },
+          "400": {
+            "description": "Unsupported purpose, channel or audience"
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Broadcast-Policy-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeeReminderResolveRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/internal/identity-directory/schools/{id}": {
+      "get": {
+        "operationId": "identityDirectorySchools",
+        "x-ims-controller": "IdentityDirectoryController",
+        "security": [
+          {
+            "googleOidc": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner-scoped current policy result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid peer credential"
+          },
+          "403": {
+            "description": "Signed caller identity, exact audience or account scope rejected"
+          },
+          "400": {
+            "description": "Unsupported purpose, channel or audience"
+          },
+          "404": {
+            "description": "Label not found"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/internal/identity-directory/zones/{id}": {
+      "get": {
+        "operationId": "identityDirectoryZones",
+        "x-ims-controller": "IdentityDirectoryController",
+        "security": [
+          {
+            "googleOidc": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Owner-scoped current policy result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid peer credential"
+          },
+          "403": {
+            "description": "Signed caller identity, exact audience or account scope rejected"
+          },
+          "400": {
+            "description": "Unsupported purpose, channel or audience"
+          },
+          "404": {
+            "description": "Label not found"
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "googleOidc": {
+        "type": "openIdConnect",
+        "openIdConnectUrl": "https://accounts.google.com/.well-known/openid-configuration"
+      }
+    },
+    "schemas": {
+      "BroadcastResolveRequest": {
+        "type": "object",
+        "required": [
+          "schoolId",
+          "broadcastId",
+          "communicationCategory",
+          "audienceType",
+          "channels"
+        ],
+        "properties": {
+          "schoolId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "broadcastId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "communicationCategory": {
+            "type": "string",
+            "const": "SCHOOL_NOTICE"
+          },
+          "audienceType": {
+            "type": "string",
+            "const": "ALL_PARENTS"
+          },
+          "channels": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": [
+                "SMS",
+                "EMAIL",
+                "WHATSAPP"
+              ]
+            }
+          },
+          "studentIds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "maxItems": 100,
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      },
+      "FeeReminderResolveRequest": {
+        "type": "object",
+        "required": [
+          "schoolId",
+          "broadcastId",
+          "communicationCategory",
+          "audienceType",
+          "channels",
+          "studentIds"
+        ],
+        "properties": {
+          "schoolId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "broadcastId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "communicationCategory": {
+            "type": "string",
+            "const": "FEE_REMINDER"
+          },
+          "audienceType": {
+            "type": "string",
+            "const": "EXPLICIT_STUDENTS"
+          },
+          "channels": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 1,
+            "items": {
+              "type": "string",
+              "const": "SMS"
+            }
+          },
+          "studentIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      },
+      "RecipientDecision": {
+        "type": "object",
+        "required": [
+          "schoolId",
+          "studentId",
+          "channel",
+          "eventId",
+          "allowed",
+          "reason"
+        ],
+        "properties": {
+          "schoolId": {
+            "type": "integer"
+          },
+          "studentId": {
+            "type": "integer"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "allowed": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "guardianId": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "destinationSha256": {
+            "type": "string"
+          },
+          "policyEvidence": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  }
+}

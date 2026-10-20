@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "mode": "IMPORT_ONLY",
+  "backend": {
+    "bucket": "custoking-dev-terraform-state",
+    "prefix": "observability/dev"
+  },
+  "lineage": "c2fbdb83-8090-48c5-ebf9-ee80c97c57cc",
+  "serialBefore": 39,
+  "databaseProtection": "DELETE_PROTECTION_ENABLED",
+  "ttlState": "ACTIVE",
+  "permissions": [
+    "datastore.entities.create",
+    "datastore.entities.get"
+  ],
+  "condition": "resource.name == 'projects/custoking-dev/databases/ims-dashboard-dev'",
+  "webDeploymentEnabled": false,
+  "infrastructureApplyPerformed": false,
+  "imports": [
+    {
+      "address": "google_service_account.dashboard[0]",
+      "identityVerified": true
+    },
+    {
+      "address": "google_project_service.dashboard_firestore[0]",
+      "identityVerified": true
+    },
+    {
+      "address": "google_firestore_database.dashboard_security[0]",
+      "identityVerified": true
+    },
+    {
+      "address": "google_firestore_field.dashboard_security_expiry[0]",
+      "identityVerified": true
+    },
+    {
+      "address": "google_project_iam_custom_role.dashboard_security_state[0]",
+      "identityVerified": true
+    },
+    {
+      "address": "google_project_iam_member.dashboard_security_state[0]",
+      "identityVerified": true
+    }
+  ],
+  "status": "IMPORTED_VERIFIED_METADATA_ONLY",
+  "checkedAtUtc": "2026-10-07T13:32:02.831112+00:00",
+  "serialAfter": 39,
+  "unrelatedManagedStateUnchanged": true,
+  "targetedPlanChanges": [
+    {
+      "address": "google_firestore_database.dashboard_security[0]",
+      "actions": [
+        "no-op"
+      ],
+      "changedFields": []
+    },
+    {
+      "address": "google_firestore_field.dashboard_security_expiry[0]",
+      "actions": [
+        "no-op"
+      ],
+      "changedFields": []
+    },
+    {
+      "address": "google_project_iam_custom_role.dashboard_security_state[0]",
+      "actions": [
+        "update"
+      ],
+      "changedFields": [
+        "description"
+      ]
+    },
+    {
+      "address": "google_project_iam_member.dashboard_security_state[0]",
+      "actions": [
+        "no-op"
+      ],
+      "changedFields": []
+    },
+    {
+      "address": "google_project_service.dashboard_firestore[0]",
+      "actions": [
+        "no-op"
+      ],
+      "changedFields": []
+    },
+    {
+      "address": "google_service_account.dashboard[0]",
+      "actions": [
+        "update"
+      ],
+      "changedFields": [
+        "description",
+        "display_name"
+      ]
+    }
+  ],
+  "noCreateDeleteReplacePlanned": true,
+  "targetedPlanAllNoOp": false,
+  "onlyDescriptionDisplayNameDrift": true,
+  "temporaryCredentialAndPlanDirectoryAbsent": true,
+  "originalSerialBefore": 33,
+  "originalUnrelatedManagedStateUnchanged": true,
+  "initialFailures": [
+    {
+      "operation": "import",
+      "reason": "uptime alert for_each keys derived from unknown resource values",
+      "importCount": 0
+    },
+    {
+      "operation": "targeted-plan",
+      "reason": "condition description mismatch requested replacement; prevent_destroy rejected it",
+      "importCount": 6,
+      "infrastructureApplyPerformed": false
+    }
+  ],
+  "localPrivateStateAndDiagnosticAbsent": true
+}

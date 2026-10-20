@@ -16,6 +16,7 @@ import type {
   ReviewItemDetail,
 } from '../../../../types/dashboardCommandCenter';
 import { usePermissions } from '../../../../hooks/usePermissions';
+import { useAuth } from '../../../../contexts/AuthContext';
 
 interface Props {
   open: boolean;
@@ -58,6 +59,8 @@ function ProgressBar({ pct }: { pct: number }) {
 // ── ID Card Tab ───────────────────────────────────────────────────────────────
 
 function IdCardTab({ canWrite }: { canWrite: boolean }) {
+  const { user } = useAuth();
+  const schoolId = user?.branchId;
   const [status, setStatus] = useState<IdCardReviewStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [initiating, setInitiating] = useState(false);
@@ -73,14 +76,15 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
     setLoading(true);
     setError(null);
     try {
-      const s = await fetchIdCardReviewStatus();
+      if (!schoolId) throw new Error('Open student reviews from a school account.');
+      const s = await fetchIdCardReviewStatus(schoolId);
       setStatus(s);
-    } catch {
-      setError('Failed to load ID card review status.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to load ID card review status.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [schoolId]);
 
   const loadItems = useCallback(async (campaignId: string, pg: number, statusFilter: string) => {
     setError(null);
@@ -315,6 +319,8 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
 // ── Full Name Tab ─────────────────────────────────────────────────────────────
 
 function FullNameTab({ canWrite }: { canWrite: boolean }) {
+  const { user } = useAuth();
+  const schoolId = user?.branchId;
   const [status, setStatus] = useState<FullNameVerificationStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [initiating, setInitiating] = useState(false);
@@ -333,14 +339,15 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
     setLoading(true);
     setError(null);
     try {
-      const s = await fetchFullNameVerificationStatus();
+      if (!schoolId) throw new Error('Open student reviews from a school account.');
+      const s = await fetchFullNameVerificationStatus(schoolId);
       setStatus(s);
-    } catch {
-      setError('Failed to load full name verification status.');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to load full name verification status.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [schoolId]);
 
   const loadItems = useCallback(async (campaignId: string, pg: number, statusFilter: string) => {
     setError(null);

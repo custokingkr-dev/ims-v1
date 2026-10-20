@@ -90,6 +90,48 @@ class CatalogOrderFormIntegrationTest {
     @AfterAll static void stop() { if (pg != null) pg.stop(); }
 
     @Test
+    void trophyOrderKeepsItsCategoryAndModelSizeThroughQuoteAndDelivery() {
+        var data = Map.of("orderSelections", Map.of(), "lines", List.of(
+                Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 3, "pageCount", 99)));
+        var created = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", data,
+                "notes", "Annual sports awards")));
+        assertThat(created.category()).isEqualTo("TROPHIES");
+        assertThat(created.formVersion()).isEqualTo(2);
+        assertThat(created.totalAmount()).isZero();
+        assertThat(created.orderData()).contains("WM001 / Size B").doesNotContain("printed pages");
+        var detail = tx(() -> forms.detail(created.id()));
+        assertThat(detailLines(detail).getFirst().get("pageCount")).isEqualTo(1);
+        assertThat(tx(() -> orders.placeOrder(created.id(), 7L)).status()).isEqualTo("PROCESSING");
+        assertThatThrownBy(() -> tx(() -> { forms.quote(created.id(), quote(created.id(), 280100, 0)); return null; }))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+        superadmin();
+        tx(() -> { forms.quote(created.id(), quote(created.id(), 280100, 0)); return null; });
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).totalAmount()).isEqualTo(840300);
+        tx(() -> orders.approveBySuperadmin(created.id()));
+        assertThat(tx(() -> orders.markDelivered(created.id(), 99L)).status()).isEqualTo("DELIVERED");
+    }
+
+    @Test
+    void trophiesRejectInventedVariantsAndClientPricesAndDoNotFallBackWhenDisabled() {
+        var invalid = Map.of("orderSelections", Map.of(), "lines", List.of(
+                Map.of("selections", Map.of("VARIANT", "T_WM001_Z"), "bookCount", 1, "pageCount", 1)));
+        assertThatThrownBy(() -> tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", invalid))))
+                .isInstanceOf(ProductFormValidationException.class);
+        var valid = Map.of("orderSelections", Map.of(), "lines", List.of(
+                Map.of("selections", Map.of("VARIANT", "T_WM001_A"), "bookCount", 1, "pageCount", 1)));
+        assertThatThrownBy(() -> tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", valid, "totalAmount", 1))))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("server-owned");
+        jdbc.sql("UPDATE catalog.product_categories SET form_enabled = false WHERE code = 'TROPHIES'").update();
+        try {
+            assertThatThrownBy(() -> tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", valid))))
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("503");
+            assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_orders").query(Long.class).single()).isZero();
+        } finally {
+            jdbc.sql("UPDATE catalog.product_categories SET form_enabled = true WHERE code = 'TROPHIES'").update();
+        }
+    }
+
+    @Test
     void savesRequestedAndNormalizedCountsWithSnapshotAndCompatibilityItems() {
         var created = create(true, 400, 600);
         assertThat(created.formVersion()).isEqualTo(2);
@@ -284,6 +326,11 @@ class CatalogOrderFormIntegrationTest {
             var asset = actualForms.upload(created.id(), "DESIGN", output.toByteArray(), "design.png");
             assertThat(actualForms.content(created.id(), ((Number) asset.get("id")).longValue()).bytes()).isEqualTo(output.toByteArray());
             assertThat(actualOrders.placeOrder(created.id(), 8L).status()).isEqualTo("DESIGN_APPROVAL");
+            var trophyData = Map.of("orderSelections", Map.of(), "lines", List.of(
+                    Map.of("selections", Map.of("VARIANT", "T_A_3_B"), "bookCount", 10, "pageCount", 1)));
+            var trophyOrder = actualOrders.createOrder(Map.of("schoolId", 1, "category", "TROPHIES", "orderData", trophyData));
+            assertThat(trophyOrder.category()).isEqualTo("TROPHIES");
+            assertThat(actualForms.detail(trophyOrder.id())).containsEntry("formVersion", 2);
             assertThatThrownBy(() -> actualOrders.createOrder(Map.of("schoolId", 2, "category", "NOTEBOOKS", "orderData", data(false, 1, 1))))
                     .isInstanceOf(ResponseStatusException.class);
             assertThatThrownBy(() -> actualOrders.createOrder(Map.of("schoolId", 3, "category", "NOTEBOOKS", "orderData", data(false, 1, 1))))
@@ -295,6 +342,10 @@ class CatalogOrderFormIntegrationTest {
                 return null;
             });
             assertThat(runtimeJdbc.sql("SELECT current_setting('app.operator_schools',true)").query(String.class).single()).isEmpty();
+            school(2);
+            assertThatThrownBy(() -> actualForms.detail(trophyOrder.id())).isInstanceOf(ResponseStatusException.class);
+            school(1);
+            assertThat(actualForms.detail(trophyOrder.id())).containsEntry("formVersion", 2);
         }
     }
 

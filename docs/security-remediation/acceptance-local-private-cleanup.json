@@ -1,0 +1,42 @@
+{
+  "project": "custoking-dev",
+  "marker": "SEC-ACPT-20261007",
+  "checkedAtUtc": "2026-10-07T12:24:05.539596+00:00",
+  "exactFiles": [
+    {
+      "path": "tmp/security-acceptance-private.json",
+      "absent": true
+    },
+    {
+      "path": "tmp/security-acceptance-token-private.json",
+      "absent": true
+    },
+    {
+      "path": "tmp/security-lower-role-private.json",
+      "absent": true
+    },
+    {
+      "path": "tmp/security-final-erasure-token-private.json",
+      "absent": true
+    },
+    {
+      "path": "tmp/security-final-photo-private.json",
+      "absent": true
+    },
+    {
+      "path": "tmp/security-final-synthetic-photo.png",
+      "absent": true
+    },
+    {
+      "path": "tmp/identity-rotation-probe-private.json",
+      "absent": true
+    },
+    {
+      "path": "tmp/identity-rotation-clone-private.json",
+      "absent": true
+    }
+  ],
+  "fixtureActorRevocationEvidence": "acceptance-final-live-erasure.json",
+  "rotationResourceClosureEvidence": "acceptance-identity-dashboard-cleanup.json",
+  "removalScope": "Eight exact owned acceptance credential/fixture files, no recursive or broad removal"
+}

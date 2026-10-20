@@ -1,0 +1,307 @@
+{
+  "capturedAtUtc": "2026-10-08T07:55:16.305884+00:00",
+  "pullRequest": 330,
+  "sourceHead": "3fc0313c6a030817d228adf41a33dfead82edab4",
+  "mergeStateStatus": "CLEAN",
+  "scope": "Source CI and scoped PR merge-ref CodeQL; no dev deployment proof",
+  "ci": {
+    "runId": 37745649106,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37745649106",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "privacy-technical-controls",
+        "databaseId": 113206376496,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "secret-scan",
+        "databaseId": 113206376770,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "dev-edge-terraform-validation",
+        "databaseId": 113206376772,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "promotion-source-policy",
+        "databaseId": 113206376881,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "static-architecture-audits",
+        "databaseId": 113206376926,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "windows-security-helper-validation",
+        "databaseId": 113206377026,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "detect / detect",
+        "databaseId": 113206377147,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "duplicate-class-drift",
+        "databaseId": 113206377608,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "docker-build (school-core-service)",
+        "databaseId": 113206442800,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "docker-build (billing-service)",
+        "databaseId": 113206442819,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "docker-build (identity-service)",
+        "databaseId": 113206442826,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "docker-build (platform-service)",
+        "databaseId": 113206442839,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "docker-build (operations-service)",
+        "databaseId": 113206442862,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (identity-service)",
+        "databaseId": 113206442874,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (operations-service)",
+        "databaseId": 113206442877,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "docker-build (frontend)",
+        "databaseId": 113206442881,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "docker-build (api-gateway)",
+        "databaseId": 113206442896,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (api-gateway)",
+        "databaseId": 113206442899,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (frontend)",
+        "databaseId": 113206442923,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (billing-service)",
+        "databaseId": 113206442925,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (school-core-service)",
+        "databaseId": 113206442940,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (platform-service)",
+        "databaseId": 113206443200,
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "maven-wrapper-validation (${{ matrix.os }})",
+        "databaseId": 113206444985,
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "summary",
+        "databaseId": 113208316393,
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "serviceTests": [
+    {
+      "name": "identity-service",
+      "jobId": 113206442874,
+      "conclusion": "success",
+      "logSha256": "7c7694ec4dfa4e2172b65d6333a91d9df0280673420585a25cbc7da0d3ff16ac",
+      "reported": 183,
+      "passed": 182,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    {
+      "name": "operations-service",
+      "jobId": 113206442877,
+      "conclusion": "success",
+      "logSha256": "405bac7aba568041e228bf2d73d6848d924c060f431480f59afe011928a7ae02",
+      "reported": 195,
+      "passed": 195,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "api-gateway",
+      "jobId": 113206442899,
+      "conclusion": "success",
+      "logSha256": "76b46e8c4a8f3eb0792f90baa798db98a5f09d4b632385cd83f41fb96d93889a",
+      "reported": 99,
+      "passed": 99,
+      "failures": 0
+    },
+    {
+      "name": "frontend",
+      "jobId": 113206442923,
+      "conclusion": "success",
+      "logSha256": "8c6330aa959053ae43d8bd7bf7f1711b05d1e02cbaf831eb606b49bf67606552",
+      "unitPassed": 431,
+      "browserPassed": 116
+    },
+    {
+      "name": "billing-service",
+      "jobId": 113206442925,
+      "conclusion": "success",
+      "logSha256": "d14af83abbf09d2b9418e65abba09efb09ec5daf3a1dbc94af6d3beadd8340e9",
+      "reported": 95,
+      "passed": 95,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "school-core-service",
+      "jobId": 113206442940,
+      "conclusion": "success",
+      "logSha256": "b03cb61fe2a176360ce1096a53d1e33aa26b6bf72dfb7d2082a6b3810aa17a52",
+      "reported": 956,
+      "passed": 956,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "platform-service",
+      "jobId": 113206443200,
+      "conclusion": "success",
+      "logSha256": "1d982de0c67b465af243511693ff183d3696834c75a2338336a439e048eb1c39",
+      "reported": 437,
+      "passed": 437,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "epochBindingRegressionJobs": [
+    {
+      "name": "static-architecture-audits",
+      "jobId": 113206376926,
+      "conclusion": "success",
+      "logSha256": "a153e8d129f726db22f99c08e29eb0e8c26b184f10aee11e05dc155d18d599c1",
+      "epochBindingRegressionTests": 18,
+      "epochBindingRegressionSeconds": 56.966,
+      "epochBindingRegressionOk": true
+    },
+    {
+      "name": "windows-security-helper-validation",
+      "jobId": 113206377026,
+      "conclusion": "success",
+      "logSha256": "ed47e140a22e19fc01bcb2b01ad55980d0507c9651ad9c43f723a32e3f749daf",
+      "epochBindingRegressionTests": 18,
+      "epochBindingRegressionSeconds": 61.643,
+      "epochBindingRegressionOk": true
+    }
+  ],
+  "codeql": {
+    "runId": 37745648532,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37745648532",
+    "conclusion": "success",
+    "scopeRef": "refs/pull/330/merge",
+    "scopeMergeCommit": "66e2bae089a6d2ffe86fe1152eacbb161003f091",
+    "actualAnalyses": [
+      {
+        "id": 1914124303,
+        "category": "/language:java-kotlin",
+        "ref": "refs/pull/330/merge",
+        "commit_sha": "66e2bae089a6d2ffe86fe1152eacbb161003f091",
+        "created_at": "2026-10-08T07:50:57Z",
+        "results_count": 0,
+        "error": ""
+      },
+      {
+        "id": 1914115381,
+        "category": "/language:javascript-typescript",
+        "ref": "refs/pull/330/merge",
+        "commit_sha": "66e2bae089a6d2ffe86fe1152eacbb161003f091",
+        "created_at": "2026-10-08T07:49:04Z",
+        "results_count": 0,
+        "error": ""
+      }
+    ],
+    "openScopedCodeqlAlerts": 0,
+    "jobs": [
+      {
+        "name": "analyze (java-kotlin)",
+        "conclusion": "success",
+        "analyzeSuccess": true
+      },
+      {
+        "name": "analyze (javascript-typescript)",
+        "conclusion": "success",
+        "analyzeSuccess": true
+      }
+    ]
+  },
+  "mavenWrapperScope": "Intentionally skipped because no wrapper source changed; service Maven suites ran",
+  "stressOrExploitProof": false,
+  "deployed": false,
+  "javaAggregate": {
+    "reported": 1866,
+    "passed": 1865,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0
+  },
+  "openApiCiRoutingTests": {
+    "reported": 4,
+    "durationSeconds": 2.217,
+    "success": true
+  }
+}

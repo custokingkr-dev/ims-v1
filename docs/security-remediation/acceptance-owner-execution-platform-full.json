@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "service": "platform-service",
+  "startedAtUtc": "2026-10-09T17:35:10.398516+00:00",
+  "completedAtUtc": "2026-10-09T17:39:33.196285+00:00",
+  "exitCode": 0,
+  "seconds": 262.781,
+  "summary": {
+    "reported": 498,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "passedTests": 498,
+  "skippedTests": [],
+  "knownWindowsPrivilegeSkip": false,
+  "linuxCiMustRunAllTestsWithoutSkips": true,
+  "sourceFiles": [
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+      "normalizedLfSha256": "f346f134b377c75a690d193be2ab65610fcb11e6a2dd9085bb5a544ec9934abd",
+      "executedWorkingRawSha256": "1a0e8a1605d6d58180daac90e62f7bd044a58570e76ed77e98cdacd14c3d50b2"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java",
+      "normalizedLfSha256": "391b4c91e3b6bf76667cf21664a6a365a5b6eb15fa3189984df401c99bab10b5",
+      "executedWorkingRawSha256": "f777029396da3da401672532f9ad6341478dadd6631e61ebd9eb31a8ef327fa1"
+    }
+  ],
+  "sourceHashesVerifiedBeforeAndAfter": true,
+  "log": "tmp/owner-boundary-platform-service-full.log",
+  "rawLogSha256": "bf7ee49ad647945bb760689ee88c4a237c401fc93efccce6b4924712466b6bd7",
+  "packaging": {
+    "jar": "services/platform-service/target/custoking-platform-service-0.1.0-SNAPSHOT.jar",
+    "rawSha256": "f81b2b225ff6889a88da77c4147bf87184e1d53c0ac316b1938efb442a61b026",
+    "startClass": "com.custoking.ims.platformservice.PlatformServiceApplication",
+    "ordinaryBootEntryPointPreserved": true,
+    "jarExecuted": false
+  },
+  "cloudCalls": 0,
+  "scope": "Full clean affected-service local suite and ordinary Boot packaging. Focused tests overlap totals. Windows symlink skip is explicit and requires actual Linux CI. No live provider, recovery clone or general feature safety is established."
+}

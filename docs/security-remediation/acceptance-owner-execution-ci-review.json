@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T18:13:33.632074+00:00",
+  "decision": "PASS",
+  "reviewer": "/root/recovery_remaining_execution",
+  "independentReview": true,
+  "sourceCiProof": {
+    "path": "tmp/owner-execution-source-ci-proof.json",
+    "rawSha256": "7cb701d6bc3c18a81f0d9dd7bd6f99de98b769d56a3089af61ce888ce7a2689c"
+  },
+  "dashboardLinuxProof": {
+    "path": "tmp/owner-execution-dashboard-linux-ci-proof.json",
+    "rawSha256": "33168e1045571fe8680cc906f143953207ad9d2867612d437df8685b4f1e428e"
+  },
+  "manifest": {
+    "path": "tmp/owner-execution-source-manifest.json",
+    "rawSha256": "554e9f1585aa9a85434969db3fbb4e4c87c1ed0b16d4854423e390b3ee1e6f2c"
+  },
+  "actualLogBindings": [
+    {
+      "path": "tmp/new-source-pr342-platform-service-ci.log",
+      "rawSha256": "a87c227ee795e8bffb4d3aba0af3621e7855bfd254cef13b6765bc6c76771540"
+    },
+    {
+      "path": "tmp/new-source-pr342-school-core-service-ci.log",
+      "rawSha256": "980f61125146a96a165f0f46e8cd7ec68a74e5662696b253a45b2fda29c567e3"
+    },
+    {
+      "path": "tmp/owner-execution-pr342-static-ci.log",
+      "rawSha256": "222f70f15be047bb7a799f3561b484eedb5227b29fe9e464cac0adfa2c5c7098"
+    }
+  ],
+  "sourceHead": "f512bbd42a54ffb2b92d250cc266356ea817b824",
+  "baseHead": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+  "syntheticMerge": "38b20b7deb0f614b065af3492c6a30d61665c2db",
+  "actualMergedSource": "629bb9bd432d5fcd9cc2f05fd548ca7ee7ff9f06",
+  "actualMergeLocalGitIdentity": {
+    "tree": "ff906ccee4f1362abe23f847908cc3b4dff45a8b",
+    "parents": [
+      "f9fb4604ed8ea73f30bd764b3d33cf437f51e042"
+    ]
+  },
+  "actualCiJobs": 14,
+  "ciJobSuccesses": 13,
+  "eligibleWrapperSkips": 1,
+  "linuxSuites": {
+    "platform-service": 498,
+    "school-core-service": 986
+  },
+  "linuxFailures": 0,
+  "linuxErrors": 0,
+  "linuxSkips": 0,
+  "separateActualDashboardFakeDockerLinuxTests": 11,
+  "actualSourceCodeqlUploads": [
+    {
+      "id": 1925242284,
+      "commit_sha": "38b20b7deb0f614b065af3492c6a30d61665c2db",
+      "ref": "refs/pull/342/merge",
+      "category": "/language:java-kotlin",
+      "created_at": "2026-10-09T17:59:59Z",
+      "results_count": 0,
+      "error": "",
+      "rules_count": 120
+    },
+    {
+      "id": 1925224639,
+      "commit_sha": "38b20b7deb0f614b065af3492c6a30d61665c2db",
+      "ref": "refs/pull/342/merge",
+      "category": "/language:javascript-typescript",
+      "created_at": "2026-10-09T17:57:03Z",
+      "results_count": 0,
+      "error": "",
+      "rules_count": 103
+    }
+  ],
+  "scopedSourceCodeqlOpenAlerts": 0,
+  "exactSourceGitBlobsVerified": 38,
+  "sourceAndMergedTreeEqual": true,
+  "syntheticParents": "Verified by saved accepted source collector guard; synthetic object is not present locally and was not freshly fetched by this review.",
+  "blockers": [],
+  "testsExecutedByReviewer": 0,
+  "githubRequestsByReviewer": 0,
+  "cloudCalls": 0,
+  "providerCalls": 0,
+  "actualRuntimeAcceptedByThisReview": false,
+  "wholePlanComplete": false,
+  "scope": "Independent saved source-CI/Linux dashboard/log/manifest review and local immutable Git squash check. Test totals overlap focused suites. Deployed runtime, vendor delivery, full recovery and OAuth deployment acceptance remain separate."
+}

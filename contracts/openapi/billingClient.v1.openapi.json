@@ -97,8 +97,84 @@
             "type": "string"
           }
         }
+      },
+      "CreateBillingPaymentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "x-ims-java-record": {
+          "source": "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/dto/CreateBillingPaymentRequest.java",
+          "name": "CreateBillingPaymentRequest"
+        },
+        "required": [
+          "invoiceId",
+          "amount",
+          "paymentMode",
+          "idempotencyKey"
+        ],
+        "properties": {
+          "invoiceId": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1,
+            "description": "Existing INR whole-rupee ledger units"
+          },
+          "paymentDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Optional past/present date; replay preserves the original key/body"
+          },
+          "paymentMode": {
+            "type": "string",
+            "enum": [
+              "CASH",
+              "UPI",
+              "BANK_TRANSFER",
+              "CHEQUE",
+              "CARD",
+              "OTHER"
+            ]
+          },
+          "referenceNo": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+            "minLength": 8,
+            "maxLength": 128
+          }
+        }
       }
     }
   },
-  "x-ims-gateway-service": "billing"
+  "x-ims-gateway-service": "billing",
+  "x-ims-compatibility-request-bindings": [
+    {
+      "method": "POST",
+      "path": "/api/v1/billing-payments",
+      "controller": "BillingPublicCompatibilityController",
+      "classification": "compatibility",
+      "requestSchema": "#/components/schemas/CreateBillingPaymentRequest",
+      "description": "Existing compatibility endpoint, no current browser caller; intentionally excluded from canonical generated operations. Same invoice/key/body replays; changed body conflicts. Actor and branch are server-bound."
+    }
+  ]
 }

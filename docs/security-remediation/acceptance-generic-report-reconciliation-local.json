@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_SOURCE_FOCUSED_PASS",
+  "curatedAtUtc": "2026-10-07T17:56:54.336790+00:00",
+  "scope": {
+    "deploymentPerformed": false,
+    "liveProviderEnabled": false,
+    "providerMessagesSent": false,
+    "secretValuesRead": false,
+    "productionChanged": false,
+    "accountSelectedVendorContractProved": false,
+    "fullPlatformSuiteIncluded": false
+  },
+  "sourceBoundary": {
+    "method": "POST",
+    "path": "/api/v1/internal/notifications/reports/reconcile",
+    "enabledDefault": false,
+    "tokenDefault": "BLANK",
+    "callerDefault": "ABSENT_OR_BLANK",
+    "tokenHeader": "X-Notification-Report-Token",
+    "purpose": "notification:report-reconcile",
+    "callerProperty": "NOTIFICATION_REPORT_CALLER_SERVICE_ACCOUNTS",
+    "acceptedReservationOnly": true,
+    "existingExactProviderIdRequired": true,
+    "unknownOrSubmittingPromotionAllowed": false,
+    "submissionAndInboxOutcomesRewritten": false,
+    "automaticRetryOrResendAllowed": false,
+    "uniformAcknowledgement": true,
+    "bodyByteLimit": 8192,
+    "bodyWholeDeadlineSeconds": 5,
+    "maxActiveBodies": 2,
+    "bodyMechanism": "Servlet AsyncContext and nonblocking ReadListener; no background worker retains request stream",
+    "transactionTimeoutSeconds": 10,
+    "statementTimeoutSeconds": 5,
+    "lockTimeoutSeconds": 2
+  },
+  "database": {
+    "fixture": "real PostgreSQL 16, full reporting/notification/audit Flyway chains",
+    "runtimeRole": "ims_platform_rt",
+    "runtimeAttributes": "LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB",
+    "actualBootstrapFiles": [
+      "deploy/local/initdb/00-app-rt.sql",
+      "scripts/create-app-rt-role.sql"
+    ],
+    "broadOwnerAllDefaultsVerifiedBeforeMigration": true,
+    "dedicatedCallbackAppliedTwiceAfterFullChains": true,
+    "newTables": [
+      "notification.generic_delivery_reports",
+      "notification.generic_delivery_results"
+    ],
+    "appendOnlyRuntimeReportEvidence": true,
+    "callerCannotSupplyReceivedAt": true,
+    "providerBindingForeignKey": true,
+    "matchingEvidenceRequiredForDeliveryResult": true,
+    "forceRlsAndNoPublicGrantChecked": true,
+    "noCrossTenantDiscoveryOrSecurityDefiner": true,
+    "bothErasureReportLockOrdersTested": true,
+    "realTombstoneTriggerSuppressionTested": true
+  },
+  "testHistory": [
+    {
+      "log": "tmp/report-reconciliation-focused.log",
+      "tests": 46,
+      "failures": 0,
+      "errors": 8,
+      "skipped": 0,
+      "cause": "Isolated full-chain fixture TRUNCATE omitted notification_delivery_attempts FK child; corrected exact list without CASCADE; no fixture seeded by failed beforeEach"
+    },
+    {
+      "log": "tmp/report-reconciliation-focused-2.log",
+      "tests": 46,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "completedAtUtc": "2026-10-07T17:52:37Z",
+      "overlapsFinal": true
+    },
+    {
+      "log": "tmp/report-reconciliation-focused-final.log",
+      "tests": 49,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "completedAtUtc": "2026-10-07T17:54:45Z",
+      "suites": [
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.GenericNotificationReportControllerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.api.internal.GenericNotificationReportHttpIntegrationTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.GenericNotificationReportIntegrationTest",
+          "tests": 10,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.security.MachineCallerFilterTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.persistence.GenericNotificationSubmissionIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91GenericSubmissionTransportTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "class": "com.custoking.ims.platformservice.infrastructure.Msg91NotificationDeliveryProviderTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ]
+    }
+  ],
+  "configObservation": {
+    "readOnlyProject": "custoking-dev",
+    "service": "custoking-platform-service-dev",
+    "latestReadyRevision": "custoking-platform-service-dev-muyaf7rv",
+    "provider": "logging",
+    "msg91DryRun": "true",
+    "broadcastLiveEnabled": "false",
+    "genericSmsFlowEmailSenderDomainWhatsappNumberEnvEntries": "ABSENT",
+    "authAndBroadcastWebhookSecretReferencesObserved": true,
+    "secretValuesAccessed": false,
+    "perSchoolSenderProfilesInspected": false
+  },
+  "primaryReferences": [
+    {
+      "url": "https://docs.msg91.com/sms/send-sms",
+      "scope": "Current request template_id documented; exact account response not proved"
+    },
+    {
+      "url": "https://msg91.com/help/webhooks/how-can-i-get-the-delivery-reports-on-my-webhook-url",
+      "scope": "Version-specific SMS webhook shapes, statuses and correlation; account version not selected"
+    },
+    {
+      "url": "https://msg91.com/help/webhook-new/how-to-receive-email-delivery-reports-via-webhook-new/",
+      "scope": "Custom JSON fields/headers; requestId/uuid descriptions not consistent with sample; no selected account proof"
+    },
+    {
+      "url": "https://msg91.com/help/webhook-new/how-to-receive-whatsapp-delivery-reports-via-webhook-new",
+      "scope": "Custom outbound fields/headers and duplicates; no selected account proof"
+    }
+  ],
+  "remaining": [
+    "Account-selected send/acknowledgement/report schemas and authenticated raw-vendor ingress remain unproved/unimplemented",
+    "UNKNOWN/SUBMITTING lost-response attestation with missing provider ID is deliberately unsupported",
+    "No real recipient receipt, vendor signature proof, retention/purge guarantee or production acceptance",
+    "No live generic send admission; existing unconditional block preserved"
+  ],
+  "sources": [
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/AsyncNotificationReportBody.java",
+      "sha256LfCanonical": "4a4f108a661e8652cac03e4c8a18a46d5a5e48aaa1a31fbd00f437a48f1d300d"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportController.java",
+      "sha256LfCanonical": "bbbe1d6cbc6a95c4a7d35946c24d0f968391bb517eb5d1bdc2244592ddc9814a"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/GenericNotificationReport.java",
+      "sha256LfCanonical": "6ebe0a20cdd7e7675ac1228dfaecea143035332659d7c5b986896d86b85ca6a1"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/GenericNotificationReportService.java",
+      "sha256LfCanonical": "822a2560e09fab5ed47578b067913ad1f6295e2e7424a3a28f4c02fd50b8bcc4"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/GenericNotificationReportRepository.java",
+      "sha256LfCanonical": "e82756a2be7a59df8064d582fa18640618ed3018d6fc8aca6f913a30b38c0e81"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/security/MachineCallerFilter.java",
+      "sha256LfCanonical": "bc395031b0955a7efa4fae2dc0b8701e84de5a54a8acd25e3b9fbd4b004cf78c"
+    },
+    {
+      "path": "services/platform-service/src/main/resources/db/migration/notification/V17__generic_delivery_reconciliation.sql",
+      "sha256LfCanonical": "e63ae3e19a7eb690fbfd0f4dee46a10d9cf8919953d98bb19631ec06aec06751"
+    },
+    {
+      "path": "services/platform-service/src/main/resources/application.yml",
+      "sha256LfCanonical": "93708a840a92eec4ed6d02b3bfd0452486494c27e870f6d618d4ddd24ca0d13d"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportControllerTest.java",
+      "sha256LfCanonical": "1603d31fe1d2aba7b80ed0f6ab94c627906f95ef45c613a792456dd300206cdd"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/internal/GenericNotificationReportHttpIntegrationTest.java",
+      "sha256LfCanonical": "1b043b180631145c3ed6161c42fd7c40484aa359e8a5f19ce406b530c5a4b81c"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/persistence/GenericNotificationReportIntegrationTest.java",
+      "sha256LfCanonical": "07ce20dae4130c9ffbbbdc5f65d3423391e7a5f574e9090f9357124b7133333a"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/security/MachineCallerFilterTest.java",
+      "sha256LfCanonical": "57cbb7856056e6f9c898a69896700dee118f57d85dddc64cdde441fcd4e0f6f3"
+    },
+    {
+      "path": "docs/security-remediation/generic-msg91-inbox.md",
+      "sha256LfCanonical": "91f7de76abeb38c17ffffcba60cd11ee6da280ce9f8b67744f0254265b5253bf"
+    }
+  ]
+}

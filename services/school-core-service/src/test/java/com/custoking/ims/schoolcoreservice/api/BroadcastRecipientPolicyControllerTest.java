@@ -33,4 +33,15 @@ class BroadcastRecipientPolicyControllerTest {
         mvc.perform(post(path).header("X-Broadcast-Policy-Token","secret").contentType(MediaType.APPLICATION_JSON).content(body("SCHOOL_NOTICE"))).andExpect(status().isOk()).andExpect(jsonPath("$[0].allowed").value(false));
         verify(repository).resolve(10,id,List.of("SMS"),null);
     }
+    @Test void feeReminderCapabilityRequiresExplicitPurposeAndBoundedSelectedSmsAudience() throws Exception {
+        var mvc=MockMvcBuilders.standaloneSetup(new BroadcastRecipientPolicyController(repository,"secret")).build();
+        String accepted=body("FEE_REMINDER").replace("ALL_PARENTS","EXPLICIT_STUDENTS").replace("\"channels\":[\"SMS\"]","\"channels\":[\"SMS\"],\"studentIds\":[1]");
+        mvc.perform(post(path+"/fee-reminders").header("X-Broadcast-Policy-Token","secret").contentType(MediaType.APPLICATION_JSON).content(accepted)).andExpect(status().isOk());
+        verify(repository).resolve(10,id,List.of("SMS"),List.of(1L));clearInvocations(repository);
+        mvc.perform(post(path+"/fee-reminders").header("X-Broadcast-Policy-Token","secret").contentType(MediaType.APPLICATION_JSON).content(accepted.replace("FEE_REMINDER","SCHOOL_NOTICE"))).andExpect(status().isBadRequest());
+        mvc.perform(post(path+"/fee-reminders").header("X-Broadcast-Policy-Token","secret").contentType(MediaType.APPLICATION_JSON).content(body("FEE_REMINDER"))).andExpect(status().isBadRequest());
+        mvc.perform(post(path+"/fee-reminders").contentType(MediaType.APPLICATION_JSON).content(accepted)).andExpect(status().isUnauthorized());
+        verifyNoInteractions(repository);
+    }
+
 }

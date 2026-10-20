@@ -1,0 +1,7 @@
+# Follow-up dev application release
+
+[PR321](https://github.com/custokingkr-dev/ims-v1/pull/321) merged as `0ae9796133f6d1b38c7517eabef635c3179c3108`. [Mandatory CI](https://github.com/custokingkr-dev/ims-v1/actions/runs/37630253181) and [CodeQL](https://github.com/custokingkr-dev/ims-v1/actions/runs/37630252361) passed. Remote school899 and platform387 tests passed with no skips; the scoped PR merge-ref open-alert count was zero.
+
+[Dev release37631144002](https://github.com/custokingkr-dev/ims-v1/actions/runs/37631144002) succeeded. It deployed the Drive metadata/pagination and SMS reserved-variable fixes to school and platform, with two fresh exact-digest vulnerability gates, two owner migrations and serial readiness checks. Independent readback verified all seven services Ready with100% single-revision traffic: the two changed runtime digests matched the release, and five other revisions/digests were unchanged. Both exact owner migration jobs were independently absent. Production was unchanged.
+
+Twelve anonymous/forged authorization requests were denied. Fresh frontend header/CSP/browser checks passed, including blocked inline script/object and permitted managed blob behavior. These bounded checks do not establish every feature/role combination or observed process UID. [Exact release and smoke proof](acceptance-remaining-dev-release.json), [CI counts](acceptance-remaining-implementation-ci.json), [four additional reviewed rollback KEEP tags](acceptance-remaining-image-protection.json).

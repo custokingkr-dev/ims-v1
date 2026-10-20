@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "curatedAtUtc": "2026-10-07T13:34:53.018202+00:00",
+  "scope": {
+    "secretValuesRead": false,
+    "humanRecipientsExported": false,
+    "externalMessagesSent": false,
+    "productionChanged": false,
+    "edgeDnsIamOrServiceDeploymentChanged": false,
+    "existingMaintenanceJobsChanged": false
+  },
+  "dashboard": {
+    "servicePresent": false,
+    "dedicatedOAuthSecretMetadataPresent": false,
+    "sessionSecretMetadataPresent": true,
+    "directProjectBindingsObserved": [
+      {
+        "role": "projects/custoking-dev/roles/dashboardSecurityState_dev",
+        "condition": {
+          "expression": "resource.name == 'projects/custoking-dev/databases/ims-dashboard-dev'",
+          "title": "dashboard-named-database-only"
+        }
+      }
+    ],
+    "securityStatePermissions": [
+      "datastore.entities.create",
+      "datastore.entities.get"
+    ],
+    "directMonitoringViewerBindingObserved": false,
+    "localActualObservabilityTfvarsCount": 0,
+    "requiredOwnerInputs": [
+      "Dedicated dashboard OAuth client registration and enabled secret version",
+      "Exact deployed HTTPS callback URL and explicit human allowlist",
+      "Approved dashboard deployment and Monitoring viewer IAM grant"
+    ]
+  },
+  "ttl": {
+    "fieldActive": true,
+    "observation": {
+      "project": "custoking-dev",
+      "database": "ims-dashboard-dev",
+      "marker": "SEC-ACPT-20261007-TTL-FINAL",
+      "documentId": "expired-5d010f4bf88d45efb59105858cdf18aa69b1ae9c93dcd41b0c69924f5b4680ad",
+      "job": "ims-dev-dashboard-ttl-observe-c3c7824a54ccd801",
+      "serviceAccount": "ims-dashboard@custoking-dev.iam.gserviceaccount.com",
+      "readOnly": true,
+      "noCreateOrDeleteExecuted": true,
+      "startedAtUtc": "2026-10-07T13:24:05.393062+00:00",
+      "jobRemoved": true,
+      "observation": {
+        "checkedAtUtc": "2026-10-07T13:24:20.896Z",
+        "expiresAt": "2026-10-06T09:47:58.010Z",
+        "httpStatus": 200,
+        "marker": "SEC-ACPT-20261007-TTL-FINAL",
+        "noCreateOrDeleteExecuted": true,
+        "originalExpiredFixture": true,
+        "physicalDeletionObserved": false
+      },
+      "physicalDeletionObserved": false,
+      "completedAtUtc": "2026-10-07T13:24:34.141332+00:00"
+    },
+    "executionCompleted": true,
+    "jobIndependentlyNotFound": true,
+    "trustedImmutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8",
+    "imageReadyRevision": "custoking-api-gateway-dev-muy1nc06",
+    "permissionsUsed": "datastore.entities.get on named database",
+    "writeOrManualDeleteExecuted": false,
+    "acceptanceStatus": "PHYSICAL_DELETION_PENDING",
+    "source": "https://docs.cloud.google.com/firestore/native/docs/ttl"
+  },
+  "secretMetadata": [
+    {
+      "secretId": "dashboard-session-secret",
+      "metadataPresent": true,
+      "versions": [
+        {
+          "state": "ENABLED",
+          "createdAt": "2026-10-07T09:43:24.537955Z"
+        }
+      ]
+    },
+    {
+      "secretId": "msg91-auth-key-dev",
+      "metadataPresent": true,
+      "versions": [
+        {
+          "state": "ENABLED",
+          "createdAt": "2026-08-17T22:55:01.024681Z"
+        }
+      ]
+    },
+    {
+      "secretId": "notification-status-token-dev",
+      "metadataPresent": true,
+      "versions": [
+        {
+          "state": "ENABLED",
+          "createdAt": "2026-08-17T22:55:07.698982Z"
+        }
+      ]
+    },
+    {
+      "secretId": "student-photo-import-drive-oauth-client-id-dev",
+      "metadataPresent": true,
+      "versions": [
+        {
+          "state": "ENABLED",
+          "createdAt": "2026-08-17T22:55:37.179245Z"
+        }
+      ]
+    },
+    {
+      "secretId": "student-photo-import-drive-oauth-client-secret-dev",
+      "metadataPresent": true,
+      "versions": [
+        {
+          "state": "ENABLED",
+          "createdAt": "2026-08-17T22:55:44.169689Z"
+        }
+      ]
+    },
+    {
+      "secretId": "student-photo-import-drive-oauth-refresh-token-dev",
+      "metadataPresent": true,
+      "versions": [
+        {
+          "state": "ENABLED",
+          "createdAt": "2026-08-17T22:55:51.361399Z"
+        }
+      ]
+    }
+  ],
+  "provider": {
+    "configPresence": [
+      {
+        "service": "custoking-platform-service-dev",
+        "envPresence": [
+          {
+            "name": "MSG91_DRY_RUN",
+            "configured": true
+          },
+          {
+            "name": "NOTIFICATION_DELIVERY_PROVIDER",
+            "configured": true
+          },
+          {
+            "name": "BROADCAST_LIVE_EMAIL_SENDER",
+            "configured": false
+          },
+          {
+            "name": "BROADCAST_LIVE_EMAIL_SENDER_NAME",
+            "configured": false
+          },
+          {
+            "name": "BROADCAST_LIVE_EMAIL_DOMAIN",
+            "configured": false
+          },
+          {
+            "name": "BROADCAST_LIVE_EMAIL_TEMPLATE_ID",
+            "configured": false
+          },
+          {
+            "name": "BROADCAST_LIVE_EMAIL_TEMPLATE_VERIFIED",
+            "configured": true
+          },
+          {
+            "name": "MSG91_AUTH_KEY",
+            "configured": true,
+            "secretReferencePresent": true,
+            "secretId": "msg91-auth-key-dev"
+          }
+        ]
+      },
+      {
+        "service": "custoking-school-core-service-dev",
+        "envPresence": [
+          {
+            "name": "STUDENT_PHOTO_IMPORT_DRIVE_OAUTH_CLIENT_ID",
+            "configured": true,
+            "secretReferencePresent": true,
+            "secretId": "student-photo-import-drive-oauth-client-id-dev"
+          },
+          {
+            "name": "STUDENT_PHOTO_IMPORT_DRIVE_OAUTH_CLIENT_SECRET",
+            "configured": true,
+            "secretReferencePresent": true,
+            "secretId": "student-photo-import-drive-oauth-client-secret-dev"
+          },
+          {
+            "name": "STUDENT_PHOTO_IMPORT_DRIVE_OAUTH_REFRESH_TOKEN",
+            "configured": true,
+            "secretReferencePresent": true,
+            "secretId": "student-photo-import-drive-oauth-refresh-token-dev"
+          }
+        ]
+      }
+    ],
+    "safeModeFlags": {
+      "MSG91_DRY_RUN": {
+        "present": true,
+        "enabled": true
+      },
+      "NOTIFICATION_DELIVERY_PROVIDER": {
+        "present": true,
+        "knownMode": "logging"
+      },
+      "BROADCAST_LIVE_EMAIL_TEMPLATE_VERIFIED": {
+        "present": true,
+        "enabled": false
+      }
+    },
+    "genericLiveStartupBlocked": true,
+    "genericProviderHasLiveHttpSendPath": false,
+    "senderDomainTemplateConfigPresent": false,
+    "credentialExistenceProvesAuthenticationOrDelivery": false,
+    "liveMessagesSent": false,
+    "requiredOwnerInputs": [
+      "Verified sender/domain/template and approved recipient/channel scope",
+      "Authenticated current-owner consent revalidation for generic inbox contracts",
+      "Documented duplicate-suppression contract or a separately reviewed durable no-resend ambiguity workflow before generic live delivery"
+    ]
+  },
+  "hostname": {
+    "dnsRestRead": {
+      "project": "custoking-dev",
+      "capturedAtUtc": "2026-10-07T13:32:36.452059+00:00",
+      "httpStatus": 403,
+      "success": false,
+      "category": "API_DISABLED",
+      "apiErrorReasons": [
+        "SERVICE_DISABLED"
+      ],
+      "inventoryEstablished": false
+    },
+    "dnsApiEnabled": false,
+    "managedZoneInventoryEstablished": false,
+    "gaDomainMappingCli": "CLI_GROUP_UNAVAILABLE",
+    "betaRunDomainMappingRead": {
+      "success": true,
+      "count": 0,
+      "items": []
+    },
+    "sslCertificateCount": 0,
+    "externallyOwnedHostnameAbsenceEstablished": false,
+    "requiredOwnerInputs": [
+      "Owner-controlled exact hostname and DNS authority",
+      "Approval for edge, DNS and corresponding IAM/deployment changes"
+    ]
+  },
+  "alerts": {
+    "metadata": {
+      "project": "custoking-dev",
+      "capturedAtUtc": "2026-10-07T13:18:35.011761+00:00",
+      "channels": [
+        {
+          "name": "projects/custoking-dev/notificationChannels/1961005594374209321",
+          "type": "email",
+          "enabled": true,
+          "verificationStatus": null,
+          "labelKeys": [
+            "email_address"
+          ]
+        },
+        {
+          "name": "projects/custoking-dev/notificationChannels/1961005594374209442",
+          "type": "email",
+          "enabled": true,
+          "verificationStatus": null,
+          "labelKeys": [
+            "email_address"
+          ]
+        }
+      ],
+      "channelPageTruncated": false,
+      "alertPolicyCount": 67,
+      "enabledPolicyCount": 60,
+      "policiesWithChannels": 3,
+      "policyPageTruncated": false
+    },
+    "deliveryOrRecipientVerificationProved": false,
+    "messageSent": false,
+    "actionableCapability": "Existing channel resource IDs can be referenced after owner verifies intended recipients; no new recipient values are needed to observe policy bindings"
+  },
+  "capturedEvidence": [
+    {
+      "file": "remaining-dev-secret-config-metadata.json",
+      "sha256": "ae9f352453aae2a220a6fdc85feb5fb98ebb2116e084184cf445ff8b939cba0b",
+      "capturedAtUtc": "2026-10-07T13:18:32.522616+00:00"
+    },
+    {
+      "file": "remaining-dev-hostname-metadata.json",
+      "sha256": "fe2325d25177ad942c7fa84c1dae6c51ff7c01b41a8f70ac48680b84da20b240",
+      "capturedAtUtc": "2026-10-07T13:18:32.531176+00:00"
+    },
+    {
+      "file": "remaining-dev-hostname-readback-detail.json",
+      "sha256": "054a1b698310882156d5bbfb2af20ef7b67eb270b15da9651179dbf5b8b98e52",
+      "capturedAtUtc": "2026-10-07T13:19:23.209259+00:00"
+    },
+    {
+      "file": "remaining-dev-dns-denial-confirmation.json",
+      "sha256": "09f36ee8c4c799f0ca470567bb208b7a53cd328ea9fca97349b87f8872b573e0",
+      "capturedAtUtc": "2026-10-07T13:32:36.452059+00:00"
+    },
+    {
+      "file": "remaining-dev-alert-channel-metadata.json",
+      "sha256": "45d09ff67ffd11bdf385bd6450e663719fc6dfb1ff00f53ca8ed69c04f336eeb",
+      "capturedAtUtc": "2026-10-07T13:18:35.011761+00:00"
+    },
+    {
+      "file": "remaining-dev-probe-prerequisites.json",
+      "sha256": "13f0074ab032623de0269d205fe9aba08a010ae5cf0fa5d215a0a2cc95d64b0b",
+      "capturedAtUtc": "2026-10-07T13:20:36.612005+00:00"
+    },
+    {
+      "file": "remaining-dev-dashboard-ttl-readonly-proof.json",
+      "sha256": "9026024e425e8ae24b706d1900f4e28d9a5a868cb197d7f7b24b0ec47dda6f79",
+      "capturedAtUtc": "2026-10-07T13:24:34.141332+00:00"
+    }
+  ],
+  "sourceCorrection": {
+    "problem": "SMS template variables could overwrite the validated recipient or correlation field",
+    "result": "Policy guard and SMS builder reject reserved mobiles/CRQID names, including case variants",
+    "liveGateRetained": true,
+    "deployed": false,
+    "validation": {
+      "command": ".\\mvnw.cmd -pl services/platform-service -Dtest=NotificationDeliveryServiceTest,Msg91NotificationDeliveryProviderTest -DfailIfNoTests=false test",
+      "tests": 18,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "completedAtUtc": "2026-10-07T13:33:29Z"
+    },
+    "files": [
+      {
+        "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/NotificationPolicyGuard.java",
+        "sha256NormalizedLf": "705cbf3646c03a533dc6e0da5328412e7791a97f26550d0bd4feccc667fadf2b"
+      },
+      {
+        "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91NotificationDeliveryProvider.java",
+        "sha256NormalizedLf": "2ccda7972c90632a1120a93811bd71171c8f6948c1a18da1bc8a4af242e11621"
+      },
+      {
+        "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/application/NotificationDeliveryServiceTest.java",
+        "sha256NormalizedLf": "ead892e5735142386bcc4c698b3eba81593b8399732f0e82832e34a10a95b276"
+      },
+      {
+        "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91NotificationDeliveryProviderTest.java",
+        "sha256NormalizedLf": "ed18514264ddb6147b53375092fbee343e15fe3c3cfb97ef88ab9dc8ab09bada"
+      }
+    ]
+  },
+  "providerContractReview": {
+    "reviewedAtUtc": "2026-10-07T13:36:08.714247+00:00",
+    "officialSources": [
+      "https://msg91.com/help/integration-guides/crqid-in-sms",
+      "https://msg91.com/help/email/how-to-send-the-crqid-via-email-api",
+      "https://msg91.com/help/whatsapp/how-to-pass-crqid-in-whatsapp-",
+      "https://docs.msg91.com/sms",
+      "https://docs.msg91.com/email"
+    ],
+    "duplicateSuppressionGuaranteeFoundInReviewedPages": false,
+    "crqidPurpose": "Correlation and request tracking",
+    "genericOwnerRevalidationImplemented": false,
+    "broadcastEmailOwnerRevalidationImplemented": true,
+    "broadcastEmailCommittedReservationAndNoAmbiguousResendImplemented": true,
+    "genericLiveHttpDisabled": true
+  }
+}

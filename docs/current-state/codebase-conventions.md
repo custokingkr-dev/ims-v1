@@ -1,7 +1,7 @@
 # Codebase and Conventions
 
-Last reconciled: 2026-08-12 against the current repository tree.
-CI/CD active-state updated: 2026-08-04.
+Build, gateway and runtime-role conventions reconciled: 2026-10-11 against source.
+Other service reference sections retain their 2026-08-12 baseline.
 
 ## Repository Layout
 
@@ -28,9 +28,10 @@ Tiltfile                  local Tilt orchestration
 
 Verified from package and pom files:
 
-- Java services use Spring Boot parent `4.0.7`.
+- Root `pom.xml` is the Maven parent/reactor for five services and uses Spring Boot `4.1.1`.
+- Java Docker builds use the repository root context and include the shared parent POM.
 - Java services set `java.version` to `25`.
-- Frontend uses React `18.3.1`, Vite `6.2.0`, TypeScript `5.7.2`, Vitest `3.2.0`.
+- Frontend declares React `18.3.1`, Vite `^6.2.0`, TypeScript `^5.7.2`, React Router `7.18.3` and Vitest `^4.1.11`.
 - Gateway uses Node 24 LTS in CI and CommonJS source.
 - PostgreSQL driver is used by Spring services.
 - Flyway is used for service-owned schema migrations.
@@ -62,14 +63,14 @@ Conventions:
 - Internal service tokens are required on private services when configured.
 - SQL is generally explicit/JDBC-oriented in merged services.
 - Flyway owns database structure.
-- Runtime code connects as `app_rt`.
-- Flyway connects as `appuser` in deployed environments.
+- Runtime code connects as the configured `RUNTIME_DB_ROLE`; dedicated roles are listed in [project-architecture.md](project-architecture.md). Local configuration retains the `app_rt` fallback.
+- Normal deployed application startup disables Flyway; migration jobs use separate owner credentials.
 - Java service health endpoints expose `health,info`.
 - Spring Boot Actuator probes are enabled.
 
 ## API Gateway Conventions
 
-Source: `services/api-gateway/server.js`.
+Sources: `services/api-gateway/server.js` for HTTP/auth orchestration and `services/api-gateway/routing.js` for ordered route ownership/matching.
 
 Gateway route ownership is explicit and ordered. New public frontend API routes must be added to the gateway route table and mapped to the owning service.
 
@@ -78,8 +79,8 @@ Gateway behavior:
 - `/gateway-health` returns service health directly.
 - `/api/v1/**` routes without a configured service return 404.
 - Non-API routes fall through to the frontend upstream.
-- Local JWT verification is the preferred path when enriched JWT claims are present.
-- Introspection remains the fallback path.
+- Identity introspection is authoritative on every protected request, including enriched JWTs.
+- Optional local JWT verification adds a signature/expiry rejection prefilter; it does not replace introspection.
 - Gateway logs JSON request records with request id, method, path, status, duration, and upstream service.
 - Gateway propagates trace context.
 
@@ -87,8 +88,8 @@ Security controls in gateway:
 
 - Strict CORS allowlist.
 - Security response headers.
-- Body size limit, default 5 MiB.
-- Global token-bucket rate limit, default 50 RPS and burst 100.
+- Body size limit, default 8 MiB to accommodate a 5 MiB upload plus its multipart envelope.
+- Per-replica token-bucket rate limit, default 50 RPS and burst 100, plus identity-owned shared quota enforcement.
 - Required internal service-token env vars fail startup if missing or placeholder.
 
 ## Frontend Conventions
@@ -232,9 +233,9 @@ Critical convention: the Pub/Sub topic env var must be `BILLING_OUTBOX_PUBSUB_TO
 - Keep Flyway migration history per schema/service.
 - Use forward migrations only after deployment.
 - Do not edit already-applied migrations unless there is a documented Flyway repair/baseline plan.
-- Runtime role is `app_rt`.
-- Migration/owner role is `appuser`.
-- RLS must be tested as `app_rt`, not as owner/superuser.
+- Runtime role is configured per service; dedicated roles follow `ims_<service>_rt`, with an `app_rt` local fallback.
+- Migration/owner credentials are separate from normal runtime credentials.
+- RLS and effective privilege checks run as the intended runtime role, rather than relying on owner/superuser results.
 
 ## Local Development
 

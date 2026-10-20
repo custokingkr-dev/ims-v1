@@ -14,6 +14,10 @@ import java.util.Map;
 /** Turns bean-validation failures into a consistent SPA-friendly 400. Copied per service. */
 @RestControllerAdvice
 public class ValidationExceptionHandler {
+    @ExceptionHandler(ArithmeticException.class)
+    public ResponseEntity<Map<String, Object>> onMoneyOverflow(ArithmeticException ex) {
+        return message(HttpStatus.BAD_REQUEST, "Invoice exceeds the supported monetary range");
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> onBodyValidation(MethodArgumentNotValidException ex) {

@@ -22,7 +22,7 @@ class AuditTenantScopingTest {
 
     private final AuditEventRepository repository = mock(AuditEventRepository.class);
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new AuditIngestController(repository, "tok"))
+            .standaloneSetup(new AuditIngestController(repository, "tok", mock(com.custoking.ims.platformservice.persistence.AuditIngestQuota.class)))
             .addFilters(new TenantContextFilter())
             .build();
 

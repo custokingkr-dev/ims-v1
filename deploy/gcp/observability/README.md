@@ -180,13 +180,14 @@ terraform -chdir=deploy/gcp/observability init -reconfigure `
   -backend-config="prefix=observability/dev" `
   -backend-config="access_token=$(gcloud auth print-access-token)"
 terraform -chdir=deploy/gcp/observability plan -var-file=custoking-dev.tfvars
-terraform -chdir=deploy/gcp/observability apply -var="env=dev"
+terraform -chdir=deploy/gcp/observability apply -var-file=custoking-dev.tfvars
 ```
 
 For production, pass `-var="env=prod"` and production notification channels:
 
 ```powershell
 terraform -chdir=deploy/gcp/observability plan `
+  -var="project=custoking-prod" `
   -var="env=prod" `
   -var="enable_uptime_checks=true" `
   -var='notification_email_addresses={primary="operator@example.com"}' `

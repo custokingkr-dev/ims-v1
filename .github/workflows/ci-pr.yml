@@ -62,10 +62,12 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "24"
+      - name: Verify API route inventory is current
+        run: node scripts/generate-api-route-inventory.js --check
       - name: Verify generated OpenAPI clients are current
         run: node scripts/generate-openapi-typescript-client.js --check
       - name: Test browser contract generation and canonical routing
-        run: node --test scripts/tests/generate-openapi-typescript-client.test.js services/api-gateway/api-contract.test.js
+        run: node --test scripts/tests/generate-api-route-inventory.test.js scripts/tests/generate-openapi-typescript-client.test.js services/api-gateway/api-contract.test.js
       - name: Audit offline service boundaries
         shell: pwsh
         run: |
@@ -80,6 +82,10 @@ jobs:
           ./scripts/audit-microservice-test-catalog.ps1
           ./scripts/audit-microservice-build-catalog.ps1
           ./scripts/audit-security-governance-controls.ps1
+      - name: Verify financial and workflow contract bindings
+        run: node --test scripts/tests/workflow_billing_contract.test.js
+      - name: Verify bounded signed transport probe controls
+        run: node --test scripts/tests/signed_transport_probe.test.cjs
       - name: Test immutable GitHub governance check verification
         run: python3 -m unittest scripts.tests.test_verify_github_governance_checks
       - name: Test bounded Cloud Deploy dependency groups
@@ -88,10 +94,56 @@ jobs:
       - name: Test parallel image promotion trust boundaries
         shell: pwsh
         run: ./scripts/tests/resolve-release-images-test.ps1
+      - name: Test explicit dashboard release target and publication controls without Docker
+        run: python3 -m unittest scripts.tests.dashboard_release_test
       - name: Test offline GCP governance audits
         run: python3 -m unittest scripts.tests.test_export_gcp_asset_drift scripts.tests.test_audit_gcp_observability scripts.tests.test_validate_gcp_governance_audit_enablement
+      - name: Verify digest-bound image User and database catalog evidence rejection
+        run: |
+          python3 -m unittest scripts.tests.dev_image_config_user_proof_test scripts.tests.dev_db_security_collator_test
+          python3 scripts/security/collate-dev-db-security.py --self-test
+      - name: Test deployment security admission and isolated native release fixtures
+        run: >-
+          python3 -m unittest
+          scripts.tests.security_target_renderer_test
+          scripts.tests.runtime_role_native_progress_test
+          scripts.tests.service_migration_job_test
+          scripts.tests.runtime_secret_matrix_test
+          scripts.tests.migration_release_trigger_test
+          scripts.tests.service_authorization_machine_proof_test
+          scripts.tests.principal_carrier_release_order_test
+          scripts.tests.direct_release_profile_test
+          scripts.tests.full_release_routing_test
+          scripts.tests.deployment_readiness_audit_test
+          scripts.tests.runtime_secret_revocation_test
+          scripts.tests.synthetic_pubsub_drill_test
+          scripts.tests.bounded_dev_read_acceptance_test
+          scripts.tests.security_acceptance_tool_test
+          scripts.tests.obsolete_revision_cleanup_test
+          scripts.tests.http2_parser_probe_test
+          scripts.tests.final_live_fixture_acceptance_test
+          scripts.tests.dashboard_state_adoption_test
+          scripts.tests.dev_erasure_journal_test
+      - name: Verify guarded dev journal acceptance and PostgreSQL rehearsal under optimization
+        run: >-
+          python3 -O -m unittest
+          scripts.tests.dev_precommit_journal_acceptance_test
+          scripts.tests.dev_precommit_journal_acceptance_postgres_test
+          scripts.tests.dev_photo_erasure_acceptance_test
+          scripts.tests.dev_photo_erasure_acceptance_postgres_test
+      - name: Install isolated restore-verifier test dependency
+        run: python3 -m pip install 'psycopg[binary]==3.3.4'
+      - name: Verify restore-target rejection, historical coverage and real PostgreSQL TLS under optimization
+        run: >-
+          python3 -O -m unittest
+          scripts.tests.dev_restore_target_verifier_test
+          scripts.tests.dev_restore_target_verifier_postgres_test
+          scripts.tests.dev_erasure_coverage_test
+          scripts.tests.dev_owner_erasure_replay_test
       - name: Test OpenAPI CI routing invariants
         run: python3 -m unittest scripts.tests.test_openapi_ci_gate
+      - name: Verify immutable runtime patch-cycle identities and workflow binding
+        run: python3 -O -m unittest scripts.tests.image_source_patch_epoch_test scripts.tests.test_build_release_patch_epoch_binding
 
   privacy-technical-controls:
     name: privacy-technical-controls
@@ -116,6 +168,55 @@ jobs:
       - name: Run synthetic export and verified-deletion drill
         shell: pwsh
         run: ./scripts/invoke-privacy-export-erasure-drill.ps1
+
+  dev-edge-terraform-validation:
+    name: dev-edge-terraform-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_wrapper: false
+      - name: Validate dev edge and mock-provider acceptance
+        run: |
+          terraform -chdir=deploy/gcp/application-edge init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=deploy/gcp/application-edge fmt -check -recursive
+          terraform -chdir=deploy/gcp/application-edge validate -no-color
+          terraform -chdir=deploy/gcp/application-edge test -no-color
+      - name: Validate persistent dashboard state without a web deployment
+        run: |
+          terraform -chdir=deploy/gcp/observability init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=deploy/gcp/observability fmt -check -recursive
+          terraform -chdir=deploy/gcp/observability validate -no-color
+          terraform -chdir=deploy/gcp/observability test -no-color
+      - name: Validate independent dev erasure journal and least-privilege scope
+        run: |
+          terraform -chdir=deploy/gcp/erasure-journal init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=deploy/gcp/erasure-journal fmt -check -recursive
+          terraform -chdir=deploy/gcp/erasure-journal validate -no-color
+          terraform -chdir=deploy/gcp/erasure-journal test -no-color
+      - name: Validate disabled dev egress preparation and explicit destination boundaries
+        run: |
+          terraform -chdir=deploy/gcp/application-egress init -backend=false -input=false -lockfile=readonly
+          terraform -chdir=deploy/gcp/application-egress fmt -check -recursive
+          terraform -chdir=deploy/gcp/application-egress validate -no-color
+          terraform -chdir=deploy/gcp/application-egress test -no-color
+
+  windows-security-helper-validation:
+    name: windows-security-helper-validation
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Verify PowerShell 5 helper serialization and native exit handling
+        run: python -m unittest scripts.tests.signed_probe_serialization_test scripts.tests.pubsub_native_progress_test scripts.tests.dev_erasure_journal_infrastructure_test
+      - name: Verify optimized restore-verifier deadlines and historical coverage on Windows
+        run: python -O -m unittest scripts.tests.dev_restore_target_verifier_test scripts.tests.dev_erasure_coverage_test scripts.tests.dev_owner_erasure_replay_test.AdapterTests
+      - name: Verify immutable runtime patch cycles and release binding on Windows
+        run: python -O -m unittest scripts.tests.image_source_patch_epoch_test scripts.tests.test_build_release_patch_epoch_binding
+      - name: Verify Scheduler create and update command arguments
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/tests/configure-async-relay-scheduler-test.ps1
 
   maven-wrapper-validation:
     name: maven-wrapper-validation (${{ matrix.os }})
@@ -213,7 +314,7 @@ jobs:
       - name: Run gateway tests
         if: ${{ matrix.tool == 'node' }}
         working-directory: ${{ matrix.path }}
-        run: node --test server.test.js
+        run: npm test
       - name: Run frontend tests and build
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
@@ -228,7 +329,7 @@ jobs:
         # Release file whose hashes don't match its index (seen repeatedly, not a
         # transient blip). Playwright's own Chromium download comes from Microsoft's
         # CDN, not this apt repo, so removing the source list has no effect on what the
-        # tests need — Chrome itself (already installed) is untouched. Do not delete
+        # tests need â€” Chrome itself (already installed) is untouched. Do not delete
         # this step; without it, --with-deps deterministically fails apt-get update.
         if: ${{ matrix.tool == 'npm' }}
         run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list
@@ -295,7 +396,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   summary:
-    needs: [promotion-source-policy, detect, duplicate-class-drift, static-architecture-audits, privacy-technical-controls, maven-wrapper-validation, service-test, docker-build, secret-scan]
+    needs: [promotion-source-policy, detect, duplicate-class-drift, static-architecture-audits, dev-edge-terraform-validation, windows-security-helper-validation, privacy-technical-controls, maven-wrapper-validation, service-test, docker-build, secret-scan]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -310,6 +411,8 @@ jobs:
             echo "- Docker builds: ${{ needs.docker-build.result }}"
             echo "- Duplicate class drift: ${{ needs.duplicate-class-drift.result }}"
             echo "- Static architecture audits: ${{ needs.static-architecture-audits.result }}"
+            echo "- Windows security helpers: ${{ needs.windows-security-helper-validation.result }}"
+            echo "- Dev edge Terraform: ${{ needs.dev-edge-terraform-validation.result }}"
             echo "- Privacy technical controls: ${{ needs.privacy-technical-controls.result }}"
             echo "- Maven wrapper validation: ${{ needs.maven-wrapper-validation.result }}"
             echo "- Secret scan: ${{ needs.secret-scan.result }}"
@@ -323,6 +426,8 @@ jobs:
             "${{ needs.detect.result }}" \
             "${{ needs.duplicate-class-drift.result }}" \
             "${{ needs.static-architecture-audits.result }}" \
+            "${{ needs.windows-security-helper-validation.result }}" \
+            "${{ needs.dev-edge-terraform-validation.result }}" \
             "${{ needs.privacy-technical-controls.result }}" \
             "${{ needs.maven-wrapper-validation.result }}" \
             "${{ needs.service-test.result }}" \

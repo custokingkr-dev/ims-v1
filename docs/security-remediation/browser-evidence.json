@@ -1,0 +1,112 @@
+{
+  "scope": "Local built nginx container; no deployed environment tested",
+  "origin": "http://127.0.0.1:18789",
+  "headers": [
+    {
+      "path": "/login",
+      "status": 200,
+      "headers": {
+        "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+        "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+        "strict-transport-security": "max-age=31536000"
+      },
+      "cacheControl": "no-store, no-cache, must-revalidate"
+    },
+    {
+      "path": "/dashboard",
+      "status": 200,
+      "headers": {
+        "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+        "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+        "strict-transport-security": "max-age=31536000"
+      },
+      "cacheControl": "no-store, no-cache, must-revalidate"
+    },
+    {
+      "path": "/index.html",
+      "status": 200,
+      "headers": {
+        "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+        "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+        "strict-transport-security": "max-age=31536000"
+      },
+      "cacheControl": "no-store, no-cache, must-revalidate"
+    },
+    {
+      "path": "/frontend-health",
+      "status": 200,
+      "headers": {
+        "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+        "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+        "strict-transport-security": "max-age=31536000"
+      },
+      "cacheControl": null
+    },
+    {
+      "path": "/assets/index-C5l89jqK.js",
+      "status": 200,
+      "headers": {
+        "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+        "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+        "strict-transport-security": "max-age=31536000"
+      },
+      "cacheControl": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/assets/missing-security-proof.js",
+      "status": 404,
+      "headers": {
+        "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+        "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+        "strict-transport-security": "max-age=31536000"
+      },
+      "cacheControl": "public, max-age=31536000, immutable"
+    },
+    {
+      "path": "/api/v1/security-proof",
+      "status": 502,
+      "headers": {
+        "content-security-policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://storage.googleapis.com; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+        "permissions-policy": "geolocation=(), microphone=(), camera=(self)",
+        "strict-transport-security": "max-age=31536000"
+      },
+      "cacheControl": null
+    }
+  ],
+  "browser": {
+    "inlineScriptExecuted": false,
+    "blobRasterLoaded": true,
+    "violations": [
+      "script-src-elem",
+      "object-src"
+    ],
+    "blobDownload": true,
+    "actualOrderAssetField": {
+      "rasterBlobPreviewLoaded": true,
+      "pdfInlineDocumentCount": 0,
+      "pdfBlobDownload": true,
+      "api": "mocked backend; actual production bundle and nginx CSP"
+    }
+  }
+}

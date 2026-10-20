@@ -1,0 +1,84 @@
+{
+  "capturedAtUtc": "2026-10-07T09:43:04.071564+00:00",
+  "scope": "Isolated local PostgreSQL synthetic export/erasure/restore replay with production repositories and controlled object/delivery providers",
+  "schoolExportErasure": {
+    "tests": 5,
+    "failures": 0,
+    "skips": 0,
+    "exportRows": 20,
+    "exportSha256": "d7d2ebeeeb52f886cb36eb81bbd28396b1c1848b19b699c1239f6252bf29277c",
+    "targetBefore": {
+      "students": 20,
+      "enrollments": 20,
+      "importRows": 20,
+      "importBatches": 1,
+      "guardians": 20,
+      "consents": 1,
+      "outbox": 800,
+      "sections": 390,
+      "schools": 1
+    },
+    "targetAfter": {
+      "students": 0,
+      "enrollments": 0,
+      "importRows": 0,
+      "importBatches": 0,
+      "guardians": 0,
+      "consents": 0,
+      "outbox": 0,
+      "sections": 0,
+      "schools": 0
+    },
+    "controlBefore": {
+      "students": 20,
+      "enrollments": 20,
+      "importRows": 20,
+      "importBatches": 1,
+      "guardians": 20,
+      "consents": 1,
+      "outbox": 800,
+      "sections": 390,
+      "schools": 1
+    },
+    "controlAfter": {
+      "students": 20,
+      "enrollments": 20,
+      "importRows": 20,
+      "importBatches": 1,
+      "guardians": 20,
+      "consents": 1,
+      "outbox": 800,
+      "sections": 390,
+      "schools": 1
+    },
+    "idempotent": true
+  },
+  "actualStudentDeleteCommitBoundary": {
+    "tests": 1,
+    "rollbackRetainsStudent": true,
+    "objectCleanupOnlyAfterCommit": true,
+    "deletedEvents": 1,
+    "photoProviderCalls": 1,
+    "controlRowsPreserved": 1
+  },
+  "platformProjectionClass": {
+    "tests": 12,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "syntheticPreErasureSnapshotRestored": true,
+    "retainedDeletionReplayedIdempotently": true,
+    "lateDeliverySuppressed": true,
+    "providerCalls": 0,
+    "controlTenantPreserved": true
+  },
+  "limits": {
+    "businessDataDeleted": false,
+    "actualCloudObjectDeletionVerified": false,
+    "actualExternalProviderErasureVerified": false,
+    "operationalExternalErasureJournalImplemented": false,
+    "productionOffboardingCertified": false,
+    "retentionPolicyApproved": false,
+    "restoredSnapshotMustRemainOfflineUntilErasureReplay": true
+  }
+}

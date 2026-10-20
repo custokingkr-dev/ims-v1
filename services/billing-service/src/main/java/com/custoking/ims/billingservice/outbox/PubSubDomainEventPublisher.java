@@ -48,6 +48,8 @@ public class PubSubDomainEventPublisher implements DomainEventPublisher {
 
     private final ObjectMapper objectMapper;
     private final Publisher publisher;
+    @Value("${billing.outbox.pubsub.publish-timeout-ms:5000}")
+    private long publishTimeoutMs = 5000;
 
     public PubSubDomainEventPublisher(
             ObjectMapper objectMapper,
@@ -62,10 +64,14 @@ public class PubSubDomainEventPublisher implements DomainEventPublisher {
 
     @Override
     public void publish(EventEnvelope envelope) {
+        publishWithin(envelope, publishTimeoutMs);
+    }
+
+    void publishWithin(EventEnvelope envelope, long remainingBudgetMs) {
         PubsubMessage message = buildMessage(envelope, objectMapper);
         ApiFuture<String> future = publisher.publish(message);
         try {
-            String messageId = future.get();
+            String messageId = awaitPublish(future, Math.min(publishTimeoutMs, remainingBudgetMs));
             log.debug("Published event {} ({}) as Pub/Sub message {}",
                     envelope.eventId(), envelope.eventType(), messageId);
         } catch (InterruptedException ex) {
@@ -75,6 +81,17 @@ public class PubSubDomainEventPublisher implements DomainEventPublisher {
         } catch (ExecutionException ex) {
             throw new IllegalStateException(
                     "Failed to publish event " + envelope.eventId() + " to Pub/Sub", ex.getCause() != null ? ex.getCause() : ex);
+        }
+    }
+
+    static String awaitPublish(ApiFuture<String> future, long timeoutMs) throws InterruptedException, ExecutionException {
+        try { return future.get(Math.max(1, Math.min(timeoutMs, 10_000)), TimeUnit.MILLISECONDS); }
+        catch (java.util.concurrent.TimeoutException ex) {
+            future.cancel(true);
+            throw new IllegalStateException("Pub/Sub publish deadline exceeded", ex);
+        } catch (InterruptedException ex) {
+            future.cancel(true);
+            throw ex;
         }
     }
 

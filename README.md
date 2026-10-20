@@ -6,7 +6,10 @@ Custoking IMS is a multi-tenant school operations platform. The repository is no
 
 Detailed architecture docs:
 
-- [Verified Architecture Overview](docs/architecture/custoking-architecture.html)
+- [Current Source Architecture](docs/current-state/project-architecture.md)
+- [API Contracts and Client Coverage](docs/current-state/api-contracts.md)
+- [Visual Architecture and Dated Infrastructure Evidence](docs/architecture/custoking-architecture.html)
+- [Current Security and Operational Owner Gates](docs/security-remediation/acceptance-owner-actions.md)
 - [Documentation Index and Source Precedence](docs/DOCUMENTATION-INDEX.md)
 - [Production Deployment Evidence (2026-08-14)](docs/PRODUCTION-DEPLOYMENT-2026-08-14.md)
 - [Remaining Work and Launch Gates (2026-08-12)](docs/REMAINING-WORK-2026-08-12.md)

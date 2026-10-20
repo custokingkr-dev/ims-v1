@@ -49,13 +49,13 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $skaffoldFile = Join-Path $repoRoot "deploy/skaffold.yaml"
 $images = @((Get-Content -Raw -Path $ImagesJson | ConvertFrom-Json).services)
 $releaseOrder = @(
-  "school-core-service",
+  "api-gateway",
   "identity-service",
+  "frontend",
+  "school-core-service",
   "operations-service",
   "billing-service",
-  "platform-service",
-  "api-gateway",
-  "frontend"
+  "platform-service"
 )
 $byService = @{}
 foreach ($image in $images) {
@@ -65,6 +65,11 @@ foreach ($image in $images) {
   $byService[[string]$image.service] = $image
 }
 if ($images.Count -eq 0) { throw "Release image evidence must contain at least one service." }
+if (-not $WaitForRollout -and @($images | Where-Object {
+  $_.service -in @('api-gateway','identity-service','school-core-service','operations-service','billing-service','platform-service')
+}).Count -gt 0) {
+  throw 'Carrier/backend releases require -WaitForRollout to preserve readiness before dependent services.'
+}
 if ($MaxParallelRollouts -gt 1 -and -not $WaitForRollout) {
   throw "Parallel rollout groups require WaitForRollout to enforce dependency barriers."
 }
@@ -88,13 +93,14 @@ function Write-DeploymentEvidence {
 }
 
 $groups = @(
-  @{ services = @('school-core-service') },
-  @{ services = @('identity-service', 'operations-service', 'billing-service', 'platform-service') },
   @{ services = @('api-gateway') },
-  @{ services = @('frontend') }
+  @{ services = @('identity-service') },
+  @{ services = @('frontend') },
+  @{ services = @('school-core-service') },
+  @{ services = @('operations-service', 'billing-service', 'platform-service') }
 )
-# Shared school contracts/migrations first; independent schema owners next;
-# gateway only after every selected backend; frontend only after gateway.
+# Install the signed principal carrier, identity step-up and browser support
+# before stricter backends. School contracts precede independent schema owners.
 foreach ($group in $groups) {
   $selected = @($group.services | Where-Object { $byService.ContainsKey($_) })
   for ($offset = 0; $offset -lt $selected.Count; $offset += $MaxParallelRollouts) {
@@ -107,6 +113,10 @@ foreach ($group in $groups) {
       }
 
       $pipeline = "custoking-$service-$Environment"
+      if ($service -in @('identity-service','school-core-service','operations-service','platform-service','billing-service')) {
+        $migrationImage = if ($image.PSObject.Properties.Name -contains 'runtimeRef' -and $image.runtimeRef) { [string]$image.runtimeRef } else { [string]$image.immutableRef }
+        & (Join-Path $PSScriptRoot 'invoke-service-migration-job.ps1') -ProjectId $ProjectId -Region $Region -Environment $Environment -Service $service -ImageRef $migrationImage -CommitSha $CommitSha -ConfigSource CloudDeploy -OutputDirectory (Join-Path (Split-Path -Parent $OutputPath) 'migrations') | Out-Null
+      }
       $deployment = [ordered]@{
         service = $service
         cloudRunService = "custoking-$service-$Environment"

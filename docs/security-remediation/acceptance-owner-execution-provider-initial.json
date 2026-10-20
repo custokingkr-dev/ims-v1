@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:30:01.170683+00:00",
+  "stage": "initial",
+  "nativeExit": 1,
+  "counts": {
+    "tests": 15,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 0
+  },
+  "failedCases": [
+    "reusedConfiguredCredentialCannotSubmitAnOtherwiseValidReport",
+    "reusedConfiguredCredentialFailsBeforeRequestOrPersistenceEvenWhenSendingIsDisabled"
+  ],
+  "command": [
+    "D:\\Projects\\ims-v1-security\\mvnw.cmd",
+    "-pl",
+    "services/platform-service",
+    "-Dtest=Msg91BroadcastReportControllerTest",
+    "test"
+  ],
+  "logPath": "tmp/provider-purpose-20261009-initial.log",
+  "logRawSha256": "b8681e3e3c83f31ed54e5ee57f45626bc9dccfe906b5314ad1a1cf1b3aee610c",
+  "reportPath": "tmp/provider-purpose-20261009-initial-surefire.xml",
+  "reportRawSha256": "11dce8ad51d9d3de19d0814154943ec0d27852f016eb3436d1173e777cb8cde8",
+  "sourcePath": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+  "sourceLfSha256": "f432ee20f34e598d04854c5dc2b67edbe677089831f7a0dfc17d4a5c9a649e80",
+  "testPath": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java",
+  "testLfSha256": "391b4c91e3b6bf76667cf21664a6a365a5b6eb15fa3189984df401c99bab10b5",
+  "sourceAndTestUnchangedDuringRun": true,
+  "cloudMutations": 0,
+  "providerCalls": 0,
+  "scope": "Local mocked servlet/controller/transaction fixtures with synthetic tokens only; not an account-selected report contract, vendor authentication, recipient delivery, incident receipt or live acceptance."
+}

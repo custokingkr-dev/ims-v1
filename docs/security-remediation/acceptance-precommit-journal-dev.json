@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "sourceHeadSha": "25eb41d9bd0915c9fe9ec60e5078f6492f118380",
+  "releaseRunId": 37643895536,
+  "releaseEvidence": "acceptance-durability-dev-release.json",
+  "releaseEvidenceSha256": "1782c0fa442f29361e75109bdeae7fb86d2401ef30986cff6a4ce0c76796eb4d",
+  "success": true,
+  "marker": "SEC-JOURNAL-DEV-20261007-1666c7012cb8",
+  "ids": {
+    "schoolId": 990008101,
+    "userId": 990008201,
+    "studentId": 990008301
+  },
+  "seed": {
+    "marker": "SEC-JOURNAL-DEV-20261007-1666c7012cb8",
+    "seeded": 1,
+    "studentIncarnation": "bc3958a4-fd42-441d-b80a-0149a5cada88",
+    "ready": {
+      "project": "custoking-dev",
+      "releaseSourceSha": "25eb41d9bd0915c9fe9ec60e5078f6492f118380",
+      "releaseEvidenceVerified": true,
+      "services": {
+        "custoking-school-core-service-dev": {
+          "revision": "custoking-school-core-service-dev-muya5vk5",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:30aa393bbf88d350f31b82bc0a0e06a8da26720159e8340f097de0630c230bb6",
+          "ready": true,
+          "trafficPercent": 100,
+          "taggedOtherRevisions": []
+        },
+        "custoking-identity-service-dev": {
+          "revision": "custoking-identity-service-dev-muya2gx1",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:de80a851e23d5986df716f96dfd60971daabf54ab24504085c5c74bb33eb620d",
+          "ready": true,
+          "trafficPercent": 100,
+          "taggedOtherRevisions": []
+        },
+        "custoking-frontend-dev": {
+          "revision": "custoking-frontend-dev-muy1s1uk",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+          "ready": true,
+          "trafficPercent": 100,
+          "taggedOtherRevisions": []
+        },
+        "custoking-api-gateway-dev": {
+          "revision": "custoking-api-gateway-dev-muy1nc06",
+          "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8",
+          "ready": true,
+          "trafficPercent": 100,
+          "taggedOtherRevisions": []
+        }
+      },
+      "journalEnvironment": {
+        "STUDENT_ERASURE_JOURNAL_ENABLED": "true",
+        "STUDENT_ERASURE_JOURNAL_PROJECT_ID": "custoking-dev",
+        "STUDENT_ERASURE_JOURNAL_BUCKET": "custoking-dev-erasure-journal",
+        "STUDENT_ERASURE_JOURNAL_SOURCE_LINEAGE_ID": "58bc724a-592f-49f1-b22f-0e5f95aa6808",
+        "STUDENT_ERASURE_JOURNAL_RESTORE_EPOCH": "d9c4f31c-3420-48a7-8fbe-7fc26d2065bf",
+        "STUDENT_ERASURE_JOURNAL_EPOCH_GENERATION": "1791384645925940",
+        "STUDENT_ERASURE_JOURNAL_EPOCH_SHA256": "aae5c2aedd259b60e7cdff757508a4a0584bb6ab26def2e5eddd148ede7ab108"
+      }
+    },
+    "project": "custoking-dev",
+    "mode": "seed",
+    "checkedAtUtc": "2026-10-07T16:04:51.382436+00:00"
+  },
+  "browser": {
+    "schemaVersion": 1,
+    "project": "custoking-dev",
+    "marker": "SEC-JOURNAL-DEV-20261007-1666c7012cb8",
+    "studentId": 990008301,
+    "expectedSourceSha": "25eb41d9bd0915c9fe9ec60e5078f6492f118380",
+    "startedAtUtc": "2026-10-07T16:05:06.351Z",
+    "authenticator": "Chromium software CTAP2",
+    "physicalHardwareProof": false,
+    "providerCalls": 0,
+    "checks": [
+      {
+        "name": "normal-login",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "owned-student-preflight",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "actual-rp-status",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "registration-options",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "browser-registration-verified",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "assertion-options",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "fresh-step-up",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "confirmed-application-delete",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "source-absent-through-api",
+        "status": 404,
+        "expected": 404,
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "completedAtUtc": "2026-10-07T16:05:13.276Z"
+  },
+  "verification": {
+    "children": 0,
+    "imports": 0,
+    "incarnationInsert": false,
+    "marker": "SEC-JOURNAL-DEV-20261007-1666c7012cb8",
+    "photoDelete": false,
+    "receipt": {
+      "committed_at": "2026-10-07T16:05:13.129443+00:00",
+      "intent_id": "91520b94e5bb190f915527157b60be67d5f6582ecd73de411bea2e2697dfab77",
+      "journal_generation": 1791389113007002,
+      "journal_object": "intents/58bc724a-592f-49f1-b22f-0e5f95aa6808/d9c4f31c-3420-48a7-8fbe-7fc26d2065bf/91520b94e5bb190f915527157b60be67d5f6582ecd73de411bea2e2697dfab77.json",
+      "journal_sha256": "33e86d78701430805c29a42a97b7b71d4f7faa1b96a1758b2e3ef0d05bf3c5c2",
+      "operation_id": "a895f3f6-790a-38c9-94c3-bbc70df3e587",
+      "restore_epoch": "d9c4f31c-3420-48a7-8fbe-7fc26d2065bf",
+      "school_id": 990008101,
+      "source_lineage_id": "58bc724a-592f-49f1-b22f-0e5f95aa6808",
+      "student_id": 990008301,
+      "student_incarnation": "bc3958a4-fd42-441d-b80a-0149a5cada88"
+    },
+    "receiptDelete": false,
+    "source": 0,
+    "tombstone": 0,
+    "journal": {
+      "intentId": "91520b94e5bb190f915527157b60be67d5f6582ecd73de411bea2e2697dfab77",
+      "object": "intents/58bc724a-592f-49f1-b22f-0e5f95aa6808/d9c4f31c-3420-48a7-8fbe-7fc26d2065bf/91520b94e5bb190f915527157b60be67d5f6582ecd73de411bea2e2697dfab77.json",
+      "generation": 1791389113007002,
+      "sha256": "33e86d78701430805c29a42a97b7b71d4f7faa1b96a1758b2e3ef0d05bf3c5c2",
+      "canonical": true
+    },
+    "downstreamTombstoneObserved": false,
+    "photoChecked": false,
+    "project": "custoking-dev",
+    "mode": "verify",
+    "checkedAtUtc": "2026-10-07T16:06:05.320140+00:00"
+  },
+  "cleanup": {
+    "activeSessions": 0,
+    "disabled": 1,
+    "marker": "SEC-JOURNAL-DEV-20261007-1666c7012cb8",
+    "receipt": 1,
+    "school": 0,
+    "disabledActorLoginStatus": 401,
+    "privateConfigRemoved": true,
+    "project": "custoking-dev",
+    "mode": "cleanup",
+    "checkedAtUtc": "2026-10-07T16:07:29.235564+00:00"
+  },
+  "ownedJobs": [
+    {
+      "name": "ims-sec-final-journal-collision-99772bfa2932",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T16:01:40.312051+00:00"
+    },
+    {
+      "name": "ims-sec-final-journal-collision-862d87d2587c",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T16:04:09.595269+00:00"
+    },
+    {
+      "name": "ims-sec-final-journal-seed-adc28485e9cd",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T16:04:51.381427+00:00"
+    },
+    {
+      "name": "ims-sec-final-journal-verify-87214ef4dc0d",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T16:06:03.280534+00:00"
+    },
+    {
+      "name": "ims-sec-final-journal-cleanup-f400609eff26",
+      "independentlyAbsent": true,
+      "checkedAtUtc": "2026-10-07T16:07:28.835848+00:00"
+    }
+  ],
+  "privateFixtureCredentialsAbsent": true,
+  "checkedAtUtc": "2026-10-07T16:07:56.326605+00:00",
+  "failedPreflightEvidence": "acceptance-durability-live-checkpoint.json",
+  "limitations": [
+    "One synthetic non-contact student, no photo upload or provider calls.",
+    "Software CTAP2 authenticators do not prove physical hardware.",
+    "At16:06:05 the asynchronous reporting tombstone was not yet observed; this proof does not claim broker convergence.",
+    "SQL committed_at is receipt insertion time, not an independently certified transaction commit timestamp.",
+    "Prospective current-epoch precommit intent/receipt binding; not historical/legacy/full governed restore or physical backup/object/provider purge."
+  ],
+  "productionChanged": false
+}

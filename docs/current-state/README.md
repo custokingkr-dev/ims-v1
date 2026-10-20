@@ -1,6 +1,7 @@
 # Custoking IMS Current-State Documentation
 
-Last reconciled: 2026-08-24 from repository files and the executed split-project cutover evidence.
+Source architecture, API contracts, and build/gateway conventions reconciled: 2026-10-11.
+Other infrastructure sections retain their 2026-08-24 reconciliation and dated evidence.
 
 The detailed 12–14 August inventory remains point-in-time evidence. Since 19 August, development runs in
 `custoking-dev` and production runs in `custoking-prod`; the mixed source project `custoking` is retained
@@ -21,7 +22,8 @@ This documentation bundle captures the current project state after the dev/prod 
 - [observability-operations.md](observability-operations.md) - dashboards, uptime, alerts, log metrics, traces, runtime evidence, and operations checks.
 - [gaps-and-drift.md](gaps-and-drift.md) - verified missing items, stale docs, and follow-up work.
 - [../architecture/custoking-architecture.html](../architecture/custoking-architecture.html) - visual application and live GCP architecture with verified gaps.
-- [../REMAINING-WORK-2026-08-12.md](../REMAINING-WORK-2026-08-12.md) - authoritative prioritized launch gates and acceptance criteria.
+- [../security-remediation/acceptance-owner-actions.md](../security-remediation/acceptance-owner-actions.md) - current security and operational owner gates.
+- [../REMAINING-WORK-2026-08-12.md](../REMAINING-WORK-2026-08-12.md) - broader August launch backlog and acceptance criteria.
 
 ## Source Precedence
 

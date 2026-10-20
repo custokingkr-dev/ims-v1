@@ -25,6 +25,8 @@ public class BillingInvoiceRepository {
     private final String schoolInvoiceItemTable;
     private final String paymentTable;
     private final BillingInvoiceStatistics statistics;
+    @Value("${billing.legacy-gst-percent:12.00}")
+    private java.math.BigDecimal legacyGstPercent = new java.math.BigDecimal("12.00");
 
     public BillingInvoiceRepository(
             JdbcClient jdbc, String schema) {
@@ -84,21 +86,23 @@ public class BillingInvoiceRepository {
         String school = str(request.get("school"), "");
         Long schoolId = request.get("schoolId") == null ? null : longNum(request.get("schoolId"), 0L);
         String description = str(request.get("description"), "");
-        int qty = (int) longNum(request.get("qty"), 1);
-        long rate = longNum(request.get("rate"), 0L);
-        long amount = longNum(request.get("amount"), (long) qty * rate);
-        long gstAmount = Math.round(amount * 0.12);
-        long total = amount + gstAmount;
+        int qty = Math.toIntExact(request.get("qty") == null ? 1 : exactLong(request.get("qty")));
+        long rate = request.get("rate") == null ? 0 : exactLong(request.get("rate"));
+        long amount = request.get("amount") == null ? product(qty, rate) : nonnegative(exactLong(request.get("amount")), "amount");
+        if (qty <= 0) throw new IllegalArgumentException("Quantity must be positive");
+        nonnegative(rate, "rate");
+        long gstAmount = percentage(amount, legacyGstPercent);
+        long total = Math.addExact(amount, gstAmount);
         String issuedAt = LocalDate.now().toString();
         String dueAt = LocalDate.now().plusDays(14).toString();
 
         jdbc.sql("""
                         INSERT INTO %s
                             (id, order_ref, school, school_id, description, qty, rate, amount,
-                             gst_amount, total, status, issued_at, due_at, notes, created_at)
+                             gst_amount, total, status, issued_at, due_at, notes, created_at, tax_percent, currency, monetary_unit)
                         VALUES
                             (:id, :orderRef, :school, :schoolId, :description, :qty, :rate, :amount,
-                             :gstAmount, :total, :status, :issuedAt, :dueAt, :notes, now())
+                             :gstAmount, :total, :status, :issuedAt, :dueAt, :notes, now(), :taxPercent, 'INR', 'WHOLE_RUPEE')
                         """.formatted(invoiceTable))
                 .param("id", id)
                 .param("orderRef", orderRef)
@@ -108,6 +112,7 @@ public class BillingInvoiceRepository {
                 .param("qty", qty)
                 .param("rate", rate)
                 .param("amount", amount)
+                .param("taxPercent", legacyGstPercent)
                 .param("gstAmount", gstAmount)
                 .param("total", total)
                 .param("status", "Awaiting payment")
@@ -126,18 +131,20 @@ public class BillingInvoiceRepository {
         String description = request.containsKey("description")
                 ? str(request.get("description"), "") : existing.description();
         int qty = request.containsKey("qty")
-                ? (int) longNum(request.get("qty"), existing.qty()) : existing.qty();
+                ? Math.toIntExact(exactLong(request.get("qty"))) : existing.qty();
         long rate = request.containsKey("rate")
-                ? longNum(request.get("rate"), existing.rate()) : existing.rate();
+                ? exactLong(request.get("rate")) : existing.rate();
         String school = request.containsKey("school")
                 ? str(request.get("school"), existing.school()) : existing.school();
         String status = request.containsKey("status")
                 ? str(request.get("status"), existing.status()) : existing.status();
         String notes = request.containsKey("notes")
                 ? trimToNull(str(request.get("notes"), "")) : existing.notes();
-        long amount = (long) qty * rate;
-        long gstAmount = Math.round(amount * 0.12);
-        long total = amount + gstAmount;
+        long amount = product(qty, rate);
+        java.math.BigDecimal taxPercent = jdbc.sql("SELECT tax_percent FROM " + invoiceTable + " WHERE id = :id")
+                .param("id", id).query(java.math.BigDecimal.class).single();
+        long gstAmount = percentage(amount, taxPercent);
+        long total = Math.addExact(amount, gstAmount);
 
         jdbc.sql("""
                         UPDATE %s
@@ -225,7 +232,7 @@ public class BillingInvoiceRepository {
                         rs.getObject("invoice_date", LocalDate.class).toString(),
                         rs.getObject("due_date", LocalDate.class).toString(),
                         rs.getLong("subtotal"),
-                        rs.getBigDecimal("discount_percent").doubleValue(),
+                        rs.getBigDecimal("discount_percent"),
                         rs.getLong("discount_amount"),
                         rs.getLong("tax_amount"),
                         rs.getLong("grand_total"),
@@ -259,7 +266,7 @@ public class BillingInvoiceRepository {
                         rs.getObject("invoice_date", LocalDate.class).toString(),
                         rs.getObject("due_date", LocalDate.class).toString(),
                         rs.getLong("subtotal"),
-                        rs.getBigDecimal("discount_percent").doubleValue(),
+                        rs.getBigDecimal("discount_percent"),
                         rs.getLong("discount_amount"),
                         rs.getLong("tax_amount"),
                         rs.getLong("grand_total"),
@@ -286,16 +293,16 @@ public class BillingInvoiceRepository {
         long subtotal = 0;
         long taxAmount = 0;
         for (Map<String, Object> item : items) {
-            long quantity = longNum(item.get("quantity"), 1);
-            long unitPrice = longNum(item.get("unitPrice"), 0);
-            double taxRate = doubleNum(item.get("taxRate"), 0);
-            long lineSubtotal = quantity * unitPrice;
-            subtotal += lineSubtotal;
-            taxAmount += Math.round(lineSubtotal * taxRate / 100);
+            long quantity = item.get("quantity") == null ? 1 : exactLong(item.get("quantity"));
+            long unitPrice = item.get("unitPrice") == null ? 0 : exactLong(item.get("unitPrice"));
+            java.math.BigDecimal taxRate = decimalPercent(item.get("taxRate"));
+            long lineSubtotal = product(quantity, unitPrice);
+            subtotal = Math.addExact(subtotal, lineSubtotal);
+            taxAmount = Math.addExact(taxAmount, percentage(lineSubtotal, taxRate));
         }
-        double discountPercent = doubleNum(request.get("discountPercent"), 0);
-        long discountAmount = Math.round(subtotal * discountPercent / 100);
-        long grandTotal = Math.max(0, subtotal - discountAmount + taxAmount);
+        java.math.BigDecimal discountPercent = decimalPercent(request.get("discountPercent"));
+        long discountAmount = percentage(subtotal, discountPercent);
+        long grandTotal = Math.addExact(Math.subtractExact(subtotal, discountAmount), taxAmount);
         LocalDate invoiceDate = parseDate(str(request.get("invoiceDate"), ""), LocalDate.now());
         LocalDate dueDate = parseDate(str(request.get("dueDate"), ""), invoiceDate.plusDays(14));
         String draftInvoiceNo = "DRAFT-" + System.nanoTime();
@@ -331,10 +338,11 @@ public class BillingInvoiceRepository {
                 .update();
 
         for (Map<String, Object> item : items) {
-            long quantity = longNum(item.get("quantity"), 1);
-            long unitPrice = longNum(item.get("unitPrice"), 0);
-            double taxRate = doubleNum(item.get("taxRate"), 0);
-            long lineTotal = quantity * unitPrice + Math.round(quantity * unitPrice * taxRate / 100);
+            long quantity = item.get("quantity") == null ? 1 : exactLong(item.get("quantity"));
+            long unitPrice = item.get("unitPrice") == null ? 0 : exactLong(item.get("unitPrice"));
+            java.math.BigDecimal taxRate = decimalPercent(item.get("taxRate"));
+            long base = product(quantity, unitPrice);
+            long lineTotal = Math.addExact(base, percentage(base, taxRate));
             jdbc.sql("""
                     INSERT INTO %s (invoice_id, description, quantity, unit_price, tax_rate, line_total)
                     VALUES (:invoiceId, :description, :quantity, :unitPrice, :taxRate, :lineTotal)
@@ -363,7 +371,7 @@ public class BillingInvoiceRepository {
     public List<PaymentRow> billingPayments() {
         return jdbc.sql("""
                 SELECT p.id, p.invoice_id, i.invoice_no, p.branch_id, p.branch_name, p.payment_date,
-                       p.amount, p.payment_mode, p.reference_no, p.notes, p.received_by
+                       p.amount, p.payment_mode, p.reference_no, p.notes, p.received_by, p.received_by_user_id
                 FROM %s p
                 JOIN %s i ON i.id = p.invoice_id
                 ORDER BY p.created_at DESC, p.id DESC
@@ -372,31 +380,63 @@ public class BillingInvoiceRepository {
                 .list();
     }
 
-    public PaymentRow createBillingPayment(Map<String, Object> request) {
-        Long invoiceId = longObject(request.get("invoiceId"), null);
-        if (invoiceId == null || schoolInvoice(invoiceId) == null) {
-            throw new IllegalArgumentException("Invoice not found");
+    public PaymentRow createBillingPayment(com.custoking.ims.billingservice.api.dto.CreateBillingPaymentRequest request) {
+        com.custoking.ims.billingservice.security.TenantScope.requireSuperAdmin();
+        var actor = com.custoking.ims.billingservice.security.TenantContext.get();
+        if (actor.userId() == null) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Authenticated payment actor required");
+        if (request.invoiceId() == null || request.invoiceId() <= 0 || request.amount() == null || request.amount() <= 0
+                || request.idempotencyKey() == null || !request.idempotencyKey().matches("[A-Za-z0-9._:-]{8,128}"))
+            throw new IllegalArgumentException("Positive invoice/amount and a valid idempotency key are required");
+        LocalDate paymentDate = request.paymentDate() == null ? LocalDate.now() : request.paymentDate();
+        if (paymentDate.isAfter(LocalDate.now())) throw new IllegalArgumentException("Payment date cannot be in the future");
+        if (request.paymentMode() == null || !request.paymentMode().matches("CASH|UPI|BANK_TRANSFER|CHEQUE|CARD|OTHER"))
+            throw new IllegalArgumentException("Invalid payment mode");
+        // Serialize both the replay check and balance mutation against this invoice.
+        Map<String, Object> locked = jdbc.sql("SELECT branch_id, branch_name, grand_total, paid_amount, status FROM " + schoolInvoiceTable + " WHERE id = :id FOR UPDATE")
+                .param("id", request.invoiceId()).query((rs, n) -> { var row = new LinkedHashMap<String,Object>(); row.put("branch_id", rs.getLong("branch_id")); row.put("branch_name", rs.getString("branch_name")); row.put("grand_total", rs.getLong("grand_total")); row.put("paid_amount", rs.getLong("paid_amount")); row.put("status", rs.getString("status")); return row; }).optional().orElseThrow(() -> new IllegalArgumentException("Invoice not found"));
+        String fingerprint = paymentFingerprint(request, paymentDate);
+        var replay = jdbc.sql("SELECT id, request_fingerprint FROM " + paymentTable + " WHERE invoice_id = :invoiceId AND idempotency_key = :key")
+                .param("invoiceId", request.invoiceId()).param("key", request.idempotencyKey()).query((rs, n) -> Map.<String,Object>of("id", rs.getLong("id"), "request_fingerprint", rs.getString("request_fingerprint"))).optional();
+        if (replay.isPresent()) {
+            if (!fingerprint.equals(replay.get().get("request_fingerprint")))
+                throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT, "Idempotency key was used for a different payment");
+            return billingPayment(((Number) replay.get().get("id")).longValue());
         }
+        if (java.util.Set.of("CANCELLED", "VOID", "REJECTED").contains(String.valueOf(locked.get("status")).toUpperCase(java.util.Locale.ROOT)))
+            throw new IllegalArgumentException("Payments cannot be applied to a cancelled invoice");
+        long balance = Math.subtractExact(((Number) locked.get("grand_total")).longValue(), ((Number) locked.get("paid_amount")).longValue());
+        if (request.amount() > balance) throw new IllegalArgumentException("Payment exceeds the outstanding invoice balance");
         Long id = jdbc.sql("""
                 INSERT INTO %s (invoice_id, branch_id, branch_name, payment_date, amount,
-                                payment_mode, reference_no, notes, received_by)
+                                payment_mode, reference_no, notes, received_by, received_by_user_id,
+                                idempotency_key, request_fingerprint)
                 VALUES (:invoiceId, :branchId, :branchName, :paymentDate, :amount,
-                        :paymentMode, :referenceNo, :notes, :receivedBy)
+                        :paymentMode, :referenceNo, :notes, :receivedBy, :actorId, :key, :fingerprint)
                 RETURNING id
                 """.formatted(paymentTable))
-                .param("invoiceId", invoiceId)
-                .param("branchId", longObject(request.get("branchId"), 1L))
-                .param("branchName", str(request.get("branchName"), "Main Branch"))
-                .param("paymentDate", parseDate(str(request.get("paymentDate"), ""), LocalDate.now()))
-                .param("amount", longNum(request.get("amount"), 0))
-                .param("paymentMode", str(request.get("paymentMode"), "UPI"))
-                .param("referenceNo", trimToNull(str(request.get("referenceNo"), "")))
-                .param("notes", trimToNull(str(request.get("notes"), "")))
-                .param("receivedBy", str(request.get("receivedBy"), "System"))
-                .query(Long.class)
-                .single();
-        refreshSchoolInvoicePaymentStatus(invoiceId);
+                .param("invoiceId", request.invoiceId()).param("branchId", locked.get("branch_id"))
+                .param("branchName", locked.get("branch_name")).param("paymentDate", paymentDate)
+                .param("amount", request.amount()).param("paymentMode", request.paymentMode())
+                .param("referenceNo", trimToNull(request.referenceNo())).param("notes", trimToNull(request.notes()))
+                .param("receivedBy", actor.email() == null ? "User " + actor.userId() : actor.email())
+                .param("actorId", actor.userId()).param("key", request.idempotencyKey()).param("fingerprint", fingerprint)
+                .query(Long.class).single();
+        refreshSchoolInvoicePaymentStatus(request.invoiceId());
         return billingPayment(id);
+    }
+
+    private String paymentFingerprint(com.custoking.ims.billingservice.api.dto.CreateBillingPaymentRequest request, LocalDate date) {
+        // Length-prefix the fields so separators in user text cannot produce ambiguous fingerprints.
+        StringBuilder canonical = new StringBuilder();
+        Object[] fields = {request.invoiceId(), request.amount(), request.paymentDate(), request.paymentMode(),
+                trimToNull(request.referenceNo()), trimToNull(request.notes())};
+        for (Object field : fields) {
+            if (field == null) canonical.append("-1:");
+            else { String value = String.valueOf(field); canonical.append(value.length()).append(':').append(value); }
+        }
+        try { return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                .digest(canonical.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8))); }
+        catch (java.security.NoSuchAlgorithmException ex) { throw new IllegalStateException(ex); }
     }
 
     private String allocateInvoiceId() {
@@ -434,7 +474,7 @@ public class BillingInvoiceRepository {
     private PaymentRow billingPayment(Long id) {
         return jdbc.sql("""
                 SELECT p.id, p.invoice_id, i.invoice_no, p.branch_id, p.branch_name, p.payment_date,
-                       p.amount, p.payment_mode, p.reference_no, p.notes, p.received_by
+                       p.amount, p.payment_mode, p.reference_no, p.notes, p.received_by, p.received_by_user_id
                 FROM %s p
                 JOIN %s i ON i.id = p.invoice_id
                 WHERE p.id = :id
@@ -496,7 +536,7 @@ public class BillingInvoiceRepository {
             String invoiceDate,
             String dueDate,
             Long subtotal,
-            Double discountPercent,
+            java.math.BigDecimal discountPercent,
             Long discountAmount,
             Long taxAmount,
             Long grandTotal,
@@ -542,7 +582,7 @@ public class BillingInvoiceRepository {
                         "description", rs.getString("description"),
                         "quantity", rs.getLong("quantity"),
                         "unitPrice", rs.getLong("unit_price"),
-                        "taxRate", rs.getBigDecimal("tax_rate").doubleValue(),
+                        "taxRate", rs.getBigDecimal("tax_rate"),
                         "lineTotal", rs.getLong("line_total")))
                 .list();
     }
@@ -621,18 +661,32 @@ public class BillingInvoiceRepository {
         }
     }
 
-    private double doubleNum(Object value, double fallback) {
-        if (value == null) {
-            return fallback;
-        }
-        if (value instanceof Number number) {
-            return number.doubleValue();
-        }
+    private static long exactLong(Object value) {
+        try { return new java.math.BigDecimal(String.valueOf(value)).longValueExact(); }
+        catch (ArithmeticException | NumberFormatException ex) { throw new IllegalArgumentException("Money and quantities must be whole integers within the ledger range"); }
+    }
+    private static long nonnegative(long value, String name) {
+        if (value < 0) throw new IllegalArgumentException(name + " must be nonnegative");
+        return value;
+    }
+    private static long product(long quantity, long price) {
+        if (quantity <= 0) throw new IllegalArgumentException("Quantity must be positive");
+        nonnegative(price, "Unit price");
+        try { return Math.multiplyExact(quantity, price); }
+        catch (ArithmeticException ex) { throw new IllegalArgumentException("Invoice exceeds the supported monetary range"); }
+    }
+    private static java.math.BigDecimal decimalPercent(Object value) {
         try {
-            return Double.parseDouble(String.valueOf(value).replace(",", "").trim());
-        } catch (Exception e) {
-            return fallback;
-        }
+            var rate = value == null ? java.math.BigDecimal.ZERO : new java.math.BigDecimal(String.valueOf(value));
+            if (rate.signum() < 0 || rate.compareTo(new java.math.BigDecimal("100")) > 0 || rate.scale() > 2)
+                throw new IllegalArgumentException("Percentage must be between 0 and 100 with at most two decimals");
+            return rate;
+        } catch (NumberFormatException ex) { throw new IllegalArgumentException("Invalid percentage"); }
+    }
+    private static long percentage(long amount, java.math.BigDecimal rate) {
+        decimalPercent(rate);
+        try { return java.math.BigDecimal.valueOf(amount).multiply(rate).divide(new java.math.BigDecimal("100"), 0, java.math.RoundingMode.HALF_UP).longValueExact(); }
+        catch (ArithmeticException ex) { throw new IllegalArgumentException("Invoice exceeds the supported monetary range"); }
     }
 
     private boolean booleanValue(Object value, boolean fallback) {
@@ -692,5 +746,12 @@ public class BillingInvoiceRepository {
             String paymentMode,
             String referenceNo,
             String notes,
-            String receivedBy) {}
+            String receivedBy,
+            Long receivedByUserId) {
+        public PaymentRow(Long id, Long invoiceId, String invoiceNo, Long branchId, String branchName,
+                          LocalDate paymentDate, Long amount, String paymentMode, String referenceNo,
+                          String notes, String receivedBy) {
+            this(id, invoiceId, invoiceNo, branchId, branchName, paymentDate, amount, paymentMode, referenceNo, notes, receivedBy, null);
+        }
+    }
 }

@@ -1,0 +1,100 @@
+﻿{
+    "scope":  "isolated dev schema-only PITR; no agreed RPO/RTO certification",
+    "project":  "custoking-dev",
+    "source":  "custoking-db-dev",
+    "clone":  "custoking-dev-security-restore-20261006182803-abe03276",
+    "job":  "ims-dev-security-restore-20261006182803-abe03276",
+    "pointInTimeUtc":  "2026-10-06T18:23:03Z",
+    "startedUtc":  "2026-10-06T18:28:03.9649314Z",
+    "success":  true,
+    "cleanup":  {
+                    "jobRemoved":  true,
+                    "cloneRemoved":  true,
+                    "initialCleanupDiagnostics":  [
+                                                      "Job was deleted; Cannot find job wording required absence matcher correction.",
+                                                      "Clone inherited deletion protection; first delete was rejected. Exact clone protection was disabled and deletion then completed."
+                                                  ],
+                    "cloneProtectionDisabledForDeletion":  true,
+                    "deleteOperation":  "c0a68d51-ad1e-47c5-a242-e6eb00000049",
+                    "completedUtc":  "2026-10-06T18:44:23.5434247Z"
+                },
+    "schemaCatalog":  [
+                          {
+                              "tableCount":  5,
+                              "schema":  "workflow",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  19,
+                              "schema":  "tenant_school",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  22,
+                              "schema":  "student",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  18,
+                              "schema":  "reporting",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  11,
+                              "schema":  "notification",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  11,
+                              "schema":  "identity",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  6,
+                              "schema":  "firefighting",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  7,
+                              "schema":  "fee",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  15,
+                              "schema":  "catalog",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  8,
+                              "schema":  "billing",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  2,
+                              "schema":  "audit",
+                              "present":  true
+                          },
+                          {
+                              "tableCount":  4,
+                              "schema":  "attendance",
+                              "present":  true
+                          }
+                      ],
+    "principalKind":  "personal",
+    "sourceReadiness":  "RUNNABLE",
+    "sourceSslMode":  "ENCRYPTED_ONLY",
+    "cloneOperation":  "dcf07855-430a-478c-a5e0-802d00000049",
+    "cloneReadyUtc":  "2026-10-06T18:39:59.4512858Z",
+    "cloneReadinessElapsedSeconds":  715.487,
+    "image":  "docker.io/library/postgres@sha256:95206741a5b214807675e14165369d05b93a9cf692223b616d07cca227e74b0b",
+    "validationServiceAccount":  "ims-db-migration-dev@custoking-dev.iam.gserviceaccount.com",
+    "validationCompleteElapsedSeconds":  755.011,
+    "finishedUtc":  "2026-10-06T18:44:23.5474283Z",
+    "sourcePostDrill":  {
+                            "deletionProtectionEnabled":  true,
+                            "privateOnly":  true,
+                            "name":  "custoking-db-dev",
+                            "sslMode":  "ENCRYPTED_ONLY",
+                            "state":  "RUNNABLE"
+                        }
+}

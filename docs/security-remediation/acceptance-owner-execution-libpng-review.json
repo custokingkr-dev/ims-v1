@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T18:14:50.466145+00:00",
+  "decision": "PASS_SCOPED_LIBPNG_PRIOR_PR340_IMAGES",
+  "blockers": [],
+  "reviewerExecutor": {
+    "path": "tmp/review-libpng-publisher-offline-20261009.py",
+    "rawSha256": "e49988168bc0f738d79b44f6309856746db98adac39bf699a4cef5fad1fba8e2"
+  },
+  "reviewedEvidence": [
+    {
+      "path": "tmp/libpng-publisher-binary-20261009.json",
+      "rawSha256": "f8fea831f954e2cc160b093f58b7ee5cdf3ca02daf8abfa187d67984d275bd57"
+    },
+    {
+      "path": "tmp/owner-execution-native-primary-readback-20261009.json",
+      "rawSha256": "1feb0fe1cecaea7ce51369487c8cc06fee6710dea3d981c8b82ef953d1548248"
+    },
+    {
+      "path": "tmp/current-native-binary-inventory-20261009.json",
+      "rawSha256": "cdb0d8dd45d614f46d842014e31f573d5c1117cb9305e8226f8a7030cfb8265d"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-remaining-round-dev-release.json",
+      "rawSha256": "7c80a89d1a2e2bc54993dd6a272314dfa7f36b5c99324113b9da5f7483d68eab"
+    }
+  ],
+  "canonicalRawCapture": {
+    "capturedAtUtc": "2026-10-09T18:14:46.174765+00:00",
+    "url": "https://raw.githubusercontent.com/canonical/ubuntu-security-notices/refs/heads/main/osv/cve/2026/UBUNTU-CVE-2026-46675.json",
+    "status": 200,
+    "rawSha256": "d31ade254de5c2319012ddbf9c5647d1e061a5011bf1216cc2ddcb5f18c784a4",
+    "bytes": 7483,
+    "redirectsAllowed": false,
+    "responseTimeoutSeconds": 10,
+    "bodyCapBytes": 524288,
+    "path": "tmp/libpng-publisher-peer-20261009/canonical-CVE-2026-46675.json",
+    "originalProjectionRawSha256": "1feb0fe1cecaea7ce51369487c8cc06fee6710dea3d981c8b82ef953d1548248",
+    "originalRawRecordWasNotArchived": true,
+    "newRawBodyMatchesOriginalReportedRawHash": true,
+    "modified": "2026-10-08T16:59:29Z",
+    "nobleFixedEvents": [
+      "1.6.43-5ubuntu0.7"
+    ],
+    "fixedBinaries": [
+      {
+        "binary_name": "libpng-tools",
+        "binary_version": "1.6.43-5ubuntu0.7"
+      },
+      {
+        "binary_name": "libpng16-16t64",
+        "binary_version": "1.6.43-5ubuntu0.7"
+      }
+    ]
+  },
+  "savedPublisherChain": {
+    "InRelease": {
+      "path": "tmp/libpng-publisher-binary-20261009/InRelease",
+      "bytes": 126127,
+      "rawSha256": "3f6ed46e7941d106b4adaac60f67222a233a5fa142ac2a97da94abd60c96defd"
+    },
+    "Packages.xz": {
+      "path": "tmp/libpng-publisher-binary-20261009/Packages.xz",
+      "bytes": 1120844,
+      "rawSha256": "6bf98290defad249c1ea90a2d3724450b20deb3fe190ffc8626f9f4cc3d0462d"
+    },
+    "libpng.deb": {
+      "path": "tmp/libpng-publisher-binary-20261009/libpng.deb",
+      "bytes": 188998,
+      "rawSha256": "863d6abb089b2820ceba98e6b18f06eaacc55f9b05827001e7b4021a9a7b246c"
+    },
+    "libpng-payload.tar": {
+      "path": "tmp/libpng-publisher-binary-20261009/libpng-payload.tar",
+      "bytes": 337920,
+      "rawSha256": "dc09993c2017a8a61764e506485c6330ab1c49d8799f1655b164b245b99b96da"
+    }
+  },
+  "positiveSignatureFingerprint": "F6ECB3762474EDA9D21B7022871920D1991BC93C",
+  "goodSignatureKeyId": "871920D1991BC93C",
+  "goodSignatureUid": "Ubuntu Archive Automatic Signing Key (2018) <ftpmaster@ubuntu.com>",
+  "independentSignatureExecution": {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "--pull=never",
+      "--network=none",
+      "--read-only",
+      "--cap-drop=ALL",
+      "--security-opt=no-new-privileges",
+      "--pids-limit=32",
+      "--memory=256m",
+      "--cpus=0.5",
+      "--mount",
+      "type=bind,source=D:\\Projects\\ims-v1-security\\tmp\\libpng-publisher-binary-20261009,target=/inspection,readonly",
+      "--entrypoint=/usr/bin/gpgv",
+      "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:d3bcbdaef1b1784b1986ac4f923c50c9d5f5d0f7004c6b45cabcb4daef63c6ec",
+      "--status-fd",
+      "1",
+      "--keyring",
+      "/usr/share/keyrings/ubuntu-archive-keyring.gpg",
+      "/inspection/InRelease"
+    ],
+    "returncode": 0,
+    "elapsedSeconds": 1.172,
+    "timeoutSeconds": 35,
+    "stdout": {
+      "path": "tmp/libpng-publisher-peer-20261009/gpgv.stdout",
+      "bytes": 386,
+      "rawSha256": "aec814c0af3aaf70c13d873a368ac4d8ccf5ab91f875cd0ae62da94235757803"
+    },
+    "stderr": {
+      "path": "tmp/libpng-publisher-peer-20261009/gpgv.stderr",
+      "bytes": 224,
+      "rawSha256": "a122f745a1d0abb945a4e1c8620ecd4391f507cdee781a020513ded9b22d5044"
+    },
+    "imagePullAllowed": false,
+    "networkEnabled": false,
+    "applicationEntrypointRun": false
+  },
+  "newGpgStatusHashEqualsOriginalReportedHash": true,
+  "newGpgDiagnosticHashEqualsOriginalReportedHash": true,
+  "originalRawSignatureTranscriptsWereNotArchived": true,
+  "signedPackageIndexEntry": {
+    "path": "main/binary-amd64/Packages.xz",
+    "rawSha256": "6bf98290defad249c1ea90a2d3724450b20deb3fe190ffc8626f9f4cc3d0462d",
+    "bytes": 1120844
+  },
+  "signedPackageRecord": {
+    "Package": "libpng16-16t64",
+    "Version": "1.6.43-5ubuntu0.7",
+    "Architecture": "amd64",
+    "Filename": "pool/main/libp/libpng1.6/libpng16-16t64_1.6.43-5ubuntu0.7_amd64.deb",
+    "Size": "188998",
+    "SHA256": "863d6abb089b2820ceba98e6b18f06eaacc55f9b05827001e7b4021a9a7b246c"
+  },
+  "independentPayloadExecution": {
+    "argv": [
+      "docker",
+      "run",
+      "--rm",
+      "--pull=never",
+      "--network=none",
+      "--read-only",
+      "--cap-drop=ALL",
+      "--security-opt=no-new-privileges",
+      "--pids-limit=32",
+      "--memory=256m",
+      "--cpus=0.5",
+      "--mount",
+      "type=bind,source=D:\\Projects\\ims-v1-security\\tmp\\libpng-publisher-binary-20261009,target=/inspection,readonly",
+      "--entrypoint=/usr/bin/dpkg-deb",
+      "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:d3bcbdaef1b1784b1986ac4f923c50c9d5f5d0f7004c6b45cabcb4daef63c6ec",
+      "--fsys-tarfile",
+      "/inspection/libpng.deb"
+    ],
+    "returncode": 0,
+    "elapsedSeconds": 0.829,
+    "timeoutSeconds": 35,
+    "stdout": {
+      "path": "tmp/libpng-publisher-peer-20261009/dpkg-deb.stdout",
+      "bytes": 337920,
+      "rawSha256": "dc09993c2017a8a61764e506485c6330ab1c49d8799f1655b164b245b99b96da"
+    },
+    "stderr": {
+      "path": "tmp/libpng-publisher-peer-20261009/dpkg-deb.stderr",
+      "bytes": 0,
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "imagePullAllowed": false,
+    "networkEnabled": false,
+    "applicationEntrypointRun": false
+  },
+  "packageRegularElfCount": 1,
+  "runtimeMatches": [
+    {
+      "service": "platform-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:d3bcbdaef1b1784b1986ac4f923c50c9d5f5d0f7004c6b45cabcb4daef63c6ec",
+      "acceptedRevision": "custoking-platform-service-dev-00040-dpz",
+      "rootfsArchiveRawSha256": "51c7158e17b48156011f7a00b99760e1fb62bb5eb49ab61d0803d9a6924de6ca",
+      "binary": {
+        "path": "usr/lib/x86_64-linux-gnu/libpng16.so.16.43.0",
+        "bytes": 223304,
+        "rawSha256": "89c0c6569a8c00480d451401ad4c0a74942e62dc57f229a970592fdc5adb29e8"
+      },
+      "matchesSignedPublisherBinary": true
+    },
+    {
+      "service": "school-core-service",
+      "runtimeImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:65e838d902386f8aa5ab2cc121a2984f61745fca88464971730c2bec98e043c6",
+      "acceptedRevision": "custoking-school-core-service-dev-00078-k8x",
+      "rootfsArchiveRawSha256": "17930f5bf1ef4f1a74c8cd04ddc9eebe01d25d6ed99e02e2797c8ee98df5555a",
+      "binary": {
+        "path": "usr/lib/x86_64-linux-gnu/libpng16.so.16.43.0",
+        "bytes": 223304,
+        "rawSha256": "89c0c6569a8c00480d451401ad4c0a74942e62dc57f229a970592fdc5adb29e8"
+      },
+      "matchesSignedPublisherBinary": true
+    }
+  ],
+  "keyringArchiveCapture": {
+    "path": "tmp/libpng-publisher-peer-20261009/accepted-platform-ubuntu-archive-keyring.gpg",
+    "bytes": 3607,
+    "rawSha256": "80a36b0a6de2f69f49d2df75ef473ccde121e9e190b9ea01d20a4f63778d5c31"
+  },
+  "trustAnchorLimit": "Signature is valid relative to the Ubuntu archive keyring shipped in the exact prior accepted platform runtime image. The extracted keyring is preserved; this review does not independently enroll or attest the publisher key or image provenance.",
+  "claimsSupported": [
+    "The separately archived exact Canonical public record has a positive Noble fixed event and both binary versions at 1.6.43-5ubuntu0.7.",
+    "The saved InRelease verifies with one exact positive good/valid signature; its signed SHA256 index points to the exact matching saved package.",
+    "Independently generated payload has exactly one ELF and its bytes match both archived exact prior PR340 platform and school binaries."
+  ],
+  "requiredScopeLimits": [
+    "This is a current metadata and signed binary correspondence checkpoint for the two prior PR340 digests only.",
+    "New PR342 build/deployment image digests and all other runtime images have not been checked by this review.",
+    "No runtime exploitability, reachable native call path, managed host patching, other native advisory closure or blanket VEX follows from binary identity.",
+    "Original metadata projection and publisher proof are preserved; newly captured raw metadata and signature transcripts are separate evidence."
+  ],
+  "newPr342ImagesChecked": false,
+  "nativeApplicabilityComplete": false,
+  "wholeSavedSecurityPlanComplete": false,
+  "cloudCalls": 0,
+  "providerCalls": 0,
+  "applicationStarts": 0,
+  "exploitProbes": 0,
+  "publicNetworkReads": 1,
+  "offlineFixedToolContainerRuns": 2,
+  "imagePullsAllowed": false,
+  "containerNetworkEnabled": false,
+  "sourceOrDocsChanged": false,
+  "historicalEvidenceOverwritten": false
+}

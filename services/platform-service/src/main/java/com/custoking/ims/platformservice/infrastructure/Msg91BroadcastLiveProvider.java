@@ -19,6 +19,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.CharacterCodingException;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
@@ -125,7 +127,7 @@ public class Msg91BroadcastLiveProvider implements BroadcastLiveProvider {
                     || !sha256(value.body()).equals(value.requestSha256())
                     || !sha256(normalized(email.getSenderEmail())).equals(value.senderSha256())
                     || !live.destinationAllowed(value.destinationSha256())) return false;
-            JsonNode body = mapper.readTree(value.body());
+            JsonNode body = Msg91WireJson.read(value.body());
             String destination = body.path("recipients").path(0).path("to").path(0).path("email").asText("");
             JsonNode variables = body.path("recipients").path(0).path("variables");
             if (!validEmail(destination) || !destination.equals(normalized(destination)) || !sha256(destination).equals(value.destinationSha256())
@@ -156,11 +158,26 @@ public class Msg91BroadcastLiveProvider implements BroadcastLiveProvider {
 
     private Result result(Reply reply) {
         if (reply == null || reply.body() == null || reply.body().getBytes(StandardCharsets.UTF_8).length > RESPONSE_LIMIT) return unknown("PROVIDER_RESPONSE_INVALID");
-        // Only explicit client-side refusal statuses are definitive; 408/409/425/429/5xx may follow acceptance.
-        if (Set.of(400, 401, 403, 404, 405, 413, 415, 422).contains(reply.statusCode())) return rejected("PROVIDER_HTTP_REJECTED");
-        if (reply.statusCode() != 200) return unknown("PROVIDER_HTTP_UNCONFIRMED");
+        // The vendor's Email Error Codes guide documents these direct refusal statuses.
+        // Other HTTP statuses have no selected endpoint refusal proof; preserve uncertainty.
+        boolean refused = Set.of(401, 403, 404, 422).contains(reply.statusCode());
+        if (reply.statusCode() != 200 && !refused) return unknown("PROVIDER_HTTP_UNCONFIRMED");
         try {
-            JsonNode response = mapper.readTree(reply.body());
+            JsonNode response = Msg91WireJson.read(reply.body());
+            if (refused) {
+                // HTTP refusal is not permission to ignore an ambiguous or contradictory body.
+                // This checks contradictions with the known EMAIL acknowledgement only; it
+                // does not invent a provider-specific refusal JSON schema.
+                if (!response.isObject()
+                        || (response.has("status") && (!response.path("status").isString()
+                            || !"error".equals(response.path("status").asString())))
+                        || (response.has("hasError") && (!response.path("hasError").isBoolean()
+                            || !response.path("hasError").asBoolean()))
+                        || (response.has("data") && !response.path("data").isNull()
+                            && (!response.path("data").isObject() || !response.path("data").isEmpty())))
+                    return unknown("PROVIDER_RESPONSE_UNCONFIRMED");
+                return rejected("PROVIDER_HTTP_REJECTED");
+            }
             JsonNode errors = response.path("errors");
             String id = response.path("data").path("unique_id").asText("");
             if ("success".equals(response.path("status").asText()) && response.path("hasError").isBoolean()
@@ -231,6 +248,16 @@ public class Msg91BroadcastLiveProvider implements BroadcastLiveProvider {
             subscription.request(1);
         }
         public void onError(Throwable failure) { result.completeExceptionally(new IOException("Provider response was not completed")); }
-        public void onComplete() { result.complete(bytes.toString(StandardCharsets.UTF_8)); }
+        public void onComplete() {
+            try {
+                result.complete(StandardCharsets.UTF_8.newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT)
+                        .decode(ByteBuffer.wrap(bytes.toByteArray())).toString());
+            } catch (CharacterCodingException invalid) {
+                // Do not silently replace bytes and manufacture a different provider contract.
+                result.completeExceptionally(new IOException("Provider response was not valid UTF-8"));
+            }
+        }
     }
 }

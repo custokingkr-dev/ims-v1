@@ -9,15 +9,16 @@ WORKDIR /app
 ARG SECURITY_PATCH_EPOCH=unset
 RUN echo "security patches for ${SECURITY_PATCH_EPOCH}" \
   && apk update \
-  && apk upgrade --no-cache libcrypto3 libssl3
+  && apk upgrade --no-cache
 COPY package*.json ./
 RUN npm ci --omit=dev \
   && npm cache clean --force \
   && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
-COPY tracing.js api-contract.js api-route-inventory.json server.js ./
+COPY tracing.js api-contract.js api-route-inventory.json routing.js quota.js authentication.js transport.js server.js ./
 ENV NODE_ENV=production
-ENV PORT=80
-EXPOSE 80
+ENV PORT=8080
+USER node
+EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=10 \
   CMD wget -q -O - http://127.0.0.1:${PORT}/gateway-health | grep -q '"status":"UP"'
 CMD ["node", "server.js"]

@@ -21,7 +21,13 @@ import static org.mockito.Mockito.when;
 class AuditIngestControllerTest {
 
     private final AuditEventRepository repository = mock(AuditEventRepository.class);
-    private final AuditIngestController controller = new AuditIngestController(repository, "audit-token");
+    private final com.custoking.ims.platformservice.persistence.AuditIngestQuota quota = mock(com.custoking.ims.platformservice.persistence.AuditIngestQuota.class);
+    private final AuditIngestController controller = new AuditIngestController(repository, "audit-token", quota);
+    @org.junit.jupiter.api.BeforeEach
+    void clientActor() {
+        when(quota.allow(org.mockito.ArgumentMatchers.anyLong(),org.mockito.ArgumentMatchers.any())).thenReturn(true);
+        com.custoking.ims.platformservice.security.TenantContext.set(new com.custoking.ims.platformservice.security.TenantContext(9L,"client@test","ADMIN",4L,null));
+    }
 
     @Test
     void ingestRejectsMissingTokenBeforeSaving() {
@@ -88,14 +94,15 @@ class AuditIngestControllerTest {
         ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
         verify(repository).save(eventCaptor.capture());
         AuditEvent saved = eventCaptor.getValue();
-        assertThat(saved.getAction()).isEqualTo("STUDENT_UPDATED");
+        assertThat(saved.getAction()).isEqualTo("CLIENT.STUDENT_UPDATED");
+        assertThat(saved.getProvenance()).isEqualTo("CLIENT_TELEMETRY");
         assertThat(saved.getUserId()).isEqualTo(9L);
         assertThat(saved.getSchoolId()).isEqualTo(4L);
         assertThat(saved.getIpAddress()).hasSize(64);
         assertThat(saved.getUserAgent()).hasSize(512);
         assertThat(saved.getRequestId()).hasSize(64);
-        assertThat(saved.getOutcome()).isEqualTo("SUCCESS");
-        assertThat(saved.getEventTimestamp()).isEqualTo(timestamp);
+        assertThat(saved.getOutcome()).isEqualTo("UNVERIFIED");
+        assertThat(saved.getEventTimestamp()).isAfter(timestamp);
     }
 
     @org.junit.jupiter.api.AfterEach
@@ -124,21 +131,28 @@ class AuditIngestControllerTest {
     }
 
     @Test
-    void ingestKeepsBodyAttributionForSuperAdminAndForHeaderlessSystemCallers() {
+    void superadminTelemetryCannotImpersonateServerAndHeaderlessIngestIsDenied() {
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
-
         com.custoking.ims.platformservice.security.TenantContext.set(
-                new com.custoking.ims.platformservice.security.TenantContext(1L, "sa@custoking.test", "SUPERADMIN", null, null));
+                new com.custoking.ims.platformservice.security.TenantContext(1L,"sa@test","SUPERADMIN",null,null));
         controller.ingest("audit-token", validRequest());
+        ArgumentCaptor<AuditEvent> events=ArgumentCaptor.forClass(AuditEvent.class);
+        verify(repository).save(events.capture());
+        assertThat(events.getValue().getUserId()).isEqualTo(1L);
+        assertThat(events.getValue().getSchoolId()).isNull();
+        assertThat(events.getValue().getProvenance()).isEqualTo("CLIENT_TELEMETRY");
+        assertThat(events.getValue().getOutcome()).isEqualTo("UNVERIFIED");
         com.custoking.ims.platformservice.security.TenantContext.clear();
-        controller.ingest("audit-token", validRequest());
-
-        verify(repository, org.mockito.Mockito.times(2)).save(eventCaptor.capture());
-        assertThat(eventCaptor.getAllValues()).allSatisfy(saved -> {
-            assertThat(saved.getUserId()).isEqualTo(9L);
-            assertThat(saved.getSchoolId()).isEqualTo(4L);
-        });
+        assertThatThrownBy(() -> controller.ingest("audit-token", validRequest())).isInstanceOf(ResponseStatusException.class);
+        verify(repository,org.mockito.Mockito.times(1)).save(any());
+    }
+    @Test
+    void exhaustedDurableQuotaDoesNotWriteAnAuditEntry() {
+        when(quota.allow(9L,4L)).thenReturn(false);
+        assertThatThrownBy(() -> controller.ingest("audit-token", validRequest()))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException)e).getStatusCode().value()).isEqualTo(429);
+        verify(repository,never()).save(any());
     }
 
     private AuditIngestController.AuditEventRequest validRequest() {

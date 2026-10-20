@@ -48,6 +48,7 @@ foreach ($service in $javaServices) {
 }
 
 $gateway = Get-Content -Raw -Path (Join-Path $repoRoot "services/api-gateway/server.js")
+$gateway += "`n" + (Get-Content -Raw -Path (Join-Path $repoRoot "services/api-gateway/transport.js"))
 foreach ($required in @("randomUUID", "x-request-id", "outboundHeaders(req, requestId)", "headers['x-request-id'] = requestId")) {
     if (-not $gateway.Contains($required)) {
         $violations.Add("api-gateway missing request-id propagation contract: $required")

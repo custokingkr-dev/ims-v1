@@ -8,7 +8,9 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CI_WORKFLOW = REPOSITORY_ROOT / ".github" / "workflows" / "ci-pr.yml"
+RELEASE_WORKFLOW = REPOSITORY_ROOT / ".github" / "workflows" / "build-release.yml"
 RESOLVER = REPOSITORY_ROOT / "scripts" / "resolve-affected-ci-targets.ps1"
+POWERSHELL = shutil.which("pwsh") or shutil.which("powershell.exe") or shutil.which("powershell")
 
 
 def job_body(workflow: str, job_name: str) -> str:
@@ -36,13 +38,27 @@ class OpenApiCiGateTest(unittest.TestCase):
         )
         self.assertIn('node-version: "24"', self.static_job)
         self.assertEqual(
+            self.static_job.count("run: node scripts/generate-api-route-inventory.js --check"),
+            1,
+        )
+        self.assertEqual(
             self.static_job.count(
                 "run: node scripts/generate-openapi-typescript-client.js --check"
             ),
             1,
         )
 
-    @unittest.skipUnless(shutil.which("pwsh"), "PowerShell is required for routing checks")
+    def test_release_static_gate_requires_inventory_and_client_freshness(self) -> None:
+        release_job = job_body(RELEASE_WORKFLOW.read_text(encoding="utf-8"), "release-static-gate")
+        self.assertNotRegex(release_job, r"(?m)^    if:")
+        self.assertIn('node-version: "24"', release_job)
+        inventory_check = "node scripts/generate-api-route-inventory.js --check"
+        client_check = "node scripts/generate-openapi-typescript-client.js --check"
+        self.assertIn(inventory_check, release_job)
+        self.assertIn(client_check, release_job)
+        self.assertLess(release_job.index(inventory_check), release_job.index(client_check))
+
+    @unittest.skipUnless(POWERSHELL, "PowerShell is required for routing checks")
     def test_contract_only_change_cannot_bypass_static_gate(self) -> None:
         selection = self.resolve("contracts/openapi/identity-auth.v1.openapi.json")
         self.assertFalse(selection["has_service_changes"])
@@ -52,7 +68,7 @@ class OpenApiCiGateTest(unittest.TestCase):
             self.static_job,
         )
 
-    @unittest.skipUnless(shutil.which("pwsh"), "PowerShell is required for routing checks")
+    @unittest.skipUnless(POWERSHELL, "PowerShell is required for routing checks")
     def test_identity_auth_service_change_selects_identity_and_static_gate(self) -> None:
         selection = self.resolve(
             "services/identity-service/src/main/java/com/custoking/ims/identityservice/"
@@ -70,8 +86,10 @@ class OpenApiCiGateTest(unittest.TestCase):
     def resolve(changed_file: str) -> dict:
         completed = subprocess.run(
             [
-                "pwsh",
+                POWERSHELL,
                 "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
                 "-File",
                 str(RESOLVER),
                 "-Environment",
@@ -86,7 +104,7 @@ class OpenApiCiGateTest(unittest.TestCase):
         )
         return json.loads(completed.stdout)
 
-    @unittest.skipUnless(shutil.which("pwsh"), "PowerShell is required for routing checks")
+    @unittest.skipUnless(POWERSHELL, "PowerShell is required for routing checks")
     def test_catalog_rule_fixture_selects_both_rule_implementations(self) -> None:
         selection = self.resolve("contracts/catalog-form-rule-fixtures.json")
         selected_names = [entry["name"] for entry in selection["service_matrix"]["include"]]

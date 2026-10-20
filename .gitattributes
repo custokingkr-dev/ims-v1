@@ -1,2 +1,147 @@
 # Keep shell scripts LF so shebangs run on Linux/macOS regardless of core.autocrlf.
 *.sh text eol=lf
+frontend/src/generated/*.ts text eol=lf
+services/api-gateway/api-route-inventory.json text eol=lf
+deploy/gcp/erasure-journal/dev-source-control.json text eol=lf
+deploy/runtime-patch-epoch.txt text eol=lf
+# Preserve exact captured evidence bytes used by independent release verifiers.
+docs/security-remediation/acceptance-runtime-os-patches-dev-release.json text eol=lf
+docs/security-remediation/acceptance-portrait-metadata-dev-release.json text eol=lf
+docs/security-remediation/acceptance-runtime-patch-cycle-dev-release.json text eol=lf
+docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json -text whitespace=cr-at-eol
+# Keep new source/local capture hashes stable across Windows checkouts.
+docs/security-remediation/acceptance-native-runtime-prerequisites.json text eol=lf
+docs/security-remediation/acceptance-upstream-native-followup.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-owner-readback.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-provider-review.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-restore-review.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-platform-local.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-coverage-local.json text eol=lf
+docs/security-remediation/acceptance-provider-restore-followup-local.json text eol=lf
+docs/security-remediation/acceptance-application-egress-local.json text eol=lf
+docs/security-remediation/acceptance-application-egress-independent-review.json text eol=lf
+docs/security-remediation/acceptance-provider-assertion-ci.json text eol=lf
+docs/security-remediation/acceptance-provider-assertion-dev-release.json text eol=lf
+docs/security-remediation/acceptance-provider-assertion-image-protection.json text eol=lf
+docs/security-remediation/acceptance-provider-assertion-public-smoke.json text eol=lf
+docs/security-remediation/acceptance-provider-assertion-completion.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-local.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-governance-local.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-replay-local.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-provider-local.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-revision-preflight.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-ci.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-dev-release.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-image-protection.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-public-smoke.json text eol=lf
+docs/security-remediation/acceptance-parallel-hardening-completion.json text eol=lf
+# Preserve exact callback body-boundary follow-up captures.
+docs/security-remediation/acceptance-callback-body-primary-review.json text eol=lf
+docs/security-remediation/acceptance-callback-body-local.json text eol=lf
+docs/security-remediation/acceptance-callback-body-static-audits.json text eol=lf
+docs/security-remediation/acceptance-callback-body-ci.json text eol=lf
+docs/security-remediation/acceptance-callback-body-dev-release.json text eol=lf
+docs/security-remediation/acceptance-callback-body-image-protection.json text eol=lf
+docs/security-remediation/acceptance-callback-body-public-smoke.json text eol=lf
+docs/security-remediation/acceptance-callback-body-completion.json text eol=lf
+
+# Preserve new execution boundary capture bytes.
+docs/security-remediation/acceptance-execution-boundary-provider-local.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-recovery-local.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-governance-local.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-owner-readback.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-owner-followup.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-native-research.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-independent-reviews.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-local.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-portability-local.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-verified-local.json text eol=lf
+
+docs/security-remediation/acceptance-execution-boundary-ci.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-release-tests.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-dev-release.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-image-protection.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-public-smoke.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-native-inventory.json text eol=lf
+docs/security-remediation/acceptance-execution-boundary-completion.json text eol=lf
+
+# Preserve new remaining-round capture bytes.
+docs/security-remediation/acceptance-remaining-round-provider-initial.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-provider-local.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-recovery-local.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-platform-full.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-school-full.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-source-review.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-owner-readback.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-owner-followup.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-infra-review.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-native-research.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-local.json text eol=lf
+
+# Preserve accepted remaining-round dev evidence.
+docs/security-remediation/acceptance-remaining-round-ci.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-release-tests.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-dev-release.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-image-protection.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-public-smoke.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-curation-review.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-ci-provenance-review.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-native-inventory.json text eol=lf
+docs/security-remediation/acceptance-remaining-round-completion.json text eol=lf
+
+# Preserve owner-execution capture bytes and reviewed source LF.
+docs/security-remediation/acceptance-owner-execution-provider-initial.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-provider-local.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-provider-plan.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-provider-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-recovery-initial.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-recovery-local.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-recovery-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dashboard-initial.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dashboard-intermediate.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dashboard-prefix-initial.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dashboard-local.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dashboard-initial-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dashboard-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-owner-readback.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-owner-classification.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-owner-inputs.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-infra-local.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-native-inventory.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-native-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-platform-full.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-school-full.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-prior-publication-runtime.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-prior-publication-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-prior-publication-closeout.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-local.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java text eol=lf
+services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java text eol=lf
+services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java text eol=lf
+services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java text eol=lf
+tools/live-dashboard/release.sh text eol=lf
+tools/live-dashboard/README.md text eol=lf
+scripts/tests/dashboard_release_test.py text eol=lf
+.github/workflows/ci-pr.yml text eol=lf
+
+# Preserve owner-execution accepted capture representations.
+docs/security-remediation/acceptance-owner-execution-ci.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-ci-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dashboard-linux-ci.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-release-tests.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dev-release.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-image-protection.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-public-smoke.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-dev-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-native-primary.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-libpng-publisher.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-libpng-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-libpng-primary-capture.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-adapters.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-adapter-controls.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-adapter-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-collector-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-verifier-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-public-helper-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-current-scan-inventory.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+docs/security-remediation/acceptance-owner-execution-completion.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

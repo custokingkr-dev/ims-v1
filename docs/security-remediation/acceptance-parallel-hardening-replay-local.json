@@ -1,0 +1,22 @@
+{
+  "capturedAt": "2026-10-08T11:34:55.929412+00:00",
+  "tests": {
+    "reported": 14,
+    "passed": 14,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "realPostgres": 7,
+    "log": "tmp/owner-erasure-replay-hardened-final-tests.log"
+  },
+  "normalizedLfSha256": {
+    "scripts/security/prepare-dev-owner-erasure-replay.py": "0aa9607f69ce0c9e8437f5a46e6835f8c93b754376620d3847299c309faa4351",
+    "scripts/tests/dev_owner_erasure_replay_test.py": "8bf2133a39a380e8c94bdd41d030ba2b2a74bbbbc53c771172ee3060294ad42f",
+    "docs/security-remediation/restore-owner-replay-preparation-2026-10-08.md": "fc9e0f773ec337bb2ea1792fd26f43ae0895b39e45598157ca5902ac589d9810"
+  },
+  "previousCheckpoint": "tmp/owner-erasure-replay-local-proof.json",
+  "cloudCalls": false,
+  "actualOwnerReplayExecutedByThisTool": false,
+  "restorationReady": false,
+  "deliveryResume": false
+}

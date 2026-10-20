@@ -1,0 +1,914 @@
+{
+  "capturedAtUtc": "2026-10-08T08:29:56.395172+00:00",
+  "releaseRunId": 37746479841,
+  "sourceSha": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+  "workflowConclusion": "success",
+  "scope": "Actual seven newly resolved/scanned release source digests, five explicit libpng package versions and independently bound seven Ready runtime digests. Comparison uses the dated original portrait release, not a claim that failed-refresh rollout revision pointers never changed.",
+  "imagesManifestSha256": "c842f2cb800aec7aafad4302fac7e73f55260b0533f3b44c100a6bb796349173",
+  "scanManifestSha256": "0e3d8fed2d41a3273bddad1c0e477105432239d0d8f1afb26c3c5b263d6486cb",
+  "scannedCount": 7,
+  "cachedCount": 0,
+  "services": [
+    {
+      "service": "api-gateway",
+      "sourceId": "792801ca2c960562200d3437a05443dd73735af1bd9d554e351dc714ac00d125",
+      "sourceTag": "src-792801ca2c960562200d3437a05443dd73735af1bd9d554e351dc714ac00d125",
+      "securityPatchEpoch": "2026-10-08",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:3672b18fb18ca9c248c64766443aab16f5d6101a372f2d90c0063df23ecc3097",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:237f5ac0ead6c395c3e51a44311f4cb7ca2ac1aa2702d75384d15ee5d916e01c",
+      "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:3483c3672500be6d60d0df05d5de9de0f9f625a05614e18a883c77aba0ff2c27",
+      "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:ed4806fbc3ce286dda379219374eda34fb092190bcf8a2dac71c706ff120f095",
+      "immutableRefChangedFromB875": true,
+      "runtimeRefChangedFromB875": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "scanUtc": "2026-10-08T08:14:43.6784519Z",
+      "sarifSha256": "64e28d9e4ee656d2f92347b99470cab4e663385b34e7ad687fbf5494528224f7",
+      "resultCount": 0,
+      "severityCounts": {},
+      "libpngObservedVersions": [],
+      "independentReadyBindingPendingRootProof": false,
+      "runtimeMatchesIndependentReadyReadback": true
+    },
+    {
+      "service": "billing-service",
+      "sourceId": "b627218a5e35fa75b1b17b5d7f268d8217bfcfcb9cb49f1aec45b076fd4fb3d2",
+      "sourceTag": "src-b627218a5e35fa75b1b17b5d7f268d8217bfcfcb9cb49f1aec45b076fd4fb3d2",
+      "securityPatchEpoch": "2026-10-08",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a88da3b832d689f758f866edffa33be8719a342b7e9bd75dfa91e67d2d6d1703",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a1bb5b12f7415bdf761c91217878fce063aa9742f36dc6cccf82b59d05b4db4a",
+      "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:9c12e9001a08c52ce3e316bfc3629dc871ca9c1aae7653f48f4ceec30c198823",
+      "immutableRefChangedFromB875": true,
+      "runtimeRefChangedFromB875": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "scanUtc": "2026-10-08T08:14:43.6784519Z",
+      "sarifSha256": "bbb8b97d0eede79aea32d49ed67a984d3a91b8df6eddcaf9635b801037e5fdc5",
+      "resultCount": 17,
+      "severityCounts": {
+        "medium": 13,
+        "low": 4
+      },
+      "libpngObservedVersions": [
+        "1.6.43-5ubuntu0.7"
+      ],
+      "independentReadyBindingPendingRootProof": false,
+      "runtimeMatchesIndependentReadyReadback": true
+    },
+    {
+      "service": "frontend",
+      "sourceId": "f43b46bac25d4a95491d68b24b3711639af88630e6bd1bef150f734ab7d97ab6",
+      "sourceTag": "src-f43b46bac25d4a95491d68b24b3711639af88630e6bd1bef150f734ab7d97ab6",
+      "securityPatchEpoch": "2026-10-08",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:5505d27ca754a861fcfef319dd579acd556e31687a4be3b13f15243a74160cb5",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:cce39fca0ce51405c037be86ccf5f99f2ca5e3c653f05cff73f94adb757ff8b4",
+      "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:091557eaa755345265a7156d94cf133f3b4c2e88089d35039601dcfba01b46dd",
+      "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:cb3246a0d246759182c3c91670f6e3e11d48c06f528f6d25f298a9507dd0e515",
+      "immutableRefChangedFromB875": true,
+      "runtimeRefChangedFromB875": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "scanUtc": "2026-10-08T08:14:43.6784519Z",
+      "sarifSha256": "aeb7e2b41b6a1103920d0984326b650519cfb8bd0331464fd8d6ef42bb219bb9",
+      "resultCount": 0,
+      "severityCounts": {},
+      "libpngObservedVersions": [],
+      "independentReadyBindingPendingRootProof": false,
+      "runtimeMatchesIndependentReadyReadback": true
+    },
+    {
+      "service": "identity-service",
+      "sourceId": "e2e02b3baa692c1f187f1f29fb18e4651e0670ef0a0e595cdbced9cc9e30342c",
+      "sourceTag": "src-e2e02b3baa692c1f187f1f29fb18e4651e0670ef0a0e595cdbced9cc9e30342c",
+      "securityPatchEpoch": "2026-10-08",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:15a81abee368161451064554a485cfe94dbafd8c5dd5adb72076c87356b25a41",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:2639eedcca5fd4fd1b6c872c684d5e7e908cf53f93594732637c15b0350fd1a7",
+      "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:3c48d4f5f30d7796d7d387db922ddd2aba9ddc7765a4d517f6ef8a0d80b2d7c4",
+      "immutableRefChangedFromB875": true,
+      "runtimeRefChangedFromB875": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "scanUtc": "2026-10-08T08:14:43.6784519Z",
+      "sarifSha256": "7dc99c4e43e7b32a1c761eb13f6706623cf4ca2c42a6949617e9a5266be320aa",
+      "resultCount": 17,
+      "severityCounts": {
+        "medium": 13,
+        "low": 4
+      },
+      "libpngObservedVersions": [
+        "1.6.43-5ubuntu0.7"
+      ],
+      "independentReadyBindingPendingRootProof": false,
+      "runtimeMatchesIndependentReadyReadback": true
+    },
+    {
+      "service": "operations-service",
+      "sourceId": "3e0982a68236bba716ff2688afbd6ee6bea83b50ec3a6b57828ae297bac4e181",
+      "sourceTag": "src-3e0982a68236bba716ff2688afbd6ee6bea83b50ec3a6b57828ae297bac4e181",
+      "securityPatchEpoch": "2026-10-08",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:7c5cfb8810446b78f4e07fcb3179dba1eb516ecdcf7d62013ef860cbde0a3327",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:28ba8125f3de0dc61ce8411db5e13a57346172ba3444fb27a95f482041c03dc9",
+      "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:2976fdda74c09b7c595d159ac4fa667fc11517b4b7737dafad0b8eec6e8820ef",
+      "immutableRefChangedFromB875": true,
+      "runtimeRefChangedFromB875": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "scanUtc": "2026-10-08T08:14:43.6784519Z",
+      "sarifSha256": "f2ad359307519683254d23c587d42c884ff288ff8ff6f39abd5c3374db4cf28a",
+      "resultCount": 17,
+      "severityCounts": {
+        "medium": 13,
+        "low": 4
+      },
+      "libpngObservedVersions": [
+        "1.6.43-5ubuntu0.7"
+      ],
+      "independentReadyBindingPendingRootProof": false,
+      "runtimeMatchesIndependentReadyReadback": true
+    },
+    {
+      "service": "platform-service",
+      "sourceId": "cad98a95b6c8c865d1b25635bd3dc3920dfa4172191f7612a0001bd899cfd54f",
+      "sourceTag": "src-cad98a95b6c8c865d1b25635bd3dc3920dfa4172191f7612a0001bd899cfd54f",
+      "securityPatchEpoch": "2026-10-08",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:4aa83ba2cf9952d5f784665edb66b7284a891fd663317d5f7af6abce0b0b759f",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:68ea61aaf05a30ac5f42842f675c79cdca1ee921c1ddb1e251c0b786dda54c20",
+      "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:6bc552c125abc7bd8f49a53138fe9f5337f602fa2f584b91d5e15d50f163e252",
+      "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:e3e8528189dadafd5b336af53b88860d0cb5a4ff5c2a7cd3d08004313d59f597",
+      "immutableRefChangedFromB875": true,
+      "runtimeRefChangedFromB875": true,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "scanUtc": "2026-10-08T08:14:43.6784519Z",
+      "sarifSha256": "f786d9a0f32d326200e9e7ec28ac1ec93ce77b28e118f4383219a6af25378af3",
+      "resultCount": 17,
+      "severityCounts": {
+        "medium": 13,
+        "low": 4
+      },
+      "libpngObservedVersions": [
+        "1.6.43-5ubuntu0.7"
+      ],
+      "independentReadyBindingPendingRootProof": false,
+      "runtimeMatchesIndependentReadyReadback": true
+    },
+    {
+      "service": "school-core-service",
+      "sourceId": "07c4981d18874bbea51a918b02a193f6b0f8ee31a1753fb41b4a8f0ffb239707",
+      "sourceTag": "src-07c4981d18874bbea51a918b02a193f6b0f8ee31a1753fb41b4a8f0ffb239707",
+      "securityPatchEpoch": "2026-10-08",
+      "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:99c3cb3f058cce3b46b8aa70110bbfd8c1cb6fe033e1ae81c3b252ceec9ed6e7",
+      "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0",
+      "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:2bfd38844d48ef1ce1792ec9a9598a813a7d38c8f74542a56065a340150ff2e1",
+      "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0",
+      "immutableRefChangedFromB875": true,
+      "runtimeRefChangedFromB875": false,
+      "scanSource": "scanned",
+      "highCriticalGate": "success",
+      "sarifScan": "success",
+      "scanUtc": "2026-10-08T08:14:43.6784519Z",
+      "sarifSha256": "4e8a306b52ddce7e99fa271f27d6ff02a2de923ece644cfa2045a0f1d3a60456",
+      "resultCount": 17,
+      "severityCounts": {
+        "medium": 13,
+        "low": 4
+      },
+      "libpngObservedVersions": [
+        "1.6.43-5ubuntu0.7"
+      ],
+      "independentReadyBindingPendingRootProof": false,
+      "runtimeMatchesIndependentReadyReadback": true
+    }
+  ],
+  "totalResults": 85,
+  "packageGroups": [
+    {
+      "package": "libc-bin",
+      "installedVersion": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "resultCount": 10,
+      "serviceCounts": {
+        "billing-service": 2,
+        "identity-service": 2,
+        "operations-service": 2,
+        "platform-service": 2,
+        "school-core-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "libc6",
+      "installedVersion": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "resultCount": 10,
+      "serviceCounts": {
+        "billing-service": 2,
+        "identity-service": 2,
+        "operations-service": 2,
+        "platform-service": 2,
+        "school-core-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "libexpat1",
+      "installedVersion": "2.6.1-2ubuntu0.6",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "resultCount": 5,
+      "serviceCounts": {
+        "billing-service": 1,
+        "identity-service": 1,
+        "operations-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2025-66382"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "libpcre2-8-0",
+      "installedVersion": "10.42-4ubuntu2.1",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "resultCount": 10,
+      "serviceCounts": {
+        "billing-service": 2,
+        "identity-service": 2,
+        "operations-service": 2,
+        "platform-service": 2,
+        "school-core-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-86145",
+        "CVE-2026-89161"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.7",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "resultCount": 5,
+      "serviceCounts": {
+        "billing-service": 1,
+        "identity-service": 1,
+        "operations-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-46675"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "libsystemd0",
+      "installedVersion": "255.4-1ubuntu8.17",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "resultCount": 5,
+      "serviceCounts": {
+        "billing-service": 1,
+        "identity-service": 1,
+        "operations-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-40228"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "libudev1",
+      "installedVersion": "255.4-1ubuntu8.17",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "resultCount": 5,
+      "serviceCounts": {
+        "billing-service": 1,
+        "identity-service": 1,
+        "operations-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-40228"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "locales",
+      "installedVersion": "2.39-0ubuntu8.9",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "resultCount": 10,
+      "serviceCounts": {
+        "billing-service": 2,
+        "identity-service": 2,
+        "operations-service": 2,
+        "platform-service": 2,
+        "school-core-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18374",
+        "CVE-2026-89092"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "login",
+      "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "resultCount": 5,
+      "serviceCounts": {
+        "billing-service": 1,
+        "identity-service": 1,
+        "operations-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2024-56433"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "passwd",
+      "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+      "fixedVersionReported": "",
+      "severity": "low",
+      "resultCount": 5,
+      "serviceCounts": {
+        "billing-service": 1,
+        "identity-service": 1,
+        "operations-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2024-56433"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "tar",
+      "installedVersion": "1.35+dfsg-3ubuntu0.4",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "resultCount": 10,
+      "serviceCounts": {
+        "billing-service": 2,
+        "identity-service": 2,
+        "operations-service": 2,
+        "platform-service": 2,
+        "school-core-service": 2
+      },
+      "vulnerabilities": [
+        "CVE-2026-18477",
+        "CVE-2026-18508"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    },
+    {
+      "package": "zlib1g",
+      "installedVersion": "1:1.3.dfsg-3.1ubuntu2.2",
+      "fixedVersionReported": "",
+      "severity": "medium",
+      "resultCount": 5,
+      "serviceCounts": {
+        "billing-service": 1,
+        "identity-service": 1,
+        "operations-service": 1,
+        "platform-service": 1,
+        "school-core-service": 1
+      },
+      "vulnerabilities": [
+        "CVE-2026-85091"
+      ],
+      "fixStatus": "NO_FIXED_VERSION_REPORTED"
+    }
+  ],
+  "allFiveJavaObservedLibpng07": true,
+  "fourPreviouslyOlderJavaDigestsChanged": true,
+  "patchArtifactAcceptance": "PASS",
+  "scannerWithReportedFixedVersionCount": 0,
+  "scannerWithoutReportedFixedVersionCount": 85,
+  "vendorPatchProvenance": "tmp/libpng-observed-package-followup.json",
+  "scannerVendorDistinction": "Ubuntu exact0.7 changelog explicitly includes CVE-2026-46675.patch; scanner findings are independently preserved, not dismissed or treated as exploitability proof.",
+  "dashboardNotIncluded": true,
+  "stressOrExploitProof": false,
+  "scannerSnapshot": {
+    "capturedAtUtc": "2026-10-08T08:27:17.011707+00:00",
+    "releaseRunId": 37746479841,
+    "sourceSha": "886fdc2c4018b30133d471d42843578cfdfb1fa7",
+    "workflowConclusion": "success",
+    "scope": "Seven exact resolved release images and actual SARIF; independent runtime Ready proof remains separate",
+    "imagesManifestSha256": "c842f2cb800aec7aafad4302fac7e73f55260b0533f3b44c100a6bb796349173",
+    "scanManifestSha256": "0e3d8fed2d41a3273bddad1c0e477105432239d0d8f1afb26c3c5b263d6486cb",
+    "scannedCount": 7,
+    "cachedCount": 0,
+    "services": [
+      {
+        "service": "api-gateway",
+        "sourceId": "792801ca2c960562200d3437a05443dd73735af1bd9d554e351dc714ac00d125",
+        "sourceTag": "src-792801ca2c960562200d3437a05443dd73735af1bd9d554e351dc714ac00d125",
+        "securityPatchEpoch": "2026-10-08",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:3672b18fb18ca9c248c64766443aab16f5d6101a372f2d90c0063df23ecc3097",
+        "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:237f5ac0ead6c395c3e51a44311f4cb7ca2ac1aa2702d75384d15ee5d916e01c",
+        "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:3483c3672500be6d60d0df05d5de9de0f9f625a05614e18a883c77aba0ff2c27",
+        "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:ed4806fbc3ce286dda379219374eda34fb092190bcf8a2dac71c706ff120f095",
+        "immutableRefChangedFromB875": true,
+        "runtimeRefChangedFromB875": true,
+        "scanSource": "scanned",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "scanUtc": "2026-10-08T08:14:43.6784519Z",
+        "sarifSha256": "64e28d9e4ee656d2f92347b99470cab4e663385b34e7ad687fbf5494528224f7",
+        "resultCount": 0,
+        "severityCounts": {},
+        "libpngObservedVersions": [],
+        "independentReadyBindingPendingRootProof": true
+      },
+      {
+        "service": "billing-service",
+        "sourceId": "b627218a5e35fa75b1b17b5d7f268d8217bfcfcb9cb49f1aec45b076fd4fb3d2",
+        "sourceTag": "src-b627218a5e35fa75b1b17b5d7f268d8217bfcfcb9cb49f1aec45b076fd4fb3d2",
+        "securityPatchEpoch": "2026-10-08",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a88da3b832d689f758f866edffa33be8719a342b7e9bd75dfa91e67d2d6d1703",
+        "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+        "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a1bb5b12f7415bdf761c91217878fce063aa9742f36dc6cccf82b59d05b4db4a",
+        "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:9c12e9001a08c52ce3e316bfc3629dc871ca9c1aae7653f48f4ceec30c198823",
+        "immutableRefChangedFromB875": true,
+        "runtimeRefChangedFromB875": true,
+        "scanSource": "scanned",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "scanUtc": "2026-10-08T08:14:43.6784519Z",
+        "sarifSha256": "bbb8b97d0eede79aea32d49ed67a984d3a91b8df6eddcaf9635b801037e5fdc5",
+        "resultCount": 17,
+        "severityCounts": {
+          "medium": 13,
+          "low": 4
+        },
+        "libpngObservedVersions": [
+          "1.6.43-5ubuntu0.7"
+        ],
+        "independentReadyBindingPendingRootProof": true
+      },
+      {
+        "service": "frontend",
+        "sourceId": "f43b46bac25d4a95491d68b24b3711639af88630e6bd1bef150f734ab7d97ab6",
+        "sourceTag": "src-f43b46bac25d4a95491d68b24b3711639af88630e6bd1bef150f734ab7d97ab6",
+        "securityPatchEpoch": "2026-10-08",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:5505d27ca754a861fcfef319dd579acd556e31687a4be3b13f15243a74160cb5",
+        "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:cce39fca0ce51405c037be86ccf5f99f2ca5e3c653f05cff73f94adb757ff8b4",
+        "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:091557eaa755345265a7156d94cf133f3b4c2e88089d35039601dcfba01b46dd",
+        "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:cb3246a0d246759182c3c91670f6e3e11d48c06f528f6d25f298a9507dd0e515",
+        "immutableRefChangedFromB875": true,
+        "runtimeRefChangedFromB875": true,
+        "scanSource": "scanned",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "scanUtc": "2026-10-08T08:14:43.6784519Z",
+        "sarifSha256": "aeb7e2b41b6a1103920d0984326b650519cfb8bd0331464fd8d6ef42bb219bb9",
+        "resultCount": 0,
+        "severityCounts": {},
+        "libpngObservedVersions": [],
+        "independentReadyBindingPendingRootProof": true
+      },
+      {
+        "service": "identity-service",
+        "sourceId": "e2e02b3baa692c1f187f1f29fb18e4651e0670ef0a0e595cdbced9cc9e30342c",
+        "sourceTag": "src-e2e02b3baa692c1f187f1f29fb18e4651e0670ef0a0e595cdbced9cc9e30342c",
+        "securityPatchEpoch": "2026-10-08",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:15a81abee368161451064554a485cfe94dbafd8c5dd5adb72076c87356b25a41",
+        "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+        "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:2639eedcca5fd4fd1b6c872c684d5e7e908cf53f93594732637c15b0350fd1a7",
+        "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:3c48d4f5f30d7796d7d387db922ddd2aba9ddc7765a4d517f6ef8a0d80b2d7c4",
+        "immutableRefChangedFromB875": true,
+        "runtimeRefChangedFromB875": true,
+        "scanSource": "scanned",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "scanUtc": "2026-10-08T08:14:43.6784519Z",
+        "sarifSha256": "7dc99c4e43e7b32a1c761eb13f6706623cf4ca2c42a6949617e9a5266be320aa",
+        "resultCount": 17,
+        "severityCounts": {
+          "medium": 13,
+          "low": 4
+        },
+        "libpngObservedVersions": [
+          "1.6.43-5ubuntu0.7"
+        ],
+        "independentReadyBindingPendingRootProof": true
+      },
+      {
+        "service": "operations-service",
+        "sourceId": "3e0982a68236bba716ff2688afbd6ee6bea83b50ec3a6b57828ae297bac4e181",
+        "sourceTag": "src-3e0982a68236bba716ff2688afbd6ee6bea83b50ec3a6b57828ae297bac4e181",
+        "securityPatchEpoch": "2026-10-08",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:7c5cfb8810446b78f4e07fcb3179dba1eb516ecdcf7d62013ef860cbde0a3327",
+        "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+        "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:28ba8125f3de0dc61ce8411db5e13a57346172ba3444fb27a95f482041c03dc9",
+        "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:2976fdda74c09b7c595d159ac4fa667fc11517b4b7737dafad0b8eec6e8820ef",
+        "immutableRefChangedFromB875": true,
+        "runtimeRefChangedFromB875": true,
+        "scanSource": "scanned",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "scanUtc": "2026-10-08T08:14:43.6784519Z",
+        "sarifSha256": "f2ad359307519683254d23c587d42c884ff288ff8ff6f39abd5c3374db4cf28a",
+        "resultCount": 17,
+        "severityCounts": {
+          "medium": 13,
+          "low": 4
+        },
+        "libpngObservedVersions": [
+          "1.6.43-5ubuntu0.7"
+        ],
+        "independentReadyBindingPendingRootProof": true
+      },
+      {
+        "service": "platform-service",
+        "sourceId": "cad98a95b6c8c865d1b25635bd3dc3920dfa4172191f7612a0001bd899cfd54f",
+        "sourceTag": "src-cad98a95b6c8c865d1b25635bd3dc3920dfa4172191f7612a0001bd899cfd54f",
+        "securityPatchEpoch": "2026-10-08",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:4aa83ba2cf9952d5f784665edb66b7284a891fd663317d5f7af6abce0b0b759f",
+        "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:68ea61aaf05a30ac5f42842f675c79cdca1ee921c1ddb1e251c0b786dda54c20",
+        "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:6bc552c125abc7bd8f49a53138fe9f5337f602fa2f584b91d5e15d50f163e252",
+        "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:e3e8528189dadafd5b336af53b88860d0cb5a4ff5c2a7cd3d08004313d59f597",
+        "immutableRefChangedFromB875": true,
+        "runtimeRefChangedFromB875": true,
+        "scanSource": "scanned",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "scanUtc": "2026-10-08T08:14:43.6784519Z",
+        "sarifSha256": "f786d9a0f32d326200e9e7ec28ac1ec93ce77b28e118f4383219a6af25378af3",
+        "resultCount": 17,
+        "severityCounts": {
+          "medium": 13,
+          "low": 4
+        },
+        "libpngObservedVersions": [
+          "1.6.43-5ubuntu0.7"
+        ],
+        "independentReadyBindingPendingRootProof": true
+      },
+      {
+        "service": "school-core-service",
+        "sourceId": "07c4981d18874bbea51a918b02a193f6b0f8ee31a1753fb41b4a8f0ffb239707",
+        "sourceTag": "src-07c4981d18874bbea51a918b02a193f6b0f8ee31a1753fb41b4a8f0ffb239707",
+        "securityPatchEpoch": "2026-10-08",
+        "immutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:99c3cb3f058cce3b46b8aa70110bbfd8c1cb6fe033e1ae81c3b252ceec9ed6e7",
+        "runtimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0",
+        "previousImmutableRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:2bfd38844d48ef1ce1792ec9a9598a813a7d38c8f74542a56065a340150ff2e1",
+        "previousRuntimeRef": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0",
+        "immutableRefChangedFromB875": true,
+        "runtimeRefChangedFromB875": false,
+        "scanSource": "scanned",
+        "highCriticalGate": "success",
+        "sarifScan": "success",
+        "scanUtc": "2026-10-08T08:14:43.6784519Z",
+        "sarifSha256": "4e8a306b52ddce7e99fa271f27d6ff02a2de923ece644cfa2045a0f1d3a60456",
+        "resultCount": 17,
+        "severityCounts": {
+          "medium": 13,
+          "low": 4
+        },
+        "libpngObservedVersions": [
+          "1.6.43-5ubuntu0.7"
+        ],
+        "independentReadyBindingPendingRootProof": true
+      }
+    ],
+    "totalResults": 85,
+    "packageGroups": [
+      {
+        "package": "libc-bin",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 10,
+        "serviceCounts": {
+          "billing-service": 2,
+          "identity-service": 2,
+          "operations-service": 2,
+          "platform-service": 2,
+          "school-core-service": 2
+        },
+        "vulnerabilities": [
+          "CVE-2026-18374",
+          "CVE-2026-89092"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libc6",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 10,
+        "serviceCounts": {
+          "billing-service": 2,
+          "identity-service": 2,
+          "operations-service": 2,
+          "platform-service": 2,
+          "school-core-service": 2
+        },
+        "vulnerabilities": [
+          "CVE-2026-18374",
+          "CVE-2026-89092"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libexpat1",
+        "installedVersion": "2.6.1-2ubuntu0.6",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 5,
+        "serviceCounts": {
+          "billing-service": 1,
+          "identity-service": 1,
+          "operations-service": 1,
+          "platform-service": 1,
+          "school-core-service": 1
+        },
+        "vulnerabilities": [
+          "CVE-2025-66382"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libpcre2-8-0",
+        "installedVersion": "10.42-4ubuntu2.1",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 10,
+        "serviceCounts": {
+          "billing-service": 2,
+          "identity-service": 2,
+          "operations-service": 2,
+          "platform-service": 2,
+          "school-core-service": 2
+        },
+        "vulnerabilities": [
+          "CVE-2026-86145",
+          "CVE-2026-89161"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libpng16-16t64",
+        "installedVersion": "1.6.43-5ubuntu0.7",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 5,
+        "serviceCounts": {
+          "billing-service": 1,
+          "identity-service": 1,
+          "operations-service": 1,
+          "platform-service": 1,
+          "school-core-service": 1
+        },
+        "vulnerabilities": [
+          "CVE-2026-46675"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libsystemd0",
+        "installedVersion": "255.4-1ubuntu8.17",
+        "fixedVersionReported": "",
+        "severity": "low",
+        "resultCount": 5,
+        "serviceCounts": {
+          "billing-service": 1,
+          "identity-service": 1,
+          "operations-service": 1,
+          "platform-service": 1,
+          "school-core-service": 1
+        },
+        "vulnerabilities": [
+          "CVE-2026-40228"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "libudev1",
+        "installedVersion": "255.4-1ubuntu8.17",
+        "fixedVersionReported": "",
+        "severity": "low",
+        "resultCount": 5,
+        "serviceCounts": {
+          "billing-service": 1,
+          "identity-service": 1,
+          "operations-service": 1,
+          "platform-service": 1,
+          "school-core-service": 1
+        },
+        "vulnerabilities": [
+          "CVE-2026-40228"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "locales",
+        "installedVersion": "2.39-0ubuntu8.9",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 10,
+        "serviceCounts": {
+          "billing-service": 2,
+          "identity-service": 2,
+          "operations-service": 2,
+          "platform-service": 2,
+          "school-core-service": 2
+        },
+        "vulnerabilities": [
+          "CVE-2026-18374",
+          "CVE-2026-89092"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "login",
+        "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+        "fixedVersionReported": "",
+        "severity": "low",
+        "resultCount": 5,
+        "serviceCounts": {
+          "billing-service": 1,
+          "identity-service": 1,
+          "operations-service": 1,
+          "platform-service": 1,
+          "school-core-service": 1
+        },
+        "vulnerabilities": [
+          "CVE-2024-56433"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "passwd",
+        "installedVersion": "1:4.13+dfsg1-4ubuntu3.2",
+        "fixedVersionReported": "",
+        "severity": "low",
+        "resultCount": 5,
+        "serviceCounts": {
+          "billing-service": 1,
+          "identity-service": 1,
+          "operations-service": 1,
+          "platform-service": 1,
+          "school-core-service": 1
+        },
+        "vulnerabilities": [
+          "CVE-2024-56433"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "tar",
+        "installedVersion": "1.35+dfsg-3ubuntu0.4",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 10,
+        "serviceCounts": {
+          "billing-service": 2,
+          "identity-service": 2,
+          "operations-service": 2,
+          "platform-service": 2,
+          "school-core-service": 2
+        },
+        "vulnerabilities": [
+          "CVE-2026-18477",
+          "CVE-2026-18508"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      },
+      {
+        "package": "zlib1g",
+        "installedVersion": "1:1.3.dfsg-3.1ubuntu2.2",
+        "fixedVersionReported": "",
+        "severity": "medium",
+        "resultCount": 5,
+        "serviceCounts": {
+          "billing-service": 1,
+          "identity-service": 1,
+          "operations-service": 1,
+          "platform-service": 1,
+          "school-core-service": 1
+        },
+        "vulnerabilities": [
+          "CVE-2026-85091"
+        ],
+        "fixStatus": "NO_FIXED_VERSION_REPORTED"
+      }
+    ],
+    "allFiveJavaObservedLibpng07": true,
+    "fourPreviouslyOlderJavaDigestsChanged": true,
+    "patchArtifactAcceptance": "PASS",
+    "scannerWithReportedFixedVersionCount": 0,
+    "scannerWithoutReportedFixedVersionCount": 85,
+    "vendorPatchProvenance": "tmp/libpng-observed-package-followup.json",
+    "scannerVendorDistinction": "Ubuntu exact0.7 changelog explicitly includes CVE-2026-46675.patch; scanner findings are independently preserved, not dismissed or treated as exploitability proof.",
+    "dashboardNotIncluded": true,
+    "stressOrExploitProof": false
+  },
+  "canonicalReadyProofNotIssued": false,
+  "patchAcceptance": "PASS",
+  "allSevenRuntimeRefsMatchIndependentReadyReadback": true,
+  "readyProofSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f",
+  "project": "custoking-dev",
+  "productionChanged": false,
+  "independentReadyProof": "acceptance-runtime-patch-cycle-dev-release.json",
+  "explicitPackageEvidence": [
+    {
+      "service": "billing-service",
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.7",
+      "minimumVersion": "1.6.43-5ubuntu0.7",
+      "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:a88da3b832d689f758f866edffa33be8719a342b7e9bd75dfa91e67d2d6d1703",
+      "runtimeImageFromManifest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:e8f42d0b7288264ef38c2361b1730a8cafe3a18cd18ecf8eb6c51cf4cb3020b9",
+      "sarifSha256": "bbb8b97d0eede79aea32d49ed67a984d3a91b8df6eddcaf9635b801037e5fdc5",
+      "sarifArtifact": "trivy\\billing-service-sha256-a88da3b832d689f758f866edffa33be8719a342b7e9bd75dfa91e67d2d6d1703.sarif",
+      "findingAbsenceUsedAsInventory": false,
+      "nativeApplicabilityClaim": false
+    },
+    {
+      "service": "identity-service",
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.7",
+      "minimumVersion": "1.6.43-5ubuntu0.7",
+      "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:15a81abee368161451064554a485cfe94dbafd8c5dd5adb72076c87356b25a41",
+      "runtimeImageFromManifest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:694b985076272ec465ab81568f217803f71103df54b243514899ae193baa9096",
+      "sarifSha256": "7dc99c4e43e7b32a1c761eb13f6706623cf4ca2c42a6949617e9a5266be320aa",
+      "sarifArtifact": "trivy\\identity-service-sha256-15a81abee368161451064554a485cfe94dbafd8c5dd5adb72076c87356b25a41.sarif",
+      "findingAbsenceUsedAsInventory": false,
+      "nativeApplicabilityClaim": false
+    },
+    {
+      "service": "operations-service",
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.7",
+      "minimumVersion": "1.6.43-5ubuntu0.7",
+      "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:7c5cfb8810446b78f4e07fcb3179dba1eb516ecdcf7d62013ef860cbde0a3327",
+      "runtimeImageFromManifest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:34a05a690c82b76c4af2db5b8bc668e46a1bd0524e804cf5c32b0d659fdf3ded",
+      "sarifSha256": "f2ad359307519683254d23c587d42c884ff288ff8ff6f39abd5c3374db4cf28a",
+      "sarifArtifact": "trivy\\operations-service-sha256-7c5cfb8810446b78f4e07fcb3179dba1eb516ecdcf7d62013ef860cbde0a3327.sarif",
+      "findingAbsenceUsedAsInventory": false,
+      "nativeApplicabilityClaim": false
+    },
+    {
+      "service": "platform-service",
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.7",
+      "minimumVersion": "1.6.43-5ubuntu0.7",
+      "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:4aa83ba2cf9952d5f784665edb66b7284a891fd663317d5f7af6abce0b0b759f",
+      "runtimeImageFromManifest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:68ea61aaf05a30ac5f42842f675c79cdca1ee921c1ddb1e251c0b786dda54c20",
+      "sarifSha256": "f786d9a0f32d326200e9e7ec28ac1ec93ce77b28e118f4383219a6af25378af3",
+      "sarifArtifact": "trivy\\platform-service-sha256-4aa83ba2cf9952d5f784665edb66b7284a891fd663317d5f7af6abce0b0b759f.sarif",
+      "findingAbsenceUsedAsInventory": false,
+      "nativeApplicabilityClaim": false
+    },
+    {
+      "service": "school-core-service",
+      "package": "libpng16-16t64",
+      "installedVersion": "1.6.43-5ubuntu0.7",
+      "minimumVersion": "1.6.43-5ubuntu0.7",
+      "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:99c3cb3f058cce3b46b8aa70110bbfd8c1cb6fe033e1ae81c3b252ceec9ed6e7",
+      "runtimeImageFromManifest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0",
+      "sarifSha256": "4e8a306b52ddce7e99fa271f27d6ff02a2de923ece644cfa2045a0f1d3a60456",
+      "sarifArtifact": "trivy\\school-core-service-sha256-99c3cb3f058cce3b46b8aa70110bbfd8c1cb6fe033e1ae81c3b252ceec9ed6e7.sarif",
+      "findingAbsenceUsedAsInventory": false,
+      "nativeApplicabilityClaim": false
+    }
+  ],
+  "vendorBackportProof": "acceptance-libpng-vendor-patch-research.json",
+  "vendorDeclaredPatchVersusScannerDisposition": "Retain both the explicit Ubuntu package backport declaration and the actual scanner findings; no suppression, blanket NOT_AFFECTED or native exploitability conclusion."
+}

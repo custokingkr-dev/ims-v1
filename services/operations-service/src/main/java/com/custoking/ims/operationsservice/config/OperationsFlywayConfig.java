@@ -18,6 +18,7 @@ import javax.sql.DataSource;
  * pre-merge (see ADR-001).
  */
 @Configuration
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(name = "app.migrations.enabled", havingValue = "true", matchIfMissing = true)
 public class OperationsFlywayConfig {
 
     // One-shot, sequential migrations need only a tiny pool; default Hikari (max 10, min-idle 10)

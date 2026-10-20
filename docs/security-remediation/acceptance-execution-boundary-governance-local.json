@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T14:49:02.044992+00:00",
+  "status": "PASS_SOURCE_FROZEN",
+  "tests": {
+    "reported": 21,
+    "passed": 21,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "command": "python -O -m unittest scripts.tests.test_verify_github_governance_checks -v",
+    "actualPlatform": "Windows Python3.12",
+    "log": "tmp/governance-process-tree-deadline-final-tests.log",
+    "rawLogSha256": "277f09194f7de14ce2c38175b6245b2a89a960f07b0f68574227963da42ebbfe"
+  },
+  "sources": [
+    {
+      "path": "scripts/verify-github-governance-checks.py",
+      "rawSha256": "fb4fd371a726f54d1b8b352c75d299c33a033fbe4cf98d226d6738b4655576a2",
+      "normalizedLfSha256": "32c06ae9b392427786749a62c726792e42d4b66a9238fcd1cf7c3d564d9bc454"
+    },
+    {
+      "path": "scripts/tests/test_verify_github_governance_checks.py",
+      "rawSha256": "b00efc617b4174c9e027767deefd52fea2bd7be999097e01bbca77bc18627692",
+      "normalizedLfSha256": "6e13c5f29b400024a05758ba3a03ff16675fb093e331679f0fe08fd8e4320085"
+    }
+  ],
+  "oldSourceRegression": {
+    "log": "tmp/governance-deadline-old-source-regression.log",
+    "rawLogSha256": "e09192829948f10091a1be9c7509ca53c50b6c2630e3bc822dcb298f8107332a",
+    "reported": 1,
+    "failures": 1,
+    "errors": 0,
+    "scope": "Actual child and readers completed between loop iterations; controlled monotonic clock crossed deadline; old source returned success"
+  },
+  "preservedPriorProof": {
+    "path": "tmp/governance-process-tree-final-proof.json",
+    "rawSha256": "0965ccb172a20b78a29b4843414f06f6e605a33a4198831519f8a01c45e66d0f",
+    "reported": 20
+  },
+  "fix": "Final monotonic deadline check after reader/process loop and before successful decode/return",
+  "pyCompile": "PASS",
+  "diffWhitespace": "PASS",
+  "liveGithubCloudProviderCalls": 0,
+  "limitations": [
+    "Real native process lifecycle observed locally only on Windows; POSIX branch awaits CI",
+    "OS process creation and system calls themselves not absolutely interruptible",
+    "Owned normal-descendant containment, no adversarial broker/WMI/setsid sandbox claim",
+    "3sec cleanup allowance is separate from read/run deadlines"
+  ]
+}

@@ -53,6 +53,47 @@ foreach ($key in $replacements.Keys) {
   $text = $text.Replace($key, $replacements[$key])
 }
 
+# The precommit erasure feature may only bind the explicitly provisioned dev source.
+# Production remains disabled until its own separately reviewed journal contract exists.
+$schoolCoreTargets = @($text -split '(?m)^---\s*$' | Where-Object {
+  $_ -match "(?m)^  name:\s*school-core-service-$Environment\s*$"
+})
+if ($schoolCoreTargets.Count -ne 1) { throw "Exactly one school-core-service-$Environment target is required." }
+function Read-SchoolCoreParameter([string]$Name) {
+  $parameterMatches = [regex]::Matches($schoolCoreTargets[0], "(?m)^  $([regex]::Escape($Name)):[ \t]*([^\r\n]*)")
+  if ($parameterMatches.Count -ne 1) { throw "School target must declare exactly one '$Name'." }
+  $value = $parameterMatches[0].Groups[1].Value.Trim()
+  if ($value -match '^"([^"]*)"$' -or $value -match "^'([^']*)'$") { return $Matches[1] }
+  return $value
+}
+$journalEnabled = Read-SchoolCoreParameter 'student_erasure_journal_enabled'
+if ($journalEnabled -cnotin @('true','false')) { throw 'Erasure journal enablement must be explicit.' }
+if ($journalEnabled -ceq 'true') {
+  if ($Environment -cne 'dev' -or $projectId -cne 'custoking-dev' -or $replacements['__DB_NAME__'] -cne 'custoking_dev' -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_project_id') -cne 'custoking-dev' -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_bucket') -cne 'custoking-dev-erasure-journal') {
+    throw 'The enabled erasure journal must bind the exact dedicated dev project, database and bucket.'
+  }
+  $controlPath = Join-Path $repoRoot 'deploy/gcp/erasure-journal/dev-source-control.json'
+  $control = Get-Content -LiteralPath $controlPath -Raw | ConvertFrom-Json
+  $hasher = [System.Security.Cryptography.SHA256]::Create()
+  try { $controlSha = ([BitConverter]::ToString($hasher.ComputeHash([IO.File]::ReadAllBytes($controlPath)))).Replace('-','').ToLowerInvariant() }
+  finally { $hasher.Dispose() }
+  if ($control.project -cne 'custoking-dev' -or $control.sourceInstance -cne 'custoking-db-dev' -or
+      $control.database -cne 'custoking_dev' -or $control.state -cne 'ACTIVE' -or $control.schemaVersion -ne 1 -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_source_lineage_id') -cne $control.sourceLineageId -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_restore_epoch') -cne $control.restoreEpoch -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_epoch_generation') -cnotmatch '^[1-9][0-9]{0,18}$' -or
+      (Read-SchoolCoreParameter 'student_erasure_journal_epoch_sha256') -cne $controlSha) {
+    throw 'Erasure deployment must pin the reviewed source control tuple and canonical body hash.'
+  }
+} else {
+  foreach ($parameter in @('project_id','bucket','source_lineage_id','restore_epoch','epoch_sha256')) {
+    if ((Read-SchoolCoreParameter "student_erasure_journal_$parameter") -cne '') { throw 'Disabled journal must not carry another source lineage.' }
+  }
+  if ((Read-SchoolCoreParameter 'student_erasure_journal_epoch_generation') -cne '0') { throw 'Disabled journal generation must be zero.' }
+}
+
 # Browser CORS needs both Cloud Run aliases, while frontend_url stays one upstream URL.
 # These are exact reviewed aliases, not a hostname pattern or a runtime request-derived list.
 # A new project/hash needs an explicit source review; canonical-only is always available.
@@ -155,6 +196,27 @@ $runtimeAccounts = @([regex]::Matches($text, '(?m)^\s*runtime_service_account:\s
 if ($runtimeAccounts.Count -ne $targetCount -or
     @($runtimeAccounts | Where-Object { $_ -notmatch "-$Environment@$([regex]::Escape($projectId))\.iam\.gserviceaccount\.com$" }).Count -gt 0) {
   throw "Every Cloud Deploy $Environment target must use its environment-specific dedicated runtime identity."
+}
+
+# Security admission is source-controlled: fixed service roles, audiences and principal carriers.
+$securityRoles=@{ 'identity-service'='ims_identity_rt'; 'school-core-service'='ims_school_core_rt'; 'operations-service'='ims_operations_rt'; 'platform-service'='ims_platform_rt'; 'billing-service'='ims_billing_rt' }
+$reviewedHashes=@{ 'custoking-dev/dev/asia-south2'='hd4wfwk7mq'; 'custoking-prod/prod/asia-south2'='yter7sugpa' }
+$serviceHash=$reviewedHashes["$projectId/$Environment/$($replacements['__REGION__'])"]
+if(-not $serviceHash){throw 'Service authentication requires a reviewed project/environment/region alias.'}
+foreach($service in $securityRoles.Keys){
+ $blocks=@($text -split '(?m)^---\s*$' | Where-Object {$_ -match "(?m)^  name:\s*$service-$Environment\s*$"})
+ if($blocks.Count -ne 1){throw "Exactly one $service security target is required."}
+ $expected=@{
+  runtime_db_role=$securityRoles[$service]
+  runtime_db_password_secret=($service.Replace('-service','')+"-runtime-db-password-$Environment")
+  service_oidc_audiences="https://custoking-$service-$Environment-$($replacements['__PROJECT_NUMBER__']).$($replacements['__REGION__']).run.app,https://custoking-$service-$Environment-$serviceHash-em.a.run.app"
+  user_context_caller_service_accounts="ims-api-gateway-$Environment@$projectId.iam.gserviceaccount.com"
+ }
+ if($service -eq 'school-core-service'){$expected.user_context_caller_service_accounts+=",ims-identity-$Environment@$projectId.iam.gserviceaccount.com"}
+ foreach($key in $expected.Keys){
+  $declarations=[regex]::Matches($blocks[0],"(?m)^  $([regex]::Escape($key)):[ \t]*([^\r\n]*)")
+  if($declarations.Count -ne 1 -or $declarations[0].Groups[1].Value.Trim().Trim('"',"'") -cne $expected[$key]){throw "Unreviewed $service security target parameter: $key."}
+ }
 }
 
 $unresolved = [regex]::Matches($text, "__[A-Z0-9_]+__") | ForEach-Object { $_.Value } | Sort-Object -Unique

@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.api.compat;
 
 import com.custoking.ims.schoolcoreservice.persistence.CampaignCompletedException;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository;
+import com.custoking.ims.schoolcoreservice.application.StudentCommands;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,17 +26,28 @@ import java.util.Map;
 public class StudentWorkspaceCompatibilityController {
 
     private final StudentReadRepository students;
+    private final StudentCommands commands;
     private final String readToken;
     private final ModuleEntitlementGuard moduleGuard;
 
     @Autowired
     public StudentWorkspaceCompatibilityController(
             StudentReadRepository students,
+            StudentCommands commands,
             ModuleEntitlementGuard moduleGuard,
             @Value("${student.read-token:}") String readToken) {
         this.students = students;
+        this.commands = commands;
         this.moduleGuard = moduleGuard;
         this.readToken = readToken == null ? "" : readToken.trim();
+    }
+
+    /** Standalone controller fixtures; deployed requests use the injected command proxy above. */
+    public StudentWorkspaceCompatibilityController(
+            StudentReadRepository students,
+            ModuleEntitlementGuard moduleGuard,
+            @Value("${student.read-token:}") String readToken) {
+        this(students, new StudentCommands(students), moduleGuard, readToken);
     }
 
     public StudentWorkspaceCompatibilityController(
@@ -54,7 +66,7 @@ public class StudentWorkspaceCompatibilityController {
         applyResolvedSchool(mutableRequest);
         requireStudentModule(longValue(mutableRequest.get("schoolId")));
         try {
-            return students.createStudent(mutableRequest);
+            return commands.createStudent(mutableRequest);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
@@ -71,7 +83,7 @@ public class StudentWorkspaceCompatibilityController {
         applyResolvedSchool(mutableRequest);
         requireStudentModule(longValue(mutableRequest.get("schoolId")));
         try {
-            return students.updateStudent(id, mutableRequest);
+            return commands.updateStudent(id, mutableRequest);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         } catch (SecurityException ex) {
@@ -106,7 +118,7 @@ public class StudentWorkspaceCompatibilityController {
         Map<String, Object> mutableRequest = new HashMap<>(request);
         mutableRequest.put("schoolId", scope);
         try {
-            return students.updateReviewItem(itemId, mutableRequest);
+            return commands.updateReviewItem(itemId, mutableRequest);
         } catch (CampaignCompletedException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         } catch (IllegalArgumentException ex) {

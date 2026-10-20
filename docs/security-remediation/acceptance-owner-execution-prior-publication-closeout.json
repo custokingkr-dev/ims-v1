@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T18:53:07.971475+00:00",
+  "remainingRoundSourceAndDevAcceptanceComplete": true,
+  "finalEvidencePublicationAcceptanceComplete": true,
+  "wholeSavedSecurityPlanComplete": false,
+  "implementedFixes": [
+    "Strict canonical prepared SMS reservation routing before admission/network calls",
+    "Bounded exact approved recovery epoch reread before commit admission",
+    "Exact current capture age and fractional lease-duration authorization checks"
+  ],
+  "sourceAcceptance": {
+    "sourcePullRequest": 340,
+    "sourceHeadSha": "b86334002ecbbaa96e5399906555039a39678880",
+    "mergedSourceSha": "bb1e8c3c0c40fcca98cdc1494f20002e381c40d1",
+    "syntheticMergeSha": "bb720e6f02ec611cf9bb71de63e7c1767302dde1",
+    "sourceCiRunId": 37820348970,
+    "sourceCodeqlRunId": 37820348908,
+    "devReleaseRunId": 37821327219,
+    "postmergeCodeqlRunId": 37821326150,
+    "fullAffectedServiceLinuxTests": [
+      {
+        "service": "school-core-service",
+        "jobId": 113463147815,
+        "conclusion": "success",
+        "reported": 979,
+        "passed": 979,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "logSha256": "626ec813b487fe7836a21c8deb5910005d7339ad163ddc73e18b682544f4a5c4",
+        "rawLogSaved": false
+      },
+      {
+        "service": "platform-service",
+        "jobId": 113463147885,
+        "conclusion": "success",
+        "reported": 496,
+        "passed": 496,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "logSha256": "4bcddc8268ff4f805a56a5eb2add4740dfeb2d46ef1ecacd9237cb66e6a80281",
+        "rawLogSaved": false
+      }
+    ],
+    "fullFocusedCiReleaseCountsOverlap": true
+  },
+  "publicationAcceptance": {
+    "publicationPullRequest": 341,
+    "publicationSourceHeadSha": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+    "publicationPrHeadSha": "7f32f61983c3cf20c626172e8a2127d6fa3bfdc4",
+    "publicationSquashParentSha": "bb1e8c3c0c40fcca98cdc1494f20002e381c40d1",
+    "publicationSquashTreeMatchesCiHead": true,
+    "publishedTreeSha": "f7b9963e01c7f844607176fbf0c22ad601cbd246",
+    "publicationCiRunId": 37825345391,
+    "publicationCdRunId": 37826088234,
+    "publicationCodeqlRunId": 37826087619,
+    "publicationNoDeployment": true,
+    "actualPublicationCiJobs": [
+      {
+        "name": "promotion-source-policy",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "secret-scan",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "privacy-technical-controls",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "dev-edge-terraform-validation",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "duplicate-class-drift",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "windows-security-helper-validation",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "static-architecture-audits",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "detect / detect",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "service-test (${{ matrix.name }})",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "docker-build (${{ matrix.name }})",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "maven-wrapper-validation (${{ matrix.os }})",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "summary",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ],
+    "actualPublicationCdJobs": [
+      {
+        "name": "resolve-target",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "release-secret-scan",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "detect / detect",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "release-static-gate",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "no-deployment",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "configuration-reconciliation-required",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "release-service-test (${{ matrix.name }})",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "build-images",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "release",
+        "status": "completed",
+        "conclusion": "skipped"
+      }
+    ],
+    "actualPublicationCodeqlAnalyses": [
+      {
+        "id": 1918286072,
+        "ref": "refs/heads/dev",
+        "commit_sha": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+        "category": "/language:java-kotlin",
+        "created_at": "2026-10-08T18:44:35Z",
+        "results_count": 0,
+        "error": "",
+        "rules_count": 120
+      },
+      {
+        "id": 1918265739,
+        "ref": "refs/heads/dev",
+        "commit_sha": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+        "category": "/language:javascript-typescript",
+        "created_at": "2026-10-08T18:41:39Z",
+        "results_count": 0,
+        "error": "",
+        "rules_count": 103
+      }
+    ],
+    "scopedDevCodeqlOpenAlerts": 0
+  },
+  "finalRuntimeReadbackCapturedAtUtc": "2026-10-08T18:46:01.458066+00:00",
+  "readyDevServiceCount": 7,
+  "exactDevDescribeReads": 14,
+  "unchangedRuntimeAndSelectedConfiguration": true,
+  "preservedKnownPublishedBlobBindings": 213,
+  "acceptedAdditiveRollbackTags": 4,
+  "acceptedPublicDenials": 15,
+  "acceptedFrontendCsp": true,
+  "frozenEvidenceSha256": {
+    "tmp/remaining-round-postpublication-runtime-readback.json": "48031c4c0fc85ffa54e4deac461429ae77988851c1622dbb9a763b810a7f94c6",
+    "tmp/remaining-round-postpublication-runtime-final.py": "ab2c66c1e54dbaab8ab294ba16c80ac58d4d2efd5d1247d14ad2cf0a9737a043",
+    "tmp/remaining-round-final-publication-independent-review.json": "beb3bfaf1cc490554086bc2ecc661e12693cc49c50343512570a17165e736d2a",
+    "tmp/remaining-round-publication-ci-proof.json": "6357ceeef30b194c0c458b9850e27778a4758295344b4d77c2cc9e6b17bca10b",
+    "tmp/remaining-round-postpublication-integrity.json": "bff2a9b22507dc9c8f906d8713a701e74051cba405ab3a30f03e8237cd023a7f",
+    "tmp/remaining-round-source-ci-proof.json": "01107c0b8395992782d6e2a6b5d61a65b27bb4da797528913a2fc4ac547ca7d4",
+    "tmp/remaining-round-postmerge-artifact-proof.json": "bdc3f9fd1512264f6183f4aa4c5495bf8ffe1cb1b69a629a4cf894961ced2f68",
+    "tmp/remaining-round-dev-independent-acceptance-review.json": "168858c0f0f25c51eb2c86ff29979412724a24e5fccb2ca5bf449d0cb2298dcf",
+    "tmp/remaining-round-dev-publication-independent-review.json": "e6a6c583f9d0a4f0818c490c9afad5b2e96bb6c7b040117af9deb68b7f02c296",
+    "docs/security-remediation/acceptance-remaining-round-completion.json": "ae6e8b2a262b0cd606cc35279959a0e2a111f58148a1ad54e9b867cdf3811144",
+    "docs/security-remediation/acceptance-remaining-round-dev-release.json": "7c80a89d1a2e2bc54993dd6a272314dfa7f36b5c99324113b9da5f7483d68eab",
+    "docs/security-remediation/acceptance-remaining-round-image-protection.json": "cca8151822339a579625110d9f9016725377ac3289a791e7ac9a577f4404baa1",
+    "docs/security-remediation/acceptance-remaining-round-public-smoke.json": "add782239f0097a569721119b0bd44db7102ad5e071fc5d4aa504b5b157cc312"
+  },
+  "independentFinalReview": "PASS_FINAL_PUBLISHED_EVIDENCE_AND_SAVED_RUNTIME_READBACK",
+  "openOwnerActionIds": [
+    "edge",
+    "repository",
+    "dashboard",
+    "provider",
+    "hardware",
+    "retention_restore",
+    "capacity_cleanup",
+    "http2",
+    "egress_files"
+  ],
+  "additionalOpenFindings": [
+    "residual_native_advisory_applicability",
+    "local_snapshot_custody"
+  ],
+  "remainingOwnerGroupCount": 9,
+  "additionalOpenFindingCount": 2,
+  "earlierDatedPublicationPendingFlagSuperseded": {
+    "file": "docs/security-remediation/acceptance-remaining-round-completion.json",
+    "capturedAtUtc": "2026-10-08T18:29:57.210224+00:00",
+    "field": "finalEvidencePublicationAcceptanceComplete",
+    "preservedValue": false,
+    "historicalRecordBytesUnchanged": true
+  },
+  "findingsAndFixPlan": "docs/security-remediation/remaining-security-completion-2026-10-08.md",
+  "ownerActionPlan": "docs/security-remediation/acceptance-owner-actions.md",
+  "scope": "This offline root closeout binds already captured actual source/dev/publication evidence and independent review. It makes no additional live calls or source changes. No universal feature/attack safety, physical authenticator, real provider delivery, full physical recovery, enforced global freeze, native binary applicability, production, irreversible revision deletion or local snapshot cleanup acceptance is added."
+}

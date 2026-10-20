@@ -1,0 +1,623 @@
+{
+    "mode":  "READ_ONLY_NO_LOAD",
+    "project":  "custoking-dev",
+    "region":  "asia-south2",
+    "capturedAt":  "2026-10-06T20:56:52.1991178Z",
+    "completedAt":  "2026-10-06T20:57:25.5556936Z",
+    "expectedSevenImagesProvided":  true,
+    "allSevenReadyExactLatest":  true,
+    "services":  [
+                     {
+                         "service":  "api-gateway",
+                         "ready":  true,
+                         "revisionReady":  true,
+                         "latestReady":  "custoking-api-gateway-dev-mux4t5el",
+                         "latestCreated":  "custoking-api-gateway-dev-mux4t5el",
+                         "readyIsLatest":  true,
+                         "latestTraffic100":  true,
+                         "imageDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8",
+                         "expectedDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:be35536ce0e996b90612a923a5d885c7e6f624b99f01281d1ddc9da7ad6b75a8",
+                         "exactImageVerified":  true,
+                         "serviceMaxScale":  "4",
+                         "revisionMaxScale":  "4",
+                         "traffic":  [
+                                         {
+                                             "revision":  "custoking-api-gateway-dev-mux4t5el",
+                                             "percent":  100,
+                                             "tag":  null
+                                         }
+                                     ]
+                     },
+                     {
+                         "service":  "identity-service",
+                         "ready":  true,
+                         "revisionReady":  true,
+                         "latestReady":  "custoking-identity-service-dev-mux4vvwa",
+                         "latestCreated":  "custoking-identity-service-dev-mux4vvwa",
+                         "readyIsLatest":  true,
+                         "latestTraffic100":  true,
+                         "imageDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:90910d585d57029bb8cf5daa22360cf97626a5d21ac7a8868df726a9aeac3d91",
+                         "expectedDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:90910d585d57029bb8cf5daa22360cf97626a5d21ac7a8868df726a9aeac3d91",
+                         "exactImageVerified":  true,
+                         "serviceMaxScale":  "2",
+                         "revisionMaxScale":  "2",
+                         "traffic":  [
+                                         {
+                                             "revision":  "custoking-identity-service-dev-mux4vvwa",
+                                             "percent":  100,
+                                             "tag":  null
+                                         }
+                                     ]
+                     },
+                     {
+                         "service":  "frontend",
+                         "ready":  true,
+                         "revisionReady":  true,
+                         "latestReady":  "custoking-frontend-dev-mux4y4gz",
+                         "latestCreated":  "custoking-frontend-dev-mux4y4gz",
+                         "readyIsLatest":  true,
+                         "latestTraffic100":  true,
+                         "imageDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+                         "expectedDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:a12001703e7976cba170393a43e7e907f506d09f67a9597e2ae94d179e70f963",
+                         "exactImageVerified":  true,
+                         "serviceMaxScale":  "3",
+                         "revisionMaxScale":  "2",
+                         "traffic":  [
+                                         {
+                                             "revision":  "custoking-frontend-dev-mux4y4gz",
+                                             "percent":  100,
+                                             "tag":  null
+                                         }
+                                     ]
+                     },
+                     {
+                         "service":  "school-core-service",
+                         "ready":  true,
+                         "revisionReady":  true,
+                         "latestReady":  "custoking-school-core-service-dev-mux510y8",
+                         "latestCreated":  "custoking-school-core-service-dev-mux510y8",
+                         "readyIsLatest":  true,
+                         "latestTraffic100":  true,
+                         "imageDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:4e32fa51ca240ffc94da3b81c754f04428ecc91a762e3a504bb980770fbb8d05",
+                         "expectedDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:4e32fa51ca240ffc94da3b81c754f04428ecc91a762e3a504bb980770fbb8d05",
+                         "exactImageVerified":  true,
+                         "serviceMaxScale":  "2",
+                         "revisionMaxScale":  "2",
+                         "traffic":  [
+                                         {
+                                             "revision":  "custoking-school-core-service-dev-mux510y8",
+                                             "percent":  100,
+                                             "tag":  null
+                                         }
+                                     ]
+                     },
+                     {
+                         "service":  "operations-service",
+                         "ready":  true,
+                         "revisionReady":  true,
+                         "latestReady":  "custoking-operations-service-dev-mux54kwl",
+                         "latestCreated":  "custoking-operations-service-dev-mux54kwl",
+                         "readyIsLatest":  true,
+                         "latestTraffic100":  true,
+                         "imageDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:9ef0e46faa2e480dd2d98ac750fd7121110f1701e5823533265b07a5f707c673",
+                         "expectedDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:9ef0e46faa2e480dd2d98ac750fd7121110f1701e5823533265b07a5f707c673",
+                         "exactImageVerified":  true,
+                         "serviceMaxScale":  "2",
+                         "revisionMaxScale":  "2",
+                         "traffic":  [
+                                         {
+                                             "revision":  "custoking-operations-service-dev-mux54kwl",
+                                             "percent":  100,
+                                             "tag":  null
+                                         }
+                                     ]
+                     },
+                     {
+                         "service":  "billing-service",
+                         "ready":  true,
+                         "revisionReady":  true,
+                         "latestReady":  "custoking-billing-service-dev-mux57mc7",
+                         "latestCreated":  "custoking-billing-service-dev-mux57mc7",
+                         "readyIsLatest":  true,
+                         "latestTraffic100":  true,
+                         "imageDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:954094266973ea921699840e143ae6a897f8d7f8e4224b16d2d864bfd6eb6963",
+                         "expectedDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:954094266973ea921699840e143ae6a897f8d7f8e4224b16d2d864bfd6eb6963",
+                         "exactImageVerified":  true,
+                         "serviceMaxScale":  "2",
+                         "revisionMaxScale":  "2",
+                         "traffic":  [
+                                         {
+                                             "revision":  "custoking-billing-service-dev-mux57mc7",
+                                             "percent":  100,
+                                             "tag":  null
+                                         }
+                                     ]
+                     },
+                     {
+                         "service":  "platform-service",
+                         "ready":  true,
+                         "revisionReady":  true,
+                         "latestReady":  "custoking-platform-service-dev-mux5ano8",
+                         "latestCreated":  "custoking-platform-service-dev-mux5ano8",
+                         "readyIsLatest":  true,
+                         "latestTraffic100":  true,
+                         "imageDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:1f2646ddd866dd85c5df1f705c9bfb0a388440c0fa95e1ffb8fb8c3f608a24b2",
+                         "expectedDigest":  "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:1f2646ddd866dd85c5df1f705c9bfb0a388440c0fa95e1ffb8fb8c3f608a24b2",
+                         "exactImageVerified":  true,
+                         "serviceMaxScale":  "2",
+                         "revisionMaxScale":  "2",
+                         "traffic":  [
+                                         {
+                                             "revision":  "custoking-platform-service-dev-mux5ano8",
+                                             "percent":  100,
+                                             "tag":  null
+                                         }
+                                     ]
+                     }
+                 ],
+    "database":  {
+                     "memory":  [
+                                    {
+                                        "at":  "2026-10-06T20:56:00.0000000Z",
+                                        "ageSeconds":  52,
+                                        "fresh":  true,
+                                        "value":  1,
+                                        "resourceLabels":  {
+                                                               "region":  "asia-south2",
+                                                               "database_id":  "custoking-dev:custoking-db-dev",
+                                                               "project_id":  "custoking-dev"
+                                                           },
+                                        "metricLabels":  null,
+                                        "windowMaximum":  1
+                                    }
+                                ],
+                     "cpu":  [
+                                 {
+                                     "at":  "2026-10-06T20:56:00.0000000Z",
+                                     "ageSeconds":  52,
+                                     "fresh":  true,
+                                     "value":  0.061699228476925327,
+                                     "resourceLabels":  {
+                                                            "database_id":  "custoking-dev:custoking-db-dev",
+                                                            "project_id":  "custoking-dev",
+                                                            "region":  "asia-south2"
+                                                        },
+                                     "metricLabels":  null,
+                                     "windowMaximum":  0.085821446995603873
+                                 }
+                             ],
+                     "maxConnectionsConfigured":  "200",
+                     "metricsFresh":  true,
+                     "state":  "RUNNABLE",
+                     "connections":  [
+                                         {
+                                             "at":  "2026-10-06T20:56:00.0000000Z",
+                                             "ageSeconds":  52,
+                                             "fresh":  true,
+                                             "value":  2,
+                                             "resourceLabels":  {
+                                                                    "project_id":  "custoking-dev",
+                                                                    "region":  "asia-south2",
+                                                                    "database_id":  "custoking-dev:custoking-db-dev"
+                                                                },
+                                             "metricLabels":  {
+                                                                  "database":  "cloudsqladmin"
+                                                              },
+                                             "windowMaximum":  2
+                                         },
+                                         {
+                                             "at":  "2026-10-06T20:56:00.0000000Z",
+                                             "ageSeconds":  52,
+                                             "fresh":  true,
+                                             "value":  6,
+                                             "resourceLabels":  {
+                                                                    "project_id":  "custoking-dev",
+                                                                    "database_id":  "custoking-dev:custoking-db-dev",
+                                                                    "region":  "asia-south2"
+                                                                },
+                                             "metricLabels":  {
+                                                                  "database":  "custoking_dev"
+                                                              },
+                                             "windowMaximum":  9
+                                         },
+                                         {
+                                             "at":  "2026-10-06T20:56:00.0000000Z",
+                                             "ageSeconds":  52,
+                                             "fresh":  true,
+                                             "value":  0,
+                                             "resourceLabels":  {
+                                                                    "project_id":  "custoking-dev",
+                                                                    "region":  "asia-south2",
+                                                                    "database_id":  "custoking-dev:custoking-db-dev"
+                                                                },
+                                             "metricLabels":  {
+                                                                  "database":  "postgres"
+                                                              },
+                                             "windowMaximum":  0
+                                         },
+                                         {
+                                             "at":  "2026-10-06T20:56:00.0000000Z",
+                                             "ageSeconds":  52,
+                                             "fresh":  true,
+                                             "value":  0,
+                                             "resourceLabels":  {
+                                                                    "database_id":  "custoking-dev:custoking-db-dev",
+                                                                    "project_id":  "custoking-dev",
+                                                                    "region":  "asia-south2"
+                                                                },
+                                             "metricLabels":  {
+                                                                  "database":  "template1"
+                                                              },
+                                             "windowMaximum":  0
+                                         }
+                                     ],
+                     "connectionsLatestSum":  8,
+                     "memoryMeaning":  "utilization is fraction of quota; components are usage/cache/free percentages; conflicting gauges require investigation, no safety verdict",
+                     "memoryComponents":  [
+                                              {
+                                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                                  "ageSeconds":  52,
+                                                  "fresh":  true,
+                                                  "value":  14.692013197211155,
+                                                  "resourceLabels":  {
+                                                                         "region":  "asia-south2",
+                                                                         "database_id":  "custoking-dev:custoking-db-dev",
+                                                                         "project_id":  "custoking-dev"
+                                                                     },
+                                                  "metricLabels":  {
+                                                                       "component":  "Cache"
+                                                                   },
+                                                  "windowMaximum":  17.673835906374503
+                                              },
+                                              {
+                                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                                  "ageSeconds":  52,
+                                                  "fresh":  true,
+                                                  "value":  70.753703934262944,
+                                                  "resourceLabels":  {
+                                                                         "database_id":  "custoking-dev:custoking-db-dev",
+                                                                         "region":  "asia-south2",
+                                                                         "project_id":  "custoking-dev"
+                                                                     },
+                                                  "metricLabels":  {
+                                                                       "component":  "Free"
+                                                                   },
+                                                  "windowMaximum":  76.925890189243034
+                                              },
+                                              {
+                                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                                  "ageSeconds":  52,
+                                                  "fresh":  true,
+                                                  "value":  14.554282868525895,
+                                                  "resourceLabels":  {
+                                                                         "region":  "asia-south2",
+                                                                         "database_id":  "custoking-dev:custoking-db-dev",
+                                                                         "project_id":  "custoking-dev"
+                                                                     },
+                                                  "metricLabels":  {
+                                                                       "component":  "Usage"
+                                                                   },
+                                                  "windowMaximum":  17.482414093625497
+                                              }
+                                          ]
+                 },
+    "revisionInstances":  [
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "revision_name":  "custoking-api-gateway-dev-mux4t5el",
+                                                         "configuration_name":  "custoking-api-gateway-dev",
+                                                         "project_id":  "custoking-dev",
+                                                         "service_name":  "custoking-api-gateway-dev",
+                                                         "location":  "asia-south2"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "active"
+                                                   },
+                                  "windowMaximum":  1
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  1,
+                                  "resourceLabels":  {
+                                                         "project_id":  "custoking-dev",
+                                                         "configuration_name":  "custoking-api-gateway-dev",
+                                                         "revision_name":  "custoking-api-gateway-dev-mux4t5el",
+                                                         "service_name":  "custoking-api-gateway-dev",
+                                                         "location":  "asia-south2"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "idle"
+                                                   },
+                                  "windowMaximum":  1
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "revision_name":  "custoking-billing-service-dev-mux57mc7",
+                                                         "service_name":  "custoking-billing-service-dev",
+                                                         "configuration_name":  "custoking-billing-service-dev",
+                                                         "project_id":  "custoking-dev",
+                                                         "location":  "asia-south2"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "active"
+                                                   },
+                                  "windowMaximum":  0
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  1,
+                                  "resourceLabels":  {
+                                                         "service_name":  "custoking-billing-service-dev",
+                                                         "revision_name":  "custoking-billing-service-dev-mux57mc7",
+                                                         "configuration_name":  "custoking-billing-service-dev",
+                                                         "location":  "asia-south2",
+                                                         "project_id":  "custoking-dev"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "idle"
+                                                   },
+                                  "windowMaximum":  1
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "service_name":  "custoking-frontend-dev",
+                                                         "location":  "asia-south2",
+                                                         "project_id":  "custoking-dev",
+                                                         "configuration_name":  "custoking-frontend-dev",
+                                                         "revision_name":  "custoking-frontend-dev-mux4y4gz"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "active"
+                                                   },
+                                  "windowMaximum":  1
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  1,
+                                  "resourceLabels":  {
+                                                         "location":  "asia-south2",
+                                                         "service_name":  "custoking-frontend-dev",
+                                                         "project_id":  "custoking-dev",
+                                                         "configuration_name":  "custoking-frontend-dev",
+                                                         "revision_name":  "custoking-frontend-dev-mux4y4gz"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "idle"
+                                                   },
+                                  "windowMaximum":  1
+                              },
+                              {
+                                  "at":  "2026-10-06T20:55:00.0000000Z",
+                                  "ageSeconds":  112,
+                                  "fresh":  true,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "service_name":  "custoking-identity-service-dev",
+                                                         "revision_name":  "custoking-identity-service-dev-mux4vvwa",
+                                                         "location":  "asia-south2",
+                                                         "project_id":  "custoking-dev",
+                                                         "configuration_name":  "custoking-identity-service-dev"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "active"
+                                                   },
+                                  "windowMaximum":  0
+                              },
+                              {
+                                  "at":  "2026-10-06T20:55:00.0000000Z",
+                                  "ageSeconds":  112,
+                                  "fresh":  true,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "project_id":  "custoking-dev",
+                                                         "location":  "asia-south2",
+                                                         "configuration_name":  "custoking-identity-service-dev",
+                                                         "service_name":  "custoking-identity-service-dev",
+                                                         "revision_name":  "custoking-identity-service-dev-mux4vvwa"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "idle"
+                                                   },
+                                  "windowMaximum":  1
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  1,
+                                  "resourceLabels":  {
+                                                         "project_id":  "custoking-dev",
+                                                         "configuration_name":  "custoking-operations-service-dev",
+                                                         "service_name":  "custoking-operations-service-dev",
+                                                         "location":  "asia-south2",
+                                                         "revision_name":  "custoking-operations-service-dev-mux54kwl"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "active"
+                                                   },
+                                  "windowMaximum":  1
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "service_name":  "custoking-operations-service-dev",
+                                                         "revision_name":  "custoking-operations-service-dev-mux54kwl",
+                                                         "project_id":  "custoking-dev",
+                                                         "location":  "asia-south2",
+                                                         "configuration_name":  "custoking-operations-service-dev"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "idle"
+                                                   },
+                                  "windowMaximum":  0
+                              },
+                              {
+                                  "at":  "2026-10-06T20:51:00.0000000Z",
+                                  "ageSeconds":  352,
+                                  "fresh":  false,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "service_name":  "custoking-platform-service-dev",
+                                                         "location":  "asia-south2",
+                                                         "configuration_name":  "custoking-platform-service-dev",
+                                                         "revision_name":  "custoking-platform-service-dev-muipmx2l",
+                                                         "project_id":  "custoking-dev"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "active"
+                                                   },
+                                  "windowMaximum":  0
+                              },
+                              {
+                                  "at":  "2026-10-06T20:51:00.0000000Z",
+                                  "ageSeconds":  352,
+                                  "fresh":  false,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "configuration_name":  "custoking-platform-service-dev",
+                                                         "project_id":  "custoking-dev",
+                                                         "service_name":  "custoking-platform-service-dev",
+                                                         "revision_name":  "custoking-platform-service-dev-muipmx2l",
+                                                         "location":  "asia-south2"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "idle"
+                                                   },
+                                  "windowMaximum":  0
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  1,
+                                  "resourceLabels":  {
+                                                         "service_name":  "custoking-platform-service-dev",
+                                                         "revision_name":  "custoking-platform-service-dev-mux5ano8",
+                                                         "location":  "asia-south2",
+                                                         "project_id":  "custoking-dev",
+                                                         "configuration_name":  "custoking-platform-service-dev"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "active"
+                                                   },
+                                  "windowMaximum":  1
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "location":  "asia-south2",
+                                                         "service_name":  "custoking-platform-service-dev",
+                                                         "configuration_name":  "custoking-platform-service-dev",
+                                                         "project_id":  "custoking-dev",
+                                                         "revision_name":  "custoking-platform-service-dev-mux5ano8"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "idle"
+                                                   },
+                                  "windowMaximum":  0
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "location":  "asia-south2",
+                                                         "configuration_name":  "custoking-school-core-service-dev",
+                                                         "revision_name":  "custoking-school-core-service-dev-mux510y8",
+                                                         "service_name":  "custoking-school-core-service-dev",
+                                                         "project_id":  "custoking-dev"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "active"
+                                                   },
+                                  "windowMaximum":  0
+                              },
+                              {
+                                  "at":  "2026-10-06T20:56:00.0000000Z",
+                                  "ageSeconds":  52,
+                                  "fresh":  true,
+                                  "value":  0,
+                                  "resourceLabels":  {
+                                                         "service_name":  "custoking-school-core-service-dev",
+                                                         "project_id":  "custoking-dev",
+                                                         "configuration_name":  "custoking-school-core-service-dev",
+                                                         "location":  "asia-south2",
+                                                         "revision_name":  "custoking-school-core-service-dev-mux510y8"
+                                                     },
+                                  "metricLabels":  {
+                                                       "state":  "idle"
+                                                   },
+                                  "windowMaximum":  1
+                              }
+                          ],
+    "oldRevisionInstances":  [
+                                 {
+                                     "at":  "2026-10-06T20:51:00.0000000Z",
+                                     "ageSeconds":  352,
+                                     "fresh":  false,
+                                     "value":  0,
+                                     "resourceLabels":  {
+                                                            "service_name":  "custoking-platform-service-dev",
+                                                            "location":  "asia-south2",
+                                                            "configuration_name":  "custoking-platform-service-dev",
+                                                            "revision_name":  "custoking-platform-service-dev-muipmx2l",
+                                                            "project_id":  "custoking-dev"
+                                                        },
+                                     "metricLabels":  {
+                                                          "state":  "active"
+                                                      },
+                                     "windowMaximum":  0
+                                 },
+                                 {
+                                     "at":  "2026-10-06T20:51:00.0000000Z",
+                                     "ageSeconds":  352,
+                                     "fresh":  false,
+                                     "value":  0,
+                                     "resourceLabels":  {
+                                                            "configuration_name":  "custoking-platform-service-dev",
+                                                            "project_id":  "custoking-dev",
+                                                            "service_name":  "custoking-platform-service-dev",
+                                                            "revision_name":  "custoking-platform-service-dev-muipmx2l",
+                                                            "location":  "asia-south2"
+                                                        },
+                                     "metricLabels":  {
+                                                          "state":  "idle"
+                                                      },
+                                     "windowMaximum":  0
+                                 }
+                             ],
+    "oldDrain":  {
+                     "status":  "UNKNOWN_NOT_PROVEN",
+                     "reason":  "Monitoring is sampled every60s and delayed up to120s. Missing/stale/zero series do not prove every old instance drained. Revision traffic and database gauges are different evidence."
+                 },
+    "loadCertification":  false,
+    "source198ModelProven":  false,
+    "workloadStarted":  false,
+    "cloudMutations":  false,
+    "secretsPersisted":  false
+}

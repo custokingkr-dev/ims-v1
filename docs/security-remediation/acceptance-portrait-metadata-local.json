@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T06:30:04.006348+00:00",
+  "baseSourceCommit": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+  "sourceFiles": [
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/infrastructure/StudentPhotoStorage.java",
+      "sourceLfSha256": "b024d968dc1d4e50d01da51776ca8cb535c3895ec1c975fc184b7a2590f3d56c"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/infrastructure/StudentPhotoStorageTest.java",
+      "sourceLfSha256": "122b1df79f79c3c9db7b9de5365bd53b758e8130b503999eeff5dfd8944682f9"
+    }
+  ],
+  "change": "Detected JPEG retains the existing Thumbnailator EXIF orientation decoder. Other detected formats decode with seekForwardOnly=true and ignoreMetadata=true. Byte/pixel limits and nonblocking two-slot admission are preserved. No dependency/codec/base/policy change.",
+  "dependencyContext": {
+    "schemaVersion": 1,
+    "capturedOnUtc": "2026-10-07T20:55:02.233522Z",
+    "sourceCommit": "46f2fd4f6b7f69349f62c89af92e0c90f4f4b90c",
+    "scope": "Observed local locked dependency source/bytecode distinction for normal portrait input. No reproduction or attack fixture was created or executed.",
+    "dependency": {
+      "coordinate": "net.coobird:thumbnailator:0.4.21",
+      "localJarVersionVerified": true,
+      "localJarSha256": "9ba7b5a55731932f2aec94e138b0f15166158e5881497dfb555db30836b7d607",
+      "declaringPom": {
+        "path": "services/school-core-service/pom.xml",
+        "lines": [
+          20,
+          140,
+          141
+        ],
+        "sourceLfSha256": "4b984b416767ce9fb123f1ae75c9238fb78730902f3a44b2a1d4ad1f6e69b66e"
+      },
+      "sourceArtifact": {
+        "url": "https://repo.maven.apache.org/maven2/net/coobird/thumbnailator/0.4.21/thumbnailator-0.4.21-sources.jar",
+        "sha256": "3fa9ddeae81e8b2f92f480c9d1cbb656b7dd58868e73181712b7f490e60593d8"
+      },
+      "officialTag": {
+        "ref": "refs/tags/0.4.21",
+        "commit": "c9d99613878bbbf1f4d9369585b4cb5352c3b474",
+        "observedVia": "https://api.github.com/repos/coobird/thumbnailator/git/ref/tags/0.4.21"
+      }
+    },
+    "application": {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/infrastructure/StudentPhotoStorage.java",
+      "sourceLfSha256": "f365d7994cad322474e80a958281a68e7f69e08eab7fdcdc6ac86cf030b8b410",
+      "dimensionPrecheck": {
+        "lines": [
+          419,
+          420,
+          421
+        ],
+        "seekForwardOnly": true,
+        "ignoreMetadata": true
+      },
+      "subsequentPortraitDecode": {
+        "lines": [
+          302,
+          303,
+          304,
+          305
+        ],
+        "api": "Thumbnails.of(InputStream).useExifOrientation(true).scale(1).asBufferedImage()"
+      }
+    },
+    "observedDependencyCalls": [
+      {
+        "class": "net.coobird.thumbnailator.tasks.io.InputStreamImageSource",
+        "method": "read",
+        "sourceLines": [
+          433,
+          439,
+          448,
+          449,
+          453
+        ],
+        "sourceSha256": "14777142e1c935d54a20b38ec2f81d14488daaacc987785842f96b71ef7f09ee",
+        "url": "https://github.com/coobird/thumbnailator/blob/0.4.21/src/main/java/net/coobird/thumbnailator/tasks/io/InputStreamImageSource.java#L449",
+        "observation": "A new registered ImageReader is selected and initialized through one-argument setInput(Object); the true,true application precheck settings are not propagated. Local JAR javap confirms this invocation and its line number."
+      },
+      {
+        "class": "net.coobird.thumbnailator.tasks.io.InputStreamImageSource",
+        "method": "readImage",
+        "sourceLines": [
+          489,
+          496,
+          497,
+          499,
+          502,
+          503,
+          505,
+          519,
+          525,
+          528,
+          529,
+          593
+        ],
+        "url": "https://github.com/coobird/thumbnailator/blob/0.4.21/src/main/java/net/coobird/thumbnailator/tasks/io/InputStreamImageSource.java#L489",
+        "observation": "When EXIF orientation is enabled, getExifOrientation(reader,0) is attempted before format-name/dimension reads and full pixel decode. The call has no JPEG-format guard; caught exceptions allow orientation fallback or continuation."
+      },
+      {
+        "class": "net.coobird.thumbnailator.util.exif.ExifUtils",
+        "method": "getExifOrientation",
+        "sourceLines": [
+          69,
+          70,
+          71
+        ],
+        "sourceSha256": "65bf6769396fe546e3c9d5ea79bfbc33b002ea5ddf6b5fb2ae9002cc5fb8618a",
+        "url": "https://github.com/coobird/thumbnailator/blob/0.4.21/src/main/java/net/coobird/thumbnailator/util/exif/ExifUtils.java#L70",
+        "observation": "getImageMetadata(imageIndex) runs before requesting the JPEG-specific metadata tree. JPEG-specific orientation extraction therefore does not prevent the initial metadata request for a PNG reader. Local JAR bytecode confirms the order."
+      },
+      {
+        "class": "net.coobird.thumbnailator.tasks.io.InputStreamImageSource.ExifCaptureInputStream",
+        "sourceLines": [
+          295,
+          299,
+          303
+        ],
+        "url": "https://github.com/coobird/thumbnailator/blob/0.4.21/src/main/java/net/coobird/thumbnailator/tasks/io/InputStreamImageSource.java#L295",
+        "observation": "The raw-stream fallback stops intercepting when JPEG SOI is absent; this does not guard the earlier ImageReader metadata request."
+      }
+    ],
+    "jdkApiContract": {
+      "version": 25,
+      "url": "https://docs.oracle.com/en/java/javase/25/docs/api/java.desktop/javax/imageio/ImageReader.html#setInput(java.lang.Object)",
+      "observation": "One-argument setInput(input) is equivalent to setInput(input,false,false). The true ignoreMetadata flag in the separate precheck permits metadata to be ignored; it is not a universal provider parsing prohibition."
+    },
+    "conclusion": "The normal portrait dependency path allows and explicitly requests image metadata even though the separate dimension precheck permits ignoring it. A PNG reader can receive getImageMetadata(0) before the JPEG-tree attempt; exact provider behavior was not executed or measured.",
+    "limits": {
+      "sourceAndLocalBytecodeOnly": true,
+      "selectedDeployedReaderVerified": false,
+      "nativeLibpngReachabilityVerified": false,
+      "compressedMetadataAmplificationDemonstrated": false,
+      "decoderBombOrDosClaim": false,
+      "runtimeVexAttestation": false,
+      "sourceEdited": false,
+      "cloudActions": false,
+      "attackFixturesCreated": false,
+      "stressOrOomTestsExecuted": false
+    },
+    "proposedReproduction": {
+      "status": "AGENT_CYBERSECURITY_FILTER_BLOCKED_BEFORE_START; replaced by ordinary-size defensive contract validation",
+      "fixturesCreated": 0,
+      "childJvmRuns": 0,
+      "observation": "An earlier proposed compressed-PNG bounded local test was superseded by source-only documentation and a separately owned normal-size source fix. No exploit result is claimed."
+    }
+  },
+  "localTests": {
+    "fullSuiteBeforeFinalTestOnlyAddition": {
+      "reported": 955,
+      "passed": 954,
+      "skipped": 1,
+      "failures": 0,
+      "errors": 0,
+      "skip": "existing Windows symlink test",
+      "logName": "portrait-metadata-full.log",
+      "logSha256": "97c0ad14e51c39bea682e9abb79ddff4eec14193e28aba3c6d05de4097b8b56d"
+    },
+    "finalFocusedSuite": {
+      "reported": 12,
+      "passed": 12,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "logName": "portrait-metadata-final-focused.log",
+      "logSha256": "0a955154018c1ed3cac73ec6eb87766687cbe663afdeeabe795337c732b30d0f"
+    },
+    "finalFullLinuxCiRequiredBeforeMerge": true
+  },
+  "regressionScope": [
+    "Ordinary PNG reader contract rejects the exact previous decoder expression, while new normalization performs an ignored-metadata pixel read without a metadata request; registered provider restored in finally.",
+    "Ordinary PNG optional text has byte-identical normalized output; claimed JPEG MIME cannot choose the EXIF path.",
+    "All eight JPEG EXIF orientation outputs retained, even with claimed PNG MIME.",
+    "Opaque input retains the read-error response."
+  ],
+  "limits": {
+    "liveExploitDemonstrated": false,
+    "stressOrResourceExhaustionTestsExecuted": false,
+    "nativeCveReachabilityAttested": false,
+    "everyImageProviderCertified": false,
+    "parserWallDeadlineEstablished": false,
+    "sourceDeployed": false
+  },
+  "productionChanged": false
+}

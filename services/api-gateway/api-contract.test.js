@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { validateContract, operations } = require('../../scripts/generate-openapi-typescript-client');
+const { routes, isInternalUpstreamPath } = require('./routing');
 
 const {
   inventory,
@@ -35,13 +36,19 @@ test('every typed browser operation resolves to its canonical controller and gat
     const spec = JSON.parse(fs.readFileSync(path.join(directory, filename), 'utf8'));
     validateContract(spec, inventory);
     for (const operation of operations(spec)) {
-      assert.equal(classifyCompatibilityRequest(operation.url.replace(/\{[^}]+\}/g, 'sample'), operation.method), null,
+      const samplePath = operation.url.replace(/\{[^}]+\}/g, 'sample');
+      const runtimeRoute = routes.find((candidate) => candidate.matches(samplePath, operation.method));
+      assert.equal(runtimeRoute?.service, spec['x-ims-gateway-service'],
+        `${operation.operationId} must resolve to its declared owner in the running gateway`);
+      assert.equal(isInternalUpstreamPath(runtimeRoute.rewrite(samplePath)), false,
+        `${operation.operationId} must resolve to a browser-accessible route`);
+      assert.equal(classifyCompatibilityRequest(samplePath, operation.method), null,
         `${operation.operationId} must not route through a deprecated alias`);
       assert.ok(!operation.parameters.some((parameter) => /Service-Token/i.test(parameter.name)));
       covered += 1;
     }
   }
-  assert.ok(covered >= 31);
+  assert.ok(covered >= 52);
 });
 
 test('path template matcher treats variables as one safe path segment', () => {

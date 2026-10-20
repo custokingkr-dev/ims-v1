@@ -1,0 +1,500 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T15:02:59.015301+00:00",
+  "scope": "Dated preliminary findings are preserved; the final root source reviews supersede their corrected findings. No live/provider/full recovery acceptance is implied.",
+  "reviews": [
+    {
+      "original": "tmp/provider-sms-v3-bridge-independent-routing-review.json",
+      "digestSha256": "61352cde968c0bff8b95c25670b8ddf78f4bbbf9da005c55ce957b4661b16fe3",
+      "capture": {
+        "schemaVersion": 1,
+        "reviewedAtUtc": "2026-10-08T14:28:29.278856+00:00",
+        "verdict": "SOURCE_BINDING_FIX_REQUIRED_DORMANT",
+        "supersedingReview": true,
+        "priorCheckpoints": [
+          {
+            "path": "tmp/provider-sms-v3-bridge-independent-review.json",
+            "digestSha256": "5ce880e54345ea987905b3124bc70be65b95e14ca5e21f5f76ca158c3673da4e"
+          },
+          {
+            "path": "tmp/provider-sms-v3-bridge-independent-review-followup.json",
+            "digestSha256": "c73d42b943fc3f36a1270998323cd37d37e9cbb6ae5029e17dcd9cc1d3978b41"
+          }
+        ],
+        "findings": [
+          {
+            "id": "SMS_RECIPIENT_ALIAS_PRECEDENCE",
+            "bridgeFile": "Msg91SmsV3ReportBridge.java",
+            "sendFile": "Msg91NotificationDeliveryProvider.java",
+            "sendLines": [
+              109,
+              139,
+              348
+            ],
+            "fact": "Bridge selects only persisted destination; SMS transport prefers mobile,phone,to,recipientMobile,destination and strips non-digits. Immutable fingerprint does not equate those routing choices.",
+            "requiredFix": "Reject conflicting/noncanonical aliases or share the exact supported canonical selector and demonstrate matching number semantics."
+          },
+          {
+            "id": "SMS_BODY_PASSTHROUGH",
+            "sendLines": [
+              104,
+              105,
+              106
+            ],
+            "fact": "Transport nonnull msg91Body bypasses the canonical single destination builder; bridge currently accepts that payload if its independent destination/request/correlation checks pass.",
+            "requiredFix": "Reject any nonnull passthrough in the dormant canonical bridge unless exact immutable sent-wire recipient/account binding is separately stored and checked."
+          }
+        ],
+        "unchangedPositiveChecks": [
+          "Auth before parsing or SQL",
+          "Server ACCEPTED receipt/inbox and request SHA/correlation",
+          "Transaction-local forced tenant scope and bounded DB reads",
+          "Strict UTF8 codec",
+          "Inbox-before-result locks and existing terminal suppression",
+          "No UNKNOWN promotion, send, endpoint, bean or configuration"
+        ],
+        "sourceEdits": 0,
+        "testsOrMavenExecuted": false,
+        "cloudGithubProviderCalls": 0,
+        "currentExposureLimit": "Source-only dormant bridge; no live exploit or selected-account acceptance claim. Root/provider owner notified before merge."
+      }
+    },
+    {
+      "original": "tmp/provider-sms-routing-root-independent-review.json",
+      "digestSha256": "4454cddb94d181ff436fd8f2a3e9c01c5eb4ddce45443bba7c95cd4d4d0420d4",
+      "capture": {
+        "schemaVersion": 1,
+        "capturedAtUtc": "2026-10-08T14:49:24.293932+00:00",
+        "verdict": "PASS_DORMANT_CANONICAL_SOURCE_SCOPE",
+        "reviewer": "Root independent source review",
+        "reviewerReranFocusedTests": false,
+        "focusedProofDigestSha256": "0f717940b77a27086b9aed6860914e4f797fbd326badc46804272b1e9dd39540",
+        "sources": [
+          {
+            "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodec.java",
+            "normalizedLfSha256": "80c302c63ad364dd7a6bd0550d22e4e2b3d0137fdc38e0a79fe3a5c0dfd74f26"
+          },
+          {
+            "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridge.java",
+            "normalizedLfSha256": "5699ff062d27504a811984ab07fb012634cfdc6b8a2634f76c97f8ef852fd4e9"
+          },
+          {
+            "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/GenericAcceptedReportBindingRepository.java",
+            "normalizedLfSha256": "c611893ed3f3033963190d53b6610a472b7068ed18e5bc2d1f8c1c7349384db8"
+          },
+          {
+            "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodecTest.java",
+            "normalizedLfSha256": "2e61c281cb4ab26fd55a79c8e98c40ab610e023e0e8f7a0bd717be6e9464368f"
+          },
+          {
+            "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridgeTest.java",
+            "normalizedLfSha256": "bd622184f3b650c8ac91515568fbc338295e0f6667fd544266828cb15c4214bc"
+          },
+          {
+            "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridgePostgresTest.java",
+            "normalizedLfSha256": "bc6f558951b74116640a7d6ca34678d966caf4d3b7c75559a2defd65cd846ce6"
+          },
+          {
+            "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/persistence/GenericAcceptedReportBindingIntegrationTest.java",
+            "normalizedLfSha256": "6295571be821983d5e228fd2d5959dd58d34e77b6fdec0c266bbff095fa4eefb"
+          }
+        ],
+        "observedFocusedTests": {
+          "reported": 20,
+          "passed": 20,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "realPostgresCases": 6,
+          "rawLogSha256": "26fd804b0a0615a7952133298f316349a2560b91c4d44c2d5347445ebfcd45fc",
+          "log": "tmp/provider-sms-routing-final-focused.log",
+          "fullPlatformSuiteAfterCorrection": false
+        },
+        "observedOldSourceRegression": {
+          "reported": 1,
+          "failures": 1,
+          "errors": 0,
+          "skipped": 0,
+          "failure": "Expected routing alias rejection was absent",
+          "rawLogSha256": "ddbd874967e6cff6f42282f43c5cb9ba9217ce47411209bc32dcfabc39790340",
+          "log": "tmp/provider-sms-routing-old-source-regression.log"
+        },
+        "resolvedFindings": [
+          "Only canonical ASCII digit destination is admitted; all routing aliases and nonnull passthrough rejected",
+          "Request fingerprint and correlation rederived from locked immutable accepted payload",
+          "Authentication precedes scope lookup/parsing and same transaction retains tenant/receipt/time/erasure/replay fences",
+          "UTF8-only strict decoding and explicit selected profile preserved"
+        ],
+        "limits": [
+          "Internal reporter authority does not authenticate vendor origin",
+          "No bean/endpoint/config/provider traffic",
+          "No account-selected EMAIL/WhatsApp bridge or authoritative UNKNOWN recovery",
+          "Final full platform suite is independently running; its actual count/result belongs to the separate full-suite proof."
+        ],
+        "liveGithubCloudProviderCalls": 0,
+        "sourceMutations": 0
+      }
+    },
+    {
+      "original": "tmp/governance-execution-boundaries-independent-review.json",
+      "digestSha256": "884f9b089e5d4e2fb30225bd599a84d403b55fca6e7acfc83972adc411f6d801",
+      "capture": {
+        "capturedAtUtc": "2026-10-08T14:23:32.331270+00:00",
+        "verdict": "CHANGES_REQUIRED_FOR_COMPLETE_EXECUTION_CLEANUP",
+        "reviewType": "Read-only source/proof review; no execution/GitHub/cloud/tests",
+        "proofRawSha256": "f4f7f49237b308b64b1e81820ebc5dc344d2788d2886d2d85f1ba89a966ab560",
+        "hashChecks": [
+          {
+            "path": "scripts/verify-github-governance-checks.py",
+            "rawSha256": "d5596bbe13d7f5bebe751af7cc8caa6a419a9e8cdd11551f167b0e476edd9046",
+            "normalizedLfSha256": "cad8ffc45d3ec406e91310b67b994716dd69579f0b1a9038f32949488a3b38bb",
+            "matchesFrozenRaw": true
+          },
+          {
+            "path": "scripts/tests/test_verify_github_governance_checks.py",
+            "rawSha256": "7dd3b71e91091c23fddc5ead364681c9f4edbf0d89ea5edb205a84cb79729ea2",
+            "normalizedLfSha256": "d074f0d8859d1d60de0c7934395cd9e7d3fbe542b7a808d0839618875df56451",
+            "matchesFrozenRaw": true
+          },
+          {
+            "path": "tmp/governance-execution-boundaries-final-tests.log",
+            "rawSha256": "1f1a15e2ff4ed3ee22b1e4849c498a77f76c5338693c47b677dad4366de07e50",
+            "normalizedLfSha256": "1f1a15e2ff4ed3ee22b1e4849c498a77f76c5338693c47b677dad4366de07e50",
+            "matchesFrozenRaw": true
+          }
+        ],
+        "ownerObservedTests": {
+          "reported": 17,
+          "passed": 17,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "reviewerReran": false
+        },
+        "preservedControls": [
+          "Native Windows gh.exe only; shell=False, no batch wrappers, fixed GET tuple",
+          "35sec call/300sec cumulative monotonic budget",
+          "2MiB stdout/64KiB stderr/16MiB cumulative streaming bounds",
+          "50x100 strict pagination/replay/saturation and existing producer/policy controls",
+          "Sanitized raw API failure output"
+        ],
+        "concerns": [
+          {
+            "priority": "medium",
+            "function": "capture_process",
+            "issue": "Only direct child is terminated. Inherited-pipe descendants can survive and block daemon readers beyond0.1sec join",
+            "requiredTest": "Actual descendant-holds-pipe and process-tree/owned-reader cleanup",
+            "limitation": "Normal gh api descendant behavior not demonstrated"
+          },
+          {
+            "priority": "medium",
+            "function": "capture_process",
+            "issue": "thread.start setup occurs before try/finally; second-start failure leaks process/first reader",
+            "requiredTest": "Injected reader-start failure proves owned process/pipe cleanup"
+          }
+        ]
+      }
+    },
+    {
+      "original": "tmp/governance-process-tree-independent-final-review.json",
+      "digestSha256": "ffba46822f3cfd9660b51b58722567e02498ae0aa97ff368cc59bf0e2644d74b",
+      "capture": {
+        "capturedAtUtc": "2026-10-08T14:46:50.178218+00:00",
+        "verdict": "INITIAL_LIFECYCLE_FINDINGS_RESOLVED_ONE_DEADLINE_RACE_REMAINS",
+        "sourceProofRawSha256": "0965ccb172a20b78a29b4843414f06f6e605a33a4198831519f8a01c45e66d0f",
+        "sourceHashChecks": [
+          {
+            "path": "scripts/verify-github-governance-checks.py",
+            "rawSha256": "70e3c3e1902f37a1d6293af7051f42175d4fcc107f0f8adc8a36422540dc71b1",
+            "normalizedLfSha256": "41a1b30f4d9e65f49b767be2d8cfde0d42901bcf63612e1d33c2ac082ea009a3"
+          },
+          {
+            "path": "scripts/tests/test_verify_github_governance_checks.py",
+            "rawSha256": "089dad55767fb11c2e4a84220de8da7b6904341029484efa4d71a55343d7dc6b",
+            "normalizedLfSha256": "2586dfd42739804ff2f14d8478d525da81476e171b92f000edd89d0829f12b60"
+          }
+        ],
+        "ownerObservedTests": {
+          "reported": 20,
+          "passed": 20,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0,
+          "platform": "Windows Python3.12",
+          "reviewerReran": false,
+          "rawLogSha256": "a0cc8609647cb63ac44395db70a3a758b7563fac0629aa5ef5e9721ccb901808"
+        },
+        "resolvedInitialFindings": [
+          "Normal Windows descendants job-contained before initial thread runs; kill/query-zero/close and reader joins",
+          "Partial reader start now owned by finally, including after actual start; unused streams closed",
+          "POSIX new session/group SIGKILL branch retains exact ownership"
+        ],
+        "preservedControls": [
+          "Native gh.exe shell=False/no batch dispatch; fixed GET and encoded ref segments",
+          "2MiB/64KiB streaming buffers and16MiB shared budget",
+          "35sec call/300sec run budgets with separate3sec cleanup",
+          "50-page/100-item strict identity/replay/saturation checks and producer/policy semantics"
+        ],
+        "remainingConcern": {
+          "priority": "low",
+          "function": "capture_process",
+          "issue": "No final deadline check after while; child/readers finishing during last sleep can exit loop and return late success",
+          "suggestion": "Check monotonic deadline immediately after loop before decode/return and add deterministic late-completion fixture"
+        },
+        "limitations": [
+          "OS process creation and native system calls not absolutely interruptible",
+          "POSIX runtime tests await Linux CI; only branch inspection here",
+          "Not containment for adversarial broker/WMI or setsid escape; no security sandbox guarantee",
+          "No live GitHub policy/admin changes or verification performed"
+        ],
+        "sourceEdits": 0,
+        "cloudOrGithubCalls": 0,
+        "reviewerTestsRun": 0
+      }
+    },
+    {
+      "original": "tmp/governance-process-tree-root-final-review.json",
+      "digestSha256": "4ea56e886c42f329d40c5fee2fe1218a6a1325a30399ea7155f99f753e67bd55",
+      "capture": {
+        "schemaVersion": 1,
+        "capturedAtUtc": "2026-10-08T15:01:51.896532+00:00",
+        "verdict": "PASS_FINAL_SOURCE_SCOPE",
+        "reviewer": "Root independent review",
+        "reviewerReran": false,
+        "sourceFiles": [
+          {
+            "path": "scripts/verify-github-governance-checks.py",
+            "rawSha256": "fb4fd371a726f54d1b8b352c75d299c33a033fbe4cf98d226d6738b4655576a2",
+            "normalizedLfSha256": "32c06ae9b392427786749a62c726792e42d4b66a9238fcd1cf7c3d564d9bc454"
+          },
+          {
+            "path": "scripts/tests/test_verify_github_governance_checks.py",
+            "rawSha256": "b00efc617b4174c9e027767deefd52fea2bd7be999097e01bbca77bc18627692",
+            "normalizedLfSha256": "6e13c5f29b400024a05758ba3a03ff16675fb093e331679f0fe08fd8e4320085"
+          }
+        ],
+        "finalProofDigestSha256": "e3ae6824dc882d9045cb29a394f657343eaf846b4e6459a68e530d10513de471",
+        "actualFocusedTests": {
+          "reported": 21,
+          "passed": 21,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "command": "python -O -m unittest scripts.tests.test_verify_github_governance_checks -v",
+          "actualPlatform": "Windows Python3.12",
+          "log": "tmp/governance-process-tree-deadline-final-tests.log",
+          "rawLogSha256": "277f09194f7de14ce2c38175b6245b2a89a960f07b0f68574227963da42ebbfe"
+        },
+        "resolvedFindings": [
+          "Owned Windows job assignment before primary thread resume",
+          "Direct and normal descendant cleanup on timeout and partially started readers",
+          "Final monotonic deadline guard after process/reader loop"
+        ],
+        "limits": [
+          "Real native process lifecycle observed locally only on Windows; POSIX branch awaits CI",
+          "OS process creation and system calls themselves not absolutely interruptible",
+          "Owned normal-descendant containment, no adversarial broker/WMI/setsid sandbox claim",
+          "3sec cleanup allowance is separate from read/run deadlines"
+        ],
+        "networkCalls": 0,
+        "sourceWrites": 0
+      }
+    },
+    {
+      "original": "tmp/isolated-recovery-independent-review.json",
+      "digestSha256": "e6d2b7a2da30a074d8dcf9b06a57d1c224bc0e914a4b7efe36c1f090d7c19b8e",
+      "capture": {
+        "reviewedAtUtc": "2026-10-08T14:53:52.818306+00:00",
+        "verdict": "SOURCE_REVIEW_COMPLETE_WITH_TEMP_PRIVILEGE_FIX_REQUIRED_BEFORE_SHIP",
+        "scope": "Independent read-only source/evidence review; no independent rerun, cloud/Git/GitHub calls, credential reads or live clone execution. Review precedes authorized narrow TEMP correction.",
+        "sourceFiles": [
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+            "normalizedLfSha256": "40a55dd8a16ba896f68c7fce8fbc4e55c1232aa4df37edc7558a869b87de8821",
+            "rawSha256": "807e7db09a5a1f7c12210fa04f017f53b851cac58b121e906ad66ac2785f4812",
+            "matchesOwnerProof": true
+          },
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+            "normalizedLfSha256": "2113c095683da7b4fd08d8dbfff97690ce64510a0468cf83e2a0a4df2dd3ebed",
+            "rawSha256": "8fbf381b812ea3c07fbd303990b3f61da133aa6a88aa88c8ef8b3c942baaecf6",
+            "matchesOwnerProof": true
+          },
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+            "normalizedLfSha256": "0fd1b6acbdc2603fc91ae6cf5f1dc24f973c1b5a1e5b441e112e6f0e8977af5c",
+            "rawSha256": "38b8b9f65a015c598307367f7ff50bdfe1ffab6b3a164660f95bfd745536a42e",
+            "matchesOwnerProof": true
+          },
+          {
+            "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+            "normalizedLfSha256": "874293629c3878db0827a1edd37525c8e94d5dc8efb0fbdf42288426cb965f8d",
+            "rawSha256": "c0ae499ef37a02f714fff6351bc76e8c0a182ea8abf0dd76ff0a8cea3bf6bdde",
+            "matchesOwnerProof": true
+          },
+          {
+            "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorizationTest.java",
+            "normalizedLfSha256": "fa04fd1ea1abf01c683cf37f1f11ff68b1b9351a3a4ecad6a3a1b9bb5d1dc1f0",
+            "rawSha256": "af4bc90c9428f32afdc886296935b2d8ccb5f3b1cc7a746e9c63da9e01766492",
+            "matchesOwnerProof": true
+          },
+          {
+            "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryFixture.java",
+            "normalizedLfSha256": "dfe30a85a46a8b2932ab6a9b32738b485fc7d11938672b384964519411edeb67",
+            "rawSha256": "0d6b9f9aec51c92e766dc25563cb5054aea1e06d24535c3ea33d64dea9be9e18",
+            "matchesOwnerProof": true
+          }
+        ],
+        "ownerEvidence": {
+          "path": "tmp/recovery-isolated-final-source-capability-proof.json",
+          "rawSha256": "d618abbbc760761b37cf2aaa0e44a1f852777f2ee630bf44e9f699aad94ab508",
+          "aggregate": {
+            "tests": 19,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0
+          },
+          "selectedLogPath": "tmp/recovery-isolated-final-ca-role-tests.log",
+          "selectedLogRawSha256": "da4731eafbbe468e23ab1092e4234c99ab874b103a9fd81178cc95d23ecfe033",
+          "encoding": "UTF-16LE BOM",
+          "buildSuccess": true,
+          "independentRerun": false
+        },
+        "positiveFindings": [
+          "Fixed alternate main, zero CLI args, reviewed isolated-dev bootstrap and Cloud Run denial; no Spring/application/web/migration/worker activation.",
+          "Root-owned POSIX ancestry, bounded immutable regular-file reads, no symlinks/group-or-other writes; strict exact UTF-8 password preserves spaces and rejects terminators; opaque errors omit credentials.",
+          "Distinct Ed25519 owner/freeze keys and strict duplicate/trailing/typed JSON bind clone/endpoint/purpose role, lineage/epochs, plan/physical-wrapper raw hashes, immutable object generations and leases.",
+          "Mounted PEM SHA and decoded X509 DER fingerprint are separately verified; fixed approved numeric JDBC endpoint uses verify-ca, without verify-full hostname or live Cloud SQL identity claims.",
+          "Actual transactional connection URL/TLS/session role, forbidden administrative/inherited capabilities/ownership and persistent CREATE rights checked before erasure and before commit; tenant RLS on and search_path pg_catalog.",
+          "RECONCILING current epoch/control and exact immutable generation/body hash bind incarnation-aware owner erasure. Missing unproven source/reused incarnation rejects; children/source/receipt/outbox/photo queue share transaction.",
+          "Freeze change or lease expiry before commit rolls back active task; previous committed tasks retain receipts. Outputs remain restorationReady=false, deliveryResume=false, physicalPhotoErasurePerformed=false."
+        ],
+        "finding": {
+          "title": "Purpose-role database TEMP omitted",
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+          "detail": "Database CREATE and persistent-schema CREATE are denied but TEMP remains allowed, including PUBLIC defaults. Denial of all DDL cannot be claimed. No concrete parameterized owner-workflow path that mutates source before the intended authorization/target guards was found.",
+          "rootDecision": "Require minimal TEMP privilege guard and real PostgreSQL regression before shipping.",
+          "plan": "Add NOT has_database_privilege(current_user,current_database(),TEMP); revoke PUBLIC TEMP only in isolated local fixture; grant TEMP to purpose role in a new PG test and prove source/children/receipt/outbox unchanged before revoking it. No live role/provisioning changes."
+        },
+        "limits": [
+          "Trusted root and isolated readable group are mount/provisioning assumptions. Main deliberately refuses unsupported POSIX ownership environments including Windows.",
+          "Physical-wrapper SHA and unique CA bind configured transport; independently current Cloud SQL instance/lineage remain owner evidence. Local PG integration uses sslmode=require, not protected-mount production main verify-ca.",
+          "Purpose fixture DML grants and fake generation-pinned journal establish local workflow only; not actual dev least-privilege role or live GCS attestation.",
+          "Five-minute admission checks are not an interruptible hard process deadline. Freeze is signed operator attestation and may change after final read; it does not independently enforce global pause/drain.",
+          "Exhaustive historical/old-epoch intent coverage, physical clone, all-service/provider freeze, downstream/object/provider reconciliation, recovery-copy policy and governed cutover/resume remain required.",
+          "No full-suite result inferred from selected19. Root separately reports frozen full-school975/974pass/1knownWindows-symlinkskip; this reviewer did not run it."
+        ],
+        "curationNote": "First curation assertion used byte substrings on UTF-16LE log and rejected before any review file creation; corrected decoding preserved raw log hash. No test failure inferred."
+      }
+    },
+    {
+      "original": "tmp/isolated-recovery-root-final-review.json",
+      "digestSha256": "74e81781f58ba2a9ad2da4599cfad57045af5585042448450a73f951ce560398",
+      "capture": {
+        "schemaVersion": 1,
+        "capturedAtUtc": "2026-10-08T15:01:51.896532+00:00",
+        "verdict": "PASS_FINAL_SOURCE_ONLY_SCOPE",
+        "reviewer": "Root independent review",
+        "reviewerReranFocusedTests": false,
+        "sourceFiles": [
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+            "rawSha256": "807e7db09a5a1f7c12210fa04f017f53b851cac58b121e906ad66ac2785f4812",
+            "normalizedLfSha256": "40a55dd8a16ba896f68c7fce8fbc4e55c1232aa4df37edc7558a869b87de8821",
+            "unchangedFrom19Checkpoint": true
+          },
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+            "rawSha256": "8fbf381b812ea3c07fbd303990b3f61da133aa6a88aa88c8ef8b3c942baaecf6",
+            "normalizedLfSha256": "2113c095683da7b4fd08d8dbfff97690ce64510a0468cf83e2a0a4df2dd3ebed",
+            "unchangedFrom19Checkpoint": true
+          },
+          {
+            "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+            "rawSha256": "61dc632caef52bb2cfecf574a602c3411b15245bdab4358a9ddec32396dc9072",
+            "normalizedLfSha256": "869a3223d5945d5d8a1cccfd7c207f1080b9f4c5f28481fbe3d3b2455fe8b41f",
+            "unchangedFrom19Checkpoint": false
+          },
+          {
+            "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+            "rawSha256": "94cabf34d7c7db98cf5ee062acdd96fc40210adb81dfc26f4d612dd7c17db6e3",
+            "normalizedLfSha256": "d85bc3c70b71bc9500231c8b49777277a7b572078df5048c864c1e404e345a1e",
+            "unchangedFrom19Checkpoint": false
+          },
+          {
+            "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorizationTest.java",
+            "rawSha256": "af4bc90c9428f32afdc886296935b2d8ccb5f3b1cc7a746e9c63da9e01766492",
+            "normalizedLfSha256": "fa04fd1ea1abf01c683cf37f1f11ff68b1b9351a3a4ecad6a3a1b9bb5d1dc1f0",
+            "unchangedFrom19Checkpoint": true
+          },
+          {
+            "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryFixture.java",
+            "rawSha256": "0d6b9f9aec51c92e766dc25563cb5054aea1e06d24535c3ea33d64dea9be9e18",
+            "normalizedLfSha256": "dfe30a85a46a8b2932ab6a9b32738b485fc7d11938672b384964519411edeb67",
+            "unchangedFrom19Checkpoint": true
+          }
+        ],
+        "finalProofDigestSha256": "92d6d2aa821e3981fd2d3d1261049b98f3d7bf533be6b533b4bb948e142e1d33",
+        "finalFocusedRun": {
+          "aggregate": {
+            "tests": 20,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0
+          },
+          "selectedSuites": [
+            {
+              "class": "RecoveryAuthorizationTest",
+              "tests": 12,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0,
+              "xmlRawSha256": "91729264e3641b6e6c599c93929df862852f84eca92e833af5aa1ecf995389f2",
+              "archivedXmlPath": "tmp/recovery-temp-final-RecoveryAuthorizationTest.xml"
+            },
+            {
+              "class": "IsolatedStudentErasureRecoveryIntegrationTest",
+              "tests": 8,
+              "failures": 0,
+              "errors": 0,
+              "skipped": 0,
+              "xmlRawSha256": "abf3df1a2d4d8373402a8ffc2ef2da5ca1be3547ced5ee05d2807fc0d73bb0cb",
+              "archivedXmlPath": "tmp/recovery-temp-final-IsolatedStudentErasureRecoveryIntegrationTest.xml"
+            }
+          ],
+          "runner": {
+            "mode": "after",
+            "startedAtUtc": "2026-10-08T14:56:50.158063+00:00",
+            "finishedAtUtc": "2026-10-08T14:57:25.182169+00:00",
+            "exitCode": 0,
+            "timedOut": false,
+            "tests": "RecoveryAuthorizationTest,IsolatedStudentErasureRecoveryIntegrationTest",
+            "logPath": "tmp/recovery-temp-after-focused.log",
+            "scope": "Fixed local Maven/Testcontainers test only; no cloud or live clone."
+          },
+          "buildSuccess": true,
+          "executionToolchain": {
+            "wrapper": "D:/Projects/ims-v1-security/mvnw.cmd",
+            "javaHome": "C:/Program Files/Java/jdk-25.0.3"
+          }
+        },
+        "resolvedFindings": [
+          "Purpose-role TEMP is denied before source work and at commit admission",
+          "Protected credential mount rejects world readability/traversal and malformed UTF8 without trimming",
+          "Mounted PEM bytes and single certificate DER fingerprint are separately verified",
+          "Explicit bootstrap, actual transaction URL/TLS/role and signed generation/epoch/worklist bindings preserved"
+        ],
+        "fullFinalPackageRunPending": true,
+        "limits": [
+          "Fixed protected POSIX main bootstrap deliberately refuses Windows; selected local tests do not execute actual mounted bootstrap or attest deployed purpose-role grants.",
+          "TLS local PG test uses sslmode=require; main configured verify-ca remains approved CA/endpoint source binding, without verify-full hostname/current Cloud SQL instance identity acceptance.",
+          "Generation-pinned journal and signed freeze are local controlled fixtures; signed freeze is operator attestation, not enforced global service/provider pause.",
+          "Historical coverage/downstream/provider/object recovery and cutover/resume governance remain external acceptance requirements.",
+          "No cloud/Git/GitHub/provider/credential inspection or deployment by this correction."
+        ],
+        "networkCalls": 0,
+        "sourceWrites": 0
+      }
+    }
+  ]
+}

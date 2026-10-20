@@ -1,0 +1,57 @@
+{
+  "project": "custoking-dev",
+  "region": "asia-south2",
+  "mode": "READ_ONLY",
+  "capturedAtUtc": "2026-10-07T12:35:38.707981+00:00",
+  "approvedInventorySha256": "a194d47dd15b1efd1b7dfcdc9d61f127ffb58ef31d6bfb50333492ea55dd8986",
+  "preflightPassed": true,
+  "completed": true,
+  "physicalDrainCertified": false,
+  "inventoryCandidateCount": 198,
+  "deletionApprovalReceived": false,
+  "deletedCount": 0,
+  "services": [
+    {
+      "service": "custoking-identity-service-dev",
+      "latestReady": "custoking-identity-service-dev-muy1pw02",
+      "latestCreated": "custoking-identity-service-dev-muy1pw02",
+      "activeRollouts": []
+    },
+    {
+      "service": "custoking-school-core-service-dev",
+      "latestReady": "custoking-school-core-service-dev-muy1uts8",
+      "latestCreated": "custoking-school-core-service-dev-muy1uts8",
+      "activeRollouts": []
+    },
+    {
+      "service": "custoking-operations-service-dev",
+      "latestReady": "custoking-operations-service-dev-muy1ya08",
+      "latestCreated": "custoking-operations-service-dev-muy1ya08",
+      "activeRollouts": []
+    },
+    {
+      "service": "custoking-platform-service-dev",
+      "latestReady": "custoking-platform-service-dev-muy24qr0",
+      "latestCreated": "custoking-platform-service-dev-muy24qr0",
+      "activeRollouts": []
+    },
+    {
+      "service": "custoking-billing-service-dev",
+      "latestReady": "custoking-billing-service-dev-muy21hho",
+      "latestCreated": "custoking-billing-service-dev-muy21hho",
+      "activeRollouts": []
+    },
+    {
+      "service": "custoking-api-gateway-dev",
+      "latestReady": "custoking-api-gateway-dev-muy1nc06",
+      "latestCreated": "custoking-api-gateway-dev-muy1nc06",
+      "activeRollouts": []
+    },
+    {
+      "service": "custoking-frontend-dev",
+      "latestReady": "custoking-frontend-dev-muy1s1uk",
+      "latestCreated": "custoking-frontend-dev-muy1s1uk",
+      "activeRollouts": []
+    }
+  ]
+}

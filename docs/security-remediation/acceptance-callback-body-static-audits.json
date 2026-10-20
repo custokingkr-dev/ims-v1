@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T12:34:47.143870+00:00",
+  "baseSourceSha": "900dcbbf62a7d0d57faef220853e82f427db864e",
+  "auditorSourceNormalizedLfSha256": "0f55e91cf2236793897b63e462de0ca08aecf216c261ce518d77a60f80dd4cd2",
+  "precedingRealAuditFailure": {
+    "command": [
+      "powershell.exe",
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "scripts/audit-security-governance-controls.ps1"
+    ],
+    "exitCode": 1,
+    "output": "Security governance control violations:\n  services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java missing required control: bytes.length>32768\n",
+    "classification": "Outdated source literal after moving enforced body limits before buffering; retained, not counted as passing."
+  },
+  "newAuditChecks": [
+    {
+      "control": "eager-body",
+      "fixture": "tmp/callback-audit-control-eager-body.java",
+      "fixtureRawSha256": "e96ecb0f486442335a120a384422b7981141dd27c991e749cb19653a1d0ce374",
+      "exitCode": 1,
+      "output": "Security governance control violations:\n  EMAIL reports must authenticate before their shared bounded servlet reader; eager body conversion/direct stream reads are forbidden.\n",
+      "passed": true
+    },
+    {
+      "control": "before-auth",
+      "fixture": "tmp/callback-audit-control-before-auth.java",
+      "fixtureRawSha256": "b64dc9f4c201648689e827d31b37fa946868af94a6c9fecb0077b3ad9a744988",
+      "exitCode": 1,
+      "output": "Security governance control violations:\n  EMAIL service and callback credentials must precede the bounded body read.\n",
+      "passed": true
+    },
+    {
+      "control": "uncounted-read",
+      "fixture": "tmp/callback-audit-control-uncounted-read.java",
+      "fixtureRawSha256": "00c08600c1d3b772d3544d9a75a5ade5e7b1c3a03260c6704a3e4ffc68fd916f",
+      "exitCode": 1,
+      "output": "Security governance control violations:\n  tmp/callback-audit-control-uncounted-read.java missing required control: maxBytes+1-body.size()\n",
+      "passed": true
+    },
+    {
+      "control": "actual-frozen-source",
+      "exitCode": 0,
+      "output": "Security governance controls passed: guarded mutations, exact branch-scoped WIF identities, dedicated Cloud Deploy/runtime accounts, schema-only production recovery, fail-closed Cloud SQL transport checks, dependency coverage, CodeQL, and HIGH/CRITICAL container gates are present.\n",
+      "passed": true
+    }
+  ],
+  "otherActualSourceAudits": [
+    {
+      "control": "authorization",
+      "exitCode": 0,
+      "output": "Service authorization boundary audit passed: token-scoped routes fail closed; exact machine capabilities require signed OIDC callers and deployed user context requires a signed authorized carrier."
+    },
+    {
+      "control": "deployment",
+      "exitCode": 0,
+      "output": "Deployment boundary audit passed: affected-service promotion, pinned images, Cloud Run manifests, and gateway routes are guarded."
+    },
+    {
+      "control": "package",
+      "exitCode": 0,
+      "output": "Service package shape audit passed: compatibility and internal push controllers are in normalized packages."
+    },
+    {
+      "control": "duplicate-class-drift",
+      "exitCode": 0,
+      "identicalGuardedClassGroups": 10
+    }
+  ],
+  "actualSourceAuditsPassed": 5,
+  "negativeControlsPassed": 3,
+  "javaSourceModified": false,
+  "cloudCalls": 0,
+  "limits": "Static source controls complement the actual Java/Tomcat/PostgreSQL tests; text matching is not a semantic proof of runtime behavior."
+}

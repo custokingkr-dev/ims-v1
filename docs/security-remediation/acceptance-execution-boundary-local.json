@@ -1,0 +1,2896 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T15:02:59.078172+00:00",
+  "baseSourceSha": "fb59aaf7509937515b99ef32d3d3a7ebe3307f6f",
+  "status": "SOURCE_FROZEN_LOCAL_COMPONENTS_VERIFIED_FULL_SCHOOL_PACKAGE_RUNNING",
+  "sourceFiles": [
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodec.java",
+      "normalizedLfSha256": "80c302c63ad364dd7a6bd0550d22e4e2b3d0137fdc38e0a79fe3a5c0dfd74f26"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridge.java",
+      "normalizedLfSha256": "5699ff062d27504a811984ab07fb012634cfdc6b8a2634f76c97f8ef852fd4e9"
+    },
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/GenericAcceptedReportBindingRepository.java",
+      "normalizedLfSha256": "c611893ed3f3033963190d53b6610a472b7068ed18e5bc2d1f8c1c7349384db8"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportCodecTest.java",
+      "normalizedLfSha256": "2e61c281cb4ab26fd55a79c8e98c40ab610e023e0e8f7a0bd717be6e9464368f"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridgeTest.java",
+      "normalizedLfSha256": "bd622184f3b650c8ac91515568fbc338295e0f6667fd544266828cb15c4214bc"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/infrastructure/Msg91SmsV3ReportBridgePostgresTest.java",
+      "normalizedLfSha256": "bc6f558951b74116640a7d6ca34678d966caf4d3b7c75559a2defd65cd846ce6"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/persistence/GenericAcceptedReportBindingIntegrationTest.java",
+      "normalizedLfSha256": "6295571be821983d5e228fd2d5959dd58d34e77b6fdec0c266bbff095fa4eefb"
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecovery.java",
+      "rawSha256": "807e7db09a5a1f7c12210fa04f017f53b851cac58b121e906ad66ac2785f4812",
+      "normalizedLfSha256": "40a55dd8a16ba896f68c7fce8fbc4e55c1232aa4df37edc7558a869b87de8821",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorization.java",
+      "rawSha256": "8fbf381b812ea3c07fbd303990b3f61da133aa6a88aa88c8ef8b3c942baaecf6",
+      "normalizedLfSha256": "2113c095683da7b4fd08d8dbfff97690ce64510a0468cf83e2a0a4df2dd3ebed",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+      "rawSha256": "61dc632caef52bb2cfecf574a602c3411b15245bdab4358a9ddec32396dc9072",
+      "normalizedLfSha256": "869a3223d5945d5d8a1cccfd7c207f1080b9f4c5f28481fbe3d3b2455fe8b41f",
+      "unchangedFrom19Checkpoint": false
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "rawSha256": "94cabf34d7c7db98cf5ee062acdd96fc40210adb81dfc26f4d612dd7c17db6e3",
+      "normalizedLfSha256": "d85bc3c70b71bc9500231c8b49777277a7b572078df5048c864c1e404e345a1e",
+      "unchangedFrom19Checkpoint": false
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryAuthorizationTest.java",
+      "rawSha256": "af4bc90c9428f32afdc886296935b2d8ccb5f3b1cc7a746e9c63da9e01766492",
+      "normalizedLfSha256": "fa04fd1ea1abf01c683cf37f1f11ff68b1b9351a3a4ecad6a3a1b9bb5d1dc1f0",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/RecoveryFixture.java",
+      "rawSha256": "0d6b9f9aec51c92e766dc25563cb5054aea1e06d24535c3ea33d64dea9be9e18",
+      "normalizedLfSha256": "dfe30a85a46a8b2932ab6a9b32738b485fc7d11938672b384964519411edeb67",
+      "unchangedFrom19Checkpoint": true
+    },
+    {
+      "path": "scripts/verify-github-governance-checks.py",
+      "rawSha256": "fb4fd371a726f54d1b8b352c75d299c33a033fbe4cf98d226d6738b4655576a2",
+      "normalizedLfSha256": "32c06ae9b392427786749a62c726792e42d4b66a9238fcd1cf7c3d564d9bc454"
+    },
+    {
+      "path": "scripts/tests/test_verify_github_governance_checks.py",
+      "rawSha256": "b00efc617b4174c9e027767deefd52fea2bd7be999097e01bbca77bc18627692",
+      "normalizedLfSha256": "6e13c5f29b400024a05758ba3a03ff16675fb093e331679f0fe08fd8e4320085"
+    }
+  ],
+  "evidenceIndex": [
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-provider-local.json",
+      "digestSha256": "6c2ed53fca814610f7421d7178b36986cb5d8ed942b478a44724b1bb627db68c",
+      "rawCaptureCopiedExactly": false,
+      "original": "tmp/provider-sms-routing-final-local-proof.json",
+      "originalRawDigestSha256": "0f717940b77a27086b9aed6860914e4f797fbd326badc46804272b1e9dd39540",
+      "captureNormalization": "CRLF to LF only; original dated raw capture remains unchanged"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-recovery-local.json",
+      "digestSha256": "92d6d2aa821e3981fd2d3d1261049b98f3d7bf533be6b533b4bb948e142e1d33",
+      "rawCaptureCopiedExactly": true,
+      "original": "tmp/recovery-temp-guard-final-proof.json",
+      "originalRawDigestSha256": "92d6d2aa821e3981fd2d3d1261049b98f3d7bf533be6b533b4bb948e142e1d33",
+      "captureNormalization": "CRLF to LF only; original dated raw capture remains unchanged"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-governance-local.json",
+      "digestSha256": "88682383149d68f99e38cdbb53c072f89b8d93556d45602efccb805cc1074fd4",
+      "rawCaptureCopiedExactly": false,
+      "original": "tmp/governance-process-tree-deadline-final-proof.json",
+      "originalRawDigestSha256": "e3ae6824dc882d9045cb29a394f657343eaf846b4e6459a68e530d10513de471",
+      "captureNormalization": "CRLF to LF only; original dated raw capture remains unchanged"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-owner-readback.json",
+      "digestSha256": "8eef302813d89625d41d79b8cd9de8e7d52cfca6bc4f3cc28f24f820e6cd194d",
+      "rawCaptureCopiedExactly": true,
+      "original": "tmp/remaining-infra-owner-readback-20261008.json",
+      "originalRawDigestSha256": "8eef302813d89625d41d79b8cd9de8e7d52cfca6bc4f3cc28f24f820e6cd194d",
+      "captureNormalization": "CRLF to LF only; original dated raw capture remains unchanged"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-owner-followup.json",
+      "digestSha256": "29fc5c8ffa67076849b14e4332bc399355601ed32ca737ccca042674544bf798",
+      "rawCaptureCopiedExactly": true,
+      "original": "tmp/remaining-infra-owner-readback-followup-20261008.json",
+      "originalRawDigestSha256": "29fc5c8ffa67076849b14e4332bc399355601ed32ca737ccca042674544bf798",
+      "captureNormalization": "CRLF to LF only; original dated raw capture remains unchanged"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-native-research.json",
+      "digestSha256": "0890b1c6ee28a28ab9708b0cfb4c858251d03aaadf532cdcb9b5927fcd0001f4",
+      "rawCaptureCopiedExactly": true,
+      "original": "tmp/remaining-native-primary-readback-20261008.json",
+      "originalRawDigestSha256": "0890b1c6ee28a28ab9708b0cfb4c858251d03aaadf532cdcb9b5927fcd0001f4",
+      "captureNormalization": "CRLF to LF only; original dated raw capture remains unchanged"
+    },
+    {
+      "path": "docs/security-remediation/acceptance-execution-boundary-independent-reviews.json",
+      "digestSha256": "dd8d469b0314447ecdfff5d6e83d8e95e126da35fa427f7de1da22b6b0c1714c",
+      "rawCaptureCopiedExactly": false,
+      "serialization": "New aggregate of preserved dated captures"
+    }
+  ],
+  "sourceComponents": {
+    "sms": {
+      "focused": 20,
+      "realPostgresCases": 6,
+      "fullPlatform": {
+        "schemaVersion": 1,
+        "service": "platform-service",
+        "startedAtUtc": "2026-10-08T14:46:03.967208+00:00",
+        "completedAtUtc": "2026-10-08T14:48:25.485085+00:00",
+        "exitCode": 0,
+        "seconds": 141.516,
+        "summary": {
+          "reported": 491,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "focusedProof": "tmp/provider-sms-routing-final-local-proof.json",
+        "focusedProofDigestSha256": "0f717940b77a27086b9aed6860914e4f797fbd326badc46804272b1e9dd39540",
+        "sourceHashesVerifiedBeforeAndAfter": true,
+        "logName": "tmp/execution-boundary-platform-service-full-tests.log",
+        "digestSha256": "d4643bc6611e48aca1696ec10b5ca17490851e0386ece6a1c419e8ac793b7942",
+        "cloudCalls": 0,
+        "overlap": "Focused tests overlap this full suite; counts are not additive."
+      }
+    },
+    "governance": {
+      "focused": 21,
+      "actualPlatform": "Windows Python3.12",
+      "posixExecutionRequiresLinuxCi": true
+    },
+    "recovery": {
+      "focused": 20,
+      "unit": 12,
+      "realPostgresCases": 8,
+      "priorFullSchoolBeforeTempFix": {
+        "schemaVersion": 1,
+        "service": "school-core-service",
+        "startedAtUtc": "2026-10-08T14:46:03.948671+00:00",
+        "completedAtUtc": "2026-10-08T14:52:16.526471+00:00",
+        "exitCode": 0,
+        "seconds": 372.562,
+        "summary": {
+          "reported": 975,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 1
+        },
+        "focusedProof": "tmp/recovery-isolated-final-source-capability-proof.json",
+        "focusedProofDigestSha256": "d618abbbc760761b37cf2aaa0e44a1f852777f2ee630bf44e9f699aad94ab508",
+        "sourceHashesVerifiedBeforeAndAfter": true,
+        "logName": "tmp/execution-boundary-school-core-service-full-tests.log",
+        "digestSha256": "3d015c5ce6d6b9f329574d4cdb6a3b399cac8d00e992a1a52e516660418b428f",
+        "cloudCalls": 0,
+        "overlap": "Focused tests overlap this full suite; counts are not additive."
+      },
+      "finalFullSchoolAndPackagePending": true,
+      "windowsSymlinkPrivilegeSkipMustBeExecutedInLinuxCi": true
+    }
+  },
+  "counting": "Focused tests overlap full suites; earlier/corrected runs are separate observations, never added as distinct tests.",
+  "staticAudits": {
+    "schemaVersion": 1,
+    "capturedAtUtc": "2026-10-08T14:44:37.788838+00:00",
+    "cloudCalls": 0,
+    "actualChecks": [
+      {
+        "name": "deployment-boundaries",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-deployment-boundaries.log",
+        "digestSha256": "4da948e8c8ad006d0c9f40d0ea8d28ad19b1e01b6535fa4bad34e172e3e75c35",
+        "output": "Deployment boundary audit passed: affected-service promotion, pinned images, Cloud Run manifests, and gateway routes are guarded.\n"
+      },
+      {
+        "name": "microservice-runtime-boundaries",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-microservice-runtime-boundaries.log",
+        "digestSha256": "2bfcca545e483b6fc235f9acecc6989b85ea2f2c433076aeac105ed20256706a",
+        "output": "Microservice runtime boundary audit passed: service Java code does not reference public schema directly.\n"
+      },
+      {
+        "name": "service-authorization-boundaries",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-service-authorization-boundaries.log",
+        "digestSha256": "0bdf8b66b89de6e5556c2cdc16183d9d317b6fc7b08f3b90f749c3d1a75d8174",
+        "output": "Service authorization boundary audit passed: token-scoped routes fail closed; exact machine capabilities require signed OIDC callers and deployed user context requires a signed authorized carrier.\n"
+      },
+      {
+        "name": "runtime-schema-dependency-baseline",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-runtime-schema-dependency-baseline.log",
+        "digestSha256": "2cfc55276175702445979dfef2885c8d907ae2049133df580ceaa76aa672ee51",
+        "output": "Runtime schema dependency baseline audit passed: no new cross-service schema dependencies detected.\n"
+      },
+      {
+        "name": "service-contract-coverage",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-service-contract-coverage.log",
+        "digestSha256": "dbccc8cfc8c04983a3d02a5447068421d05f75af8bc0f1f8120f4d710a8cddbb",
+        "output": "Service contract coverage audit passed: gateway, deployment, and smoke contracts are service-only.\n"
+      },
+      {
+        "name": "service-package-shape",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-service-package-shape.log",
+        "digestSha256": "08b36f78014c026c53d3a562fe9a4375de51bb9dca18551c495325cc19ff56fd",
+        "output": "Service package shape audit passed: compatibility and internal push controllers are in normalized packages.\n"
+      },
+      {
+        "name": "service-schema-defaults",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-service-schema-defaults.log",
+        "digestSha256": "17dbbd4f98550fe1a29498b739014bc2f1eb1386f286a172441a7ec8eaf6539c",
+        "output": "Service schema default audit passed: DB schema defaults do not fall back to public.\n"
+      },
+      {
+        "name": "service-datasource-pool",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-service-datasource-pool.log",
+        "digestSha256": "c0b914028a140f04e9fce14c988e7a5ed7d90c369a5a7d3f37e5bed0a9cd0bb8",
+        "output": "Datasource connection-pool audit passed: 5 services declare explicit HikariCP pool bounds.\n"
+      },
+      {
+        "name": "microservice-test-catalog",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-microservice-test-catalog.log",
+        "digestSha256": "3e14f35ad13186ba2e78512d4aa562e30b224fb5064eee8f7e1b4b428e6a07ba",
+        "output": "Microservice test catalog audit passed: CI and local test runner include all catalogued services.\n"
+      },
+      {
+        "name": "microservice-build-catalog",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-microservice-build-catalog.log",
+        "digestSha256": "5a2d17ebd683ab174abe4fcc647fe67f9b71263919ba9adc03e38488db2d6814",
+        "output": "Microservice build catalog audit passed: PR CI, branch CD, and local verification use the shared catalog.\n"
+      },
+      {
+        "name": "security-governance-controls",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-audit-security-governance-controls.log",
+        "digestSha256": "3bd0dbda182ee41c6f6f91076267d6f8b3566830ab5634f5f7312be009916ea2",
+        "output": "Security governance controls passed: guarded mutations, exact branch-scoped WIF identities, dedicated Cloud Deploy/runtime accounts, schema-only production recovery, fail-closed Cloud SQL transport checks, dependency coverage, CodeQL, and HIGH/CRITICAL container gates are present.\n"
+      },
+      {
+        "name": "duplicate-class-drift",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-retry-duplicate-class-drift.log",
+        "digestSha256": "fde43936345fcf55963cd6b067ec3dad25bce29cd6ea7a710bad58570bb8e407",
+        "output": "  GcpOtlpTraceExporterAuthConfig.java          OK  5 identical copies (billing, identity, operations, platform, school-core)\r\n  EventEnvelope.java                           OK  3 identical copies (billing, operations, school-core)\r\n  TenantDataSourceConfig.java                  OK  4 identical copies (billing, operations, platform, school-core)\r\n  LoggingDomainEventPublisher.java             OK  3 identical copies (billing, operations, school-core)\r\n  RuntimeDbRoleGuard.java                      OK  5 identical copies (billing, identity, operations, platform, school-core)\r\n  MachineCallerFilter.java                     OK  5 identical copies (billing, identity, operations, platform, school-core)\r\n  MigrationOnlyMain.java                       OK  5 identical copies (billing, identity, operations, platform, school-core)\r\n  MigrationRuntimePolicy.java                  OK  5 identical copies (billing, identity, operations, platform, school-core)\r\n  OutboxPublisherConfiguration.java            OK  3 identical copies (billing, operations, school-core)\r\n  DomainEventPublisher.java                    OK  3 identical copies (billing, operations, school-core)\r\n\r\nall 10 guarded classes are consistent across services\r\n"
+      }
+    ],
+    "passed": true,
+    "limits": "Static checks complement tests; no semantic or full feature safety proof."
+  },
+  "preservedFirstStaticTimeout": {
+    "schemaVersion": 1,
+    "capturedAtUtc": "2026-10-08T14:41:39.734303+00:00",
+    "runnerDigestSha256": "b32f6ea6ca5f282b3ef766a825965fe9ed6b946a9d606785396aa01628255725",
+    "passed": false,
+    "actualCompletedChecks": [
+      {
+        "name": "deployment-boundaries",
+        "exitCode": 0,
+        "log": "tmp/execution-boundary-audit-deployment-boundaries.log",
+        "digestSha256": "4da948e8c8ad006d0c9f40d0ea8d28ad19b1e01b6535fa4bad34e172e3e75c35"
+      }
+    ],
+    "failedCheck": {
+      "name": "microservice-runtime-boundaries",
+      "classification": "Subprocess timed out after60 seconds; no audit verdict obtained"
+    },
+    "causeProven": false,
+    "cloudCalls": 0,
+    "earlierRunnerPreserved": true
+  },
+  "historicalProofIntegrity": {
+    "schemaVersion": 1,
+    "capturedAtUtc": "2026-10-08T14:53:17.503817+00:00",
+    "headSha": "fb59aaf7509937515b99ef32d3d3a7ebe3307f6f",
+    "verdict": "PASS",
+    "historicalJsonCount": 169,
+    "historicalJsonUnchanged": 169,
+    "historicalJsonManifest": [
+      {
+        "path": "docs/security-remediation/acceptance-application-egress-independent-review.json",
+        "workingRawSha256": "88961b523299dc66233395da0de3eec6116287a69eeb8dc44ad6f65071c22638",
+        "headBlobSha1": "963750113ee79e0bca20bad5b8e4d79fafa88fbe",
+        "headBlobRawSha256": "88961b523299dc66233395da0de3eec6116287a69eeb8dc44ad6f65071c22638",
+        "gitVisibleBlobSha1": "963750113ee79e0bca20bad5b8e4d79fafa88fbe",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-application-egress-local.json",
+        "workingRawSha256": "0727a889b36400f30abf4431199dec95ef21969e91954cd34fa511cca58d7fe5",
+        "headBlobSha1": "6cb42dced99d7024dc0eedad06cf27df611898a8",
+        "headBlobRawSha256": "0727a889b36400f30abf4431199dec95ef21969e91954cd34fa511cca58d7fe5",
+        "gitVisibleBlobSha1": "6cb42dced99d7024dc0eedad06cf27df611898a8",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-bounded-dev-reads.json",
+        "workingRawSha256": "d564bd6cecf614a38b9b1ac7f862a07451d011447cb554d48b8bbd2b2ef6fd61",
+        "headBlobSha1": "ce5838414cea14e276094e9225dbb218973dc1de",
+        "headBlobRawSha256": "69dd79e0eb63ee13568206e5e724a6f64ebc8ed399becf152d55f86352aa8b31",
+        "gitVisibleBlobSha1": "ce5838414cea14e276094e9225dbb218973dc1de",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-callback-body-ci.json",
+        "workingRawSha256": "2d15fafeddc6fd1e0ff58ab4abfa8781789508ea6dbd9467475b3cf6acdee924",
+        "headBlobSha1": "23f143773c248ea4c0e187f53439da85a2af3d69",
+        "headBlobRawSha256": "2d15fafeddc6fd1e0ff58ab4abfa8781789508ea6dbd9467475b3cf6acdee924",
+        "gitVisibleBlobSha1": "23f143773c248ea4c0e187f53439da85a2af3d69",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-callback-body-completion.json",
+        "workingRawSha256": "c0e8c86d0b4c59382d3fe7002f64a3e1b53a28c087241cfb27253934324a3bab",
+        "headBlobSha1": "fe69d9f08ba77182182b682d08fa7c9a83861baa",
+        "headBlobRawSha256": "c0e8c86d0b4c59382d3fe7002f64a3e1b53a28c087241cfb27253934324a3bab",
+        "gitVisibleBlobSha1": "fe69d9f08ba77182182b682d08fa7c9a83861baa",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-callback-body-dev-release.json",
+        "workingRawSha256": "5fef569f7cfd619c6e13625d842b05417018bb9098abaae1aff55caba828e3a1",
+        "headBlobSha1": "245f6d3a014a0f8faaf6f1ce0a1ae0fa797d705a",
+        "headBlobRawSha256": "5fef569f7cfd619c6e13625d842b05417018bb9098abaae1aff55caba828e3a1",
+        "gitVisibleBlobSha1": "245f6d3a014a0f8faaf6f1ce0a1ae0fa797d705a",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-callback-body-image-protection.json",
+        "workingRawSha256": "3d2eb80e20c05ceabdaf749dd2c46acb5feb325f646bd54fbdbc573669bf39ee",
+        "headBlobSha1": "2b934130b0bdd80b6838863ef2c0ab3098a63f44",
+        "headBlobRawSha256": "3d2eb80e20c05ceabdaf749dd2c46acb5feb325f646bd54fbdbc573669bf39ee",
+        "gitVisibleBlobSha1": "2b934130b0bdd80b6838863ef2c0ab3098a63f44",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-callback-body-local.json",
+        "workingRawSha256": "607b6863653940b253017dc3e89f8d0184bf88dac058f92aa18cbee0e1d2980d",
+        "headBlobSha1": "93af0cb00316136461a77362e9b46cc6d615cc17",
+        "headBlobRawSha256": "607b6863653940b253017dc3e89f8d0184bf88dac058f92aa18cbee0e1d2980d",
+        "gitVisibleBlobSha1": "93af0cb00316136461a77362e9b46cc6d615cc17",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-callback-body-primary-review.json",
+        "workingRawSha256": "11a085aeb7644865e423c5f372b390362721e916624daeb7589c90070d2e28b0",
+        "headBlobSha1": "e2e5f92f94419ea6ff31599f9ca1e80fb240c687",
+        "headBlobRawSha256": "11a085aeb7644865e423c5f372b390362721e916624daeb7589c90070d2e28b0",
+        "gitVisibleBlobSha1": "e2e5f92f94419ea6ff31599f9ca1e80fb240c687",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-callback-body-public-smoke.json",
+        "workingRawSha256": "0fea8d1d7b402da12615115757782a01a91e95c9e458e39e10dcd7e8781ae0b7",
+        "headBlobSha1": "c4dc40b9b4d0baa532c8f84714addf9b12d0c39c",
+        "headBlobRawSha256": "0fea8d1d7b402da12615115757782a01a91e95c9e458e39e10dcd7e8781ae0b7",
+        "gitVisibleBlobSha1": "c4dc40b9b4d0baa532c8f84714addf9b12d0c39c",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-callback-body-static-audits.json",
+        "workingRawSha256": "12be84b6360bda68933ee129a5d2e44ef410c8a934241e8d000ef3c153d16e68",
+        "headBlobSha1": "47b4b3444c0434289c7f3c183106cf544d59b005",
+        "headBlobRawSha256": "12be84b6360bda68933ee129a5d2e44ef410c8a934241e8d000ef3c153d16e68",
+        "gitVisibleBlobSha1": "47b4b3444c0434289c7f3c183106cf544d59b005",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-capacity-preflight.json",
+        "workingRawSha256": "d1e4620ac470900ea0ef5ee5d9b7d5116dcefe09eed1257cc96f8239930e625b",
+        "headBlobSha1": "9cac0036b23134323eabd1c59ad9532e7daf94b1",
+        "headBlobRawSha256": "c449ea855af0cec4de13841a539a32e5693689e1a09c06d9cff02d686c612b8c",
+        "gitVisibleBlobSha1": "9cac0036b23134323eabd1c59ad9532e7daf94b1",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-container-scan-freshness.json",
+        "workingRawSha256": "727567612e0948f356f09b5768fbaa5c2bf4e604adb1419fff505c2c6ec87ae6",
+        "headBlobSha1": "45c314da8c622afff34f009b452ad5ed8dd083d5",
+        "headBlobRawSha256": "fa8b94a1aa1b681eed3d536ebeda1e1b47140346d4a2a594dcffd531fe189ee9",
+        "gitVisibleBlobSha1": "45c314da8c622afff34f009b452ad5ed8dd083d5",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dashboard-auth-state.json",
+        "workingRawSha256": "d29e2474356df98c17157d6a23a4b36b565cee4665646a5ae73d9f48087143ee",
+        "headBlobSha1": "90b5b00c462ccdcdf6196782c0e8e81f556d5475",
+        "headBlobRawSha256": "3fad5af0dc134845803d751bd2bc95a4e7e9d465f5d08e846faddfe3300f42e7",
+        "gitVisibleBlobSha1": "90b5b00c462ccdcdf6196782c0e8e81f556d5475",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dashboard-config-readback.json",
+        "workingRawSha256": "d817f043c558469970d81f3fef80b0d4a698205650e311744332bf00d55a816a",
+        "headBlobSha1": "502b8bfe80a1c834bdbef1c7debcddd27e6bf022",
+        "headBlobRawSha256": "2b562f433a9ab4191b6595e8ce914e8e6cf940ced84850667baa04bb27764a33",
+        "gitVisibleBlobSha1": "502b8bfe80a1c834bdbef1c7debcddd27e6bf022",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dashboard-firestore.json",
+        "workingRawSha256": "814d605d75cb60a401ef12c21b526ce5a5c826c093f80dc6cfdaebcf494b2c49",
+        "headBlobSha1": "d75edc7b631155b186f1821b48608325f869f741",
+        "headBlobRawSha256": "f08dcd8de2886bf03c2f1c5b4caa2c1dd912983f6ef73da56152719c3db806f2",
+        "gitVisibleBlobSha1": "d75edc7b631155b186f1821b48608325f869f741",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dashboard-provision.json",
+        "workingRawSha256": "2a14d8d53ed14ca609d344c54cfc3342e37ecbb1d28ff4fda216a943fd111e28",
+        "headBlobSha1": "c7d768eb1ca213e2fda7bdebcd8f3106a8ef690e",
+        "headBlobRawSha256": "c9288facd5715b702653ac15d364e1e145897e53d91474561172ec12683b3e12",
+        "gitVisibleBlobSha1": "c7d768eb1ca213e2fda7bdebcd8f3106a8ef690e",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dashboard-state-adoption.json",
+        "workingRawSha256": "551ebacb7c87366e1e797512a1f4ad2fa623091930f5828be8fbb9352768b61c",
+        "headBlobSha1": "e17c82bf70c8ef3a1d327b5d84137f9495e08503",
+        "headBlobRawSha256": "b8a0602d576ad4c9c325eb892e49998b2428021e437d4faffce3555406f267d2",
+        "gitVisibleBlobSha1": "e17c82bf70c8ef3a1d327b5d84137f9495e08503",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dashboard-ttl-recheck.json",
+        "workingRawSha256": "1d1bc2b46c61cdc0ff4f97f881dc371ef8fd178644f82a2fd12c33bf8bbb39b6",
+        "headBlobSha1": "9993f48f4903344d7c5a8684a359f19637bb23a0",
+        "headBlobRawSha256": "d898e3423e893f11c6127e3f5e0639c94e53197755db9aa63b453d7608362ab0",
+        "gitVisibleBlobSha1": "9993f48f4903344d7c5a8684a359f19637bb23a0",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dashboard-ttl.json",
+        "workingRawSha256": "e02829ba29de8a02de5374d36b8ea95038b09345d35f4aa0e9d80ae6fc96027d",
+        "headBlobSha1": "c2eccc54d98e84db59300cbee99ec518002905c8",
+        "headBlobRawSha256": "a6a5a00259b6174dbd0a1418099b929c3c266013a54fb695d1370397e90d8648",
+        "gitVisibleBlobSha1": "c2eccc54d98e84db59300cbee99ec518002905c8",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dev-edge-owner-preparation.json",
+        "workingRawSha256": "bbda7b86755e1608d1a9b5d6cff2401abfa7176d2e7f6b897a9351f492cab22f",
+        "headBlobSha1": "b94dff4b5fd25a66a5d9e29d7350a45174581532",
+        "headBlobRawSha256": "9dc71a518d11042ad00abedbca8fd645f31df3b1f1b40d7040f14aa1151ec0a7",
+        "gitVisibleBlobSha1": "b94dff4b5fd25a66a5d9e29d7350a45174581532",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dev-erasure-journal-control.json",
+        "workingRawSha256": "0f86b0983b9aa0c09a14246b44f08759f2bcee4057f0fc49b2f4faa136c89a93",
+        "headBlobSha1": "923d7070c4d5b5e9cbf40e021ba2a2afe728c9ed",
+        "headBlobRawSha256": "68b4634e9e02de9316149fd37b4e4de00f8e2427a85df21cb4a5aadc51a13d85",
+        "gitVisibleBlobSha1": "923d7070c4d5b5e9cbf40e021ba2a2afe728c9ed",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dev-erasure-journal-infrastructure.json",
+        "workingRawSha256": "10b81d727abe913db1c9f773442d4d482c6f256faef683dec994f08a310ba272",
+        "headBlobSha1": "85c4a0fda15bb64eee5153ba94a3909b031d29c3",
+        "headBlobRawSha256": "01765c0412a120ece9f157d5c2c149e0f0eab349002bcc4d039933bb73f4e79a",
+        "gitVisibleBlobSha1": "85c4a0fda15bb64eee5153ba94a3909b031d29c3",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dev-erasure-journal-runtime-permissions.json",
+        "workingRawSha256": "865505ae36b3e7aa29ec22d6d429e1f5dee031bc589cd6928aa34de88fd30531",
+        "headBlobSha1": "cdb9501d6d5b29e0570502d0a6f860e7a5a78fbd",
+        "headBlobRawSha256": "f9a0fff463eb2a5c51ae8f0593a7eaf1a41536280d22b750ed733d483df18d20",
+        "gitVisibleBlobSha1": "cdb9501d6d5b29e0570502d0a6f860e7a5a78fbd",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dev-restore-target-verifier-local.json",
+        "workingRawSha256": "50f6074d0bf62e31d95068b7956d9ea690a455a602fdbd1becda810f95cd8be7",
+        "headBlobSha1": "f1542fb450b3e7bd6030a896f70f620b08ccb53e",
+        "headBlobRawSha256": "eb1733dcc81d92083af8c44e01ccaa5bd05d32b557863c34bc90a48d97901a50",
+        "gitVisibleBlobSha1": "f1542fb450b3e7bd6030a896f70f620b08ccb53e",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dev-restore-verifier-source-api.json",
+        "workingRawSha256": "99ff8caa48e947cfdf681216763efec6e86849ad5cabc455f742343b1852b029",
+        "headBlobSha1": "62fdf37ae37eb51fb35a2622dc5592033bff2195",
+        "headBlobRawSha256": "82f1acf837d7b8d4844a5029eb4b3aafe7b32ab838fa30bcc44df8d064855165",
+        "gitVisibleBlobSha1": "62fdf37ae37eb51fb35a2622dc5592033bff2195",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-dual-control-recovery.json",
+        "workingRawSha256": "b817194e0cc8ec734979ed5b609c686316c23b6675f397878afb07a0c7ae0d17",
+        "headBlobSha1": "89aa7024c6095bf0a83d746d3531aeabb1374edb",
+        "headBlobRawSha256": "b3dcefc06818f99a21a571f5afa082b013e2ca73476d05e260e9fd9501f84974",
+        "gitVisibleBlobSha1": "89aa7024c6095bf0a83d746d3531aeabb1374edb",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-durability-ci-checkpoint.json",
+        "workingRawSha256": "e5f8abb6679ea10d27730193afec602efa4ca05473b1c9727cc2127075788019",
+        "headBlobSha1": "def33cb8e7f8fbda26aa259f8012dfd2d5031332",
+        "headBlobRawSha256": "714a9de39eec88cf33336e4c07e708f81a018bab994166e2dd6922e64fa32788",
+        "gitVisibleBlobSha1": "def33cb8e7f8fbda26aa259f8012dfd2d5031332",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-durability-config-reconciliation.json",
+        "workingRawSha256": "e875fca751d70605bbbb31637176838575fea5fc949a1d343620aac339cbae74",
+        "headBlobSha1": "e0c99fa16dfde394145b1b38af087b5e4a09ea7d",
+        "headBlobRawSha256": "7ed520dc8c987d7a0d786720d89765d1c7c983fe74b5f9f714c6dd8fe65dec31",
+        "gitVisibleBlobSha1": "e0c99fa16dfde394145b1b38af087b5e4a09ea7d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-durability-dev-release.json",
+        "workingRawSha256": "1782c0fa442f29361e75109bdeae7fb86d2401ef30986cff6a4ce0c76796eb4d",
+        "headBlobSha1": "ad6efb987b2089e0f5a6492ec2f2823207ec1d8b",
+        "headBlobRawSha256": "c7efad6d85f5614f3b552374dfae698e5040e6306cbe0cff06467d7e056b7df9",
+        "gitVisibleBlobSha1": "ad6efb987b2089e0f5a6492ec2f2823207ec1d8b",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-durability-image-protection.json",
+        "workingRawSha256": "95d80b51487bdae88e623321b383611e35bb8441a1ecbad5242797f4984878a2",
+        "headBlobSha1": "f8cc441876bdc73510928beed020b8905c717e7f",
+        "headBlobRawSha256": "c96ad94c2740bc71fe52733c0c1f355ef850db27be17743a644623ae20cae349",
+        "gitVisibleBlobSha1": "f8cc441876bdc73510928beed020b8905c717e7f",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-durability-implementation-ci.json",
+        "workingRawSha256": "53dbde5ec1a93e3584344f866de4ac04a9791bd8b24e0487855d3a9504d169f0",
+        "headBlobSha1": "221833578d9d62b09653199b39a2470c6671a4eb",
+        "headBlobRawSha256": "f73733c2dfc87d4de54f20a7437f9505201888e0ae531988769cd4b483cda3bc",
+        "gitVisibleBlobSha1": "221833578d9d62b09653199b39a2470c6671a4eb",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-durability-live-checkpoint.json",
+        "workingRawSha256": "9b2e60c8f47ab5cd889289f2a7f4e4ede2ba44b02b7b038e6f2713a8282db1d0",
+        "headBlobSha1": "b9a13f283609e5b96f06542e5f4dab7aa384cc18",
+        "headBlobRawSha256": "03c14b8f033828f105b0b2e182cf2a68786cd4c944a9a93ab7ec5b941b9981ea",
+        "gitVisibleBlobSha1": "b9a13f283609e5b96f06542e5f4dab7aa384cc18",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-durability-local-tests.json",
+        "workingRawSha256": "de5f6a7d2025b47353203af5e9c8e025b3577633e09be28bf8de243585af896d",
+        "headBlobSha1": "c18e4a9ed7643af48a00c88731b58d54de97cb79",
+        "headBlobRawSha256": "044bf98dfec6142f8ba25e14cfdb527b0685dd0b10bfc325e5a347eed49e832b",
+        "gitVisibleBlobSha1": "c18e4a9ed7643af48a00c88731b58d54de97cb79",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-durability-public-smoke.json",
+        "workingRawSha256": "788656fb8a86b807195e7e37db856721c2ac2f33d6134bc0b667f9b5156f1135",
+        "headBlobSha1": "2cc09a43e9f49f9b044a255c2c2ade5ba25b42dd",
+        "headBlobRawSha256": "1925656cd5f9e91b6afe175172a511b1ecbe5d6715819739138e3dd0a425ff32",
+        "gitVisibleBlobSha1": "2cc09a43e9f49f9b044a255c2c2ade5ba25b42dd",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-durability-release-tests.json",
+        "workingRawSha256": "23c817ef5e4e4db567457da441cd04da412f48b5bba87b7fee8e18b137752fc1",
+        "headBlobSha1": "a91d918171bfc9d8d248c81c26b52a80d73bb8e7",
+        "headBlobRawSha256": "2ec752b9880de77e93138632b33b9de34f3ff758af311bb4e15c8efaf17c8e54",
+        "gitVisibleBlobSha1": "a91d918171bfc9d8d248c81c26b52a80d73bb8e7",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-evidence-ci-checkpoint.json",
+        "workingRawSha256": "4108e7bd11a30f1c81d638c5c9ef18d91d0a057bd9b8d98f8237ccb13311d91a",
+        "headBlobSha1": "80365b3f62c3b4b32a02c862c7ae4245cfc5fd64",
+        "headBlobRawSha256": "d6249f2421510fe37f462b9e0b583e63ae074df4488ae70b2579dcde51a56c30",
+        "gitVisibleBlobSha1": "80365b3f62c3b4b32a02c862c7ae4245cfc5fd64",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-evidence-postmerge-secret-scan.json",
+        "workingRawSha256": "d8026bec0e52522567f2f7a40a53d8d378795528c3ebb4b59a3546874261b17e",
+        "headBlobSha1": "af82a5a4a2105adb164812303d8a50197c4bca63",
+        "headBlobRawSha256": "44c97845174a3d9352a17b6935c72d02eb380b291d4c25014072fb68dac79e49",
+        "gitVisibleBlobSha1": "af82a5a4a2105adb164812303d8a50197c4bca63",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-evidence-secret-scan-false-positive.json",
+        "workingRawSha256": "dca9099a02129c1af4aab727573082ec10e10453163b0501bfb97e477d60d708",
+        "headBlobSha1": "2bdf7bd0e938037d02135d6e43af67295e3f063f",
+        "headBlobRawSha256": "44ad6ce8d130bcf9c6e5c1b4b73026c6b801a3ede497df924f11209cbe4b551d",
+        "gitVisibleBlobSha1": "2bdf7bd0e938037d02135d6e43af67295e3f063f",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-final-dev-release.json",
+        "workingRawSha256": "3817a3a1a2dcf517df9268041de74a39928c88f9d0ac2635b28f1ff817683e4d",
+        "headBlobSha1": "84b076feec2ad840f614e4d347e9fdfb01002df5",
+        "headBlobRawSha256": "5d8d562cbda554cd35c15d143f9210c3a370e764a6f5ad362c752b85d3220d39",
+        "gitVisibleBlobSha1": "84b076feec2ad840f614e4d347e9fdfb01002df5",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-final-frontend.json",
+        "workingRawSha256": "4b87c052dd841980de9bf82b1856cfb9c7cd6cef21615fbbce86d6c2657bec26",
+        "headBlobSha1": "ec84c2b9ddd825965c80d76f0493a80d6217218a",
+        "headBlobRawSha256": "2ae199bc6858015d51cd93515615fd450fa2cc5326bd8dc3599e9f699b6e8ca2",
+        "gitVisibleBlobSha1": "ec84c2b9ddd825965c80d76f0493a80d6217218a",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-final-live-erasure.json",
+        "workingRawSha256": "410730c07e5f40b568f30b70d17493dee77ddead338b492fbc2104a712391fe1",
+        "headBlobSha1": "3fc66aa5b4b536458817441c4f3700ef0eaea6da",
+        "headBlobRawSha256": "563d223166feba05d27bb69df4007dafb9244e3f708b3b7066f84eb52f7f074c",
+        "gitVisibleBlobSha1": "3fc66aa5b4b536458817441c4f3700ef0eaea6da",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-final-live-sources.json",
+        "workingRawSha256": "ce2f0b62c74375c5ab1909c7608165ae230b9703ff9adcafc90e4a4589b03713",
+        "headBlobSha1": "9444b45212693bc53942160772bc741109228cb1",
+        "headBlobRawSha256": "c108fb6794d6bf7491aada4cff3cc119d9bded743cc2d6af07ea4d454387adcc",
+        "gitVisibleBlobSha1": "9444b45212693bc53942160772bc741109228cb1",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-final-temporary-jobs.json",
+        "workingRawSha256": "cc206673b4d10e9f4d0e547b2b44d1bd14e423261b8a706f85fd5ea34d644266",
+        "headBlobSha1": "eb1c3754c29853198a264e90ee04813e803cf687",
+        "headBlobRawSha256": "21f541041798e13febec29bc7620b6cf19c9b9934f66dcae031a0d35c97d5250",
+        "gitVisibleBlobSha1": "eb1c3754c29853198a264e90ee04813e803cf687",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-generic-report-reconciliation-local.json",
+        "workingRawSha256": "cf2080033520cc3bcd15a4bbfb93e561431a44fd685cc295ec11a4fc43db701a",
+        "headBlobSha1": "dabefe553d0ae2756505e76782b8c72cb6c99503",
+        "headBlobRawSha256": "0d9eeea6c35bcc872f259dee69f7d4afce91e477dc7afd4a88a1766dfd8f3a35",
+        "gitVisibleBlobSha1": "dabefe553d0ae2756505e76782b8c72cb6c99503",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-http2-parser.json",
+        "workingRawSha256": "1ff94575b9d2a0c495c5306a43537095e5437b7b3bea07e9c864e82dbcb7b94e",
+        "headBlobSha1": "828838e47e05407b67c46cbb9f45d109c0bf8c62",
+        "headBlobRawSha256": "04a283d06d77a3560f3b305dc2d1c66bc04afe6015e7e1bbba2f01405d842e8a",
+        "gitVisibleBlobSha1": "828838e47e05407b67c46cbb9f45d109c0bf8c62",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-http2-transfer-encoding.json",
+        "workingRawSha256": "97d6b1e851cfbec7008f9e90febc1ca76192fd479ae818e43a2dd1b4524a05ba",
+        "headBlobSha1": "ad88cd29d734726add8ec45763ec58d2fb879b08",
+        "headBlobRawSha256": "e6fd8e2cfe4348ebfd7fa9265c4e932e955d7be8b2fc0dc18aee5b5d78db1426",
+        "gitVisibleBlobSha1": "ad88cd29d734726add8ec45763ec58d2fb879b08",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-identity-dashboard-cleanup.json",
+        "workingRawSha256": "274dcaa2192312c9a662c4832d2e58b544e6aa47d1eb2d63c7edae7df42dfc09",
+        "headBlobSha1": "f0ee4cb679f3768f1de49a66ac3cefdc6a9f119f",
+        "headBlobRawSha256": "7a5a796dec4e5a15cb0242b41f7eaee72bbc212406f11bd51ac0567bc3988f18",
+        "gitVisibleBlobSha1": "f0ee4cb679f3768f1de49a66ac3cefdc6a9f119f",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-identity-dashboard-sources.json",
+        "workingRawSha256": "0c715038eecbc744ee698c16144397b3d736f8d49ba08ddc60870cadb022ee79",
+        "headBlobSha1": "f92b406cfa4ede2d7d7b8093dc62ecbf0ed06150",
+        "headBlobRawSha256": "17c684004bf77efef9955cdf49ce4210516a385603a72531a0bec696c130f1c5",
+        "gitVisibleBlobSha1": "f92b406cfa4ede2d7d7b8093dc62ecbf0ed06150",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-identity-sessions.json",
+        "workingRawSha256": "082c1f1943e4de231bd463bc6aebad9cc329a1f1c73ed7079917188d8dad407e",
+        "headBlobSha1": "65f5454cf9e03263a8028719af3a6f17c0b80a39",
+        "headBlobRawSha256": "5f1d28cdfcc2d77a812aece27214ee72eb7746eae734944a5152534dd93bde54",
+        "gitVisibleBlobSha1": "65f5454cf9e03263a8028719af3a6f17c0b80a39",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-implementation-ci.json",
+        "workingRawSha256": "a9577d3a448ea502e2c8dfcf592e3d5de40c78cef9e9f41fc2c31d094df522d5",
+        "headBlobSha1": "7f06d78fb8d45b2adea11fa9877638944ce2f622",
+        "headBlobRawSha256": "696257c1681adff5b71d089efce5d2e8030076471bf665ac0227747d7e596dd3",
+        "gitVisibleBlobSha1": "7f06d78fb8d45b2adea11fa9877638944ce2f622",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-libpng-refresh-initial-failure.json",
+        "workingRawSha256": "a32f95691eadf181e6cd1926cf9e892853015592e7fedd8b0107b20bab57fae4",
+        "headBlobSha1": "2026a4d66e410f87123dc0e95a066e12f3824df0",
+        "headBlobRawSha256": "e0e5a62ce12e9a055a1e817a1947fc69760ab9711983c4af2b861c8269565cb5",
+        "gitVisibleBlobSha1": "2026a4d66e410f87123dc0e95a066e12f3824df0",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-libpng-vendor-patch-research.json",
+        "workingRawSha256": "c5620cfdca8f726d7cb07e69d7716e7ea5d0f18b753fb5217554dee6e5c7f553",
+        "headBlobSha1": "2eece68bcd027ac1e6014c8b5bab6773ac4373dc",
+        "headBlobRawSha256": "723198bc457533b98afabaf71f979da017e563827f230b7ce1429835ab4bc8f6",
+        "gitVisibleBlobSha1": "2eece68bcd027ac1e6014c8b5bab6773ac4373dc",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-live-durable-photo-erasure.json",
+        "workingRawSha256": "94db77961c6547c81f5ff80203a90e124a149da961505c712d56d008ee785b8d",
+        "headBlobSha1": "9aa73d41bfaa00b3e179690bfbc1088a27dca25c",
+        "headBlobRawSha256": "710d4ed0faad2faad090b8553f8c02853a5f8068deb93a5921b5dcd41c9da44d",
+        "gitVisibleBlobSha1": "9aa73d41bfaa00b3e179690bfbc1088a27dca25c",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-local-private-cleanup.json",
+        "workingRawSha256": "d199307fc0baf0eb4b792c45e6bae3de41e4de2720cbf22ff17a2477d44d8363",
+        "headBlobSha1": "acd43a0554b472feb7bb0cc91ae7ca14d38a6129",
+        "headBlobRawSha256": "e7837ccbf562d13f1ceff01fb92bbd5881a83a254cd8fff8ca60b1a859ec43ac",
+        "gitVisibleBlobSha1": "acd43a0554b472feb7bb0cc91ae7ca14d38a6129",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-lower-role.json",
+        "workingRawSha256": "3a801494359ebb751670790ae284b72fbbb5916ef7b1d27df81c631dc9b961f8",
+        "headBlobSha1": "de40ddea547d48d40d6e39e2bdee44bd19eaeb21",
+        "headBlobRawSha256": "feb7b39a1abf8edc99b793c0db5941bdef1ec0f9b8f3cf0079e8784d2020bd68",
+        "gitVisibleBlobSha1": "de40ddea547d48d40d6e39e2bdee44bd19eaeb21",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-managed-key-rotation.json",
+        "workingRawSha256": "3c9f6c63e605932e23126cf9b3f1a238fa076e17c2de54e4b443c03860a32414",
+        "headBlobSha1": "625bb2d6debb2b9e1ee4549daaf2b3334d3dc5d4",
+        "headBlobRawSha256": "00ec62cb66a064f86342401bc9d21947f3e506edd8efc99abd8221d862eee1a6",
+        "gitVisibleBlobSha1": "625bb2d6debb2b9e1ee4549daaf2b3334d3dc5d4",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-memory-components.json",
+        "workingRawSha256": "8d8de00842de82161d57691a854175920e1ad3541734204345ed3937216e0246",
+        "headBlobSha1": "88a921db2f79c67268f98f2ef98b4fe0aeb59d72",
+        "headBlobRawSha256": "086c59e24cc49bcbfcdd09ef89f95b4718f5a86864bd0ef1ca29bddc8a5fb95c",
+        "gitVisibleBlobSha1": "88a921db2f79c67268f98f2ef98b4fe0aeb59d72",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-native-runtime-prerequisites.json",
+        "workingRawSha256": "a4dbf4e6e1db3663dbf05b848698f44f2343aaffbebfec806aca7385ac236b95",
+        "headBlobSha1": "7026924884e8a7e2afb955a46f0eded418055171",
+        "headBlobRawSha256": "a4dbf4e6e1db3663dbf05b848698f44f2343aaffbebfec806aca7385ac236b95",
+        "gitVisibleBlobSha1": "7026924884e8a7e2afb955a46f0eded418055171",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-object-authorization.json",
+        "workingRawSha256": "50aa2fac4ee2a4d66b9db3cfe6bf53cd4ba4cf8371f9fe610d500a01b071d97e",
+        "headBlobSha1": "677732458a32f2411df083927a2d66f48a416e65",
+        "headBlobRawSha256": "a3481373f72a9b481b9da9ebcd34172505b178a69993a20301269332fa600211",
+        "gitVisibleBlobSha1": "677732458a32f2411df083927a2d66f48a416e65",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-obsolete-revision-postrelease.json",
+        "workingRawSha256": "6037f3f81b01b64e6befc19876440c3366ebf29188815b4db6786fd55bd11cdf",
+        "headBlobSha1": "b940e7b7864eb23b6b3ed88b5e1401d72d7f9dab",
+        "headBlobRawSha256": "0cbcc192a5add31cc8bb9a14634cc768e368eaf8140b6dfede4c8f24403fb6c2",
+        "gitVisibleBlobSha1": "b940e7b7864eb23b6b3ed88b5e1401d72d7f9dab",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-obsolete-revision-report-release.json",
+        "workingRawSha256": "13cd600ae196ee5898488d6ccabeaf1b2db6e75dc4e2b2887b830df0d324f7b2",
+        "headBlobSha1": "3a6078cd91a5d202164f56df02649157a6b6d1b6",
+        "headBlobRawSha256": "7541cd6fbedf98b192bc9f7a799d084063cdc394c5cae44f398ea43fc0c27851",
+        "gitVisibleBlobSha1": "3a6078cd91a5d202164f56df02649157a6b6d1b6",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-parallel-hardening-ci.json",
+        "workingRawSha256": "c5a17a176887130e9fc48f1dfc833fc89a68fd6a41938eb081904bc1064d65a2",
+        "headBlobSha1": "6a2a283f947343e23afcf9ee8eb030e2f6150b08",
+        "headBlobRawSha256": "c5a17a176887130e9fc48f1dfc833fc89a68fd6a41938eb081904bc1064d65a2",
+        "gitVisibleBlobSha1": "6a2a283f947343e23afcf9ee8eb030e2f6150b08",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-parallel-hardening-completion.json",
+        "workingRawSha256": "075daea7ff9585e9b454320e3fb0b537378f4318b62bbe9a3e1cfa24622d3d73",
+        "headBlobSha1": "c29027deebabb46419e8418c7cdd23a413f0ce2d",
+        "headBlobRawSha256": "075daea7ff9585e9b454320e3fb0b537378f4318b62bbe9a3e1cfa24622d3d73",
+        "gitVisibleBlobSha1": "c29027deebabb46419e8418c7cdd23a413f0ce2d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-parallel-hardening-dev-release.json",
+        "workingRawSha256": "641426feef65b55c162dcdc19dcda21592f5b167d868a98e39e6cca36f84ec47",
+        "headBlobSha1": "e1e5450ceee4d32c639f678be9683093453b8fe6",
+        "headBlobRawSha256": "641426feef65b55c162dcdc19dcda21592f5b167d868a98e39e6cca36f84ec47",
+        "gitVisibleBlobSha1": "e1e5450ceee4d32c639f678be9683093453b8fe6",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-parallel-hardening-governance-local.json",
+        "workingRawSha256": "dbb1aff9d4aaedf46ad0db526247411fb7cb0c4a9d557d38558a21f69affeec6",
+        "headBlobSha1": "73e485bab12c97b6cc6b603f04b0742b14cd5fb9",
+        "headBlobRawSha256": "dbb1aff9d4aaedf46ad0db526247411fb7cb0c4a9d557d38558a21f69affeec6",
+        "gitVisibleBlobSha1": "73e485bab12c97b6cc6b603f04b0742b14cd5fb9",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-parallel-hardening-image-protection.json",
+        "workingRawSha256": "8da5a9833ab5222386c46fec2467334520ebe1266ad0799ed373db265aa09879",
+        "headBlobSha1": "3f941d29ea94c5e8fce033a8f843a3981b01dd07",
+        "headBlobRawSha256": "8da5a9833ab5222386c46fec2467334520ebe1266ad0799ed373db265aa09879",
+        "gitVisibleBlobSha1": "3f941d29ea94c5e8fce033a8f843a3981b01dd07",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-parallel-hardening-local.json",
+        "workingRawSha256": "1868572999288c71ae1923b10df4452f712e5a7ca4b53d5508c4c6c1b176ca73",
+        "headBlobSha1": "d71968e3bc74f905c8bc8d9d23c46ee0405df50d",
+        "headBlobRawSha256": "1868572999288c71ae1923b10df4452f712e5a7ca4b53d5508c4c6c1b176ca73",
+        "gitVisibleBlobSha1": "d71968e3bc74f905c8bc8d9d23c46ee0405df50d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-parallel-hardening-provider-local.json",
+        "workingRawSha256": "c2cc91eb144a5d749cdad42f549617ab5a3aa9fbcf470f4a768c2aeec0a17459",
+        "headBlobSha1": "83d9d7af822ba974931dc6ffbe4ba14a84b52fc0",
+        "headBlobRawSha256": "c2cc91eb144a5d749cdad42f549617ab5a3aa9fbcf470f4a768c2aeec0a17459",
+        "gitVisibleBlobSha1": "83d9d7af822ba974931dc6ffbe4ba14a84b52fc0",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-parallel-hardening-public-smoke.json",
+        "workingRawSha256": "5d3ab921a8519db46657b10dbd5a8f70ed9c7579635a43464521024152dd786c",
+        "headBlobSha1": "89a88e7ba836f2c30f107c4ed37a37398914119c",
+        "headBlobRawSha256": "5d3ab921a8519db46657b10dbd5a8f70ed9c7579635a43464521024152dd786c",
+        "gitVisibleBlobSha1": "89a88e7ba836f2c30f107c4ed37a37398914119c",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-parallel-hardening-replay-local.json",
+        "workingRawSha256": "eb3f2fdeb55dbf05fd24d67f6faa311e1737815a1d46d1ab2f1603d5241cd3c6",
+        "headBlobSha1": "2f6e0dd8538ddb9c8c68ca1a2753155a3ccb7fcf",
+        "headBlobRawSha256": "eb3f2fdeb55dbf05fd24d67f6faa311e1737815a1d46d1ab2f1603d5241cd3c6",
+        "gitVisibleBlobSha1": "2f6e0dd8538ddb9c8c68ca1a2753155a3ccb7fcf",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-parallel-hardening-revision-preflight.json",
+        "workingRawSha256": "59116208dd02f4985f82ce6d9eabe86860c0cb133eac25ddca9556dc6f680e8d",
+        "headBlobSha1": "a6f241e9f96f6e696dc08cb70e695e035a0849b6",
+        "headBlobRawSha256": "59116208dd02f4985f82ce6d9eabe86860c0cb133eac25ddca9556dc6f680e8d",
+        "gitVisibleBlobSha1": "a6f241e9f96f6e696dc08cb70e695e035a0849b6",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-passkeys.json",
+        "workingRawSha256": "eddc58e35166a0c0f99c836918e6eac945ea4e0366d0c80336380b5623603a7b",
+        "headBlobSha1": "4251bc68576c810a75d84b30eab970b1fb098ca9",
+        "headBlobRawSha256": "1e5ddcb97b0f052b71da1ff452438e91dc4db5763b82f5bacbbf16bd2f413b67",
+        "gitVisibleBlobSha1": "4251bc68576c810a75d84b30eab970b1fb098ca9",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-metadata-ci.json",
+        "workingRawSha256": "181cad9740fc34f615b6d06e6db4424c53e4f485d6a41286a044bae2eec3ada2",
+        "headBlobSha1": "15e370d6e92c2f05979a97ca055f0f990b119bae",
+        "headBlobRawSha256": "a18ad0cc2191da7358789c45bd63977edbfe09408ecc2ea65352548637574400",
+        "gitVisibleBlobSha1": "15e370d6e92c2f05979a97ca055f0f990b119bae",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-metadata-combined-dev-inventory.json",
+        "workingRawSha256": "7efb6ecdb371641fbff28141511162309b8990d20caaaefdc8d3d4e10f4e1edc",
+        "headBlobSha1": "2b56c679bed617cbb4a1c5063d26f287ba5f7374",
+        "headBlobRawSha256": "8373848df3ac0e6b99d46972e656b4a4a9473245ba10265094492a5194295857",
+        "gitVisibleBlobSha1": "2b56c679bed617cbb4a1c5063d26f287ba5f7374",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-metadata-dev-release.json",
+        "workingRawSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+        "headBlobSha1": "3cfc46c64150465e2b6297b535fc44190199b524",
+        "headBlobRawSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+        "gitVisibleBlobSha1": "3cfc46c64150465e2b6297b535fc44190199b524",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-metadata-image-protection.json",
+        "workingRawSha256": "62789221f5be8d39e35bc4dfc0a8909f3152f4123392fd95b7bfd3bea0408af8",
+        "headBlobSha1": "49d8b819fd354bc766bd7a851bf513d112936d7a",
+        "headBlobRawSha256": "65d4eb961bc1741bfc7f79c62dd1df2abc4d3e9731e9712cb1f99675a3e01872",
+        "gitVisibleBlobSha1": "49d8b819fd354bc766bd7a851bf513d112936d7a",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json",
+        "workingRawSha256": "2c47e34d681bda491d73349d76c446319818d941928154ae569119cabb33f3b1",
+        "headBlobSha1": "1dedd89506e72e9f8a6ee151b40a48e4de533d7c",
+        "headBlobRawSha256": "2c47e34d681bda491d73349d76c446319818d941928154ae569119cabb33f3b1",
+        "gitVisibleBlobSha1": "1dedd89506e72e9f8a6ee151b40a48e4de533d7c",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "unset",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-metadata-local.json",
+        "workingRawSha256": "0891f1b87036a5241ccd50733b9af14f56572bedf526b2a41ae3992c0992afa1",
+        "headBlobSha1": "661015000627a45a7e402e6aa8d894559a05858e",
+        "headBlobRawSha256": "09c684d48bf2ce7c0bde668652dc30e7e4080e4e1f6f15f463daf543557f96bd",
+        "gitVisibleBlobSha1": "661015000627a45a7e402e6aa8d894559a05858e",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-metadata-obsolete-revision-preflight.json",
+        "workingRawSha256": "b091a8710a1160605f397d66ca8eae4b241bce87bb4c46dbf2127c90c74d2cb1",
+        "headBlobSha1": "1524fbdd83a7e16eda98a9d195ece97275a3b088",
+        "headBlobRawSha256": "2fc78a7a36eed6828b79c986f52c259707f58da908d8a4b16a97b96eef3ad814",
+        "gitVisibleBlobSha1": "1524fbdd83a7e16eda98a9d195ece97275a3b088",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-metadata-public-smoke.json",
+        "workingRawSha256": "7cee1138bcaab0d5261950e53f44fb90ab3b4bd1d88f76fc5277a27143296119",
+        "headBlobSha1": "23ae6898877048ddaa2eb553a6b0bb3ac8c48921",
+        "headBlobRawSha256": "2e61b756de09a947db135d3dac8fa028eabd4fd69bebc8030acf971a5bb0e867",
+        "gitVisibleBlobSha1": "23ae6898877048ddaa2eb553a6b0bb3ac8c48921",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-metadata-release-inventory.json",
+        "workingRawSha256": "dfd649c0c8eb7a46ad71f4d429ea2c52e92718d74b7f3bc5dd1819057c47b0fc",
+        "headBlobSha1": "df51ada1ec7fbf94693b7f6cbbd1ca999e8ab72c",
+        "headBlobRawSha256": "73f0a32a8986adf30270e62d252e131d11050df5d0a3bd036a5715a22df048ad",
+        "gitVisibleBlobSha1": "df51ada1ec7fbf94693b7f6cbbd1ca999e8ab72c",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-metadata-release-tests.json",
+        "workingRawSha256": "bd750aca20782ee79e2eee60a9475035cdc13242eb7d9107a4dc7eada7c83e01",
+        "headBlobSha1": "07f273e96e0f7f31066e6665f589c6859597e45d",
+        "headBlobRawSha256": "cc0f5fe6f630261679f533a794bde559106ac27feace3838d0d213d0e4ea3663",
+        "gitVisibleBlobSha1": "07f273e96e0f7f31066e6665f589c6859597e45d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-portrait-owner-readback.json",
+        "workingRawSha256": "27991077919653b73dbb653a5e89e632b77de7c8444476cd145517ccdeaf14f2",
+        "headBlobSha1": "f7a14fde42646afecd3adace0261b5805aa42932",
+        "headBlobRawSha256": "597b2db9ece74217dcad5f6bbf194ea1cff285904ef0557bf84895c626bffe0d",
+        "gitVisibleBlobSha1": "f7a14fde42646afecd3adace0261b5805aa42932",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-precommit-erasure-local.json",
+        "workingRawSha256": "bad3f1c17116b3f7439700ac8938521f92cf321c8ff47cea40313b2816f58eee",
+        "headBlobSha1": "878d60c4da9421cfb412c688ebc0f7307e68c8f1",
+        "headBlobRawSha256": "c9a0978ddb79f2e36058134abb0f8483f55b790530ede74fc6c53b48ae3960ab",
+        "gitVisibleBlobSha1": "878d60c4da9421cfb412c688ebc0f7307e68c8f1",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-precommit-journal-dev.json",
+        "workingRawSha256": "be80769fc1781032d72ab61613dff6eed23994ab14231e3f33bda89740a8324b",
+        "headBlobSha1": "0e6fbc242ae1ecae0919c904c07fc9ef437f0086",
+        "headBlobRawSha256": "eff8c45965a1a10f80b8407e14d3c9f5bee3d0fd05ac4bfa656d82104902aa90",
+        "gitVisibleBlobSha1": "0e6fbc242ae1ecae0919c904c07fc9ef437f0086",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-precommit-journal-downstream.json",
+        "workingRawSha256": "f81316bc9b786aae0ef0b6ec3344a32626f886b2e0451a16b84eae49cb63743c",
+        "headBlobSha1": "096a017e91170e9a776239e3243eb09bbd804c96",
+        "headBlobRawSha256": "8e94d911cd3dbdec0bff711e391eaffe11aef0e202f13aac9d7de991974dfbff",
+        "gitVisibleBlobSha1": "096a017e91170e9a776239e3243eb09bbd804c96",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-privacy-synthetic.json",
+        "workingRawSha256": "998be67763393c7e21f7193acd60bbe03466681d03e4996d78da519724165da0",
+        "headBlobSha1": "cc0e16cc5c514ae74c3032095b28f8adbdac5fd0",
+        "headBlobRawSha256": "4bccf09e14c2d0b5e3ac0509acf7fe3d660ee9a2d4f37eeec5ad565e14c9cdab",
+        "gitVisibleBlobSha1": "cc0e16cc5c514ae74c3032095b28f8adbdac5fd0",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-assertion-ci.json",
+        "workingRawSha256": "70ec76056532768e775cdcaceaa49f68321730116597d966dff89f32d1ac57fc",
+        "headBlobSha1": "fa4dad3d21f9d65ff20d1d8a1428fadcbde7dc40",
+        "headBlobRawSha256": "70ec76056532768e775cdcaceaa49f68321730116597d966dff89f32d1ac57fc",
+        "gitVisibleBlobSha1": "fa4dad3d21f9d65ff20d1d8a1428fadcbde7dc40",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-assertion-completion.json",
+        "workingRawSha256": "a84b3646b66bfd1eadf587dadbe6a52dccd60c7c0591cb923e579a76f4f9acfb",
+        "headBlobSha1": "6085cd85a46de133d49596135fc3340f54bfa8e6",
+        "headBlobRawSha256": "a84b3646b66bfd1eadf587dadbe6a52dccd60c7c0591cb923e579a76f4f9acfb",
+        "gitVisibleBlobSha1": "6085cd85a46de133d49596135fc3340f54bfa8e6",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-assertion-dev-release.json",
+        "workingRawSha256": "cff544bd1d447c2fceeffbb951f7c38ae6719ea976450b770542d1064f1a5b3b",
+        "headBlobSha1": "ba804ff7bb69333b86237662b5f7623f8422298d",
+        "headBlobRawSha256": "cff544bd1d447c2fceeffbb951f7c38ae6719ea976450b770542d1064f1a5b3b",
+        "gitVisibleBlobSha1": "ba804ff7bb69333b86237662b5f7623f8422298d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-assertion-image-protection.json",
+        "workingRawSha256": "20037a2efa2f21362c2adef58306f1be105ce39e2f848f58d8627ac91de5c834",
+        "headBlobSha1": "1974d91b27e9ff40e1b304983a4bb2c1297fc021",
+        "headBlobRawSha256": "20037a2efa2f21362c2adef58306f1be105ce39e2f848f58d8627ac91de5c834",
+        "gitVisibleBlobSha1": "1974d91b27e9ff40e1b304983a4bb2c1297fc021",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-assertion-public-smoke.json",
+        "workingRawSha256": "05f943bc53db2f996529e83955883c0422690de50d8c291b2286ef6096767c64",
+        "headBlobSha1": "e76873005ce81e44d5c95eec4a9abaecb77cc85d",
+        "headBlobRawSha256": "05f943bc53db2f996529e83955883c0422690de50d8c291b2286ef6096767c64",
+        "gitVisibleBlobSha1": "e76873005ce81e44d5c95eec4a9abaecb77cc85d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-restore-coverage-local.json",
+        "workingRawSha256": "db3092ceacf72317ad44a332012582aecb1b4667b84969748863053021f232ae",
+        "headBlobSha1": "c289ef6c9906ee47e6750d966275266b130a7f57",
+        "headBlobRawSha256": "db3092ceacf72317ad44a332012582aecb1b4667b84969748863053021f232ae",
+        "gitVisibleBlobSha1": "c289ef6c9906ee47e6750d966275266b130a7f57",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-restore-followup-local.json",
+        "workingRawSha256": "00a7cafe16fd975ed2dfbc4e8206d262ebe6d9e383407a366514d212ce56fc15",
+        "headBlobSha1": "fef6d396caa5513762f3779b46def347a79b728d",
+        "headBlobRawSha256": "00a7cafe16fd975ed2dfbc4e8206d262ebe6d9e383407a366514d212ce56fc15",
+        "gitVisibleBlobSha1": "fef6d396caa5513762f3779b46def347a79b728d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-restore-owner-readback.json",
+        "workingRawSha256": "9f2c36039bed3448e6e31744b34bdfd14be4a64572bac1571c6cee3e7d1e13da",
+        "headBlobSha1": "7b69c818e0df30e7d0903961a24d385fc523e45b",
+        "headBlobRawSha256": "9f2c36039bed3448e6e31744b34bdfd14be4a64572bac1571c6cee3e7d1e13da",
+        "gitVisibleBlobSha1": "7b69c818e0df30e7d0903961a24d385fc523e45b",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-restore-platform-local.json",
+        "workingRawSha256": "30e4edc4235fab5fd380b0dfa593cf40c02986b97381bf8438ae2640a0b15724",
+        "headBlobSha1": "bf95953605730a2261e96175541e5ffc7ca0a6c7",
+        "headBlobRawSha256": "30e4edc4235fab5fd380b0dfa593cf40c02986b97381bf8438ae2640a0b15724",
+        "gitVisibleBlobSha1": "bf95953605730a2261e96175541e5ffc7ca0a6c7",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-restore-provider-review.json",
+        "workingRawSha256": "383e8cab68fcf411e48012f6fb4f6addf6ab2eb9aecbd61f02bc8a1ad85286d3",
+        "headBlobSha1": "45997741e2a1a843a5f3861c1b05d4f50fe7eaad",
+        "headBlobRawSha256": "383e8cab68fcf411e48012f6fb4f6addf6ab2eb9aecbd61f02bc8a1ad85286d3",
+        "gitVisibleBlobSha1": "45997741e2a1a843a5f3861c1b05d4f50fe7eaad",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-provider-restore-restore-review.json",
+        "workingRawSha256": "25ae4a0812dcbf255a73afef4589890749eda6c62a1464e6d9d695b89cfc7917",
+        "headBlobSha1": "609badbf314e9725c76477da1e2dddd782fe0708",
+        "headBlobRawSha256": "25ae4a0812dcbf255a73afef4589890749eda6c62a1464e6d9d695b89cfc7917",
+        "gitVisibleBlobSha1": "609badbf314e9725c76477da1e2dddd782fe0708",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-refresh-race.json",
+        "workingRawSha256": "df2f603e6d2519b28283c2ea1da5582dbb0b29c7f58ed2d157db0c3bb8b5a044",
+        "headBlobSha1": "546ed75854e86769127c20a98cd7fb7802b3f00b",
+        "headBlobRawSha256": "a0c157a88c603cd16b832eb29cd8c83de8967d0f36be05a1889ac2f4aad13849",
+        "gitVisibleBlobSha1": "546ed75854e86769127c20a98cd7fb7802b3f00b",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-registry-retention.json",
+        "workingRawSha256": "eb41375fb917cf0713d2f03e6dcd143af30f9e9123d94c821c9c45a2b79623f8",
+        "headBlobSha1": "b8c176faf9b7d49c2a9e88508b0745b873ebb317",
+        "headBlobRawSha256": "0abafe6d1fae44a615fb4b87e081d61cef9c6f6cb9c3f8a2089fe3b7ad4d015f",
+        "gitVisibleBlobSha1": "b8c176faf9b7d49c2a9e88508b0745b873ebb317",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-registry-rollback-protection.json",
+        "workingRawSha256": "6206bf8da89dedce6ad8dcf45c3565909c801d1c3d9de47f300700a6c5857e56",
+        "headBlobSha1": "dfced9ca7db4091a6d3c3fdef5d30401fa9e326f",
+        "headBlobRawSha256": "310c8649eadab7b9e62c1fa360ad17d3093de96abfce1d4a46e5b2fb5120ba73",
+        "gitVisibleBlobSha1": "dfced9ca7db4091a6d3c3fdef5d30401fa9e326f",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-remaining-dev-config.json",
+        "workingRawSha256": "42e15e57e310817b3131ad5429aa1efff319399c50fb06a96e3940c7045b39f2",
+        "headBlobSha1": "3b5f0c227ed01cc376809dbca2b19b28e6ba99e6",
+        "headBlobRawSha256": "a9bcd009223a2f7856f11b0955d059bbc6022ba8a0cb87d20ab7e6b15787d28c",
+        "gitVisibleBlobSha1": "3b5f0c227ed01cc376809dbca2b19b28e6ba99e6",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-remaining-dev-release.json",
+        "workingRawSha256": "ac41e8c9c357da59a2384a1d3a41691c33ae88bb69f1604f111c562936ccc0ad",
+        "headBlobSha1": "dd8dc3d2076a89bbceaf681adb12bfc34b9a7529",
+        "headBlobRawSha256": "61b2b5295157ada6d863e83dce2a71495172593d597b4f89b9d17a5b21a0354b",
+        "gitVisibleBlobSha1": "dd8dc3d2076a89bbceaf681adb12bfc34b9a7529",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-remaining-image-protection.json",
+        "workingRawSha256": "2dd4312a83deef69b2d9fa19b49e32781d545f097c99f4697e4102a54e07eb2c",
+        "headBlobSha1": "ab3fad92d3b3cb9d20f915462c1f473f11625170",
+        "headBlobRawSha256": "7f9ab27f5018ec8e2173274efffa3d97fc2018ae43429d3bd6b82371491cc94d",
+        "gitVisibleBlobSha1": "ab3fad92d3b3cb9d20f915462c1f473f11625170",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-remaining-implementation-ci.json",
+        "workingRawSha256": "5a1433a5a9ec030d2515768a45cf05db431ddf31a4cbedee34b9c67cc520427d",
+        "headBlobSha1": "91aa70af75bbbf0219c00fd50c9e9ea65874f583",
+        "headBlobRawSha256": "7a7bcef4276ca5b664355ef4e4838320c3bddf4598c4df25c2c6437c703f6241",
+        "gitVisibleBlobSha1": "91aa70af75bbbf0219c00fd50c9e9ea65874f583",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-remaining-integration-local.json",
+        "workingRawSha256": "2cf123dbbbe41e4ae98530c3daf0c7b3b1b22894b864e9b7e0609750f18c30f4",
+        "headBlobSha1": "bc591de04bf0e6d4fcd5ced5d33925e67d236473",
+        "headBlobRawSha256": "e08d9d2939c1a9ee3fafd67c50fdc462a28d9bfdb90f88fabf1ffc349ac4514b",
+        "gitVisibleBlobSha1": "bc591de04bf0e6d4fcd5ced5d33925e67d236473",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-remaining-local-tests.json",
+        "workingRawSha256": "6a1ff74706db1feb581771e879dbfabd168d0c3fd0742623a3b62dda525362b3",
+        "headBlobSha1": "70ab7afec9732dcca30553e7fa71fb6ed3aa1c87",
+        "headBlobRawSha256": "6aa1e00ad463eacee09ffb92e33c6382c51c2f568ca11164d23081cece415c15",
+        "gitVisibleBlobSha1": "70ab7afec9732dcca30553e7fa71fb6ed3aa1c87",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-remaining-owner-predeploy-readback.json",
+        "workingRawSha256": "334e3d772cfd23b84d6f0cbeeeb681ec71f00a8e14a8ef763b12e5653959f676",
+        "headBlobSha1": "d1fdcf6e7cc0026d0b80019e56618af026920579",
+        "headBlobRawSha256": "49ae41fbf9f4b3748a6597d8ead317dc19cc30638fb2f84247d0a9af6caba11a",
+        "gitVisibleBlobSha1": "d1fdcf6e7cc0026d0b80019e56618af026920579",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-remaining-owner-readback.json",
+        "workingRawSha256": "593fb69d7695b0059c4fa038168f742e25593b80017f5d60a24cecfa8d209025",
+        "headBlobSha1": "06b11a0aeabe1c487d4f94544a2ea27ebafdef57",
+        "headBlobRawSha256": "22e6d6731e30cee49d0ad6c7f7c3fed181c19d248a6f2d163b91fd50161c06fd",
+        "gitVisibleBlobSha1": "06b11a0aeabe1c487d4f94544a2ea27ebafdef57",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-remaining-work-closeout.json",
+        "workingRawSha256": "6fd57e7a49d71ce2d13baced9d1e6e01ad21da1cafc95d2480232792349ceffb",
+        "headBlobSha1": "b0b98640b100bf8b88adbd300a10af5a1bbc407f",
+        "headBlobRawSha256": "7c8d7274307749f78dbb578e570949253c98a42b3e9723c06a8b750ddae44066",
+        "gitVisibleBlobSha1": "b0b98640b100bf8b88adbd300a10af5a1bbc407f",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-report-verifier-ci.json",
+        "workingRawSha256": "65fd84630f53b46625f067a5faff259b5bec603d3f19e31cdc4458d0bc08622f",
+        "headBlobSha1": "006388856227a1fd3333a74be26906aabd65fab0",
+        "headBlobRawSha256": "47e3d37a866f2d1d79f72624aafd6b94ea7cb8cff772c31b833b607be3df009a",
+        "gitVisibleBlobSha1": "006388856227a1fd3333a74be26906aabd65fab0",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-report-verifier-dev-release.json",
+        "workingRawSha256": "b7e4231b96c3fee62aa7b7cb27b91d81d61315be46ff36927f6fd52b7607dd26",
+        "headBlobSha1": "fb6620a00a9e1c62606563dfd8bafd72a592a8ee",
+        "headBlobRawSha256": "dbdcb62921d6f461f1c4afa951a1fc77b2923b72c6c3ae5c204003d9faae1cfa",
+        "gitVisibleBlobSha1": "fb6620a00a9e1c62606563dfd8bafd72a592a8ee",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-report-verifier-image-protection.json",
+        "workingRawSha256": "56b329ccce7fd96f8155d209f43978668eabf5de2091ad55e41383ebaafef8cc",
+        "headBlobSha1": "c7651550f40ef3be61a58c932c728f03fb8dead9",
+        "headBlobRawSha256": "6444638355d98219ae8c678fb50dcc83ed7d7f57191c0c3ed36c3b263e7c680a",
+        "gitVisibleBlobSha1": "c7651550f40ef3be61a58c932c728f03fb8dead9",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-report-verifier-public-smoke.json",
+        "workingRawSha256": "48cce094449502c36f4e657c4d1e83f76c869ea70664053794afc7b88659785e",
+        "headBlobSha1": "0079673bea31bf20d19ee4f8621c5997216ebf83",
+        "headBlobRawSha256": "0dee5e8ecd59ab3e8004c25577e1fdfcbcb795b481e79628438ab7dc33baf0d5",
+        "gitVisibleBlobSha1": "0079673bea31bf20d19ee4f8621c5997216ebf83",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-report-verifier-release-tests.json",
+        "workingRawSha256": "fec1bb7c6c25aa9b92db120a9985060322b0548ab7f84c478df77a52765c1c4b",
+        "headBlobSha1": "70ad3d107421df859f5a1bf560b634ab6e5745e9",
+        "headBlobRawSha256": "a239916a224db1dcc09d1c3981066ab8ce62215c6217582e1f50e1c0c6c2d724",
+        "gitVisibleBlobSha1": "70ad3d107421df859f5a1bf560b634ab6e5745e9",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-repository-browser-permissions.json",
+        "workingRawSha256": "bc6f9394eb663539242df13457f03f68153be83cf7c89f34aec750f5bd12c576",
+        "headBlobSha1": "0b4bb482f794b451fac060effeea65582f054831",
+        "headBlobRawSha256": "a634cbd09cfdef1a74d0db9a997150a7eb9172ce440276365099029570c779ba",
+        "gitVisibleBlobSha1": "0b4bb482f794b451fac060effeea65582f054831",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-repository-local-history-scope.json",
+        "workingRawSha256": "92330ac0d98e3d0dca188ad61afd03ed03b8bb58655c3c8e949aa146081fa035",
+        "headBlobSha1": "c2746f8ba499e6a96bda866f1a179f5c356c9067",
+        "headBlobRawSha256": "6b68ff8e728f2c8d74dfb63a01b7e873f4f2dfce8d3798951ef8e91e52470e98",
+        "gitVisibleBlobSha1": "c2746f8ba499e6a96bda866f1a179f5c356c9067",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-repository-permissions.json",
+        "workingRawSha256": "227e2895d44b361bf22c0394248ca36ca064adf52f2c43c16fbd0382140a9378",
+        "headBlobSha1": "691cfae1c28d4bdbe19f8192aab6e9926fc9db9e",
+        "headBlobRawSha256": "e838324ad3a87417f2976dc65cf037bc481dc601ab6bbda29838c5369f3040d4",
+        "gitVisibleBlobSha1": "691cfae1c28d4bdbe19f8192aab6e9926fc9db9e",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-revision-cleanup-resume-local.json",
+        "workingRawSha256": "3e4240846aff395a81ab5a8f00f9657f1f763f60ff200f4a01f7a9e7f7ad2d91",
+        "headBlobSha1": "1ac67716797de5884cf12db959e9c8c7383c4a53",
+        "headBlobRawSha256": "8cabf9e10376ec160c86417c9262a948550c33b808b112776f163565f4f78409",
+        "gitVisibleBlobSha1": "1ac67716797de5884cf12db959e9c8c7383c4a53",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-os-edge-config-baseline.json",
+        "workingRawSha256": "2facf44b0bbf872431078c403a34537ff7ede4a5ec2540377eec0c6ef095fac4",
+        "headBlobSha1": "bcfffff0a912ff254eb45da6818b4d5a7a7172e5",
+        "headBlobRawSha256": "c7c26a593c2ee777134719272540f5150798a1d352351fc348eb586ed5ad3947",
+        "gitVisibleBlobSha1": "bcfffff0a912ff254eb45da6818b4d5a7a7172e5",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-os-owner-readback.json",
+        "workingRawSha256": "3323cfb96417ae40aaf2ad6fcb6506817ccfad3377aee9e8fad29f80fee07ab5",
+        "headBlobSha1": "d162cc99717360c79e952c8c0cd036cf2e83cfee",
+        "headBlobRawSha256": "4315c89bc4afa42694cd505609f703d802e16e10a88fb8830880fc67568338f8",
+        "gitVisibleBlobSha1": "d162cc99717360c79e952c8c0cd036cf2e83cfee",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-os-patches-ci.json",
+        "workingRawSha256": "123c508e02528a772b7b25fe5ef812ec92b3e8162ee9e88d3d2f85bc6d0fd197",
+        "headBlobSha1": "4fffe643125bf0ec574dfa6f0c5baccfb2bffbaa",
+        "headBlobRawSha256": "cf35ba5a5f532195895294ddbf47654305b5211b547bc6bc553d777cbff257e3",
+        "gitVisibleBlobSha1": "4fffe643125bf0ec574dfa6f0c5baccfb2bffbaa",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-os-patches-dev-release.json",
+        "workingRawSha256": "eb04a1abb34404d8f06e1ec4cc45375d281214a38d259c36a044718431966aa6",
+        "headBlobSha1": "0ff1d2d0e82814fac75f80001aca668af81329d6",
+        "headBlobRawSha256": "eb04a1abb34404d8f06e1ec4cc45375d281214a38d259c36a044718431966aa6",
+        "gitVisibleBlobSha1": "0ff1d2d0e82814fac75f80001aca668af81329d6",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-os-patches-image-protection.json",
+        "workingRawSha256": "629ed22cd51349c461e13df7eb94e9e4b9b7a993c18017146ac84b6209adcebd",
+        "headBlobSha1": "1e4361cfc8327405c9a9dc40938a5c52658bd1ce",
+        "headBlobRawSha256": "df58a360eecf1f2d7f249619248cb429be8c018cbc1980786d67f11f6e1e9f39",
+        "gitVisibleBlobSha1": "1e4361cfc8327405c9a9dc40938a5c52658bd1ce",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-os-patches-public-smoke.json",
+        "workingRawSha256": "cf511b6b0577a02cb9ef9f0334146d4719353574b97f8ba701dce126dbbb7ee8",
+        "headBlobSha1": "3e385d03c5313ac3e0b98cc78fed40d65b1f7e8d",
+        "headBlobRawSha256": "ea4f53ad8f6fe360625097c11637688025ae9d9c2e26785e964cbaaf0ed09c7a",
+        "gitVisibleBlobSha1": "3e385d03c5313ac3e0b98cc78fed40d65b1f7e8d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-os-patches-release-inventory.json",
+        "workingRawSha256": "14b8bc8dacb1267d9891c8a6fb5a0d304da8a4f6f216c2cb4dfc52e1a4b057f5",
+        "headBlobSha1": "41a75111b3f704101a0eb6e8cf04523a2e8ba9cf",
+        "headBlobRawSha256": "2f17ca7f4660dc5ecd381b9781b1afce3e41c3ca38d80276925c04fbce9b2095",
+        "gitVisibleBlobSha1": "41a75111b3f704101a0eb6e8cf04523a2e8ba9cf",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-os-patches-release-tests.json",
+        "workingRawSha256": "9f31c0f6c0309cca3aaf797db23024082f8dd2f53e15d4c485cc10764496ea03",
+        "headBlobSha1": "05a70db74411653053e05af2ecd049987011e933",
+        "headBlobRawSha256": "5e20733678befcf18b1eabb26985238cbc4ce71577ca80fa98ec3b7ef3353481",
+        "gitVisibleBlobSha1": "05a70db74411653053e05af2ecd049987011e933",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-os-patches-source-scan.json",
+        "workingRawSha256": "5966d3add53a7f0ad4f26ee925608daba78d3f7459e02f087035f019bfbca2c4",
+        "headBlobSha1": "6a62a3b8025a11f7554528dfef3df40bbcbc6d4a",
+        "headBlobRawSha256": "075b7b48afa1f163865ca22e0a9fcd0f7303caaaa48e71155f6cef53acca2799",
+        "gitVisibleBlobSha1": "6a62a3b8025a11f7554528dfef3df40bbcbc6d4a",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-os-upstream-fix-plan.json",
+        "workingRawSha256": "4b203cdbd210aaf1843838a8738524b6e7b636c361e9f0b4bef3ad14ad9a3a21",
+        "headBlobSha1": "925367641c7ffc82f89aa9ff17313e1cb1c54f80",
+        "headBlobRawSha256": "208e1baa7f5e26bf31d4796f033aed63e75afd6d105d47367ec2f0fa6dd3e265",
+        "gitVisibleBlobSha1": "925367641c7ffc82f89aa9ff17313e1cb1c54f80",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-patch-cycle-ci.json",
+        "workingRawSha256": "cd02580b8e7c4342541908f496bdc8a8dd8aa3fc97bad3dd79df6a94a0dca8d0",
+        "headBlobSha1": "3d542bbd2dfc87c4fb48277648f2064c60680a9e",
+        "headBlobRawSha256": "34266eb3a804162e78d0f923eb9bff0cfd9ad3bacb1c9b19202435776f55fcb3",
+        "gitVisibleBlobSha1": "3d542bbd2dfc87c4fb48277648f2064c60680a9e",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-patch-cycle-dev-release.json",
+        "workingRawSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f",
+        "headBlobSha1": "fc3a3cf2bdb1b5788b819cb095afd74e16a4e2af",
+        "headBlobRawSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f",
+        "gitVisibleBlobSha1": "fc3a3cf2bdb1b5788b819cb095afd74e16a4e2af",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-patch-cycle-image-protection.json",
+        "workingRawSha256": "af6b0f65b34691ee182f6210f50f7b52cbc06b2651f4edf91ec10b27e226f4a2",
+        "headBlobSha1": "4d1a584dcdf51790cf0fae966aa0bfc03dbcd061",
+        "headBlobRawSha256": "ef77ac2ea0aaf6444e6b2054988f84b5aad1e4b0310134b99e165dfd073b9031",
+        "gitVisibleBlobSha1": "4d1a584dcdf51790cf0fae966aa0bfc03dbcd061",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-patch-cycle-obsolete-revision-preflight.json",
+        "workingRawSha256": "d7b98d28b3a9776f1c2b63dcf6044b05fe4c1cc9bbc522c5755ce4d70058215a",
+        "headBlobSha1": "26863e27f3a5f123b7cc84887f2138634908054c",
+        "headBlobRawSha256": "946b5c706e14c1fc91731ccc96bf6ae97a47fc7e3437789013aa0cf9b8220326",
+        "gitVisibleBlobSha1": "26863e27f3a5f123b7cc84887f2138634908054c",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-patch-cycle-owner-readback.json",
+        "workingRawSha256": "5e201d899c2a110eb0aa130b4c89e91521fd01b38e8c0e6bc8c260c559d68cea",
+        "headBlobSha1": "4ae6957279fa92a8dc24062e75940ba02f4e1cde",
+        "headBlobRawSha256": "b6535c913d5f85e371a8b2af9fdc185286fdf998516b04d2ef84cdcc59468e6b",
+        "gitVisibleBlobSha1": "4ae6957279fa92a8dc24062e75940ba02f4e1cde",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-patch-cycle-public-smoke.json",
+        "workingRawSha256": "76d7a122c787382dbafefd2302a1cacb3b88d8e9f85587a08e75f0aa19b1da70",
+        "headBlobSha1": "daa903c22c4118ed7435a8d541c9633b0a8ee285",
+        "headBlobRawSha256": "cd939560f2cca6ff19d69df700c0a89826a481f03669e5b0a90b3681213a4228",
+        "gitVisibleBlobSha1": "daa903c22c4118ed7435a8d541c9633b0a8ee285",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-patch-cycle-release-inventory.json",
+        "workingRawSha256": "5d647b2b5972453199744248fd484231bcb35a877732e1f1fc515434fc894ca3",
+        "headBlobSha1": "3479d6d5eb77cd1ed7e31d9ee6ed56c96de4e96b",
+        "headBlobRawSha256": "83e8464bf86f8ba66ec5745d99ef55aef5edbf7d260c11520ecf3e1b955b0ce6",
+        "gitVisibleBlobSha1": "3479d6d5eb77cd1ed7e31d9ee6ed56c96de4e96b",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-patch-cycle-release-tests.json",
+        "workingRawSha256": "5a08739dc41a3767638f5c12e13537e5241fa132c4a34df079c04fcf3b0f33a3",
+        "headBlobSha1": "8a69c648858a315a05b3d714ab57732c9ae381a7",
+        "headBlobRawSha256": "034bc62c39e9d6b0a28a483faf33b064b9c8b400661a874fa69b81ec52421853",
+        "gitVisibleBlobSha1": "8a69c648858a315a05b3d714ab57732c9ae381a7",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-runtime-secret-readback.json",
+        "workingRawSha256": "e67c397a3e2c3a66dab6eb53e128a3cd4425481d12c8268bd25e59014638f458",
+        "headBlobSha1": "7c4da9c16f52d74a13667eae4af4cafe221f240e",
+        "headBlobRawSha256": "a03648cfc1a4bd9f45424a9ba9d89c7dfcfef64ddbad0ed0377b673f2e376066",
+        "gitVisibleBlobSha1": "7c4da9c16f52d74a13667eae4af4cafe221f240e",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-scheduler-metric.json",
+        "workingRawSha256": "99453de28259eca59a89896513d64ae3e5145cd15b87f6c745b13f24d28ae4cc",
+        "headBlobSha1": "96ef0d9a929ce3a0dfee240e1172bd9a908db343",
+        "headBlobRawSha256": "a442ac6dbfb52e56316d945f4eb4a1966a5f86f821a5794304ce9eafbab6c05e",
+        "gitVisibleBlobSha1": "96ef0d9a929ce3a0dfee240e1172bd9a908db343",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-student-photo-ownership-ci.json",
+        "workingRawSha256": "36eb9e52b3979f2baa982a42b382878a68353d2fa32b28fe4144d015c4c2a673",
+        "headBlobSha1": "11f56762b8d0ca4e113ca6d62a1e6367fbd8f14f",
+        "headBlobRawSha256": "4424c747e1d38ab74c0f1e2422b947ff0a7ce39157e4b6e8b73204b59cd026e2",
+        "gitVisibleBlobSha1": "11f56762b8d0ca4e113ca6d62a1e6367fbd8f14f",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-student-photo-ownership-dev-release.json",
+        "workingRawSha256": "c0b11f4dabbebd90b2c93f8cf7a529290b1d249d1233f89c8516e67956828fde",
+        "headBlobSha1": "a92f935a1b9d78d57e5112bd6537ae860da0e502",
+        "headBlobRawSha256": "c9898646b1f0a4381d3e06d4e3debd55ee265758f378766cad02259dde14b9b9",
+        "gitVisibleBlobSha1": "a92f935a1b9d78d57e5112bd6537ae860da0e502",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-student-photo-ownership-image-protection.json",
+        "workingRawSha256": "eeced1e5a4afa16c9ffccb691c471fb125eb5e1d424dc46174868f29f90bf01b",
+        "headBlobSha1": "52220947f896c6ae9f89c4acbf8a248fc5ea49e3",
+        "headBlobRawSha256": "f4a739f0e0ece94bda6af08ead467ece23d2d4a68ff1a1a0350385308982a499",
+        "gitVisibleBlobSha1": "52220947f896c6ae9f89c4acbf8a248fc5ea49e3",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-student-photo-ownership-local.json",
+        "workingRawSha256": "6fa4933eb5a5179b06999d468dd2667d7fdcfc91a019a91961e3991d21b47349",
+        "headBlobSha1": "daf2c765a00b19d693ce89ce3f3990f1aa9696cb",
+        "headBlobRawSha256": "898fe9ed396afb42ba0eea36870972cf5d4b6817878b9fa8edbbfbc5d73fc093",
+        "gitVisibleBlobSha1": "daf2c765a00b19d693ce89ce3f3990f1aa9696cb",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-student-photo-ownership-public-smoke.json",
+        "workingRawSha256": "b50462969604e8afc17f3369fc6f58edacdbc069634c5dc88df94bafa1d73b00",
+        "headBlobSha1": "981aafaac1ce158450741814bdda04b2a63040aa",
+        "headBlobRawSha256": "f114f10c5aaff9fe8295ca61334afd97b06e1a5f780112a6d0478e8fc5baf57c",
+        "gitVisibleBlobSha1": "981aafaac1ce158450741814bdda04b2a63040aa",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-student-photo-ownership-release-tests.json",
+        "workingRawSha256": "51dc8d44b48cad1b6889a35c696cff27b640e648ec7df6de01fd335a298cde89",
+        "headBlobSha1": "4acd6167d9378065236ff278f8109bf83da563f7",
+        "headBlobRawSha256": "d8d30b27790671203af78ebcddcccba4e0ae65281311d3efb17d74a74fb17e7d",
+        "gitVisibleBlobSha1": "4acd6167d9378065236ff278f8109bf83da563f7",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/acceptance-upstream-native-followup.json",
+        "workingRawSha256": "b026a4bc42253dc5f557a4172f844f9c87529848411e0113f3e858b2ebf3b0f5",
+        "headBlobSha1": "655538d4bf25c9b58675b33bd690148e11c5deb3",
+        "headBlobRawSha256": "b026a4bc42253dc5f557a4172f844f9c87529848411e0113f3e858b2ebf3b0f5",
+        "gitVisibleBlobSha1": "655538d4bf25c9b58675b33bd690148e11c5deb3",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": true,
+        "attributes": {
+          "text": "set",
+          "eol": "lf",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/browser-evidence.json",
+        "workingRawSha256": "3c4968a6b867786dfb85d8bb89a596aa4a00b7872bb41807aeb42fcbebb7e69e",
+        "headBlobSha1": "54c78dffc0cfcf9fdfceb4d81c0dc67f0220262e",
+        "headBlobRawSha256": "e5480d14edc10288eccc00ee0ce91ca771dc7abad2f4b25f3b7ee909beb01f56",
+        "gitVisibleBlobSha1": "54c78dffc0cfcf9fdfceb4d81c0dc67f0220262e",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/capacity-local-evidence.json",
+        "workingRawSha256": "427e79ffe76ed4596b64b751c49b8e0f5f8ffc032fed9412a009db6db3126c34",
+        "headBlobSha1": "16e43b2d62c9c42bcaf313a05017fd287f0fd159",
+        "headBlobRawSha256": "2600e2384dab2aedf4d16a4a5ca1432a63a0c94972a0c23893b9a2ee0580ca0d",
+        "gitVisibleBlobSha1": "16e43b2d62c9c42bcaf313a05017fd287f0fd159",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-final-capacity.json",
+        "workingRawSha256": "97e8f7259e221092b593db5a4aaa5e130e84248eb65e6c848cd0902502635cd1",
+        "headBlobSha1": "b049a7adeec1d8ead70940f7dc74fd44daeb11cc",
+        "headBlobRawSha256": "d2ba5860256a2b4bd8ee8104763e2b0521aa892c1d4dba0c9f56aa5d9b3de1d5",
+        "gitVisibleBlobSha1": "b049a7adeec1d8ead70940f7dc74fd44daeb11cc",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-final-runtime-role-catalog.json",
+        "workingRawSha256": "25e8fb2f49ffa2ddf8ad0cb1d6113d325af413e584f1ca36ef59ecf1a201ba38",
+        "headBlobSha1": "b6442af74bd6cc46e10e30fc87a9c288f6ff821d",
+        "headBlobRawSha256": "9ede5445854c7bc1a9f90f113a733449b3ed3f24fb08933a2d3610e951e0a0ac",
+        "gitVisibleBlobSha1": "b6442af74bd6cc46e10e30fc87a9c288f6ff821d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-final-scheduler-config.json",
+        "workingRawSha256": "e84526ab3e177186b4aadded25dfac150378d45163da53def0d3481d68c25bce",
+        "headBlobSha1": "b7058d3f893a7b092c6ba8b8bd7323ce90652cf8",
+        "headBlobRawSha256": "c3bfce7020e928c098e3268934a691ab1a884c5b4a02c6d047be2ac11525767d",
+        "gitVisibleBlobSha1": "b7058d3f893a7b092c6ba8b8bd7323ce90652cf8",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-final-scheduler-delivery.json",
+        "workingRawSha256": "05fde08c15cf995abff060728ca56d802acfc070fbc4c3f5901fadec9c209785",
+        "headBlobSha1": "c5cb8532692db3b8715230bc1756074a1a11943f",
+        "headBlobRawSha256": "f1252b9fe2853a508ca584ce4755c7c74ed7b5c01a8e52e972d94d61459a86ee",
+        "gitVisibleBlobSha1": "c5cb8532692db3b8715230bc1756074a1a11943f",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-frontend-live-proof.json",
+        "workingRawSha256": "2e0ef7240a9d44beb5283ae1b53528122dbfbf0483ce3a9354b7f92259a5b7ec",
+        "headBlobSha1": "f7f12a4209adb382758da82ce57c759d23296460",
+        "headBlobRawSha256": "cfad603ec74d39680d3b02c057bfbd63cb1f4c0c18a3c183992930b1070c5b25",
+        "gitVisibleBlobSha1": "f7f12a4209adb382758da82ce57c759d23296460",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-image-config-user-proof.json",
+        "workingRawSha256": "62ebfad78466ad3cce7d6e05fdffc3eef528299b5b292855bfa347c71b243d28",
+        "headBlobSha1": "2ef1eef70d5cd59b9df38a6d40f8ff53e94d88ec",
+        "headBlobRawSha256": "4d3230e2bf0eecde93047f9f858ac8a664f0c64f86743265cf483e472076087e",
+        "gitVisibleBlobSha1": "2ef1eef70d5cd59b9df38a6d40f8ff53e94d88ec",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-live-authorization-proof.json",
+        "workingRawSha256": "e86f1b58801978cd3929ee774b16190cf50b97ddf6e36cbb6fa3614f31a09ef0",
+        "headBlobSha1": "35e9ab2a0a6dbd96ce13712cf25ad9b6968702a8",
+        "headBlobRawSha256": "38889f81739b9525a95f237340714e81fa8613291a246e791849ef35f57f1053",
+        "gitVisibleBlobSha1": "35e9ab2a0a6dbd96ce13712cf25ad9b6968702a8",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-obsolete-revision-dry-run.json",
+        "workingRawSha256": "a194d47dd15b1efd1b7dfcdc9d61f127ffb58ef31d6bfb50333492ea55dd8986",
+        "headBlobSha1": "ed3e123e9200a032198c31fb71f498d5c71e0aed",
+        "headBlobRawSha256": "08d9f66c4a2d671e4128b344424723e389e7278fbf7c80e892176be974670767",
+        "gitVisibleBlobSha1": "ed3e123e9200a032198c31fb71f498d5c71e0aed",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-photo-cache-proof.json",
+        "workingRawSha256": "55516d07fc9c71f981a7163c33a8fef1236cafd03063d5fc5c187ed175caf14a",
+        "headBlobSha1": "ce78e68544774a8ae8d4c1dccb938add66cac142",
+        "headBlobRawSha256": "b35a4ee5d82adc30ab8d3845d5b8fa777afa13b6f8425a3bcdbd3da378f759f0",
+        "gitVisibleBlobSha1": "ce78e68544774a8ae8d4c1dccb938add66cac142",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-pitr-20261006182803-abe03276.json",
+        "workingRawSha256": "9a2c78136f1886798b20c7d1e56866cd5f302ad18c21aaf7d89bf1ab997d18bf",
+        "headBlobSha1": "cf6abbc196c34467507faf291f97deff0bc8886b",
+        "headBlobRawSha256": "bf0bb58bbb8ccadb07dba2d5accf102dae270653a3eb8b7d3a02a78938cf6462",
+        "gitVisibleBlobSha1": "cf6abbc196c34467507faf291f97deff0bc8886b",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-pitr-20261007093317-75f819f7.json",
+        "workingRawSha256": "589f7aa075698fe1c91abded6ecb7517c78d4f389702c2c95e30d4cbbc330f35",
+        "headBlobSha1": "907a71556fda80afc848c0e026dee2be739cf38f",
+        "headBlobRawSha256": "1920b03256850cfefca298618b3136700c443579e8001c7743dbc349ccc3166d",
+        "gitVisibleBlobSha1": "907a71556fda80afc848c0e026dee2be739cf38f",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-pitr-20261007095108-6f59ef96.json",
+        "workingRawSha256": "dd108a3b45cc0b5337a6b9ba47c3bc26be00e99ab352ef10322b85ba00bddfbb",
+        "headBlobSha1": "56f1c5337619538defd5a49028d6cfc2efc63541",
+        "headBlobRawSha256": "7219947f36ef0bfa4733265974c6e4ea1e017b0b6431156f05d31a6593ad1830",
+        "gitVisibleBlobSha1": "56f1c5337619538defd5a49028d6cfc2efc63541",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-pubsub-metadata-proof.json",
+        "workingRawSha256": "1572c077468bdee8056445ca5c2d2f725c6b007c859d48e2f526249cde6c2720",
+        "headBlobSha1": "94ed37785f19213f0226c813a935df71f83d6185",
+        "headBlobRawSha256": "1eb5f81de80975f58fa98f38963332270cd03238b203f4cf0960fefa878cb142",
+        "gitVisibleBlobSha1": "94ed37785f19213f0226c813a935df71f83d6185",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-release-gates.json",
+        "workingRawSha256": "e79062a1beebe83f412657dbdd62ce2d3d85d53982229544fd980d6ff644be1f",
+        "headBlobSha1": "498f5e4432ed98419a9a0d502de82f93be59deec",
+        "headBlobRawSha256": "a946c95a965e267ae3d127419d077f8d77a16ed898034a891dfcf562c54706a4",
+        "gitVisibleBlobSha1": "498f5e4432ed98419a9a0d502de82f93be59deec",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-runtime-role-proof.json",
+        "workingRawSha256": "799220ea711013d231d707f19f85831e4905ca1ad1d3c39441bfcaad708250cb",
+        "headBlobSha1": "068803784993a3f0a0b47bf3bedb46880578ded9",
+        "headBlobRawSha256": "3e16048929cd44bccb690550213a9aaab6e75aa240e8f1f16f439abaff06b54d",
+        "gitVisibleBlobSha1": "068803784993a3f0a0b47bf3bedb46880578ded9",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-runtime-secret-revocation-proof.json",
+        "workingRawSha256": "fe270c7b925714d23acbfbfe95966cee0bf093feaed2789cd511ef5262c11d11",
+        "headBlobSha1": "5a9816e1609d955e2034eb56881cef96b7815eee",
+        "headBlobRawSha256": "b39beb1d95593ff22798fbf9166478e31920aafb24683e2297524576b3932055",
+        "gitVisibleBlobSha1": "5a9816e1609d955e2034eb56881cef96b7815eee",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-shared-role-retirement-proof.json",
+        "workingRawSha256": "6f249ca88f058f88f2cfa8c8fb5a96c0e67dcd66a375e5508238c625ad6d909f",
+        "headBlobSha1": "9493d2ee2b09fd523b51847b308caf2b4b62c25b",
+        "headBlobRawSha256": "5e66014dde26e3f6577a2d612791d79e086baeddba8486ef49ad19be4727b4f6",
+        "gitVisibleBlobSha1": "9493d2ee2b09fd523b51847b308caf2b4b62c25b",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-synthetic-pubsub-delivery-proof.json",
+        "workingRawSha256": "a6b1fd11fd0c83b3f7c92ebf5854ea4acb954f29bcd0595c54ef3b9be119c0d6",
+        "headBlobSha1": "f007ecb2d988b9a40b957d5b4ea72ee10041a56d",
+        "headBlobRawSha256": "478d1e07c649670472c1ad47e18f903082d74783465579cda78e485d3a8198fb",
+        "gitVisibleBlobSha1": "f007ecb2d988b9a40b957d5b4ea72ee10041a56d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/dev-synthetic-pubsub-restart-proof.json",
+        "workingRawSha256": "e78a046b84b30ffa0c5ad2cf80f8793147100fa2b77ed83d83df9ca993b45223",
+        "headBlobSha1": "bac6ce0ef4c628b18d4ce41f9ff4cd4b3fd2f09d",
+        "headBlobRawSha256": "060b11ca76c83d2d0acc343926e2bc5d049a6de9242686e4328954a22d15c368",
+        "gitVisibleBlobSha1": "bac6ce0ef4c628b18d4ce41f9ff4cd4b3fd2f09d",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      },
+      {
+        "path": "docs/security-remediation/policy-http-lock-boundary-tests.json",
+        "workingRawSha256": "6fe055157351069c24ba68b92ce57213620347131ec6dbca8046587283049764",
+        "headBlobSha1": "029ba0559461fbc1a1fbfdf17d2b3cb2bc90bb32",
+        "headBlobRawSha256": "6e183069c93b7940e54cabf1cc8fbccaf86fe8c46cf7e890bf2582e7334a4d85",
+        "gitVisibleBlobSha1": "029ba0559461fbc1a1fbfdf17d2b3cb2bc90bb32",
+        "gitVisibleUnchanged": true,
+        "rawEqualsHeadBlob": false,
+        "attributes": {
+          "text": "unspecified",
+          "eol": "unspecified",
+          "working-tree-encoding": "unspecified"
+        }
+      }
+    ],
+    "sourceChecks": [
+      {
+        "scope": "callback",
+        "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+        "headBlobSha1": "820d2759ebc5b30a7bc4820d5a4e6888d2af2983",
+        "gitVisibleBlobSha1": "820d2759ebc5b30a7bc4820d5a4e6888d2af2983",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "606e36a2fca1721d223b3f59c4b53e601f2586978e754c919e2d7d1979cffd61"
+      },
+      {
+        "scope": "callback",
+        "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/AsyncNotificationReportBody.java",
+        "headBlobSha1": "6039b4d518ef1549b19cdd2b7dfd041a0e7ac801",
+        "gitVisibleBlobSha1": "6039b4d518ef1549b19cdd2b7dfd041a0e7ac801",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "e76809bf84f9d1b59b2fb38e437aa73365a4176bcccc169aaeaea0f2d65d4b31"
+      },
+      {
+        "scope": "callback",
+        "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java",
+        "headBlobSha1": "5724ad7646b189eefd4b1c57cd7d0483caadb52b",
+        "gitVisibleBlobSha1": "5724ad7646b189eefd4b1c57cd7d0483caadb52b",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "29a61572c066eb03a19bfe102f7365869e0410a7e37cf72213d151f9fab3d759"
+      },
+      {
+        "scope": "callback",
+        "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportHttpIntegrationTest.java",
+        "headBlobSha1": "d6d63df3c1be6a38a642a853a8385120b1a9b200",
+        "gitVisibleBlobSha1": "d6d63df3c1be6a38a642a853a8385120b1a9b200",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "e94f7cc1d318e0acfe55c6e89e12f0bf44201c8cc972d8a4e91efb29a16d01a8"
+      },
+      {
+        "scope": "callback",
+        "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportPostgresIntegrationTest.java",
+        "headBlobSha1": "aa313b0f51ce3caff33b38c2aa7d29d28d476437",
+        "gitVisibleBlobSha1": "aa313b0f51ce3caff33b38c2aa7d29d28d476437",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "da0a57fa33517e0f114f5b04703755dfcbdb0c7aeb9936d3bebd93c5357e9241"
+      },
+      {
+        "scope": "callback",
+        "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/internal/AsyncNotificationReportBodyTest.java",
+        "headBlobSha1": "c7fc1ef709f97ed9cf8ca2ce6cee41face7fc5a7",
+        "gitVisibleBlobSha1": "c7fc1ef709f97ed9cf8ca2ce6cee41face7fc5a7",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "f6123e6641a4b0a43fe1e7f87de287298951e65588115585b9d5d61c62cc9306"
+      },
+      {
+        "scope": "callback",
+        "path": "scripts/audit-security-governance-controls.ps1",
+        "headBlobSha1": "1cd0717a38e64d3e6ad7126f41f8464aa9a2b750",
+        "gitVisibleBlobSha1": "1cd0717a38e64d3e6ad7126f41f8464aa9a2b750",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "6d159597577587b759bb646719e82b30cd8c836175188b99b90c31ada3d1e4c4"
+      },
+      {
+        "scope": "egress",
+        "path": "deploy/gcp/application-egress/.terraform.lock.hcl",
+        "headBlobSha1": "9d0600d72666e9675eae02e9d279a66625b21406",
+        "gitVisibleBlobSha1": "9d0600d72666e9675eae02e9d279a66625b21406",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "93cdec541b99750e840c5091e9c9115c634a2b8d185c3db9bc9d1004bcef38ae"
+      },
+      {
+        "scope": "egress",
+        "path": "deploy/gcp/application-egress/README.md",
+        "headBlobSha1": "e562bf01b3c309db85258754ab49576d5594ef47",
+        "gitVisibleBlobSha1": "e562bf01b3c309db85258754ab49576d5594ef47",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "9521f83daa1ffbb8b629d4568ed24b3ec231e656850953b01cc9a196785de103"
+      },
+      {
+        "scope": "egress",
+        "path": "deploy/gcp/application-egress/main.tf",
+        "headBlobSha1": "a28ff4f3358fb9399f80060397ca4a04955d4c41",
+        "gitVisibleBlobSha1": "a28ff4f3358fb9399f80060397ca4a04955d4c41",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "7d7c8fb812780cb3f4872c0634a007f6917d4173d5e95d0cc2c2c1155d1b94d9"
+      },
+      {
+        "scope": "egress",
+        "path": "deploy/gcp/application-egress/providers.tf",
+        "headBlobSha1": "be41e60f13373b2d0ffc7c7b50cbff5e2c3aa51b",
+        "gitVisibleBlobSha1": "be41e60f13373b2d0ffc7c7b50cbff5e2c3aa51b",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "0e5044bc698e7d4e6b9020e878f99c949f8431d87f6d9b09362705e544f68821"
+      },
+      {
+        "scope": "egress",
+        "path": "deploy/gcp/application-egress/tests/egress.tftest.hcl",
+        "headBlobSha1": "ebfc4cb4b37efc323ac1ad7dfaca7adbd8139b89",
+        "gitVisibleBlobSha1": "ebfc4cb4b37efc323ac1ad7dfaca7adbd8139b89",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "3170466677ae29bb339b0ca1dbb1dd29c1621c776609a3e86da054aba3be5824"
+      },
+      {
+        "scope": "egress",
+        "path": "deploy/gcp/application-egress/variables.tf",
+        "headBlobSha1": "6da9a63324cbc8e1ba99388fda77ec861ed49901",
+        "gitVisibleBlobSha1": "6da9a63324cbc8e1ba99388fda77ec861ed49901",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "8ce82b9735348b93403e9fe58550da28bd6f0e1714ce11e53d54d05af8850f90"
+      },
+      {
+        "scope": "patchEpoch",
+        "path": "deploy/runtime-patch-epoch.txt",
+        "headBlobSha1": "99e64730d56e6c28a8ab0c27f53ea065a2c23ec9",
+        "gitVisibleBlobSha1": "99e64730d56e6c28a8ab0c27f53ea065a2c23ec9",
+        "gitVisibleUnchanged": true,
+        "workingRawSha256": "ec4edbd6f96a5cb8162e3310823b9a545a725c9f3f7fe7f6569b59149b450cbd"
+      }
+    ],
+    "scope": "Tracked security-remediation JSON only; attributes honored via git hash-object --path filters. Raw byte differences separately recorded. No contents printed, no git/cloud mutation."
+  },
+  "acceptanceHelperPreparation": {
+    "schemaVersion": 1,
+    "mode": "OFFLINE_GENERATOR_PREPARATION_ONLY",
+    "createdAtUtc": "2026-10-08T14:55:05.868077+00:00",
+    "sourceRunCodeqlAndFinalLinuxCounts": null,
+    "actualTuplePinned": false,
+    "liveOrGithubExecuted": false,
+    "changedServices": [
+      "platform-service",
+      "school-core-service"
+    ],
+    "retainedServices": [
+      "api-gateway",
+      "billing-service",
+      "frontend",
+      "identity-service",
+      "operations-service"
+    ],
+    "immediateChangedBaselineRawSha256": "5fef569f7cfd619c6e13625d842b05417018bb9098abaae1aff55caba828e3a1",
+    "retainedBaselineRawSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f",
+    "files": [
+      {
+        "path": "tmp/generate-execution-boundary-acceptance.py",
+        "rawSha256": "ec065b0229d9bfb8a2c123ddecfbed4522fe709c559dfb2ca4c0107ecfd863d6"
+      },
+      {
+        "path": "tmp/execution-boundary-acceptance-test.py",
+        "rawSha256": "f68bb825ba70205057a7e9706685735f43979e1c234b98fb88a949d34cca5bf6"
+      }
+    ],
+    "controlledTests": {
+      "reported": 14,
+      "passed": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "log": "tmp/execution-boundary-acceptance-tests-final-preparation.log",
+      "logRawSha256": "16d1918fb089f491fad52e341198fa0d5aa36b2200d61172f2e964bae535a465",
+      "scope": "no-cloud controls, generated production test-aggregate and SARIF checks using synthetic bounded subprocess/file fixtures; actual tag planner validates four exact service/kind identities"
+    },
+    "executionBoundary": {
+      "wholeSeconds": 300,
+      "maximumCallSeconds": 45,
+      "project": "custoking-dev",
+      "newOwnerJobs": 2,
+      "historicalOwnerJobs": 5,
+      "globalJobAbsenceClaim": false,
+      "freshScans": 2,
+      "cachedScans": 0,
+      "positivePackageMinimum": "1.6.43-5ubuntu0.7",
+      "rollbackTags": 4,
+      "publicDenials": 15,
+      "frontendCspRequired": true,
+      "recoveryActivationAllowed": false,
+      "providerActivationAllowed": false
+    },
+    "stages": [
+      "Actual reviewed tuple with proof hash null generates exact verifier and cloud-refusing preview helpers create-only.",
+      "Successful independent exact TMP release proof hash supplied in a second tuple; original verifier bytes must match; reviewed protection plan validates proof+manifest offline before emitting new actual protection/smoke scripts create-only.",
+      "Root separately authorizes metadata verification, additive KEEP tags, and anonymous smoke. Generator itself never calls cloud/GitHub."
+    ],
+    "limitations": [
+      "Preparation does not prove a future release, its actual Linux aggregates or artifact availability.",
+      "Tuple issuer approval is root/operator review, not an invented cryptographic approval system.",
+      "Public denial/CSP scope does not imply provider/hardware/full-governed-recovery or complete feature acceptance."
+    ]
+  },
+  "wholeSecurityPlanComplete": false,
+  "requiredOpenWorkstreams": [
+    "edge",
+    "repository",
+    "dashboard",
+    "provider",
+    "hardware",
+    "retention_restore",
+    "capacity_cleanup",
+    "http2",
+    "egress_files"
+  ],
+  "additionalOpenFindings": [
+    "native_advisory_applicability",
+    "local_snapshot_custody"
+  ],
+  "fixPlan": "execution-boundaries-2026-10-08.md",
+  "ownerCompletionCriteria": "acceptance-owner-actions.md",
+  "liveCiAndDevAcceptancePending": true,
+  "productionChanged": false,
+  "providerCalls": 0,
+  "liveRecoveryExecuted": false,
+  "obsoleteRevisionsDeleted": 0,
+  "localRefsDeleted": 0,
+  "privatePreexistingFilesReadOrStaged": false
+}

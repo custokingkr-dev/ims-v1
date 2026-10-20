@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "pullRequest": "https://github.com/custokingkr-dev/ims-v1/pull/325",
+  "head": "6af30d041c3bca00c98522ce485033d91e09bbfa",
+  "ciRunId": 37653916038,
+  "ciConclusion": "failure",
+  "codeqlRunId": 37653915565,
+  "codeqlConclusion": "success",
+  "failure": {
+    "job": "static-architecture-audits",
+    "step": "Optimized dev journal PostgreSQL rehearsal",
+    "executedOfflineControls": 11,
+    "postgresSetupCompleted": false,
+    "diagnostic": "CREATE DATABASE connection terminated by administrator command during fixture bootstrap restart"
+  },
+  "fix": "Await a successful SELECT1 against final localhost TCP PostgreSQL server, then use the same TCP transport for all fixture SQL. Supply only the existing controlled-local-only fixture credential through container environment.",
+  "localCorrectedTests": {
+    "passed": 12,
+    "failures": 0,
+    "optimizedPython": true
+  },
+  "upstreamReference": "https://github.com/docker-library/postgres/blob/master/docker-entrypoint.sh",
+  "applicationSourceUnchanged": "01522d74d039b9f46162572ddafd1a5c90d6e7ee",
+  "devReleaseUnchanged": 37651698357,
+  "productionChanged": false,
+  "capturedAtUtc": "2026-10-07T16:46:20.088465+00:00"
+}

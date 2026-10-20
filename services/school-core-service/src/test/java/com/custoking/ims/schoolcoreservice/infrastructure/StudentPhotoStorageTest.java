@@ -15,6 +15,128 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class StudentPhotoStorageTest {
 
     @Test
+    void nonJpegDecoderReceivesIgnoreMetadataAndNeverRequestsOptionalMetadata() throws Exception {
+        var registry = javax.imageio.spi.IIORegistry.getDefaultInstance();
+        var builtin = ImageIO.getImageReadersByFormatName("png").next();
+        var provider = builtin.getOriginatingProvider(); builtin.dispose();
+        var ignoredReads = new java.util.concurrent.atomic.AtomicInteger();
+        var metadataRequests = new java.util.concurrent.atomic.AtomicInteger();
+        var guarded = new javax.imageio.spi.ImageReaderSpi(
+                "test", "1", new String[] {"png"}, new String[] {"png"}, new String[] {"image/png"},
+                javax.imageio.ImageReader.class.getName(), new Class<?>[] {javax.imageio.stream.ImageInputStream.class},
+                null, false, null, null, null, null, false, null, null, null, null) {
+            public boolean canDecodeInput(Object input) throws java.io.IOException { return provider.canDecodeInput(input); }
+            public String getDescription(java.util.Locale locale) { return "Scoped ordinary PNG decoder contract"; }
+            public javax.imageio.ImageReader createReaderInstance(Object extension) throws java.io.IOException {
+                var delegate = provider.createReaderInstance();
+                return new javax.imageio.ImageReader(this) {
+                    public void setInput(Object input, boolean seekForwardOnly, boolean ignoreMetadata) {
+                        super.setInput(input, seekForwardOnly, ignoreMetadata);
+                        delegate.setInput(input, seekForwardOnly, ignoreMetadata);
+                    }
+                    public int getNumImages(boolean search) throws java.io.IOException { return delegate.getNumImages(search); }
+                    public int getWidth(int index) throws java.io.IOException { return delegate.getWidth(index); }
+                    public int getHeight(int index) throws java.io.IOException { return delegate.getHeight(index); }
+                    public java.util.Iterator<javax.imageio.ImageTypeSpecifier> getImageTypes(int index) throws java.io.IOException { return delegate.getImageTypes(index); }
+                    public javax.imageio.metadata.IIOMetadata getStreamMetadata() { throw new IllegalStateException("Optional metadata forbidden"); }
+                    public javax.imageio.metadata.IIOMetadata getImageMetadata(int index) {
+                        metadataRequests.incrementAndGet(); throw new IllegalStateException("Optional metadata forbidden");
+                    }
+                    public BufferedImage read(int index, javax.imageio.ImageReadParam param) throws java.io.IOException {
+                        if (!isIgnoringMetadata()) throw new IllegalArgumentException("Pixel decode requires ignoreMetadata");
+                        ignoredReads.incrementAndGet(); return delegate.read(index, param);
+                    }
+                    public void dispose() { delegate.dispose(); super.dispose(); }
+                };
+            }
+        };
+        BufferedImage image = new BufferedImage(16, 12, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream encoded = new ByteArrayOutputStream(); ImageIO.write(image, "png", encoded);
+        registry.registerServiceProvider(guarded);
+        try {
+            registry.setOrdering(javax.imageio.spi.ImageReaderSpi.class, guarded, provider);
+            var selected = ImageIO.getImageReadersByFormatName("png").next();
+            try { assertThat(selected.getOriginatingProvider()).isSameAs(guarded); } finally { selected.dispose(); }
+            // The exact former production decoder fails this benign codec contract.
+            assertThatThrownBy(() -> net.coobird.thumbnailator.Thumbnails
+                    .of(new ByteArrayInputStream(encoded.toByteArray())).useExifOrientation(true).scale(1).asBufferedImage())
+                    .isInstanceOf(RuntimeException.class);
+            int oldMetadataRequests = metadataRequests.get();
+            assertThat(oldMetadataRequests).isPositive();
+            var storage = new StudentPhotoStorage("", 60, 512, 5 * 1024 * 1024, "");
+            assertThat(storage.normalizePortrait(encoded.toByteArray(), "image/png")).isNotEmpty();
+            assertThat(ignoredReads.get()).isEqualTo(1);
+            assertThat(metadataRequests.get()).isEqualTo(oldMetadataRequests);
+        } finally { registry.deregisterServiceProvider(guarded); }
+    }
+
+    @Test
+    void pngOptionalTextDoesNotChangeNormalizedPixelsEvenWithClaimedJpegType() throws Exception {
+        BufferedImage image = new BufferedImage(48, 24, BufferedImage.TYPE_INT_RGB);
+        image.setRGB(10, 10, Color.RED.getRGB());
+        ByteArrayOutputStream plain = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", plain);
+        var writer = ImageIO.getImageWritersByFormatName("png").next();
+        ByteArrayOutputStream decorated = new ByteArrayOutputStream();
+        try (var output = ImageIO.createImageOutputStream(decorated)) {
+            writer.setOutput(output);
+            var metadata = writer.getDefaultImageMetadata(
+                    javax.imageio.ImageTypeSpecifier.createFromRenderedImage(image), writer.getDefaultWriteParam());
+            var root = new javax.imageio.metadata.IIOMetadataNode("javax_imageio_png_1.0");
+            var text = new javax.imageio.metadata.IIOMetadataNode("tEXt");
+            var entry = new javax.imageio.metadata.IIOMetadataNode("tEXtEntry");
+            entry.setAttribute("keyword", "Description");
+            entry.setAttribute("value", "Ordinary optional portrait description");
+            text.appendChild(entry); root.appendChild(text);
+            metadata.mergeTree("javax_imageio_png_1.0", root);
+            writer.write(null, new javax.imageio.IIOImage(image, null, metadata), null);
+        } finally { writer.dispose(); }
+        var storage = new StudentPhotoStorage("", 60, 512, 5 * 1024 * 1024, "");
+        assertThat(storage.normalizePortrait(decorated.toByteArray(), "image/jpeg"))
+                .isEqualTo(storage.normalizePortrait(plain.toByteArray(), "image/png"));
+    }
+
+    @Test
+    void detectedJpegPreservesAllEightExifOrientationsDespiteClaimedPngType() throws Exception {
+        BufferedImage image = new BufferedImage(48, 24, BufferedImage.TYPE_INT_RGB);
+        var graphics = image.createGraphics();
+        graphics.setColor(Color.RED); graphics.fillRect(0, 0, 24, 12);
+        graphics.setColor(Color.GREEN); graphics.fillRect(24, 0, 24, 12);
+        graphics.setColor(Color.BLUE); graphics.fillRect(0, 12, 24, 12);
+        graphics.setColor(Color.WHITE); graphics.fillRect(24, 12, 24, 12); graphics.dispose();
+        ByteArrayOutputStream base = new ByteArrayOutputStream(); ImageIO.write(image, "jpg", base);
+        var storage = new StudentPhotoStorage("", 60, 512, 5 * 1024 * 1024, "");
+        for (int orientation = 1; orientation <= 8; orientation++) {
+            // Small ordinary EXIF APP1: little-endian TIFF with a single orientation entry.
+            byte[] exif = java.util.HexFormat.of().parseHex(
+                    "45786966000049492a0008000000010012010300010000000000000000000000");
+            exif[24] = (byte) orientation;
+            ByteArrayOutputStream encoded = new ByteArrayOutputStream();
+            byte[] jpeg = base.toByteArray(); encoded.write(jpeg, 0, 2);
+            encoded.write(0xff); encoded.write(0xe1);
+            encoded.write((exif.length + 2) >>> 8); encoded.write((exif.length + 2) & 255);
+            encoded.write(exif); encoded.write(jpeg, 2, jpeg.length - 2);
+            var oriented = net.coobird.thumbnailator.Thumbnails.of(new ByteArrayInputStream(encoded.toByteArray()))
+                    .useExifOrientation(true).scale(1).asBufferedImage();
+            assertThat(oriented.getWidth()).isEqualTo(orientation >= 5 ? 24 : 48);
+            assertThat(oriented.getHeight()).isEqualTo(orientation >= 5 ? 48 : 24);
+            ByteArrayOutputStream expected = new ByteArrayOutputStream();
+            net.coobird.thumbnailator.Thumbnails.of(oriented).size(512, 512)
+                    .outputFormat("jpg").outputQuality(0.82).toOutputStream(expected);
+            assertThat(storage.normalizePortrait(encoded.toByteArray(), "image/png"))
+                    .as("EXIF orientation %s", orientation).isEqualTo(expected.toByteArray());
+        }
+    }
+
+    @Test
+    void opaqueNonImageInputFailsWithExistingReadError() {
+        var storage = new StudentPhotoStorage("", 60, 512, 5 * 1024 * 1024, "");
+        assertThatThrownBy(() -> storage.normalizePortrait(new byte[] {1, 2, 3, 4}, "image/png"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Could not read the image; upload a valid JPG, PNG, or WEBP");
+    }
+
+    @Test
     void objectKeysUseSingleSchoolUidFolder() {
         String schoolUid = "11111111-1111-4111-8111-111111111111";
         byte[] data = "bytes".getBytes(StandardCharsets.UTF_8);

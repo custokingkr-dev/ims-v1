@@ -16,8 +16,14 @@ if ($Environment -eq "prod" -and -not $AllowProduction) {
 
 function Invoke-Gcloud {
   param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
-  & $gcloud @Arguments
-  if ($LASTEXITCODE -ne 0) { throw "gcloud command failed: $($Arguments -join ' ')" }
+  $previousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = "Continue"
+    $nativeOutput = @(& $gcloud @Arguments 2>$null)
+    $nativeExitCode = $LASTEXITCODE
+  } finally { $ErrorActionPreference = $previousPreference }
+  if ($nativeExitCode -ne 0) { throw "Pub/Sub configuration cloud command failed." }
+  return $nativeOutput
 }
 
 function Test-Resource([string[]]$Arguments) {
@@ -108,7 +114,7 @@ Invoke-Gcloud pubsub subscriptions add-iam-policy-binding $subscription `
   "--project=$ProjectId" "--member=serviceAccount:$pubsubServiceAgent" `
   --role=roles/pubsub.subscriber --quiet
 Invoke-Gcloud pubsub subscriptions update $subscription `
-  "--project=$ProjectId" --message-retention-duration=7d --expiration-period=never `
+  "--project=$ProjectId" --message-retention-duration=7d --expiration-period=never --ack-deadline=10 `
   --min-retry-delay=10s --max-retry-delay=600s `
   "--dead-letter-topic=$deadLetterTopic" "--max-delivery-attempts=$MaxDeliveryAttempts"
 

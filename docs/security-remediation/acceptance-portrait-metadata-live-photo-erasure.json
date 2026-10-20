@@ -1,0 +1,305 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "sourceHeadSha": "6f562c4296471263ee2f31d061c19b8d76981ef6",
+  "runId": 37739036093,
+  "releaseProof": "acceptance-portrait-metadata-dev-release.json",
+  "releaseProofSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc",
+  "checkedAtUtc": "2026-10-08T07:05:14.426658+00:00",
+  "marker": "SEC-OS-PHOTO-DEV-20261008-3ede1bfdd0d7",
+  "ids": {
+    "schoolId": 990008402,
+    "userId": 990008502,
+    "studentId": 990008602
+  },
+  "allSevenPinnedServices": {
+    "custoking-api-gateway-dev": {
+      "revision": "custoking-api-gateway-dev-00035-qfs",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-api-gateway@sha256:ed4806fbc3ce286dda379219374eda34fb092190bcf8a2dac71c706ff120f095"
+    },
+    "custoking-billing-service-dev": {
+      "revision": "custoking-billing-service-dev-00029-fbg",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-billing-service@sha256:9c12e9001a08c52ce3e316bfc3629dc871ca9c1aae7653f48f4ceec30c198823"
+    },
+    "custoking-frontend-dev": {
+      "revision": "custoking-frontend-dev-00056-6ps",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-frontend@sha256:cb3246a0d246759182c3c91670f6e3e11d48c06f528f6d25f298a9507dd0e515"
+    },
+    "custoking-identity-service-dev": {
+      "revision": "custoking-identity-service-dev-00033-swj",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-identity-service@sha256:3c48d4f5f30d7796d7d387db922ddd2aba9ddc7765a4d517f6ef8a0d80b2d7c4"
+    },
+    "custoking-operations-service-dev": {
+      "revision": "custoking-operations-service-dev-00030-fdt",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-operations-service@sha256:2976fdda74c09b7c595d159ac4fa667fc11517b4b7737dafad0b8eec6e8820ef"
+    },
+    "custoking-platform-service-dev": {
+      "revision": "custoking-platform-service-dev-00033-kvx",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:e3e8528189dadafd5b336af53b88860d0cb5a4ff5c2a7cd3d08004313d59f597"
+    },
+    "custoking-school-core-service-dev": {
+      "revision": "custoking-school-core-service-dev-00075-lhj",
+      "image": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-school-core-service@sha256:db5c033f47dcd60cf60f9b4a34179f383a30324fb0fb4f6fa6d05c467f8858a0"
+    }
+  },
+  "uploadReadBoundary": {
+    "schemaVersion": 1,
+    "project": "custoking-dev",
+    "marker": "SEC-OS-PHOTO-DEV-20261008-3ede1bfdd0d7",
+    "studentId": 990008602,
+    "expectedSourceSha": "6f562c4296471263ee2f31d061c19b8d76981ef6",
+    "startedAtUtc": "2026-10-08T06:58:00.354Z",
+    "authenticator": "Chromium software CTAP2",
+    "physicalHardwareProof": false,
+    "providerCalls": 0,
+    "checks": [
+      {
+        "name": "normal-login",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "owned-student-preflight",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "normal-owned-photo-upload",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "normal-owned-photo-read",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "school-admin-export-role-denied",
+        "status": 403,
+        "expected": 403,
+        "passed": true
+      },
+      {
+        "name": "caller-injected-foreign-key-rejected",
+        "status": 400,
+        "expected": 400,
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "photoBytes": 8987,
+    "exportSaved": false,
+    "completedAtUtc": "2026-10-08T06:58:20.742Z"
+  },
+  "softwarePasskeyDelete": {
+    "schemaVersion": 1,
+    "project": "custoking-dev",
+    "marker": "SEC-OS-PHOTO-DEV-20261008-3ede1bfdd0d7",
+    "studentId": 990008602,
+    "expectedSourceSha": "6f562c4296471263ee2f31d061c19b8d76981ef6",
+    "startedAtUtc": "2026-10-08T06:59:31.019Z",
+    "authenticator": "Chromium software CTAP2",
+    "physicalHardwareProof": false,
+    "providerCalls": 0,
+    "checks": [
+      {
+        "name": "normal-login",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "owned-student-preflight",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "actual-rp-status",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "registration-options",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "browser-registration-verified",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "assertion-options",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "fresh-step-up",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "confirmed-application-delete",
+        "status": 200,
+        "expected": 200,
+        "passed": true
+      },
+      {
+        "name": "source-absent-through-api",
+        "status": 404,
+        "expected": 404,
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "completedAtUtc": "2026-10-08T06:59:35.171Z"
+  },
+  "photoCleanup": {
+    "attempts": 1,
+    "bucket": "custoking-dev-student-photos",
+    "generation": "1791442699368730",
+    "marker": "SEC-OS-PHOTO-DEV-20261008-3ede1bfdd0d7",
+    "operationId": "9a702a53-d453-3506-8ba6-ee801f082746",
+    "rows": 1,
+    "state": "DONE",
+    "keySha256": "0b32d538bdd0434fd44f2e00e5f25924d1571ff3a05c0f0999c26bf6509a1e46"
+  },
+  "exactGenerationAbsent": true,
+  "journal": {
+    "intentId": "c9804bf44d203be05fdb0cbe354d830d40321c48b2a59f503e293078e9692c13",
+    "object": "intents/58bc724a-592f-49f1-b22f-0e5f95aa6808/d9c4f31c-3420-48a7-8fbe-7fc26d2065bf/c9804bf44d203be05fdb0cbe354d830d40321c48b2a59f503e293078e9692c13.json",
+    "generation": 1791442774446143,
+    "sha256": "04c8a24d10ba7d9670ef4482d23fe2fe3d73c22e834ec23e72cd22ef11b15d33",
+    "canonical": true
+  },
+  "sourceAndChildren": {
+    "source": 0,
+    "children": 0,
+    "imports": 0
+  },
+  "runtimePrivileges": {
+    "incarnationInsert": false,
+    "receiptDelete": false,
+    "photoDelete": false
+  },
+  "initialDownstreamCheckpoint": {
+    "checkedAtUtc": "2026-10-08T07:01:16.107139+00:00",
+    "tombstone": 0,
+    "observed": false
+  },
+  "finalDownstream": {
+    "activeSessions": 0,
+    "deadLetter": 0,
+    "disabledActor": 1,
+    "inbox": 1,
+    "marker": "SEC-OS-PHOTO-DEV-20261008-3ede1bfdd0d7",
+    "outbox": 1,
+    "outboxAttempts": 4,
+    "photoDone": 1,
+    "processed": 1,
+    "projection": 0,
+    "published": 1,
+    "receipt": 1,
+    "source": 0,
+    "tombstone": 1,
+    "project": "custoking-dev",
+    "mode": "downstream",
+    "checkedAtUtc": "2026-10-08T07:03:41.852046+00:00"
+  },
+  "fixtureCleanup": {
+    "activeSessions": 0,
+    "disabled": 1,
+    "marker": "SEC-OS-PHOTO-DEV-20261008-3ede1bfdd0d7",
+    "receipt": 1,
+    "school": 0,
+    "disabledActorLoginStatus": 401,
+    "privateConfigRemoved": true,
+    "project": "custoking-dev",
+    "mode": "cleanup",
+    "checkedAtUtc": "2026-10-08T07:02:46.280670+00:00"
+  },
+  "resourceCleanup": {
+    "project": "custoking-dev",
+    "sourceHeadSha": "6f562c4296471263ee2f31d061c19b8d76981ef6",
+    "runId": 37739036093,
+    "checkedAtUtc": "2026-10-08T07:04:25.933488+00:00",
+    "jobs": [
+      {
+        "name": "ims-sec-final-journal-collision-301c92412f46",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-sec-final-journal-seed-83a989fe02a6",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-sec-final-photo-before-238561939344",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-sec-final-journal-verify-9e5a793549b0",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-sec-final-photo-after-3219f486f83b",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-sec-final-photo-cleanup-guard-471907246342",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-sec-final-journal-cleanup-2db7f141064d",
+        "independentlyAbsent": true
+      },
+      {
+        "name": "ims-sec-final-photo-downstream-846a522b767e",
+        "independentlyAbsent": true
+      }
+    ],
+    "allOwnedJobsAbsent": true,
+    "privateFilesAbsent": true,
+    "ownerManifestsAbsent": true
+  },
+  "offlineGuardTests": {
+    "reported": 4,
+    "passed": 4,
+    "failed": 0,
+    "scope": "Unpinned, old and wrong release/source rejection; fixed reserved IDs and retained witness checks; strict generation above2^53"
+  },
+  "temporaryHelperHashes": {
+    "new-os-photo-prepare.py": "896558b3dff985c598c6e896117b75e66ea4779e05e1320874b54dc12e7b6b69",
+    "new-os-photo-upload.mjs": "ace0e739b95ee07265de5b45d7dc02c514fdb1b8ead2a6aee5fc94c71c21bfc9",
+    "new-os-photo-delete.mjs": "b0b7cc7f7fed75651915be171abc638d2ad0bb5fae46800a541a591297fe973d",
+    "new-os-photo-guards-test.py": "86d8a45b635d1da8215851602d9afc9b86461b83882558995a27255ff10b7cb3"
+  },
+  "limits": [
+    "One reserved synthetic school/student, normal SCHOOL_ADMIN authorization; no business rows",
+    "Software Chromium CTAP2 only; no physical hardware proof",
+    "Export403 is expected SCHOOL_ADMIN role denial; no positive export",
+    "Foreign key injection rejected; no actual cross-tenant photo case",
+    "Generation-specific absence is not proof of physical soft-deleted/noncurrent/recovery-copy purge",
+    "Ordinary Scheduler only; no manual drain/republish/full backlog or provider delivery",
+    "No restore/cutover, retention/TTL, journal epoch/control, IAM, production or old revision changes"
+  ],
+  "checkpoints": [
+    {
+      "event": "First verification tombstone absent; later correlated ordinary downstream convergence",
+      "preserved": true
+    },
+    {
+      "event": "Final absence checker initially rejected photo-prefixed owned job names before any mutation; exact eight-name whitelist then independently verified absence",
+      "cloudMutations": 0
+    }
+  ]
+}

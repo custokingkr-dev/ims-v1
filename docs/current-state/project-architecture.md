@@ -1,221 +1,274 @@
 # Project Architecture
 
-Last reconciled: 2026-08-24 against service source and the executed split-project cutover evidence.
+Source reconciled: 2026-10-12 against the current repository implementation.
 
-## Product Scope
+This document describes source boundaries and deployment behavior. Runtime evidence has its own
+capture date and environment; development implementation does not establish production acceptance.
+Use [the owner-action plan](../security-remediation/acceptance-owner-actions.md) for outstanding
+security and operational acceptance, and fresh runtime inventory for current deployed configuration.
 
-Custoking IMS is a multi-tenant school operations platform. The current deployed architecture is a Cloud Run split-service system with:
+## System shape and rationale
 
-- React/Vite frontend.
-- Programmable Node API gateway.
-- Five Spring Boot domain/runtime services.
-- PostgreSQL on Cloud SQL.
-- Pub/Sub-backed asynchronous reporting ingress. Notification ingress is implemented and verified in dev;
-  production does not yet have a notification push subscription or DLQ.
-- GCP-native observability.
+Custoking IMS is a multi-tenant school operations, procurement, and billing platform in a monorepo.
+Its main application topology is seven deployable applications: a React frontend, a Node HTTP
+gateway, and five Java domain services. Twelve logical domains are grouped into those five Java
+processes; the gateway's twelve diagnostic aliases are compatibility routes, not twelve Java services.
 
-## Current Runtime Topology
+School core groups closely related school transactions in one process. Identity owns authentication
+and authoritative sessions. Operations and billing have distinct workflow and financial responsibilities.
+Platform maintains event-fed reporting and notification state so dashboards can read their own models.
+These boundaries reduce distributed transactions while allowing domain services to be deployed separately.
 
-```text
-Browser
-  -> custoking-frontend-<env>     (Cloud Run, public)
-  -> custoking-api-gateway-<env>  (Cloud Run, public)
-  -> private Cloud Run services   (Cloud Run IAM protected)
-  -> Cloud SQL PostgreSQL         (private IP over default VPC)
-
-Async:
-domain services -> transactional outbox -> Pub/Sub topic -> platform-service push ingress
+```mermaid
+flowchart TD
+    Browser --> Frontend["React / TypeScript workspace"]
+    Frontend --> Gateway["Node.js API gateway"]
+    Gateway --> Identity["Identity"]
+    Gateway --> School["School core"]
+    Gateway --> Operations["Operations"]
+    Gateway --> Platform["Platform"]
+    Gateway --> Billing["Billing"]
+    Identity --> DB[("Cloud SQL PostgreSQL<br/>Service-owned schemas")]
+    School --> DB
+    Operations --> DB
+    Platform --> DB
+    Billing --> DB
+    School --> Outbox["Transactional outboxes"]
+    Operations --> Outbox
+    Billing --> Outbox
+    Outbox --> PubSub["Pub/Sub"]
+    PubSub --> Platform
+    School --> Files["Private file storage"]
+    Operations --> Files
 ```
 
-The environments are isolated by GCP project in region `asia-south2`: development is in `custoking-dev`
-and production is in `custoking-prod`. The former mixed project `custoking` is a retained migration source,
-not the current runtime boundary.
+## Applications and ownership
 
-Within each project, environment-specific resources retain their suffixes:
-
-- Cloud Run services: `custoking-<service>-dev` and `custoking-<service>-prod`
-- Secret Manager secrets: `<secret>-dev` and `<secret>-prod`
-- Pub/Sub topics/subscriptions: `...-dev` and `...-prod`
-- Cloud SQL instances/databases: `custoking-db-dev` / `custoking_dev`, `custoking-db-prod` / `custoking_prod`
-
-## Current Service Topology
-
-The deployed topology is seven Cloud Run services per environment:
-
-| Service | Runtime | Public | Responsibility |
-| --- | --- | --- | --- |
-| `custoking-frontend-<env>` | nginx serving built React app | Yes | SPA shell and static frontend assets |
-| `custoking-api-gateway-<env>` | Node HTTP proxy | Yes | Route ownership, auth enforcement, local JWT verification, service token injection, CORS/security headers, Cloud Run ID-token upstream auth |
-| `custoking-identity-service-<env>` | Spring Boot 4 / Java 25 | No | Login, refresh/logout, token introspection, users, RBAC, roles, permissions, assignments |
-| `custoking-school-core-service-<env>` | Spring Boot 4 / Java 25 | No | Tenant/school, zones, classes, sections, staff, timetable, students, attendance, fees, catalog/supply |
-| `custoking-operations-service-<env>` | Spring Boot 4 / Java 25 | No | Workflow and firefighting workflows |
-| `custoking-platform-service-<env>` | Spring Boot 4 / Java 25 | No | Reporting, command center, notification, audit, Pub/Sub push receivers, projections |
-| `custoking-billing-service-<env>` | Spring Boot 4 / Java 25 | No | Superadmin invoices, customers, billing payments, billing outbox |
-
-Older documentation in the repo still contains the pre-consolidation twelve-service topology. The current code and deployment pipeline use the five merged Spring services plus gateway and frontend.
-
-## Data Ownership
-
-| Schema | Owning runtime service | Main responsibility |
+| Application | Main responsibility | Owned schemas |
 | --- | --- | --- |
-| `identity` | identity-service | Users, auth sessions, roles, permissions, user role assignments, RBAC audit |
-| `tenant_school` | school-core-service | Schools, classes, sections, zones, staff, modules, timetable, shared outbox |
-| `student` | school-core-service | Students, normalized guardians, append-only consent evidence, imports, photo metadata, review campaigns/items |
-| `attendance` | school-core-service | Daily attendance, student records, absentee notifications |
-| `fee` | school-core-service | Fee bands, fee items, assignments, payment records |
-| `catalog` | school-core-service | Catalog items, supply orders, catalog orders, annual plans |
-| `workflow` | operations-service | Workflow definitions, steps, instances, actions |
-| `firefighting` | operations-service | Firefighting requests, quotations, firefighting outbox |
-| `reporting` | platform-service | Command center, read projections, event inbox, facts/dimensions |
-| `notification` | platform-service | Notification inbox, broadcasts, delivery attempts/logs, sender profiles, WhatsApp onboarding |
-| `audit` | platform-service | Audit events |
-| `billing` | billing-service | Superadmin invoices, order sequence, school billing tables, billing outbox |
+| Frontend | nginx-served React workspace, role/module navigation, forms and generated API clients | None |
+| API gateway | Ordered routing, authoritative user authentication, trusted context, quotas, bounded proxying and Cloud Run upstream identity | None |
+| Identity service | Login, refresh/logout, password recovery, MFA/passkeys, users, RBAC and school/zone/operator assignments | `identity` |
+| School-core service | Schools, zones, classes, staff, timetable, students, guardians, consent, imports, photos, attendance, school fees, catalog orders and annual plans | `tenant_school`, `student`, `attendance`, `fee`, `catalog` |
+| Operations service | Versioned workflow decisions, urgent procurement, quotations and documents | `workflow`, `firefighting` |
+| Platform service | Reporting projections, dashboards, command center, notifications, broadcasts, provider outcomes and audit | `reporting`, `notification`, `audit` |
+| Billing service | Platform/customer invoices, billing payments, invoice sequences and billing events | `billing` |
 
-Runtime code must not reintroduce reads or writes to retired monolithic `public` domain tables.
+School fee collection belongs to school core; business/platform invoice payment belongs to billing.
+The optional operator dashboard in `tools/live-dashboard` is separate from these seven applications.
+Its OAuth allowlist and shared Firestore security state have their own deployment and acceptance path.
 
-School localization is owned by `tenant_school.schools` and projected through
-`school.upserted.v1` into `reporting.dim_school`. The workspace reads the projection rather than
-cross-querying school-core. Student DOB and admission date remain date-only values in the
-student schema and never depend on the deployment region or school timezone.
+## Repository and build boundaries
 
-## Request Flow
+- Root `pom.xml` is the Maven parent and five-service reactor: Spring Boot 4.1.1 and Java 25.
+- Java images build with the repository root as context and copy the parent plus the selected service.
+- Frontend declares React 18, TypeScript, Vite 6 and React Router 7; Node 24/npm 11 are required.
+- The gateway uses CommonJS and native Node HTTP/fetch.
+- Typical Java packages are `api`, `application`, `persistence`, `infrastructure`, `security`,
+  `observability` and, for event producers, `outbox`.
+- Some controllers call repositories directly, and some repositories also orchestrate transactions
+  and business validation. Package names do not imply a uniformly strict application-service layer.
+- Canonical and compatibility student controllers route their repository write operations through
+  `application/StudentCommands`. Its 19 command entry points own transactions; managed persistence
+  writes require an existing transaction and cannot start one.
+  Directory/workspace list reads live in `persistence/StudentDirectoryQueries`; detail, history,
+  fee history and stored-photo reads live in `StudentProfileQueries`.
+  Imports, promotions and reviews have separate persistence components. They participate in the
+  application transaction and retain mandatory guards on their managed write entry points.
+  Shared structure/calendar access and enrollment/outbox writes each have one implementation.
+  Admission/update and erasure remain cohesive orchestrations in the facade, using those shared
+  components. Existing manual fixture/recovery constructors and public response records remain compatible.
+- Ten intentionally identical infrastructure classes are guarded by
+  `scripts/check-duplicate-class-drift.py`. Service-specific variants remain independent.
 
-1. The browser calls the gateway through `/api/v1/**`.
-2. The gateway matches the path to a logical service route.
-3. For protected API paths and `GATEWAY_AUTH_MODE=enforce`, the gateway authenticates the bearer token.
-4. The gateway stamps trusted identity/tenant headers, injects the target service's internal token header, and proxies to the owning Cloud Run service.
-5. Private Spring services validate their internal service token and use the gateway-stamped tenant headers to establish request context.
-6. Spring services query Cloud SQL as `app_rt`; Flyway runs migrations as `appuser`.
+## Data and tenant boundaries
 
-## Gateway Responsibilities
+Cloud SQL PostgreSQL infrastructure is shared within each environment. Services own schemas rather
+than separate database instances. Shared database availability, backup/recovery and connection capacity
+therefore remain common operational concerns.
 
-Source: `services/api-gateway/server.js`.
+[The schema-dependency baseline](../RUNTIME_SCHEMA_DEPENDENCY_BASELINE.json) assigns twelve schemas
+and currently has an empty `allowedExternalSchemas` map. Runtime cross-service SQL must not be added;
+read models consume events and request/response integrations use service APIs. The source audit detects
+known schema references; it does not prove arbitrary dynamically constructed SQL.
 
-The gateway owns:
+Dedicated runtime roles are selected by deployment configuration:
 
-- CORS allowlist (`GATEWAY_CORS_ALLOWED_ORIGINS`).
-- Security headers including CSP, HSTS, and referrer policy.
-- Request body size protection.
-- Process-local token-bucket rate limiting. This is per replica, not a fleet-wide school quota.
-- Optional local HS256/HS512 signature/expiry prefilter when `GATEWAY_LOCAL_JWT_VERIFY` is enabled and `APP_JWT_SECRET` is present.
-- Authoritative token introspection through identity-service on every authenticated request, including enriched JWTs. Identity verifies the persisted access-token session and current permissions/school assignments. Logout or refresh-token reuse revokes access from every row in the family; ordinary rotation retains valid access until its expiry. Introspection has a 10-second gateway deadline and availability errors fail closed as upstream errors, without pretending the login expired.
-- Cloud Run ID-token upstream auth when `GATEWAY_CLOUD_RUN_AUTH=auto`.
-- Per-service token header injection:
-  - `X-Identity-Service-Token`
-  - `X-Tenant-School-Token`
-  - `X-Student-Service-Token`
-  - `X-Attendance-Service-Token`
-  - `X-Fee-Service-Token`
-  - `X-Catalog-Service-Token`
-  - `X-Workflow-Service-Token`
-  - `X-Firefighting-Service-Token`
-  - `X-Reporting-Service-Token`
-  - `X-Billing-Service-Token`
-  - `X-Audit-Service-Token`
-  - `X-Notification-Service-Token`
-
-## Route Ownership
-
-Source: gateway route table in `services/api-gateway/server.js`.
-
-| Route group | Gateway target |
+| Service | Dedicated role |
 | --- | --- |
-| `/api/v1/auth/**`, `/api/v1/rbac/**`, `/api/v1/users`, selected school/zone admin user creation routes | identity |
-| `/api/v1/classes/**`, `/api/v1/schools/**`, `/api/v1/zones/**`, `/api/v1/academic-years`, `/api/v1/workspace/staff`, `/api/v1/timetable/**`, `/api/v1/sa/schools` | school-core tenant/school |
-| `/api/v1/students/**`, `/api/v1/workspace/students`, `/api/v1/student-review-items/**`, class-section-students roster route | school-core student |
-| `/api/v1/attendance/**` | school-core attendance |
-| `/api/v1/fee-structure`, `/api/v1/fee-assignments`, `/api/v1/payments`, `/api/v1/fees/**`, `/api/v1/receipts/**`, fee reminder dashboard action | school-core fee |
-| `/api/v1/supply/**`, `/api/v1/sa/orders`, catalog vendor-paid dashboard action | school-core catalog |
-| `/api/v1/workflows/**` | operations workflow |
-| `/api/v1/ff/**`, `/api/v1/workspace/firefighting`, firefighting vendor-paid dashboard action | operations firefighting |
-| `/api/v1/dashboard/**`, `/api/v1/dashboard`, `/api/v1/workspace`, `/api/v1/command-centre/**`, `/api/v1/approvals/**` | platform reporting |
-| `/api/v1/notifications/**` | platform notification |
-| `/api/v1/audit-logs` | platform audit |
-| `/api/v1/sa/invoices/**`, `/api/v1/customers/**`, `/api/v1/invoices/**`, `/api/v1/billing-payments/**` | billing |
+| Identity | `ims_identity_rt` |
+| School core | `ims_school_core_rt` |
+| Operations | `ims_operations_rt` |
+| Platform | `ims_platform_rt` |
+| Billing | `ims_billing_rt` |
 
-Diagnostic service prefixes also exist, such as `/identity-api/v1/`, `/tenant-api/v1/`, `/reporting-api/v1/`, and `/billing-api/v1/`. They rewrite `/<service>-api/v1/<rest>` to `/api/v1/<rest>` on the owning upstream and require a user JWT like any other route. Since 2026-09-22 the gateway refuses, before authentication, any request whose rewritten path falls under `/api/v1/internal` or `/api/v1/pubsub`; those surfaces are reachable only by the Scheduler, Pub/Sub push and peer-service identities that the owning controller verifies (`docs/INTERNAL-SERVICE-AUTHORIZATION.md`).
+Local configuration retains an `app_rt` fallback. `RuntimeDbRoleGuard` verifies the configured role,
+effective privileges, memberships, ownership and required RLS policies. Migration privileges belong to
+a separate migration entry point/job; normal deployed application startup does not run Flyway.
 
-## Authentication Model
-
-Source: `JwtService.java`, `AuthController.java`, gateway source, frontend API source.
-
-- Access tokens are JWTs signed by identity-service with a shared HS512 secret from Secret Manager.
-- Identity requires `APP_JWT_SECRET` to be at least 32 characters.
-- Access token TTL defaults to `900000` ms.
-- Refresh token TTL defaults to `604800000` ms.
-- Refresh token is stored in an HttpOnly cookie named `refresh_token`.
-- In deployed dev/prod Cloud Run, identity sets `APP_COOKIE_SECURE=true` and `APP_COOKIE_SAME_SITE=None`.
-- Frontend stores the access token only in module memory, not localStorage/sessionStorage.
-- On frontend 401 for non-auth endpoints, the frontend calls `/auth/refresh` once per concurrent burst and retries.
-
-Enriched JWT claims used by gateway local verification:
-
-- `uid` - user id
-- `sid` - school id when present
-- `zid` - zone id when present
-- `role` - role name
-- `perms` - permission codes
-- `ver` - currently `3`
-- `ops_schools` - assigned operator school ids
-
-If a token is valid but not enriched enough for gateway local verification, the gateway falls back to identity introspection.
-
-## Tenant Isolation and RLS
-
-Source: `TenantContextFilter`, `TenantAwareDataSource`, `RuntimeDbRoleGuard`, RLS migrations.
-
-Tenant isolation has two layers:
-
-- Application scope checks through `TenantScope`.
-- PostgreSQL RLS backstop on tenant-scoped tables.
-
-Runtime DB role conventions:
-
-- Application runtime user: `app_rt`
-- Flyway/DDL owner: `appuser`
-- `RuntimeDbRoleGuard` fails startup in the `prod` profile if a Spring service connects as anything other than `app_rt`.
-
-Gateway-stamped request headers populate `TenantContext`:
-
-- `X-Authenticated-User-Id`
-- `X-Authenticated-Email`
-- `X-Authenticated-Role`
-- `X-Authenticated-School-Id`
-- `X-Authenticated-Zone-Id`
-- `X-Authenticated-Operator-Schools`
-
-`TenantAwareDataSource` sets PostgreSQL GUCs on every borrowed connection:
+Application permission/module checks and `TenantScope` establish school, zone and assigned-operator
+boundaries. `TenantAwareDataSource` applies PostgreSQL context on each borrowed connection:
 
 - `app.current_school_id`
+- `app.current_zone_id`
+- `app.operator_schools`
 - `app.bypass_rls`
-- `app.operator_schools` in school-core
 
-Superadmin requests set `app.bypass_rls=on`. Normal school users are scoped to the authenticated school. Operations users can be bounded to an assigned operator school set.
+Context is reset before pooled connections return, with contaminated connections discarded on reset
+failure. Tenant-scoped tables use PostgreSQL row-level security; startup guards check required FORCE
+RLS and policies. System inbox/control tables have deliberately different context requirements.
 
-RLS is enabled by migrations on many tenant-scoped tables across billing, school-core, operations, platform reporting, and notification. Some async/contextless tables intentionally do not use RLS, including `reporting.reporting_event_inbox` and `reporting.command_center_feed`.
+## Browser request and authentication flow
 
-## Frontend Architecture
+1. The central frontend Axios transport sends a request to the gateway.
+2. `routing.js` selects the first matching route, including HTTP-method restrictions and alias rewriting.
+3. Rewritten `/api/v1/internal/**` and `/api/v1/pubsub/**` requests are blocked before user authentication.
+4. Protected requests call identity introspection for persisted session state and current permissions
+   and assignments. Optional local JWT verification is an additional rejection prefilter.
+5. The gateway strips untrusted principal/service headers and stamps authoritative user, session,
+   permission and tenant context. It injects the target logical service credential and Cloud Run ID token.
+6. The service enforces its authorization boundary, application scope and database policies.
 
-Source: `frontend/package.json`, `frontend/src/App.tsx`, `frontend/src/services/api.ts`.
+Identity introspection remains authoritative for every protected request. This supports revocation
+without trusting stale embedded JWT permissions, while adding an identity HTTP/database dependency.
+Unavailable identity responses fail closed; they are not treated as proof that a password expired.
 
-- React 18, Vite 6, TypeScript 5.7, React Router 6.
-- Top-level routes:
-  - `/login`
-  - `/`
-  - `/dashboard`
-  - `/schools`
-  - `/zones`
-  - wildcard redirect to `/dashboard`
-- API base URL defaults to `/api/v1`.
-- Axios timeout is `30000` ms.
-- `withCredentials=true` is set for refresh-cookie flows.
+Public auth routes are explicit. The exact MSG91 email callback is also public to user authentication,
+but the platform controller requires the gateway service credential and a separate callback credential.
+Compatibility aliases and callback siblings do not inherit that exemption.
 
-## Architecture Constraints
+## Gateway modules and API contracts
 
-- Do not add new direct cross-service database reads for runtime behavior.
-- Do not edit already-applied Flyway migrations without a repair/baseline plan.
-- Use forward migrations for schema changes.
-- Keep gateway route ownership explicit.
-- Keep service-to-service tokens in Secret Manager and injected at deploy time.
-- Keep async integrations idempotent by `eventId`.
-- Keep local dev credentials and test tokens distinct from production secrets.
+- `services/api-gateway/routing.js`: ordered route declarations, prefix/regex/method matching,
+  diagnostic rewriting and internal-path classification; no HTTP server or environment dependencies.
+- `services/api-gateway/server.js`: environment configuration, module composition, ordered HTTP request
+  handling, security headers/CORS and structured request/tracing lifecycle.
+- `services/api-gateway/authentication.js`: explicit-dependency factory for authoritative identity
+  introspection, optional rejecting JWT prefilter, public/cookie route policy and step-up policy.
+- `services/api-gateway/quota.js`: per-instance bounded rate buckets and verified-user budget grouping;
+  associations never authenticate a request or suppress identity introspection.
+- `services/api-gateway/transport.js`: explicit-dependency factory for service credentials, Cloud Run
+  authorization, principal/header propagation, safe targets, streaming bounds/backpressure and deadlines.
+  Its injectable fetch transport permits isolated tests without starting the HTTP server or reading secrets.
+- `services/api-gateway/api-contract.js`: compatibility classification and deprecation headers.
+- `services/api-gateway/tracing.js`: tracing/export lifecycle.
+- `scripts/generate-api-route-inventory.js`: controller method/path inventory and gateway route metadata.
+
+The current inventory records 49 controllers and 449 method/path mappings: 345 canonical,
+90 compatibility and 14 internal, plus 70 gateway entries and 12 diagnostic aliases.
+Mapping totals include compatibility surfaces and are not business-feature counts.
+Only Spring path/value attributes define URLs; consumes/produces/header metadata does not.
+
+OpenAPI covers 108 critical canonical operations across 12 contracts/clients. This is partial payload
+coverage, not the complete 449-mapping inventory. Clients share Axios authentication, preserve stable
+idempotency keys and reviewed versions/fingerprints, and support multipart uploads and Blob downloads.
+[Browser contract details](../../contracts/openapi/README.md) and
+[the current API contract overview](api-contracts.md) describe the supported generator subset.
+
+Inventory freshness and generated-client freshness are checked in PR and release gates. Contract
+tests also resolve typed operations through the actual runtime route table, preserving route precedence.
+
+## Asynchronous work
+
+School core, operations and billing write an outbox row in the same SQL transaction as the domain
+change. Relays publish before marking the row complete, so delivery is at least once. Duplicate delivery
+is expected after uncertain outcomes and consumers must be idempotent.
+
+Pub/Sub push reaches private platform ingress. Durable inboxes retain event state; leased workers
+project reporting dimensions/facts and process notification work with retries and failure records.
+Reporting repositories read owned projections rather than joining domain schemas. Dashboards are
+eventually consistent and can lag a successful domain write.
+
+`ReportingReadRepository` retains its API and response records as a facade. Invoice, photography,
+attendance, fee, procurement, workspace and command-center query groups have separate components.
+`ReportingSchoolContext` centralizes calendar/localization reads, `ReportingScalarQueries` centralizes
+scalar SQL reads and `ReportingPresentation` owns pure formatting. These components use platform-owned
+schemas and retain the existing school filters, SQL, status handling, pagination and calculations.
+Explicit constructor dependencies avoid query groups calling back through the facade; a managed
+Spring wiring test verifies this graph. This changes source ownership without introducing another
+runtime service, database connection pool or cross-service query.
+
+Private Google-OIDC-authenticated Scheduler calls wake relay/drain endpoints. In-process scheduled
+loops alone do not guarantee progress on scale-to-zero Cloud Run instances.
+See [the event contract](../EVENT-ENVELOPE-CONTRACT.md) and
+[internal authorization](../INTERNAL-SERVICE-AUTHORIZATION.md).
+
+## Frontend, catalog and files
+
+Top-level app routes and workspace panels are lazy-loaded. Role/permission/module checks select
+navigation; workspace state tracks drafts and unsaved edits. Access JWTs live in module memory.
+The central API transport coordinates refresh and logout across concurrent requests and browser tabs.
+
+`useWorkspaceNavigation` owns panel URLs, role/permission/module filtering, bookmark fallback and
+urgent-request draft links. `useWorkspaceDrawer` owns responsive modal behavior, focus trapping,
+focus restoration and sidebar preferences. `useSupplyOrders` retains order loading, approval/rejection,
+design confirmation and reorder state across navigation; `SupplyOrdersPanels` wires order panels.
+`useWorkspaceBootstrap` loads the school workspace and entitlements together, preserves pending
+entitlements after partial failure, and owns retry/authentication recovery and role-specific shells.
+School, platform and firefighting containers in `WorkspacePanels` select the other lazy panels.
+These containers own no drafts or command state. `WorkspaceDraftProvider` remains scoped to the current
+user/school/zone and keeps unsaved data in memory across panel navigation. Moving those responsibilities
+out of `UnifiedWorkspacePage` does not turn browser navigation checks into server authorization.
+
+Catalog categories and form definitions drive dynamic forms, alongside older handwritten category
+forms. Trophies use the existing catalog category/order domain, with reference data and image assets
+under `frontend/src/features/catalog/trophies`; no additional runtime service is required.
+
+Student photos/imports/exports and quotation documents use private storage integrations. Student
+erasure uses a precommit intent journal, lineage fences, durable photo cleanup and retained receipts.
+Recovery tools have separate privileges and execution controls; their existence does not establish a
+completed full restore rehearsal.
+
+## Deployment and operational evidence
+
+Cloud Run targets use region `asia-south2`. Branch `dev` targets `custoking-dev`; branch `main`
+targets `custoking-prod`. Production promotes approved, signed dev image digests rather than
+rebuilding the same source independently. Changed-service dev releases and configuration/production
+canary paths are defined by `.github/workflows/build-release.yml`.
+
+Secret Manager supplies credentials. IAM, pooled PostgreSQL connections, structured logs,
+OpenTelemetry traces and Cloud Monitoring support the runtime. Capacity must coordinate Cloud Run
+instance/concurrency limits with per-service connection pools.
+
+The source architecture, a successful dev release and operational acceptance are separate evidence.
+Outstanding provider, edge, recovery, hardware and other owner gates remain in
+[the owner-action plan](../security-remediation/acceptance-owner-actions.md).
+
+## Guardrails for further maintenance
+
+| Area | Boundary implemented | Continuation scope |
+| --- | --- | --- |
+| Student repositories | Command transactions and mandatory guards; directory/profile reads; import/promotion/review groups; shared structure/enrollment persistence and pure parsing/formatting | Planned responsibility groups completed; admission/update and erasure retain their atomic orchestration |
+| Reporting repository | Seven query groups, shared context/scalar reads and formatting behind the existing facade | Planned query groups completed |
+| Workspace UI | Navigation, drawer, bootstrap and supply-order hooks; school/platform/firefighting/order containers; scoped draft provider | Planned loading and panel groups completed |
+| Gateway server | Ordered routing and separate injectable authentication, quota and proxy transport factories | Planned module boundaries completed |
+| Browser contracts | 108 canonical operations across 12 clients, including reporting drilldowns and student lifecycle server/client checks | Broader payload coverage remains incremental; the 449-mapping inventory is not full payload coverage |
+
+Each refactor must preserve authorization, tenant scope, transaction atomicity, idempotency, uncertain
+outcome handling and unsaved-edit behavior. Applied migrations and dated acceptance evidence retain
+their recorded meaning.
+
+Student command extraction retains the 45-second erasure/reconciliation timeout and the existing
+transaction propagation and rollback behavior. External precommit erasure intents still precede
+mutation and survive rollback; import progress still completes after commit. Offline recovery keeps
+its separately bounded `TransactionTemplate`. New PostgreSQL integration cases verify admission
+and update rollback when an outbox write fails, and reject managed writes outside a transaction.
+
+Local verification is recorded with the maintenance commit and source-bound closeout evidence in
+`tmp`. The current phase adds isolated gateway factory checks, managed student/reporting wiring and
+transaction guards, bootstrap/recovery tests and serialized reporting response/tenant-denial checks.
+Method comparisons preserve 37 gateway functions, 33 reporting methods, 10 student profile methods,
+105 grouped student methods and the 19 command implementations, allowing only explicit component
+qualification and fetch injection. SQL literals and the erasure workflow retain their previous meaning.
+
+Final local checks: 450 frontend tests, 506 platform tests and the 990-test school-core suite have
+zero failures/errors. School core has one Windows symlink-privilege skip; all eight asset-security
+tests pass separately in Linux with no skips, including that symlink case. The gateway suite passes
+108 tests, the additional generator suite passes eight tests, and the machine-authorization audit
+regressions pass 16 tests. Twelve architecture audits, inventory/client freshness, ten guarded-class
+comparisons, the frontend and Java builds, and eight non-root gateway-image HTTP smoke checks pass.
+
+The planned responsibility refactors and their scoped dev delivery are accepted in
+[the release closeout and remaining fix plan](architecture-maintenance-release-2026-10-12.md).
+That acceptance includes exact-image/runtime binding, Linux/browser tests and bounded public checks.
+The operational owner gates and incremental payload coverage remain open; production was not changed.

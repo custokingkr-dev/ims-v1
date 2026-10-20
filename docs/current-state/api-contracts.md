@@ -1,10 +1,10 @@
 # API Contracts and Client Migration
 
-Last reconciled: 2026-09-26 against source controllers, the generated route inventory,
+Last reconciled: 2026-10-12 against source controllers, the generated route inventory,
 Java DTOs, and browser contracts.
 
 The gateway route inventory records controller ownership and compatibility use.
-OpenAPI adds payload schemas for **42 canonical operations across 10 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
+OpenAPI adds payload schemas for **108 canonical operations across 12 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
 from 95. Static source coverage is not production traffic telemetry, and retained
 aliases can still have external consumers.
 
@@ -12,16 +12,18 @@ aliases can still have external consumers.
 
 | Contract | Operations | Workflow |
 | --- | ---: | --- |
-| Identity | 6 | Login, refresh, logout, password-reset capabilities/request/confirmation |
+| Identity | 13 | Login, refresh, logout, password reset, MFA and passkey enrollment/authentication/recovery |
 | Fees | 6 | Stable-key collection, JSON/PDF receipt, collection/overdue reports, reminders |
-| Students | 5 | Create/update, ID-based roster, multipart photo upload, authenticated photo read |
+| Students | 40 | Directory/detail/history, create/update/roster/photos, import preview/confirmation/progress/evidence, promotions, reviews and confirmed erasure |
+| Drive photo-import | 15 | Scoped context/batches, creation/provisioning, reviewed scan/freeze/execute/cancel, row review, recovery/progress, private JPEG and CSV |
 | Attendance | 3 | Read/save register and submit section |
 | Billing | 1 | Complete invoice statistics and reporting period |
 | Broadcasts | 8 | Draft/list, capabilities, policy preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
 | Quotation documents | 4 | Capabilities, private upload/download/removal |
 | Catalog | 6 | Paginated orders, scoped statistics, guarded status/delivery, reviewed annual-plan confirmation |
-| Reporting | 1 | Workspace dashboard envelope |
+| Reporting | 7 | Workspace, command-center dashboard, fee defaulters, low-attendance sections/students, vendor dues and reorder signals |
 | Firefighting creation | 2 | Stable-key request and quotation creation |
+| Workflow decisions | 3 | Read versioned instance, approve/reject with the reviewed expectedVersion |
 
 Specifications live in `contracts/openapi/*.openapi.json`; generated TypeScript
 clients live in `frontend/src/generated`. These are critical workflow contracts,
@@ -43,8 +45,9 @@ From the repository root:
 ```powershell
 node scripts/generate-api-route-inventory.js
 node scripts/generate-openapi-typescript-client.js
+node scripts/generate-api-route-inventory.js --check
 node scripts/generate-openapi-typescript-client.js --check
-node --test scripts/tests/generate-openapi-typescript-client.test.js services/api-gateway/api-contract.test.js
+node --test scripts/tests/generate-api-route-inventory.test.js scripts/tests/generate-openapi-typescript-client.test.js services/api-gateway/api-contract.test.js
 ```
 
 The dependency-free generator validates canonical service/controller ownership,
@@ -59,8 +62,11 @@ multipart FormData without overriding its boundary, and request Blob downloads.
 Internal service tokens are absent from browser contracts. Existing refresh,
 credential and authentication behavior remains in the shared transport.
 
-The always-run CI architecture job verifies inventory/client freshness and runs
-contract generator/routing tests independently of the affected-service matrix.
+The always-run PR architecture job and release static gate verify inventory/client freshness.
+The PR job runs contract generator/routing tests independently of the affected-service matrix.
+Typed operations are resolved through the actual runtime table in `services/api-gateway/routing.js`,
+so a current generated inventory cannot hide a runtime route-owner or precedence mismatch.
+Spring consumes/produces/header metadata is excluded from path extraction, including pathless mappings.
 Frontend tests exercise the real generated clients with mocked transport, including
 lost-response replay identity, scoped filters, page envelopes, multipart/binary
 operations and reviewed broadcast/annual-plan fingerprints.
@@ -91,3 +97,5 @@ No alias deletion or sunset date is introduced. Route removal still needs extern
 consumer evidence and separate review. Broader payload coverage can expand one
 reviewed workflow at a time without weakening authorization or inventing equivalent
 response shapes.
+
+The photo-import client opts into bounded request options: signal, timeout and onDownloadProgress. Generation rejects other options; runtime calls select only these fields so caller config cannot override paths, authentication headers, query scope or Blob handling. The panel and school-folder retry share the authenticated Axios transport. See [the photo-import findings and fix plan](photo-import-contracts-dev-2026-10-12.md).

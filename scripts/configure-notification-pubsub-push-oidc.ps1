@@ -18,10 +18,14 @@ if ($Environment -eq "prod" -and -not $AllowProduction) {
 
 function Invoke-Gcloud {
   param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Arguments)
-  & $gcloud @Arguments
-  if ($LASTEXITCODE -ne 0) {
-    throw "gcloud command failed: $($Arguments -join ' ')"
-  }
+  $previousPreference = $ErrorActionPreference
+  try {
+    $ErrorActionPreference = "Continue"
+    $nativeOutput = @(& $gcloud @Arguments 2>$null)
+    $nativeExitCode = $LASTEXITCODE
+  } finally { $ErrorActionPreference = $previousPreference }
+  if ($nativeExitCode -ne 0) { throw "Pub/Sub configuration cloud command failed." }
+  return $nativeOutput
 }
 
 function Test-GcloudResource {
@@ -130,7 +134,7 @@ if (-not $serviceAccountExists) {
 Invoke-Gcloud iam service-accounts add-iam-policy-binding $pushServiceAccount `
   "--project=$ProjectId" `
   "--member=serviceAccount:$pubsubServiceAgent" `
-  --role=roles/iam.serviceAccountTokenCreator --quiet
+  --role=roles/iam.serviceAccountOpenIdTokenCreator --quiet
 Invoke-Gcloud run services add-iam-policy-binding $platformService `
   "--project=$ProjectId" "--region=$Region" `
   "--member=serviceAccount:$pushServiceAccount" --role=roles/run.invoker --quiet

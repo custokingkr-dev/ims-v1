@@ -157,6 +157,22 @@ class StudentImportRlsIntegrationTest {
                 .containsExactlyInAnyOrder("token-a", "token-b");
     }
 
+    @Test void fleetImportRowsUseTypedNullAndStillRespectRlsWithoutContext() {
+        TenantContext.set(new TenantContext(99L, "super@invalid.local", "SUPERADMIN", null, null));
+        assertThat(imports.importRows(null, null, null, 500))
+                .extracting(StudentReadRepository.ImportRow::id).containsExactlyInAnyOrder("row-a", "row-b");
+        TenantContext.clear();
+        assertThat(imports.importRows(null, null, null, 500)).isEmpty();
+    }
+
+    @Test void fleetImportStatusUsesTypedNullWithoutExposingAnotherSchoolToAdmins() {
+        TenantContext.set(new TenantContext(99L, "super@invalid.local", "SUPERADMIN", null, null));
+        assertThat(imports.importStatus("job-a", null)).containsEntry("done", true);
+        TenantContext.set(new TenantContext(1L, "a@invalid.local", "ADMIN", 10L, null));
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> imports.importStatus("job-b", null))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("not found");
+    }
+
     private long count(String table) throws Exception {
         try (Connection connection = appRuntime.getConnection();
              Statement statement = connection.createStatement();

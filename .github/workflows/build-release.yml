@@ -123,6 +123,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ needs.resolve-target.outputs.commit_sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
+      - name: Verify generated route inventory and browser clients are current
+        run: |
+          node scripts/generate-api-route-inventory.js --check
+          node scripts/generate-openapi-typescript-client.js --check
       - name: Verify offline architecture invariants
         shell: pwsh
         run: |
@@ -138,6 +145,8 @@ jobs:
           ./scripts/audit-microservice-test-catalog.ps1
           ./scripts/audit-microservice-build-catalog.ps1
           ./scripts/audit-security-governance-controls.ps1
+      - name: Verify full release uses rendered serial deployment
+        run: python3 -m unittest discover -s scripts/tests -p full_release_routing_test.py -v
       - name: Verify guarded duplicate classes
         run: python3 scripts/check-duplicate-class-drift.py
       - name: Test bounded Cloud Deploy dependency groups
@@ -182,7 +191,7 @@ jobs:
       - name: Run gateway tests
         if: ${{ matrix.tool == 'node' }}
         working-directory: ${{ matrix.path }}
-        run: node --test server.test.js
+        run: npm test
       - name: Run frontend unit tests and production build
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
@@ -197,7 +206,7 @@ jobs:
         # Release file whose hashes don't match its index (seen repeatedly, not a
         # transient blip). Playwright's own Chromium download comes from Microsoft's
         # CDN, not this apt repo, so removing the source list has no effect on what the
-        # tests need — Chrome itself (already installed) is untouched. Do not delete
+        # tests need â€” Chrome itself (already installed) is untouched. Do not delete
         # this step; without it, --with-deps deterministically fails apt-get update.
         if: ${{ matrix.tool == 'npm' }}
         run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list
@@ -278,6 +287,14 @@ jobs:
             BuildArgs = [string]$env:BUILD_ARGS
           }
           $metadata = ./scripts/resolve-image-source-id.ps1 @sourceArguments | ConvertFrom-Json
+          $securityPatchEpoch = [string]$metadata.securityPatchEpoch
+          if ($securityPatchEpoch -ne "") {
+            $parsedEpoch = [datetime]::MinValue
+            if ($securityPatchEpoch -cnotmatch "\A[0-9]{4}-[0-9]{2}-[0-9]{2}(?:-r[1-9][0-9]{0,5})?\z" -or
+                -not [datetime]::TryParseExact($securityPatchEpoch.Substring(0, 10), "yyyy-MM-dd", [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEpoch)) {
+              throw "Image source metadata contains an invalid security patch epoch."
+            }
+          }
           $registry = "$env:GCP_REGION-docker.pkg.dev/$env:ARTIFACT_REGISTRY_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
           $sourceRef = "$registry/${{ matrix.image }}:$($metadata.sourceTag)"
           $shaRef = "$registry/${{ matrix.image }}:sha-${{ needs.resolve-target.outputs.commit_sha }}"
@@ -286,8 +303,13 @@ jobs:
           $global:LASTEXITCODE = 0
           $digest = if ($null -eq $digestOutput) { "" } else { ([string]$digestOutput).Trim() }
           $exists = $describeExitCode -eq 0 -and $digest -match "^sha256:[0-9a-f]{64}$"
+          # Old selected commits may reuse existing images, but cannot build new bytes without a committed epoch.
+          if (-not $exists -and $securityPatchEpoch -eq "") {
+            throw "Fresh image builds require a validated security patch epoch from the selected commit."
+          }
 
           "source_id=$($metadata.sourceId)" >> $env:GITHUB_OUTPUT
+          "security_patch_epoch=$securityPatchEpoch" >> $env:GITHUB_OUTPUT
           "source_tag=$($metadata.sourceTag)" >> $env:GITHUB_OUTPUT
           "source_ref=$sourceRef" >> $env:GITHUB_OUTPUT
           "sha_ref=$shaRef" >> $env:GITHUB_OUTPUT
@@ -323,12 +345,7 @@ jobs:
             }
           }
 
-      # The security-patch layer in each Dockerfile is keyed on this value. Without it the layer is
-      # served from the build cache and newly published fixes are never installed; see the comment
-      # in frontend/Dockerfile. Dating it by the day keeps every other layer cached.
-      - name: Resolve the security patch epoch
-        run: echo "SECURITY_PATCH_EPOCH=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
-
+      # The selected commit's epoch keys the patch layer and source image ID while preserving other stage caches.
       - name: Build and push image
         id: build
         if: ${{ steps.source.outputs.should_build == 'true' }}
@@ -342,7 +359,7 @@ jobs:
             ${{ steps.source.outputs.sha_ref }}
           build-args: |
             ${{ matrix.build_args }}
-            SECURITY_PATCH_EPOCH=${{ env.SECURITY_PATCH_EPOCH }}
+            SECURITY_PATCH_EPOCH=${{ steps.source.outputs.security_patch_epoch }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: mode=max
@@ -1038,7 +1055,7 @@ jobs:
           }
 
       - name: Fast dev deployment
-        if: ${{ needs.resolve-target.outputs.target_env == 'dev' && needs.detect.outputs.deployment_config_changed != 'true' }}
+        if: ${{ needs.resolve-target.outputs.target_env == 'dev' && needs.detect.outputs.deployment_config_changed != 'true' && inputs.force_full_deploy != true }}
         shell: pwsh
         run: |
           ./scripts/invoke-direct-cloudrun-release.ps1 `
@@ -1049,7 +1066,7 @@ jobs:
             -OutputPath release-evidence/deployment.json
 
       - name: Create and promote Cloud Deploy dependency groups
-        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' }}
+        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' || inputs.force_full_deploy == true }}
         shell: pwsh
         run: |
           $arguments = @{
@@ -1069,7 +1086,7 @@ jobs:
           ./scripts/invoke-clouddeploy-release.ps1 @arguments
 
       - name: Confirm Cloud Deploy rollouts
-        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' }}
+        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' || inputs.force_full_deploy == true }}
         shell: pwsh
         run: |
           $arguments = @{
@@ -1221,7 +1238,7 @@ jobs:
           {
             echo "## Manual deployment reconciliation required"
             echo ""
-            echo "This change modifies Cloud Deploy targets, pipelines, or their renderer."
+            echo "This change modifies deployment targets, pipelines, their renderer, or migration IAM."
             echo "No image was built and no release was created."
-            echo "Run the protected Ops / Reconcile deployment configuration workflow first, then release services in separate service-specific commits."
+            echo "Reconcile any changed migration IAM first, run Ops / Reconcile deployment configuration, then release a service-specific commit."
           } >> "$GITHUB_STEP_SUMMARY"

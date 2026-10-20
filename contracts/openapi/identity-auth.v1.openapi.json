@@ -189,6 +189,287 @@
           }
         }
       }
+    },
+    "/api/v1/auth/passkeys": {
+      "get": {
+        "operationId": "passkeyStatus",
+        "x-ims-controller": "PasskeyController",
+        "summary": "passkeyStatus",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Passkey ceremony or session security outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyStatus"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Passkey verification or independent privileged approval required"
+          },
+          "429": {
+            "description": "Bounded passkey attempt quota exceeded"
+          },
+          "503": {
+            "description": "Exact RP/origin configuration unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/registration/options": {
+      "post": {
+        "operationId": "passkeyRegistrationOptions",
+        "x-ims-controller": "PasskeyController",
+        "summary": "passkeyRegistrationOptions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Passkey ceremony or session security outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyCeremony"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Passkey verification or independent privileged approval required"
+          },
+          "429": {
+            "description": "Bounded passkey attempt quota exceeded"
+          },
+          "503": {
+            "description": "Exact RP/origin configuration unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyPasswordConfirmation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/registration/verify": {
+      "post": {
+        "operationId": "passkeyRegistrationVerify",
+        "x-ims-controller": "PasskeyController",
+        "summary": "passkeyRegistrationVerify",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Passkey ceremony or session security outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyRegistered"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Passkey verification or independent privileged approval required"
+          },
+          "429": {
+            "description": "Bounded passkey attempt quota exceeded"
+          },
+          "503": {
+            "description": "Exact RP/origin configuration unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyVerification"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/assertion/options": {
+      "post": {
+        "operationId": "passkeyAssertionOptions",
+        "x-ims-controller": "PasskeyController",
+        "summary": "passkeyAssertionOptions",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Passkey ceremony or session security outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyCeremony"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Passkey verification or independent privileged approval required"
+          },
+          "429": {
+            "description": "Bounded passkey attempt quota exceeded"
+          },
+          "503": {
+            "description": "Exact RP/origin configuration unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/assertion/verify": {
+      "post": {
+        "operationId": "passkeyAssertionVerify",
+        "x-ims-controller": "PasskeyController",
+        "summary": "passkeyAssertionVerify",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Passkey ceremony or session security outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyVerified"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Passkey verification or independent privileged approval required"
+          },
+          "429": {
+            "description": "Bounded passkey attempt quota exceeded"
+          },
+          "503": {
+            "description": "Exact RP/origin configuration unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyVerification"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/recovery/request": {
+      "post": {
+        "operationId": "passkeyRecoveryRequest",
+        "x-ims-controller": "PasskeyController",
+        "summary": "passkeyRecoveryRequest",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Passkey ceremony or session security outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyRecoveryPending"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Passkey verification or independent privileged approval required"
+          },
+          "429": {
+            "description": "Bounded passkey attempt quota exceeded"
+          },
+          "503": {
+            "description": "Exact RP/origin configuration unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyRecoveryRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/passkeys/recovery/approve": {
+      "post": {
+        "operationId": "passkeyRecoveryApprove",
+        "x-ims-controller": "PasskeyController",
+        "summary": "passkeyRecoveryApprove",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Passkey ceremony or session security outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasskeyRecovered"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Passkey verification or independent privileged approval required"
+          },
+          "429": {
+            "description": "Bounded passkey attempt quota exceeded"
+          },
+          "503": {
+            "description": "Exact RP/origin configuration unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyRecoveryApproval"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -197,6 +478,11 @@
         "type": "apiKey",
         "in": "cookie",
         "name": "refresh_token"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     },
     "schemas": {
@@ -238,7 +524,9 @@
           "zoneName",
           "roles",
           "permissions",
-          "operatorSchools"
+          "operatorSchools",
+          "sessionId",
+          "stepUpExpiresAt"
         ],
         "properties": {
           "accessToken": {
@@ -312,6 +600,19 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          "sessionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stepUpExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
           }
         },
         "x-ims-java-record": {
@@ -380,6 +681,169 @@
         "properties": {
           "message": {
             "type": "string"
+          }
+        }
+      },
+      "PasskeyStatus": {
+        "type": "object",
+        "required": [
+          "configured",
+          "enrolled",
+          "recovery"
+        ],
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "enrolled": {
+            "type": "boolean"
+          },
+          "recovery": {
+            "type": "string"
+          },
+          "rpId": {
+            "type": "string"
+          },
+          "canonicalOrigin": {
+            "type": "string"
+          }
+        }
+      },
+      "PasskeyPasswordConfirmation": {
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 72
+          }
+        }
+      },
+      "PasskeyVerification": {
+        "type": "object",
+        "required": [
+          "challengeId",
+          "credential"
+        ],
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "credential": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "JSON WebAuthn PublicKeyCredential with base64url binary properties"
+          }
+        }
+      },
+      "PasskeyCeremony": {
+        "type": "object",
+        "required": [
+          "challengeId",
+          "publicKey"
+        ],
+        "properties": {
+          "challengeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publicKey": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "PasskeyRegistered": {
+        "type": "object",
+        "required": [
+          "enrolled"
+        ],
+        "properties": {
+          "enrolled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PasskeyVerified": {
+        "type": "object",
+        "required": [
+          "stepUpExpiresAt"
+        ],
+        "properties": {
+          "stepUpExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PasskeyRecoveryRequest": {
+        "type": "object",
+        "required": [
+          "userId",
+          "reason"
+        ],
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        }
+      },
+      "PasskeyRecoveryApproval": {
+        "type": "object",
+        "required": [
+          "recoveryId"
+        ],
+        "properties": {
+          "recoveryId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "PasskeyRecoveryPending": {
+        "type": "object",
+        "required": [
+          "recoveryId",
+          "expiresAt",
+          "requiresDifferentApprover"
+        ],
+        "properties": {
+          "recoveryId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requiresDifferentApprover": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PasskeyRecovered": {
+        "type": "object",
+        "required": [
+          "recovered",
+          "requiresNewEnrollment"
+        ],
+        "properties": {
+          "recovered": {
+            "type": "boolean"
+          },
+          "requiresNewEnrollment": {
+            "type": "boolean"
           }
         }
       }

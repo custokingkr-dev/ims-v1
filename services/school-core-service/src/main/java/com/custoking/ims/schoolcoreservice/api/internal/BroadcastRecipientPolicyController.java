@@ -43,8 +43,21 @@ public class BroadcastRecipientPolicyController {
         }
     }
 
+    /** Fee reminders have an explicit purpose and selected audience; no notice-purpose relabeling. */
+    @PostMapping("/fee-reminders")
+    public List<Map<String,Object>> resolveFeeReminders(@RequestHeader(value="X-Broadcast-Policy-Token",required=false) String supplied,
+            @Valid @RequestBody ResolveRequest request) {
+        requireToken(supplied,"notification:fee-reminder-policy");
+        if(!"FEE_REMINDER".equals(request.communicationCategory()) || !"EXPLICIT_STUDENTS".equals(request.audienceType())
+                || request.studentIds()==null || request.studentIds().isEmpty() || request.studentIds().size()>100
+                || !List.of("SMS").equals(request.channels()))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Explicit bounded SMS fee-reminder audience required");
+        // Current primary guardian, SCHOOL_COMMUNICATIONS consent and notification preference are resolved by the owner.
+        return repository.resolve(request.schoolId(),request.broadcastId(),request.channels(),request.studentIds());
+    }
+
     private void requireToken(String supplied, String scope) {
-        if (!"notification:broadcast-policy".equals(scope)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid internal route scope");
+        if (!List.of("notification:broadcast-policy","notification:fee-reminder-policy").contains(scope)) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid internal route scope");
         if (token.isBlank() || supplied == null || !MessageDigest.isEqual(token.getBytes(StandardCharsets.UTF_8), supplied.getBytes(StandardCharsets.UTF_8))) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid broadcast policy credential");
         }

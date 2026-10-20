@@ -6,7 +6,7 @@ import type { AxiosInstance } from 'axios';
 
 export type LoginRequest = { "email": string; "password": string; };
 
-export type AuthResponse = { "accessToken": string; "userId": number; "fullName": string; "email": string; "role": "SUPERADMIN" | "ZONE_ADMIN" | "ADMIN" | "SCHOOL_ADMIN" | "OPERATIONS" | "ACCOUNTANT" | "TEACHER" | "VIEWER"; "branchId": number | null; "branchName": string | null; "zoneId": number | null; "zoneName": string | null; "roles": Array<string>; "permissions": Array<string>; "operatorSchools": Array<number>; };
+export type AuthResponse = { "accessToken": string; "userId": number; "fullName": string; "email": string; "role": "SUPERADMIN" | "ZONE_ADMIN" | "ADMIN" | "SCHOOL_ADMIN" | "OPERATIONS" | "ACCOUNTANT" | "TEACHER" | "VIEWER"; "branchId": number | null; "branchName": string | null; "zoneId": number | null; "zoneName": string | null; "roles": Array<string>; "permissions": Array<string>; "operatorSchools": Array<number>; "sessionId": string | null; "stepUpExpiresAt": string | null; };
 
 export type Problem = { "message"?: string; [key: string]: unknown; };
 
@@ -18,6 +18,26 @@ export type PasswordResetConfirm = { "token": string; "password": string; };
 
 export type PasswordResetAccepted = { "message": string; };
 
+export type PasskeyStatus = { "configured": boolean; "enrolled": boolean; "recovery": string; "rpId"?: string; "canonicalOrigin"?: string; };
+
+export type PasskeyPasswordConfirmation = { "password": string; };
+
+export type PasskeyVerification = { "challengeId": string; "credential": { [key: string]: unknown; }; };
+
+export type PasskeyCeremony = { "challengeId": string; "publicKey": { [key: string]: unknown; }; };
+
+export type PasskeyRegistered = { "enrolled": boolean; };
+
+export type PasskeyVerified = { "stepUpExpiresAt": string; };
+
+export type PasskeyRecoveryRequest = { "userId": number; "reason": string; };
+
+export type PasskeyRecoveryApproval = { "recoveryId": string; };
+
+export type PasskeyRecoveryPending = { "recoveryId": string; "expiresAt": string; "requiresDifferentApprover": boolean; };
+
+export type PasskeyRecovered = { "recovered": boolean; "requiresNewEnrollment": boolean; };
+
 export interface IdentityAuthClient {
   login(request: LoginRequest): Promise<AuthResponse>;
   refresh(): Promise<AuthResponse>;
@@ -25,6 +45,13 @@ export interface IdentityAuthClient {
   passwordResetCapabilities(): Promise<PasswordResetCapabilities>;
   requestPasswordReset(request: PasswordResetRequest): Promise<PasswordResetAccepted>;
   confirmPasswordReset(request: PasswordResetConfirm): Promise<void>;
+  passkeyStatus(): Promise<PasskeyStatus>;
+  passkeyRegistrationOptions(request: PasskeyPasswordConfirmation): Promise<PasskeyCeremony>;
+  passkeyRegistrationVerify(request: PasskeyVerification): Promise<PasskeyRegistered>;
+  passkeyAssertionOptions(): Promise<PasskeyCeremony>;
+  passkeyAssertionVerify(request: PasskeyVerification): Promise<PasskeyVerified>;
+  passkeyRecoveryRequest(request: PasskeyRecoveryRequest): Promise<PasskeyRecoveryPending>;
+  passkeyRecoveryApprove(request: PasskeyRecoveryApproval): Promise<PasskeyRecovered>;
 }
 
 export function createIdentityAuthClient(http: AxiosInstance): IdentityAuthClient {
@@ -50,6 +77,34 @@ export function createIdentityAuthClient(http: AxiosInstance): IdentityAuthClien
     },
     async confirmPasswordReset(request: PasswordResetConfirm) {
       await http.post("/auth/password-reset/confirm", request);
+    },
+    async passkeyStatus() {
+      const response = await http.get<PasskeyStatus>("/auth/passkeys");
+      return response.data;
+    },
+    async passkeyRegistrationOptions(request: PasskeyPasswordConfirmation) {
+      const response = await http.post<PasskeyCeremony>("/auth/passkeys/registration/options", request);
+      return response.data;
+    },
+    async passkeyRegistrationVerify(request: PasskeyVerification) {
+      const response = await http.post<PasskeyRegistered>("/auth/passkeys/registration/verify", request);
+      return response.data;
+    },
+    async passkeyAssertionOptions() {
+      const response = await http.post<PasskeyCeremony>("/auth/passkeys/assertion/options");
+      return response.data;
+    },
+    async passkeyAssertionVerify(request: PasskeyVerification) {
+      const response = await http.post<PasskeyVerified>("/auth/passkeys/assertion/verify", request);
+      return response.data;
+    },
+    async passkeyRecoveryRequest(request: PasskeyRecoveryRequest) {
+      const response = await http.post<PasskeyRecoveryPending>("/auth/passkeys/recovery/request", request);
+      return response.data;
+    },
+    async passkeyRecoveryApprove(request: PasskeyRecoveryApproval) {
+      const response = await http.post<PasskeyRecovered>("/auth/passkeys/recovery/approve", request);
+      return response.data;
     },
   };
 }

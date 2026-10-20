@@ -45,7 +45,7 @@ export interface VendorDueItem {
   vendorName: string | null;
   amountPaise: number;
   status: string;
-  createdAt: string;
+  createdAt: string | null;
 }
 
 export interface VendorDuesListResponse {
@@ -170,101 +170,17 @@ export interface SendEventPaymentRemindersResult {
 
 // ── Student Review Campaigns ──────────────────────────────────────────────────
 
-export interface IdCardReviewStatusResponse {
-  campaignId: string | null;
-  totalStudents: number;
-  completed: number;
-  pending: number;
-  needsCorrection: number;
-  completionPercent: number;
-  recentItems: ReviewItemDetail[];
-}
-
-export interface FullNameVerificationStatusResponse {
-  campaignId: string | null;
-  totalStudents: number;
-  confirmed: number;
-  correctionRequested: number;
-  pending: number;
-  completionPercent: number;
-}
-
-export interface StudentVerificationStatusResponse {
-  campaignId: string | null;
-  totalStudents: number;
-  completed: number;
-  pending: number;
-  needsCorrection: number;
-  completionPercent: number;
-}
-
-export interface ReviewItemDetail {
-  itemId: string;
-  studentId: number;
-  studentName: string;
-  admissionNo: string;
-  className: string;
-  sectionName: string;
-  photoUrl?: string | null;
-  currentFullName: string | null;
-  suggestedFullName: string | null;
-  status: 'PENDING' | 'COMPLETED' | 'NEEDS_CORRECTION';
-  verifiedPhoto: boolean;
-  verifiedFullName: boolean;
-  verifiedAdmissionNo: boolean;
-  verifiedClassSection: boolean;
-  verifiedRollNo: boolean;
-  verifiedFatherName: boolean;
-  verifiedFatherContact: boolean;
-  verifiedAddress: boolean;
-  verifiedBloodGroup: boolean;
-  parentConfirmed: boolean;
-  teacherConfirmed: boolean;
-  correctionRequested: boolean;
-  correctionNotes: string | null;
-  completedAt: string | null;
-}
-
-export interface StudentVerificationSummaryResponse {
-  profile: ReviewItemDetail | null;
-  photo: ReviewItemDetail | null;
-}
-
-export interface InitiateIdCardReviewRequest {
-  schoolId?: number | null;
-  classIds?: string[] | null;
-  sectionIds?: string[] | null;
-  dueDate?: string | null;
-  assignedToUserId?: number | null;
-}
-
-export interface InitiateFullNameVerificationRequest {
-  schoolId?: number | null;
-  classIds?: string[] | null;
-  sectionIds?: string[] | null;
-  verifier: 'TEACHER' | 'PARENT' | 'BOTH';
-  dueDate?: string | null;
-}
-
-export interface UpdateReviewItemRequest {
-  verifiedPhoto?: boolean | null;
-  verifiedFullName?: boolean | null;
-  verifiedAdmissionNo?: boolean | null;
-  verifiedClassSection?: boolean | null;
-  verifiedRollNo?: boolean | null;
-  verifiedFatherName?: boolean | null;
-  verifiedFatherContact?: boolean | null;
-  verifiedAddress?: boolean | null;
-  verifiedBloodGroup?: boolean | null;
-  status?: string | null;
-  correctionNotes?: string | null;
-}
-
-export interface VerifyFullNameRequest {
-  confirmed: boolean;
-  suggestedFullName?: string | null;
-  correctionNotes?: string | null;
-}
+export type {
+  IdCardReviewStatus as IdCardReviewStatusResponse,
+  FullNameReviewStatus as FullNameVerificationStatusResponse,
+  ReviewStatus as StudentVerificationStatusResponse,
+  StudentVerificationSummary as StudentVerificationSummaryResponse,
+  ReviewItemDetail,
+  InitiateIdCardReviewRequest,
+  InitiateFullNameReviewRequest as InitiateFullNameVerificationRequest,
+  UpdateReviewItemRequest,
+  VerifyFullNameRequest,
+} from '../generated/studentClient';
 
 // ── Low Attendance Meeting Invites ────────────────────────────────────────────
 

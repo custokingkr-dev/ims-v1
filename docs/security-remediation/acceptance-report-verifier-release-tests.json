@@ -1,0 +1,181 @@
+{
+  "capturedAtUtc": "2026-10-07T18:28:40.003667+00:00",
+  "pullRequest": 326,
+  "mergedSourceSha": "62777c1889609a7ca3518098f134759f40c19e1a",
+  "release": {
+    "runId": 37666279301,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666279301",
+    "capturedStatus": "queued",
+    "capturedConclusion": "",
+    "releaseServiceTestsComplete": true,
+    "sourceGateJobs": [
+      {
+        "id": 112946281082,
+        "name": "release-secret-scan",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666279301/job/112946281082"
+      },
+      {
+        "id": 112946428546,
+        "name": "release-static-gate",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666279301/job/112946428546"
+      }
+    ],
+    "serviceTestJobs": [
+      {
+        "id": 112946428621,
+        "name": "release-service-test (platform-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666279301/job/112946428621"
+      },
+      {
+        "id": 112946428634,
+        "name": "release-service-test (identity-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666279301/job/112946428634"
+      },
+      {
+        "id": 112946428657,
+        "name": "release-service-test (operations-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666279301/job/112946428657"
+      },
+      {
+        "id": 112946428682,
+        "name": "release-service-test (school-core-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666279301/job/112946428682"
+      },
+      {
+        "id": 112946428684,
+        "name": "release-service-test (billing-service)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666279301/job/112946428684"
+      },
+      {
+        "id": 112946428698,
+        "name": "release-service-test (api-gateway)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666279301/job/112946428698"
+      }
+    ]
+  },
+  "postmergeCodeql": {
+    "runId": 37666278655,
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666278655",
+    "headSha": "62777c1889609a7ca3518098f134759f40c19e1a",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 112946218653,
+        "name": "analyze (javascript-typescript)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666278655/job/112946218653"
+      },
+      {
+        "id": 112946218913,
+        "name": "analyze (java-kotlin)",
+        "conclusion": "success",
+        "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37666278655/job/112946218913"
+      }
+    ]
+  },
+  "serviceCountsFinalReactorAggregateOnly": {
+    "identity-service": {
+      "jobId": 112946428634,
+      "counts": {
+        "reported": 183,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 1,
+        "passed": 182
+      }
+    },
+    "operations-service": {
+      "jobId": 112946428657,
+      "counts": {
+        "reported": 195,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 195
+      }
+    },
+    "billing-service": {
+      "jobId": 112946428684,
+      "counts": {
+        "reported": 95,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 95
+      }
+    },
+    "platform-service": {
+      "jobId": 112946428621,
+      "counts": {
+        "reported": 437,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 437
+      }
+    },
+    "api-gateway": {
+      "jobId": 112946428698,
+      "counts": {
+        "tests": 99,
+        "pass": 99,
+        "fail": 0,
+        "skipped": 0
+      }
+    },
+    "school-core-service": {
+      "jobId": 112946428682,
+      "counts": {
+        "reported": 952,
+        "passed": 952,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "javaTotals": {
+    "reported": 1862,
+    "passed": 1861,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "frontendSuiteExecutedInThisRelease": false,
+  "deploymentOrLiveReadbacksVerifiedByThisProof": false,
+  "evidenceLogDigests": [
+    {
+      "logName": "pr326-release-api-gateway.log",
+      "digestSha256": "a257f5ccc309cc2d0083aa283cc64c8c165c3c90c9c1e2cb21c9a2299bd0db67"
+    },
+    {
+      "logName": "pr326-release-billing-service.log",
+      "digestSha256": "2080611b6291fbcffe491fa2f2410be7f5dabd64d1cbfe67d52a8735a86780aa"
+    },
+    {
+      "logName": "pr326-release-identity-service.log",
+      "digestSha256": "e7d9a7aaef438e17ddfa66333b3799bb4c9473f6abc91ba0a928d6afc8731128"
+    },
+    {
+      "logName": "pr326-release-operations-service.log",
+      "digestSha256": "5256c65efeb79ea23fb2156f7835e72a4cbbf63fef23cdccf1108eb120035822"
+    },
+    {
+      "logName": "pr326-release-platform-service.log",
+      "digestSha256": "585aede4012d91cd37fc38d7c3c0773248f296a4d4d934d34ec4c89b2a365369"
+    },
+    {
+      "logName": "pr326-release-school-core-service.log",
+      "digestSha256": "18802991106bcf19b0dc8d0e0a76b2ff80b3b6ad7ae1ae02f40184ecd923b2ca"
+    }
+  ]
+}

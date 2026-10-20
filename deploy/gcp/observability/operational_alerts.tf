@@ -10,7 +10,7 @@ resource "google_logging_metric" "scheduler_failure_count" {
   description = "Count of failed Cloud Scheduler attempts for the authenticated async relay jobs."
   filter = join(" AND ", [
     "resource.type=\"cloud_scheduler_job\"",
-    "resource.labels.job_id=~\"ims-(school-core-service|operations-service|billing-service|platform-service)-async-relay-${var.env}\"",
+    "resource.labels.job_id=~\"ims-(identity-service|school-core-service|operations-service|billing-service|platform-service)-async-relay-${var.env}\"",
     "jsonPayload.\"@type\"=\"type.googleapis.com/google.cloud.scheduler.logging.AttemptFinished\"",
     "severity>=ERROR",
   ])

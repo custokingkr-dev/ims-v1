@@ -83,6 +83,18 @@ class NotificationDeliveryServiceTest {
     }
 
     @Test
+    void smsTemplateVariablesCannotReplaceTheOwnerBoundRecipientOrCorrelation() {
+        String valid = validPayload("GUARDIAN", 10, 10,
+                "919999999999", "919999999999", OffsetDateTime.now().minusSeconds(5),
+                OffsetDateTime.now().plusSeconds(60));
+        for (String field : new String[]{"mobiles", "Mobiles", "CRQID", "crqid"}) {
+            String payload = valid.replace("\"destination\":\"919999999999\",",
+                    "\"destination\":\"919999999999\",\"variables\":{\"" + field + "\":\"918888888888\"},");
+            assertSuppressed(event(payload), "POLICY_PROVIDER_VARIABLE_NOT_ALLOWED");
+        }
+    }
+
+    @Test
     void expiredOrFutureEvidenceFailsClosed() {
         NotificationInboxEvent expired = event(validPayload("GUARDIAN", 10, 10,
                 "919999999999", "919999999999", OffsetDateTime.now().minusMinutes(3),

@@ -1,0 +1,1733 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking controlled Drive photo import",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "school-core-service",
+  "x-ims-controller": "StudentPhotoImportController",
+  "x-ims-gateway-service": "student",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "PhotoImportClient",
+  "x-ims-client-file": "photoImportClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "x-ims-request-options": [
+    "signal",
+    "timeout",
+    "onDownloadProgress"
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/student-photo-imports/context": {
+      "get": {
+        "operationId": "getContext",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportContext"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports": {
+      "get": {
+        "operationId": "listBatches",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PhotoImportBatch"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createBatch",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePhotoImportRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/folders/{schoolId}/provision": {
+      "post": {
+        "operationId": "provisionFolder",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportProvisioning"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{id}": {
+      "get": {
+        "operationId": "getBatch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{id}/scan": {
+      "post": {
+        "operationId": "scanBatch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{id}/freeze": {
+      "post": {
+        "operationId": "freezeBatch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{id}/cancel": {
+      "post": {
+        "operationId": "cancelBatch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{id}/execute": {
+      "post": {
+        "operationId": "executeBatch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportBatch"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{id}/access-revoked": {
+      "post": {
+        "operationId": "markAccessRevoked",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportAccess"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{batchId}/rows/{rowId}": {
+      "post": {
+        "operationId": "reviewRow",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "rowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportRowReviewResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewPhotoImportRowRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{id}/recover": {
+      "post": {
+        "operationId": "recoverPhotos",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportRecoveryResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecoverAppliedPhotosRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{id}/recovery-progress": {
+      "get": {
+        "operationId": "getRecoveryProgress",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoImportRecoveryProgress"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{batchId}/rows/{rowId}/preview": {
+      "get": {
+        "operationId": "getPreview",
+        "parameters": [
+          {
+            "name": "batchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "rowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    },
+    "/api/v1/student-photo-imports/{id}/result": {
+      "get": {
+        "operationId": "downloadResult",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid scope, mapping or review state"
+          },
+          "401": {
+            "description": "Unauthenticated"
+          },
+          "403": {
+            "description": "Role, permission, module or school scope denied"
+          },
+          "404": {
+            "description": "Batch or row not found"
+          },
+          "409": {
+            "description": "Source or active-batch conflict"
+          },
+          "422": {
+            "description": "Drive source rejected"
+          },
+          "429": {
+            "description": "Drive rate limited"
+          },
+          "503": {
+            "description": "Drive not configured"
+          },
+          "502": {
+            "description": "Drive provider or fetch failure"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "PhotoImportBatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "schoolId",
+          "schoolUid",
+          "schoolName",
+          "academicYearId",
+          "academicYearLabel",
+          "driveFolderId",
+          "driveFolderName",
+          "workbookFileId",
+          "workbookFileName",
+          "status",
+          "snapshotHash",
+          "totalRows",
+          "readyCount",
+          "heldCount",
+          "errorCount",
+          "appliedCount",
+          "failedCount",
+          "createdBy",
+          "executedBy",
+          "createdAt",
+          "scannedAt",
+          "frozenAt",
+          "executedAt",
+          "updatedAt",
+          "photographerAccessExpiresAt",
+          "photographerAccessRevokedAt",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "schoolUid": {
+            "type": "string"
+          },
+          "schoolName": {
+            "type": "string"
+          },
+          "academicYearId": {
+            "type": "string"
+          },
+          "academicYearLabel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "driveFolderId": {
+            "type": "string"
+          },
+          "driveFolderName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "workbookFileId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "workbookFileName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "snapshotHash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "totalRows": {
+            "type": "integer"
+          },
+          "readyCount": {
+            "type": "integer"
+          },
+          "heldCount": {
+            "type": "integer"
+          },
+          "errorCount": {
+            "type": "integer"
+          },
+          "appliedCount": {
+            "type": "integer"
+          },
+          "failedCount": {
+            "type": "integer"
+          },
+          "createdBy": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "executedBy": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scannedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "frozenAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "executedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "photographerAccessExpiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "photographerAccessRevokedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/PhotoImportRepository.java",
+          "name": "Batch",
+          "requireAll": true
+        }
+      },
+      "PhotoImportRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "batchId",
+          "schoolId",
+          "excelRow",
+          "admissionNo",
+          "workbookName",
+          "className",
+          "sectionName",
+          "imageNo",
+          "driveFileId",
+          "driveFileName",
+          "studentId",
+          "status",
+          "message",
+          "priorPhotoKey",
+          "finalPhotoKey",
+          "sourceChecksum",
+          "sourceSha256",
+          "cropX",
+          "cropY",
+          "manuallyReviewed",
+          "sourceObjectKey",
+          "appliedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "excelRow": {
+            "type": "integer"
+          },
+          "admissionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "workbookName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "className": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sectionName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "imageNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "driveFileId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "driveFileName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "studentId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "priorPhotoKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finalPhotoKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceChecksum": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceSha256": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cropX": {
+            "type": "number"
+          },
+          "cropY": {
+            "type": "number"
+          },
+          "manuallyReviewed": {
+            "type": "boolean"
+          },
+          "sourceObjectKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "appliedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/PhotoImportRepository.java",
+          "name": "ImportRow",
+          "requireAll": true
+        }
+      },
+      "PhotoImportAccess": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expiresAt",
+          "revokedAt",
+          "overdue"
+        ],
+        "properties": {
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "overdue": {
+            "type": "boolean"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/PhotoImportRepository.java",
+          "name": "AccessState",
+          "requireAll": true
+        }
+      },
+      "PhotoImportRecoveryRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rowId",
+          "status",
+          "photoKey",
+          "message"
+        ],
+        "properties": {
+          "rowId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "photoKey": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/PhotoImportRepository.java",
+          "name": "RecoveryResult",
+          "requireAll": true
+        }
+      },
+      "PhotoImportRecoveryProgress": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batchId",
+          "schoolId",
+          "totalCount",
+          "processedCount",
+          "recoveredCount",
+          "protectedCount",
+          "failedCount",
+          "inProgressCount",
+          "pendingCount",
+          "percentComplete",
+          "resumable",
+          "updatedAt"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "totalCount": {
+            "type": "integer"
+          },
+          "processedCount": {
+            "type": "integer"
+          },
+          "recoveredCount": {
+            "type": "integer"
+          },
+          "protectedCount": {
+            "type": "integer"
+          },
+          "failedCount": {
+            "type": "integer"
+          },
+          "inProgressCount": {
+            "type": "integer"
+          },
+          "pendingCount": {
+            "type": "integer"
+          },
+          "percentComplete": {
+            "type": "integer"
+          },
+          "resumable": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/PhotoImportRepository.java",
+          "name": "RecoveryProgress",
+          "requireAll": true
+        }
+      },
+      "PhotoImportRecoveryResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batchId",
+          "schoolId",
+          "selectedCount",
+          "recoveredCount",
+          "alreadyRecoveredCount",
+          "inProgressCount",
+          "protectedCount",
+          "failedCount",
+          "rows",
+          "progress"
+        ],
+        "properties": {
+          "batchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "selectedCount": {
+            "type": "integer"
+          },
+          "recoveredCount": {
+            "type": "integer"
+          },
+          "alreadyRecoveredCount": {
+            "type": "integer"
+          },
+          "inProgressCount": {
+            "type": "integer"
+          },
+          "protectedCount": {
+            "type": "integer"
+          },
+          "failedCount": {
+            "type": "integer"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhotoImportRecoveryRow"
+            }
+          },
+          "progress": {
+            "$ref": "#/components/schemas/PhotoImportRecoveryProgress"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/PhotoImportService.java",
+          "name": "RecoveryBatchResult",
+          "requireAll": true
+        }
+      },
+      "PhotoImportSchool": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "schoolUid",
+          "name",
+          "shortCode",
+          "academicYearId",
+          "academicYearLabel",
+          "driveFolderStatus",
+          "driveFolderId",
+          "driveFolderName",
+          "driveFolderUrl",
+          "driveFolderError"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "schoolUid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "shortCode": {
+            "type": "string"
+          },
+          "academicYearId": {
+            "type": "string"
+          },
+          "academicYearLabel": {
+            "type": "string"
+          },
+          "driveFolderStatus": {
+            "type": "string"
+          },
+          "driveFolderId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "driveFolderName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "driveFolderUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "driveFolderError": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/PhotoImportService.java",
+          "name": "SchoolPhotoImportContext",
+          "requireAll": true
+        }
+      },
+      "PhotoImportProvisioning": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schoolId",
+          "schoolUid",
+          "schoolName",
+          "shortCode",
+          "academicYearId",
+          "academicYearLabel",
+          "status",
+          "folderId",
+          "folderName",
+          "folderUrl",
+          "error"
+        ],
+        "properties": {
+          "schoolId": {
+            "type": "integer"
+          },
+          "schoolUid": {
+            "type": "string"
+          },
+          "schoolName": {
+            "type": "string"
+          },
+          "shortCode": {
+            "type": "string"
+          },
+          "academicYearId": {
+            "type": "string"
+          },
+          "academicYearLabel": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "folderId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "folderName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "folderUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/DriveFolderProvisioningService.java",
+          "name": "ProvisioningResult",
+          "requireAll": true
+        }
+      },
+      "PhotoImportContext": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "driveConfigured",
+          "managedDriveConfigured",
+          "schools",
+          "mappingColumns",
+          "mappingFileFormats",
+          "mappingRowLimit",
+          "imageFileLimit",
+          "fileNameRule"
+        ],
+        "properties": {
+          "driveConfigured": {
+            "type": "boolean"
+          },
+          "managedDriveConfigured": {
+            "type": "boolean"
+          },
+          "schools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhotoImportSchool"
+            }
+          },
+          "mappingColumns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mappingFileFormats": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mappingRowLimit": {
+            "type": "integer"
+          },
+          "imageFileLimit": {
+            "type": "string"
+          },
+          "fileNameRule": {
+            "type": "string"
+          }
+        }
+      },
+      "PhotoImportDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batch",
+          "rows",
+          "access",
+          "recoveryProgress"
+        ],
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/PhotoImportBatch"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PhotoImportRow"
+            }
+          },
+          "access": {
+            "$ref": "#/components/schemas/PhotoImportAccess"
+          },
+          "recoveryProgress": {
+            "$ref": "#/components/schemas/PhotoImportRecoveryProgress"
+          }
+        }
+      },
+      "PhotoImportRowReviewResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "batch",
+          "row"
+        ],
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/PhotoImportBatch"
+          },
+          "row": {
+            "$ref": "#/components/schemas/PhotoImportRow"
+          }
+        }
+      },
+      "CreatePhotoImportRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schoolId",
+          "academicYearId"
+        ],
+        "properties": {
+          "schoolId": {
+            "type": "integer"
+          },
+          "academicYearId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "driveFolderUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
+          "name": "CreatePhotoImportRequest"
+        }
+      },
+      "ReviewPhotoImportRowRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "admissionNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "imageNo": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "excluded": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "cropX": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          },
+          "cropY": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
+          "name": "RowReviewRequest"
+        }
+      },
+      "RecoverAppliedPhotosRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rowIds"
+        ],
+        "properties": {
+          "rowIds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentPhotoImportController.java",
+          "name": "RecoverAppliedPhotosRequest"
+        }
+      }
+    }
+  }
+}

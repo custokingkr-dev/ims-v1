@@ -39,6 +39,8 @@ public final class AbsenteeDeliveryStateMachine {
             case DRY_RUN -> new Transition(AbsenteeNotificationStatus.SENT_DRY_RUN, attempts, null, null, null, true);
             case SUPPRESSED -> new Transition(AbsenteeNotificationStatus.SUPPRESSED, attempts, null, null, null, true);
             case PERMANENT_FAILURE -> new Transition(AbsenteeNotificationStatus.DEAD_LETTER, attempts, null, null, now, true);
+            case UNKNOWN -> new Transition(AbsenteeNotificationStatus.UNKNOWN, attempts, null, null, null, true);
+            case ACCEPTED -> new Transition(AbsenteeNotificationStatus.ACCEPTED, attempts, null, null, null, true);
             case TRANSIENT_FAILURE -> attempts >= maxAttempts
                     ? new Transition(AbsenteeNotificationStatus.DEAD_LETTER, attempts, null, null, now, true)
                     : new Transition(AbsenteeNotificationStatus.FAILED, attempts, now.plus(backoffFor(attempts)), null, null, false);

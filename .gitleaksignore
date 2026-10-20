@@ -9,3 +9,36 @@
 # Keep these suppressions bound to the exact historical findings.
 f185f3e923b73d01b5b32b87a15482667b591e42:tools/live-dashboard/auth.test.mjs:generic-api-key:8
 f185f3e923b73d01b5b32b87a15482667b591e42:tools/live-dashboard/server.test.mjs:generic-api-key:8
+
+# Verified evidence false positive: this historical field is the SHA256 digest of
+# one synthetic GCS object name, not a credential. The current field is named
+# objectNameDigestSha256. Bind the exception to this one historical finding.
+70172a078642043c6c98a41c490f8a6b57e0064c:docs/security-remediation/acceptance-live-durable-photo-erasure.json:generic-api-key:87
+
+# Verified historical evidence false positives: SHA256 digests of gateway job
+# logs, not credentials. Current JSON separates logName and digestSha256.
+# Suppress only these two exact historical findings, preserving all scan rules.
+898274fedead3aa2b826da688d2af69ed943bd6c:docs/security-remediation/acceptance-report-verifier-release-tests.json:generic-api-key:156
+898274fedead3aa2b826da688d2af69ed943bd6c:docs/security-remediation/acceptance-report-verifier-ci.json:generic-api-key:279
+
+# Verified frozen photo-evidence false positive: keySha256 is the SHA256 checksum
+# of the owned synthetic GCS object name. Preserve the original captured bytes;
+# exclude only this historical commit/file/rule/line, not future findings.
+8bc25bb598d3d8a3cabd19b833dbb972f720e652:docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json:generic-api-key:175
+
+# PR331 squash merge reidentified the same unchanged, source-verified synthetic
+# object-name checksum. Exclude only this observed merge commit/file/rule/line.
+34c2bf35d8be0239ad3d65c50b74faea164bc2c7:docs/security-remediation/acceptance-portrait-metadata-live-photo-erasure.json:generic-api-key:175
+
+# Verified PR337 evidence false positive: this one historical field is the SHA256
+# of the retained platform Actions job log, independently recomputed from bytes.
+# Current copied evidence uses digestSha256 and records its explicit field-name
+# normalization; the original capture is preserved. No rule or path is excluded.
+260c0f4d18531d2015e43c3c0eb6ebe6f0c6e3f0:docs/security-remediation/acceptance-callback-body-completion.json:generic-api-key:1305
+
+# Verified PR339 historical false positives: exactly two SHA256 digests of
+# retained platform/school Actions API log bytes, independently recomputed.
+# Copied evidence uses digestSha256 and indexes the field-name normalization;
+# exclude only these observed historical commit/file/rule/lines.
+c13b59acbb4488514f1bc625863ec2e21cb95065:docs/security-remediation/acceptance-execution-boundary-release-tests.json:generic-api-key:482
+c13b59acbb4488514f1bc625863ec2e21cb95065:docs/security-remediation/acceptance-execution-boundary-release-tests.json:generic-api-key:492

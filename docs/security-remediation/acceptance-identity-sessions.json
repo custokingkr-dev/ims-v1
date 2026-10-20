@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "project": "custoking-dev",
+  "marker": "SEC-ACPT-20261007",
+  "checkedAtUtc": "2026-10-07T09:29:50.738880+00:00",
+  "checks": [
+    {
+      "check": "login-authoritative-school-role",
+      "schoolId": 990007101,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "check": "own-school-read",
+      "actorSchoolId": 990007101,
+      "requestedSchoolId": 990007101,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "check": "foreign-school-denied",
+      "actorSchoolId": 990007101,
+      "requestedSchoolId": 990007102,
+      "status": 403,
+      "passed": true
+    },
+    {
+      "check": "logout-revokes-access-session",
+      "schoolId": 990007101,
+      "status": 401,
+      "passed": true
+    },
+    {
+      "check": "login-authoritative-school-role",
+      "schoolId": 990007102,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "check": "own-school-read",
+      "actorSchoolId": 990007102,
+      "requestedSchoolId": 990007102,
+      "status": 200,
+      "passed": true
+    },
+    {
+      "check": "foreign-school-denied",
+      "actorSchoolId": 990007102,
+      "requestedSchoolId": 990007101,
+      "status": 403,
+      "passed": true
+    },
+    {
+      "check": "logout-revokes-access-session",
+      "schoolId": 990007102,
+      "status": 401,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "syntheticOnly": true,
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification"
+}

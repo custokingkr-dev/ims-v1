@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T10:46:15.654677+00:00",
+  "project": "custoking-dev",
+  "sourcePullRequest": 333,
+  "sourceHeadSha": "85dee5201bd0f132d8e59802298f5d946f39f8e2",
+  "mergedSourceSha": "c3fea43b44242a8e0df5ea3a4bc266e416b31c40",
+  "devReleaseRunId": 37763701675,
+  "sourceCiRunId": 37762887391,
+  "sourceCodeqlRunId": 37762886918,
+  "postmergeCodeqlRunId": 37763701164,
+  "providerRestoreSourceDevAcceptanceComplete": true,
+  "platformReleaseTests": {
+    "service": "platform-service",
+    "jobId": 113266225098,
+    "conclusion": "success",
+    "reported": 448,
+    "passed": 448,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "logSha256": "f13993c5fdbce543079079484f18cd5f80b4cb0d770312d50a250f5b1650752b",
+    "rawLogSaved": false
+  },
+  "readyServiceCount": 7,
+  "changedRuntimeCount": 1,
+  "retainedBaselineRuntimeAndRevisionCount": 6,
+  "newOwnerJobsIndependentlyAbsent": 1,
+  "baselineOwnerJobsIndependentlyRechecked": 5,
+  "platformPackageEvidence": {
+    "service": "platform-service",
+    "package": "libpng16-16t64",
+    "installedVersion": "1.6.43-5ubuntu0.7",
+    "minimumVersion": "1.6.43-5ubuntu0.7",
+    "immutableImage": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:63fb07899dfc2910d8f83951c59af276ca552d06949ee92c8ee7af50c42d722a",
+    "runtimeImageFromManifest": "asia-south2-docker.pkg.dev/custoking-dev/custoking/custoking-platform-service@sha256:d0cac586cc61dc0a4f40dccf8fa1913c29f753717f82787bfc22fd6373aec764",
+    "sarifSha256": "43eb516be575ed681a32cfb62487fbbf3448b7b9e6d678e2ae8ba75841a2dc4f",
+    "sarifArtifact": "trivy\\platform-service-sha256-63fb07899dfc2910d8f83951c59af276ca552d06949ee92c8ee7af50c42d722a.sarif",
+    "findingAbsenceUsedAsInventory": false,
+    "nativeApplicabilityClaim": false
+  },
+  "postmergeCodeql": {
+    "runId": 37763701164,
+    "sourceSha": "c3fea43b44242a8e0df5ea3a4bc266e416b31c40",
+    "status": "completed",
+    "conclusion": "success",
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37763701164",
+    "actualDevRefAnalyses": [
+      {
+        "id": 1914993625,
+        "category": "/language:java-kotlin",
+        "ref": "refs/heads/dev",
+        "commit_sha": "c3fea43b44242a8e0df5ea3a4bc266e416b31c40",
+        "created_at": "2026-10-08T10:33:07Z",
+        "results_count": 0,
+        "error": ""
+      },
+      {
+        "id": 1914976483,
+        "category": "/language:javascript-typescript",
+        "ref": "refs/heads/dev",
+        "commit_sha": "c3fea43b44242a8e0df5ea3a4bc266e416b31c40",
+        "created_at": "2026-10-08T10:29:35Z",
+        "results_count": 0,
+        "error": ""
+      }
+    ]
+  },
+  "configuredRollbackTagCount": 2,
+  "publicDenialCount": 15,
+  "frontendCspSmoke": true,
+  "egressPreparation": {
+    "sourceDirectory": "deploy/gcp/application-egress",
+    "disabledByDefault": true,
+    "mockTestsPassed": 17,
+    "liveApplied": false,
+    "liveNetworkEnforcementProven": false,
+    "publicationCiPending": true
+  },
+  "evidence": [
+    {
+      "file": "acceptance-provider-assertion-ci.json",
+      "capturedBytesSha256": "70ec76056532768e775cdcaceaa49f68321730116597d966dff89f32d1ac57fc"
+    },
+    {
+      "file": "acceptance-provider-assertion-dev-release.json",
+      "capturedBytesSha256": "cff544bd1d447c2fceeffbb951f7c38ae6719ea976450b770542d1064f1a5b3b"
+    },
+    {
+      "file": "acceptance-provider-assertion-image-protection.json",
+      "capturedBytesSha256": "20037a2efa2f21362c2adef58306f1be105ce39e2f848f58d8627ac91de5c834"
+    },
+    {
+      "file": "acceptance-provider-assertion-public-smoke.json",
+      "capturedBytesSha256": "05f943bc53db2f996529e83955883c0422690de50d8c291b2286ef6096767c64"
+    },
+    {
+      "file": "acceptance-provider-restore-followup-local.json",
+      "capturedBytesSha256": "00a7cafe16fd975ed2dfbc4e8206d262ebe6d9e383407a366514d212ce56fc15"
+    },
+    {
+      "file": "acceptance-application-egress-local.json",
+      "capturedBytesSha256": "0727a889b36400f30abf4431199dec95ef21969e91954cd34fa511cca58d7fe5"
+    },
+    {
+      "file": "acceptance-application-egress-independent-review.json",
+      "capturedBytesSha256": "88961b523299dc66233395da0de3eec6116287a69eeb8dc44ad6f65071c22638"
+    },
+    {
+      "file": "acceptance-native-runtime-prerequisites.json",
+      "capturedBytesSha256": "a4dbf4e6e1db3663dbf05b848698f44f2343aaffbebfec806aca7385ac236b95"
+    },
+    {
+      "file": "acceptance-upstream-native-followup.json",
+      "capturedBytesSha256": "b026a4bc42253dc5f557a4172f844f9c87529848411e0113f3e858b2ebf3b0f5"
+    },
+    {
+      "file": "acceptance-provider-restore-owner-readback.json",
+      "capturedBytesSha256": "9f2c36039bed3448e6e31744b34bdfd14be4a64572bac1571c6cee3e7d1e13da"
+    }
+  ],
+  "frozenHistoricalGitEvidenceVerified": [
+    {
+      "file": "acceptance-runtime-os-edge-config-baseline.json",
+      "gitBlobSha256": "c7c26a593c2ee777134719272540f5150798a1d352351fc348eb586ed5ad3947"
+    },
+    {
+      "file": "acceptance-runtime-os-owner-readback.json",
+      "gitBlobSha256": "4315c89bc4afa42694cd505609f703d802e16e10a88fb8830880fc67568338f8"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-ci.json",
+      "gitBlobSha256": "cf35ba5a5f532195895294ddbf47654305b5211b547bc6bc553d777cbff257e3"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-dev-release.json",
+      "gitBlobSha256": "eb04a1abb34404d8f06e1ec4cc45375d281214a38d259c36a044718431966aa6"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-image-protection.json",
+      "gitBlobSha256": "df58a360eecf1f2d7f249619248cb429be8c018cbc1980786d67f11f6e1e9f39"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-public-smoke.json",
+      "gitBlobSha256": "ea4f53ad8f6fe360625097c11637688025ae9d9c2e26785e964cbaaf0ed09c7a"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-release-inventory.json",
+      "gitBlobSha256": "2f17ca7f4660dc5ecd381b9781b1afce3e41c3ca38d80276925c04fbce9b2095"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-release-tests.json",
+      "gitBlobSha256": "5e20733678befcf18b1eabb26985238cbc4ce71577ca80fa98ec3b7ef3353481"
+    },
+    {
+      "file": "acceptance-runtime-os-patches-source-scan.json",
+      "gitBlobSha256": "075b7b48afa1f163865ca22e0a9fcd0f7303caaaa48e71155f6cef53acca2799"
+    },
+    {
+      "file": "acceptance-runtime-os-upstream-fix-plan.json",
+      "gitBlobSha256": "208e1baa7f5e26bf31d4796f033aed63e75afd6d105d47367ec2f0fa6dd3e265"
+    },
+    {
+      "file": "acceptance-portrait-metadata-ci.json",
+      "gitBlobSha256": "a18ad0cc2191da7358789c45bd63977edbfe09408ecc2ea65352548637574400"
+    },
+    {
+      "file": "acceptance-portrait-metadata-combined-dev-inventory.json",
+      "gitBlobSha256": "8373848df3ac0e6b99d46972e656b4a4a9473245ba10265094492a5194295857"
+    },
+    {
+      "file": "acceptance-portrait-metadata-dev-release.json",
+      "gitBlobSha256": "b8752bdd26cceb0ed6fd0efb14293e044c20235d67fdf93660fc7ce5d9a422bc"
+    },
+    {
+      "file": "acceptance-portrait-metadata-image-protection.json",
+      "gitBlobSha256": "65d4eb961bc1741bfc7f79c62dd1df2abc4d3e9731e9712cb1f99675a3e01872"
+    },
+    {
+      "file": "acceptance-portrait-metadata-live-photo-erasure.json",
+      "gitBlobSha256": "2c47e34d681bda491d73349d76c446319818d941928154ae569119cabb33f3b1"
+    },
+    {
+      "file": "acceptance-portrait-metadata-obsolete-revision-preflight.json",
+      "gitBlobSha256": "2fc78a7a36eed6828b79c986f52c259707f58da908d8a4b16a97b96eef3ad814"
+    },
+    {
+      "file": "acceptance-portrait-metadata-public-smoke.json",
+      "gitBlobSha256": "2e61b756de09a947db135d3dac8fa028eabd4fd69bebc8030acf971a5bb0e867"
+    },
+    {
+      "file": "acceptance-portrait-metadata-release-inventory.json",
+      "gitBlobSha256": "73f0a32a8986adf30270e62d252e131d11050df5d0a3bd036a5715a22df048ad"
+    },
+    {
+      "file": "acceptance-portrait-metadata-release-tests.json",
+      "gitBlobSha256": "cc0f5fe6f630261679f533a794bde559106ac27feace3838d0d213d0e4ea3663"
+    },
+    {
+      "file": "acceptance-portrait-owner-readback.json",
+      "gitBlobSha256": "597b2db9ece74217dcad5f6bbf194ea1cff285904ef0557bf84895c626bffe0d"
+    },
+    {
+      "file": "acceptance-libpng-vendor-patch-research.json",
+      "gitBlobSha256": "723198bc457533b98afabaf71f979da017e563827f230b7ce1429835ab4bc8f6"
+    },
+    {
+      "file": "acceptance-libpng-refresh-initial-failure.json",
+      "gitBlobSha256": "e0e5a62ce12e9a055a1e817a1947fc69760ab9711983c4af2b861c8269565cb5"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-ci.json",
+      "gitBlobSha256": "34266eb3a804162e78d0f923eb9bff0cfd9ad3bacb1c9b19202435776f55fcb3"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-dev-release.json",
+      "gitBlobSha256": "5a955ffdd0a417aef4e63a660c8f2a83f82696a0d57030cbfa9033b6539ece2f"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-image-protection.json",
+      "gitBlobSha256": "ef77ac2ea0aaf6444e6b2054988f84b5aad1e4b0310134b99e165dfd073b9031"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-public-smoke.json",
+      "gitBlobSha256": "cd939560f2cca6ff19d69df700c0a89826a481f03669e5b0a90b3681213a4228"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-release-inventory.json",
+      "gitBlobSha256": "83e8464bf86f8ba66ec5745d99ef55aef5edbf7d260c11520ecf3e1b955b0ce6"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-release-tests.json",
+      "gitBlobSha256": "034bc62c39e9d6b0a28a483faf33b064b9c8b400661a874fa69b81ec52421853"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-owner-readback.json",
+      "gitBlobSha256": "b6535c913d5f85e371a8b2af9fdc185286fdf998516b04d2ef84cdcc59468e6b"
+    },
+    {
+      "file": "acceptance-runtime-patch-cycle-obsolete-revision-preflight.json",
+      "gitBlobSha256": "946b5c706e14c1fc91731ccc96bf6ae97a47fc7e3437789013aa0cf9b8220326"
+    },
+    {
+      "file": "acceptance-evidence-secret-scan-false-positive.json",
+      "gitBlobSha256": "44ad6ce8d130bcf9c6e5c1b4b73026c6b801a3ede497df924f11209cbe4b551d"
+    },
+    {
+      "file": "acceptance-evidence-postmerge-secret-scan.json",
+      "gitBlobSha256": "44c97845174a3d9352a17b6935c72d02eb380b291d4c25014072fb68dac79e49"
+    }
+  ],
+  "securityPlanComplete": false,
+  "allPossibleAttacksEliminated": false,
+  "allBusinessFeaturesIndividuallyExercised": false,
+  "liveProviderAdmission": false,
+  "vendorLostResponseAttestationProven": false,
+  "governedFullRestoreComplete": false,
+  "globalHistoricalCoverageProven": false,
+  "deliveryResume": false,
+  "physicalAuthenticatorAcceptanceComplete": false,
+  "irreversibleRevisionDeletionApproved": false,
+  "revisionsDeleted": 0,
+  "productionChanged": false,
+  "openOwnerActionIds": [
+    "edge",
+    "repository",
+    "dashboard",
+    "provider",
+    "hardware",
+    "retention_restore",
+    "capacity_cleanup",
+    "http2",
+    "egress_files"
+  ],
+  "additionalOpenFindings": [
+    "Residual native advisory/backport/scanner review and retained historical alerts",
+    "Unclassified local snapshot image custody"
+  ],
+  "fixPlan": "remaining-implementation-followup.md",
+  "ownerCompletionCriteria": "acceptance-owner-actions.md",
+  "limits": [
+    "Source/local/CI/dev scopes and overlapping tests are separate",
+    "New platform scan is fresh; four retained Java native observations keep PR330 dates",
+    "Configured KEEP retention does not prevent manual deletion",
+    "No actual provider, physical hardware, full clone/recovery, object recovery-copy purge or capacity certificate",
+    "Final publication CI/no-deployment/readback required separately; this checkpoint is not those future results"
+  ]
+}

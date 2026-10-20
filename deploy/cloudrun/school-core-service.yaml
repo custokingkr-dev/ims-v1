@@ -2,8 +2,11 @@ apiVersion: serving.knative.dev/v1
 kind: Service
 metadata:
   name: custoking-school-core-service-dev # from-param: custoking-school-core-service-${env}
+  annotations:
+    run.googleapis.com/maxScale: "2" # from-param: ${domain_max_instances}
   labels:
     app: custoking-ims
+    security-profile: dedicated-runtime-v1
     component: cloud-run
     service: school-core-service
     env: dev # from-param: ${env}
@@ -14,7 +17,7 @@ spec:
     metadata:
       annotations:
         autoscaling.knative.dev/minScale: "0" # from-param: ${domain_min_instances}
-        autoscaling.knative.dev/maxScale: "4" # from-param: ${domain_max_instances}
+        autoscaling.knative.dev/maxScale: "2" # from-param: ${domain_max_instances}
         run.googleapis.com/cpu-throttling: "true"
         run.googleapis.com/startup-cpu-boost: "false" # from-param: ${startup_cpu_boost}
         run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
@@ -47,20 +50,28 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 3
           env:
+            - name: APP_MIGRATIONS_ENABLED
+              value: "false"
+            - name: USER_CONTEXT_CALLER_SERVICE_ACCOUNTS
+              value: ims-api-gateway-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${user_context_caller_service_accounts}
             - name: SPRING_PROFILES_ACTIVE
               value: prod
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://placeholder:5432/app?sslmode=require # from-param: jdbc:postgresql://${db_host}/${db_name}?sslmode=require
             - name: SPRING_DATASOURCE_USERNAME
-              value: app_rt
-            # Four peak instances x 20 connections = 80, leaving at least 120 of the
-            # dev/prod Cloud SQL max_connections=200 budget for other services/admin work.
+              value: app_rt # from-param: ${runtime_db_role}
             - name: DB_POOL_MAX
-              value: "20"
-            - name: FLYWAY_URL
-              value: jdbc:postgresql://placeholder:5432/app?sslmode=require # from-param: jdbc:postgresql://${db_host}/${db_name}?sslmode=require
-            - name: FLYWAY_USERNAME
-              value: appuser
+              value: "8"
+            - name: RUNTIME_DB_ROLE
+              value: app_rt # from-param: ${runtime_db_role}
+            - name: SERVICE_OIDC_AUDIENCES
+              value: https://custoking-school-core-service-dev-1087017280590.asia-south2.run.app # from-param: ${service_oidc_audiences}
+            - name: OUTBOX_RELAY_CALLER_SERVICE_ACCOUNTS
+              value: ims-async-scheduler-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${outbox_relay_caller_service_accounts}
+            - name: BROADCAST_POLICY_CALLER_SERVICE_ACCOUNTS
+              value: ims-platform-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${broadcast_policy_caller_service_accounts}
+            - name: IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS
+              value: ims-identity-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${identity_directory_caller_service_accounts}
             - name: SCHOOL_CORE_MERGED
               value: "true"
             - name: SCHOOL_CORE_DATASOURCE_SCHEMAS
@@ -101,6 +112,21 @@ spec:
             # (grant the runtime SA secretAccessor first), grant the runtime SA roles/run.invoker on
             # custoking-platform-service-${env}, and supply ATTENDANCE_ABSENTEE_WHATSAPP_TEMPLATE_NAME.
             # platform-service's own MSG91 live block is a separate governance gate.
+            # Precommit journal is enabled only by the reviewed dev target; production defaults off.
+            - name: STUDENT_ERASURE_JOURNAL_ENABLED
+              value: "false" # from-param: ${student_erasure_journal_enabled}
+            - name: STUDENT_ERASURE_JOURNAL_PROJECT_ID
+              value: "" # from-param: ${student_erasure_journal_project_id}
+            - name: STUDENT_ERASURE_JOURNAL_BUCKET
+              value: "" # from-param: ${student_erasure_journal_bucket}
+            - name: STUDENT_ERASURE_JOURNAL_SOURCE_LINEAGE_ID
+              value: "" # from-param: ${student_erasure_journal_source_lineage_id}
+            - name: STUDENT_ERASURE_JOURNAL_RESTORE_EPOCH
+              value: "" # from-param: ${student_erasure_journal_restore_epoch}
+            - name: STUDENT_ERASURE_JOURNAL_EPOCH_GENERATION
+              value: "0" # from-param: ${student_erasure_journal_epoch_generation}
+            - name: STUDENT_ERASURE_JOURNAL_EPOCH_SHA256
+              value: "" # from-param: ${student_erasure_journal_epoch_sha256}
             - name: ATTENDANCE_ABSENTEE_DELIVERY_MODE
               value: dry-run
             - name: PLATFORM_BASE_URL
@@ -136,12 +162,7 @@ spec:
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: app-rt-password-dev # from-param: app-rt-password-${env}
-                  key: latest
-            - name: FLYWAY_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: db-password-dev # from-param: db-password-${env}
+                  name: app-rt-password-dev # from-param: ${runtime_db_password_secret}
                   key: latest
             - name: TENANT_SCHOOL_READ_TOKEN
               valueFrom:

@@ -2,7 +2,22 @@ $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $fixtures = Join-Path $repo ('artifacts/tests/rollout-groups-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $fixtures -Force | Out-Null
-$allServices = @('school-core-service','identity-service','operations-service','billing-service','platform-service','api-gateway','frontend')
+$allServices = @('api-gateway','identity-service','frontend','school-core-service','operations-service','billing-service','platform-service')
+$fixtureScripts = Join-Path $fixtures 'scripts'
+New-Item -ItemType Directory -Path $fixtureScripts | Out-Null
+foreach ($name in @('invoke-clouddeploy-release.ps1','wait-clouddeploy-rollout-group.ps1')) {
+  Copy-Item -LiteralPath (Join-Path $repo "scripts/$name") -Destination $fixtureScripts
+}
+# Replace only the external migration boundary in the isolated test copy.
+@'
+param($ProjectId,$Region,$Environment,$Service,$ImageRef,$CommitSha,$ConfigSource,$OutputDirectory)
+if ($ProjectId -ne 'fixture-prod' -or $Region -ne 'asia-south2' -or $Environment -ne 'prod' -or
+    $ConfigSource -ne 'CloudDeploy' -or $ImageRef -notmatch '@sha256:b{64}$' -or $CommitSha -ne ('a'*40)) {
+  throw 'Migration must use the exact runtime digest and explicit selected environment'
+}
+$global:rolloutMock.events.Add("migration/$Service")
+if ($global:rolloutMock.failMigration -eq $Service) { throw 'MIGRATION_FAILED' }
+'@ | Set-Content -LiteralPath (Join-Path $fixtureScripts 'invoke-service-migration-job.ps1')
 
 function Assert-True($Condition, [string]$Message) { if (!$Condition) { throw $Message } }
 function global:Invoke-CiRolloutGcloudMock {
@@ -15,9 +30,14 @@ function global:Invoke-CiRolloutGcloudMock {
   $global:rolloutMock.events.Add("$verb/$service")
   if ($verb -eq 'deploy releases create') {
     $active = @($global:rolloutMock.states.Keys | Where-Object { $global:rolloutMock.states[$_].stage -lt 4 })
-    if ($service -ne 'school-core-service' -and $global:rolloutMock.selected -contains 'school-core-service' -and $global:rolloutMock.states['school-core-service'].stage -ne 4) { throw 'School-core dependency barrier violated' }
-    if ($service -eq 'api-gateway' -and $active.Count -gt 0) { throw 'Gateway started before backends completed' }
-    if ($service -eq 'frontend' -and $active.Count -gt 0) { throw 'Frontend started before gateway completed' }
+    foreach ($dependency in @('api-gateway','identity-service','frontend','school-core-service')) {
+      if ($dependency -eq $service) { break }
+      if ($global:rolloutMock.selected -contains $dependency -and $global:rolloutMock.states[$dependency].stage -ne 4) {
+        throw "Required dependency $dependency was not ready before $service"
+      }
+    }
+    if ($service -in @('identity-service','school-core-service','operations-service','billing-service','platform-service') -and
+        $global:rolloutMock.events -notcontains "migration/$service") { throw 'Release started before its migration completed' }
     $global:rolloutMock.states[$service] = @{stage=0;describes=0}
     $global:rolloutMock.maxActive = [Math]::Max($global:rolloutMock.maxActive, $active.Count + 1)
     if ($global:rolloutMock.failCreate -eq $service) { $global:LASTEXITCODE=1 }
@@ -56,14 +76,14 @@ function global:Start-Sleep {
   if ($global:rolloutMock.sleeps -gt 40) { throw 'MOCK_WAIT_LIMIT' }
 }
 
-function Run-Case([string]$Name, [string[]]$Services, [int]$Concurrency=2, [string]$FailService='', [string]$FailCreate='', [string]$Approval='', [switch]$NoWait, [string]$StaleService='', [string]$PhaseFailure='') {
-  $global:rolloutMock = @{selected=$Services;states=@{};events=[Collections.Generic.List[string]]::new();maxActive=0;sleeps=0;failService=$FailService;failCreate=$FailCreate;approval=$Approval;staleService=$StaleService;phaseFailure=$PhaseFailure}
+function Run-Case([string]$Name, [string[]]$Services, [int]$Concurrency=2, [string]$FailService='', [string]$FailCreate='', [string]$Approval='', [switch]$NoWait, [string]$StaleService='', [string]$PhaseFailure='', [string]$FailMigration='') {
+  $global:rolloutMock = @{selected=$Services;states=@{};events=[Collections.Generic.List[string]]::new();maxActive=0;sleeps=0;failService=$FailService;failCreate=$FailCreate;approval=$Approval;staleService=$StaleService;phaseFailure=$PhaseFailure;failMigration=$FailMigration}
   $inputPath = Join-Path $fixtures "$Name-images.json"
   $outputPath = Join-Path $fixtures "$Name-deployment.json"
-  @{services=@($Services | ForEach-Object { @{service=$_;image="custoking-$_";immutableRef=('region-docker.pkg.dev/fixture-prod/images/' + $_ + '@sha256:' + ('a'*64))} })} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $inputPath
+  @{services=@($Services | ForEach-Object { @{service=$_;image="custoking-$_";immutableRef=('region-docker.pkg.dev/fixture-prod/images/' + $_ + '@sha256:' + ('a'*64));runtimeRef=('region-docker.pkg.dev/fixture-prod/images/' + $_ + '@sha256:' + ('b'*64))} })} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $inputPath
   $errorText = $null
   try {
-    & (Join-Path $repo 'scripts/invoke-clouddeploy-release.ps1') -ProjectId fixture-prod -Region asia-south2 -Environment prod -CommitSha ('a'*40) -RunAttempt 1 -ImagesJson $inputPath -SourceStagingDir gs://fixture-staging/source -OutputPath $outputPath -WaitForRollout:(!$NoWait) -AutoAdvanceCanary -MaxParallelRollouts $Concurrency 6>$null
+    & (Join-Path $fixtureScripts 'invoke-clouddeploy-release.ps1') -ProjectId fixture-prod -Region asia-south2 -Environment prod -CommitSha ('a'*40) -RunAttempt 1 -ImagesJson $inputPath -SourceStagingDir gs://fixture-staging/source -OutputPath $outputPath -WaitForRollout:(!$NoWait) -AutoAdvanceCanary -MaxParallelRollouts $Concurrency 6>$null
   } catch { $errorText=$_.Exception.Message }
   $evidence = if (Test-Path -LiteralPath $outputPath) { Get-Content -Raw -LiteralPath $outputPath | ConvertFrom-Json } else { $null }
   return @{error=$errorText;evidence=$evidence;mock=$global:rolloutMock}
@@ -83,18 +103,20 @@ try {
   $stale=Run-Case stale @('identity-service','operations-service') -StaleService identity-service
   Assert-True (!$stale.error -and @($stale.mock.events | Where-Object { $_ -like 'deploy rollouts advance/*' }).Count -eq 8) 'Stale snapshots must not repeat an advance request'
   $phase=Run-Case phase-failure $allServices -PhaseFailure operations-service
-  Assert-True ($phase.error -like '*phase*ended in FAILED*' -and $phase.mock.states.Count -eq 3) 'A failed phase must block release even before aggregate state catches up'
-  Assert-True (@($phase.mock.events | Where-Object { $_ -eq 'deploy rollouts advance/identity-service' }).Count -eq 0) 'A known failed phase must block peer advancement'
+  Assert-True ($phase.error -like '*phase*ended in FAILED*' -and $phase.mock.states.Count -eq 6) 'A failed phase must block release even before aggregate state catches up'
+  Assert-True (@($phase.mock.events | Where-Object { $_ -eq 'deploy rollouts advance/billing-service' }).Count -eq 0) 'A known failed phase must block peer advancement'
   $serial=Run-Case serial $allServices 1
   Assert-True (!$serial.error -and $serial.mock.maxActive -eq 1) 'Serial fallback must still work'
   $subset=Run-Case subset @('platform-service','frontend')
   Assert-True (!$subset.error -and $subset.evidence.services.Count -eq 2) 'Affected-only releases must not require or deploy absent services'
   $failure=Run-Case failure $allServices 2 operations-service
   Assert-True ($failure.error -like '*ended in FAILED*') 'Terminal failure must stop the release'
-  Assert-True ($failure.mock.states.Count -eq 3 -and $failure.evidence.services.Count -eq 3) 'Failure must retain partial receipts and prevent later backend/gateway/frontend creation'
-  Assert-True (@($failure.mock.events | Where-Object { $_ -eq 'deploy rollouts advance/identity-service' }).Count -eq 0) 'Known peer failure must block all group advancement'
+  Assert-True ($failure.mock.states.Count -eq 6 -and $failure.evidence.services.Count -eq 6) 'Failure must retain partial receipts and prevent later backend creation'
+  Assert-True (@($failure.mock.events | Where-Object { $_ -eq 'deploy rollouts advance/billing-service' }).Count -eq 0) 'Known peer failure must block all group advancement'
   $creation=Run-Case creation $allServices 2 '' operations-service
-  Assert-True ($creation.error -like '*Could not create*' -and $creation.evidence.services.Count -eq 3 -and $creation.evidence.services[-1].status -eq 'create-requested') 'Ambiguous creation must retain the exact attempted release receipt'
+  Assert-True ($creation.error -like '*Could not create*' -and $creation.evidence.services.Count -eq 5 -and $creation.evidence.services[-1].status -eq 'create-requested') 'Ambiguous creation must retain the exact attempted release receipt'
+  $migration=Run-Case migration-failure $allServices -FailMigration school-core-service
+  Assert-True ($migration.error -eq 'MIGRATION_FAILED' -and $migration.mock.states.Count -eq 3) 'Failed migration must prevent its release and every subsequent backend'
   $approval=Run-Case approval @('identity-service') 2 '' '' identity-service
   Assert-True ($approval.error -eq 'MOCK_WAIT_LIMIT') 'Approval must remain pending, not bypassed'
   Assert-True (@($approval.mock.events | Where-Object { $_ -like 'deploy rollouts advance/*' }).Count -eq 0) 'Pending approval must not be advanced'
@@ -103,7 +125,7 @@ try {
   $duplicate=Run-Case duplicate @('identity-service','identity-service')
   Assert-True ($duplicate.error -like '*Unknown or duplicate*' -and $duplicate.mock.events.Count -eq 0) 'Duplicate services must fail before cloud operations'
   $noWait=Run-Case no-wait @('identity-service') -NoWait
-  Assert-True ($noWait.error -like '*require WaitForRollout*' -and $noWait.mock.events.Count -eq 0) 'Parallel mode must require dependency waits'
+  Assert-True ($noWait.error -like '*require*WaitForRollout*' -and $noWait.mock.events.Count -eq 0) 'Parallel mode must require dependency waits'
   Write-Host 'Cloud Deploy rollout group tests passed: bounded overlap, dependency barriers, all canaries, failure/approval handling, partial evidence, affected-only and serial fallback.'
 } finally {
   Remove-Item Function:/gcloud,Function:/gcloud.cmd,Function:/Start-Sleep,Function:/Invoke-CiRolloutGcloudMock -ErrorAction SilentlyContinue

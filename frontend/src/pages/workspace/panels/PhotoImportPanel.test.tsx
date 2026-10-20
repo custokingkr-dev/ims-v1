@@ -587,6 +587,7 @@ describe('PhotoImportPanel', () => {
         cropX: 0.5,
         cropY: 0.5,
       },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     ));
     expect(await screen.findByText(/row review saved/i)).toBeInTheDocument();
   });
@@ -720,4 +721,68 @@ describe('PhotoImportPanel', () => {
       .toHaveAttribute('aria-valuenow', '58');
     expect(screen.getByText(/6 restored, 1 protected, 0 failed, 5 pending/i)).toBeInTheDocument();
   });
+  it('stops scheduling execution chunks after the panel is closed', async () => {
+    const chunk = deferred<any>();
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/student-photo-imports/context') return { data: context } as any;
+      if (url === '/student-photo-imports') return { data: [frozenBatch] } as any;
+      if (url === '/student-photo-imports/batch-2') return { data: { batch: frozenBatch, rows: [] } } as any;
+      throw new Error(`unexpected GET ${url}`);
+    });
+    vi.mocked(api.post).mockReturnValueOnce(chunk.promise).mockResolvedValue({ data: { ...frozenBatch, status: 'COMPLETED', readyCount: 0 } });
+    const panel = render(<PhotoImportPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: /class i photos/i }));
+    fireEvent.click(await screen.findByLabelText(/confirm green valley school, 2026-27, and 18 ready portraits/i));
+    fireEvent.click(await screen.findByRole('button', { name: /execute import/i }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    panel.unmount();
+    await act(async () => chunk.resolve({ data: { ...frozenBatch, status: 'EXECUTING', readyCount: 8, appliedCount: 10 } }));
+    expect(api.post).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops scheduling recovery chunks after the panel is closed', async () => {
+    const chunk = deferred<any>();
+    const applied = Array.from({ length: 6 }, (_, i) => ({ id: `row-${i}`, excelRow: i + 2, admissionNo: `A${i}`, workbookName: `Student ${i}`, className: 'I', sectionName: 'A', status: 'APPLIED', cropX: 0.5, cropY: 0.5, manuallyReviewed: false }));
+    const completed = { ...frozenBatch, status: 'COMPLETED', readyCount: 0, appliedCount: 6 };
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/student-photo-imports/context') return { data: context } as any;
+      if (url === '/student-photo-imports') return { data: [completed] } as any;
+      if (url === '/student-photo-imports/batch-2') return { data: { batch: completed, rows: applied } } as any;
+      throw new Error(`unexpected GET ${url}`);
+    });
+    vi.mocked(api.post).mockReturnValueOnce(chunk.promise).mockResolvedValue({ data: { recoveredCount: 1, alreadyRecoveredCount: 0, inProgressCount: 0, protectedCount: 0, failedCount: 0 } });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const panel = render(<PhotoImportPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: /class i photos/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /restore full-frame photos/i }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    panel.unmount();
+    await act(async () => chunk.resolve({ data: { recoveredCount: 5, alreadyRecoveredCount: 0, inProgressCount: 0, protectedCount: 0, failedCount: 0 } }));
+    expect(api.post).toHaveBeenCalledTimes(1);
+  });
+
+
+
+  it('does not allocate a private preview object URL after the panel is closed', async () => {
+    const pendingPreview = deferred<any>();
+    const createObjectURL = vi.fn(() => 'blob:private-preview');
+    vi.stubGlobal('URL', class extends URL { static createObjectURL = createObjectURL; static revokeObjectURL = vi.fn(); });
+    try {
+      const row = { id: 'row-1', excelRow: 2, admissionNo: 'ADM-1', workbookName: 'Student One', className: 'I', sectionName: 'A', driveFileName: 'DSC123.jpg', status: 'READY', cropX: 0.5, cropY: 0.5, manuallyReviewed: false };
+      vi.mocked(api.get).mockImplementation(async (url: string) => {
+        if (url === '/student-photo-imports/context') return { data: context } as any;
+        if (url === '/student-photo-imports') return { data: [frozenBatch] } as any;
+        if (url === '/student-photo-imports/batch-2') return { data: { batch: frozenBatch, rows: [row] } } as any;
+        if (url === '/student-photo-imports/batch-2/rows/row-1/preview') return pendingPreview.promise;
+        throw new Error(`unexpected GET ${url}`);
+      });
+      const panel = render(<PhotoImportPanel />);
+      fireEvent.click(await screen.findByRole('button', { name: /class i photos/i }));
+      fireEvent.click(await screen.findByRole('button', { name: /preview portrait for student one/i }));
+      panel.unmount();
+      await act(async () => pendingPreview.resolve({ data: new Blob(['private fixture'], { type: 'image/jpeg' }) }));
+      expect(createObjectURL).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); }
+  });
+
 });

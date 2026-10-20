@@ -1,0 +1,251 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-09T17:49:03.827430+00:00",
+  "clientDate": "2026-10-09",
+  "clientTimezone": "Asia/Calcutta",
+  "sourceBase": "f9fb4604ed8ea73f30bd764b3d33cf437f51e042",
+  "decision": "LOCAL_REVIEWED_SOURCE_FIXED_EXACT_LINUX_CI_AND_DEV_PENDING",
+  "sourceFiles": [
+    {
+      "path": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+      "normalizedLfSha256": "f346f134b377c75a690d193be2ab65610fcb11e6a2dd9085bb5a544ec9934abd",
+      "precanonicalWorkingRawSha256": "1a0e8a1605d6d58180daac90e62f7bd044a58570e76ed77e98cdacd14c3d50b2",
+      "canonicalWorkingRawSha256": "f346f134b377c75a690d193be2ab65610fcb11e6a2dd9085bb5a544ec9934abd"
+    },
+    {
+      "path": "services/platform-service/src/test/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportControllerTest.java",
+      "normalizedLfSha256": "391b4c91e3b6bf76667cf21664a6a365a5b6eb15fa3189984df401c99bab10b5",
+      "precanonicalWorkingRawSha256": "f777029396da3da401672532f9ad6341478dadd6631e61ebd9eb31a8ef327fa1",
+      "canonicalWorkingRawSha256": "391b4c91e3b6bf76667cf21664a6a365a5b6eb15fa3189984df401c99bab10b5"
+    },
+    {
+      "path": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/recovery/StudentErasureRecoveryMain.java",
+      "normalizedLfSha256": "5164cf2df01bcb719dad7d8e25f51796d07050c1384b7a672347c33cb1109697",
+      "precanonicalWorkingRawSha256": "1e68533c556d757c1f7ad97489b6c89d20c6723afaba8373992dd0f2afe5dde6",
+      "canonicalWorkingRawSha256": "5164cf2df01bcb719dad7d8e25f51796d07050c1384b7a672347c33cb1109697"
+    },
+    {
+      "path": "services/school-core-service/src/test/java/com/custoking/ims/schoolcoreservice/recovery/IsolatedStudentErasureRecoveryIntegrationTest.java",
+      "normalizedLfSha256": "22c50e8900d17fd0bfbfcbc6fed246f5c393d5ff9fb40a85859d7a9301fc30e8",
+      "precanonicalWorkingRawSha256": "22c50e8900d17fd0bfbfcbc6fed246f5c393d5ff9fb40a85859d7a9301fc30e8",
+      "canonicalWorkingRawSha256": "22c50e8900d17fd0bfbfcbc6fed246f5c393d5ff9fb40a85859d7a9301fc30e8"
+    },
+    {
+      "path": "tools/live-dashboard/release.sh",
+      "normalizedLfSha256": "daa306beb92641b3280c8a88c4a068ebc7b5fb2e6cf1205a8652edcc657d0320",
+      "precanonicalWorkingRawSha256": "daa306beb92641b3280c8a88c4a068ebc7b5fb2e6cf1205a8652edcc657d0320",
+      "canonicalWorkingRawSha256": "daa306beb92641b3280c8a88c4a068ebc7b5fb2e6cf1205a8652edcc657d0320"
+    },
+    {
+      "path": "tools/live-dashboard/README.md",
+      "normalizedLfSha256": "515d0a3728d3938ba149653ce1aaec37ce1d670692fdf767f56dcb3e2c22fe8d",
+      "precanonicalWorkingRawSha256": "5ed7b1e8f0f8ad9277fdc1e6082ee4588bbae8a51114b3c8ccaf900d0ad1f254",
+      "canonicalWorkingRawSha256": "515d0a3728d3938ba149653ce1aaec37ce1d670692fdf767f56dcb3e2c22fe8d"
+    },
+    {
+      "path": "scripts/tests/dashboard_release_test.py",
+      "normalizedLfSha256": "05c87d28e17b67eb60201490f66b9c21b066ea64fe64e1671ee57f726c07335d",
+      "precanonicalWorkingRawSha256": "05c87d28e17b67eb60201490f66b9c21b066ea64fe64e1671ee57f726c07335d",
+      "canonicalWorkingRawSha256": "05c87d28e17b67eb60201490f66b9c21b066ea64fe64e1671ee57f726c07335d"
+    },
+    {
+      "path": ".github/workflows/ci-pr.yml",
+      "normalizedLfSha256": "145100ac4953de813cdd30ced0d8f2275bb46fa94912d3dc7f6f76043e75d604",
+      "precanonicalWorkingRawSha256": "05adb86821155b229a7598adb0a4a7d1d5a0511d5c573bb6e6bde52e45811f16",
+      "canonicalWorkingRawSha256": "145100ac4953de813cdd30ced0d8f2275bb46fa94912d3dc7f6f76043e75d604"
+    }
+  ],
+  "copiedEvidence": [
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-provider-initial.json",
+      "copiedFrom": "tmp/provider-purpose-20261009-initial-proof.json",
+      "rawSha256": "7d60ca85bffb40debe62e121a52bb53dc6f6238aea2f037307d13e72a99867b7",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-provider-local.json",
+      "copiedFrom": "tmp/provider-purpose-20261009-final-proof.json",
+      "rawSha256": "c2c313319bdbc3459426bbacbef4212a41c5eead76f56f21095a3d1fbb3bbb65",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-provider-plan.json",
+      "copiedFrom": "tmp/provider-purpose-20261009-scope-plan.json",
+      "rawSha256": "b15765fa16bb6e1420472f3a0b4ff0fa269d96748f5d94c94d29fe6c5462d2b4",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-provider-review.json",
+      "copiedFrom": "tmp/provider-purpose-20261009-independent-review.json",
+      "rawSha256": "036a7f5c5d06d1f02e7842ed8700b6178d10466bd25f40f6907743138cb88660",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-recovery-initial.json",
+      "copiedFrom": "tmp/recovery-terminal-acl-initial-proof.json",
+      "rawSha256": "f376de5c9d9a20bb66dbdce7bf1d570317c3f71a9e3f87fb325dc23a56553739",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-recovery-local.json",
+      "copiedFrom": "tmp/recovery-terminal-acl-final-proof.json",
+      "rawSha256": "9d483ddf45fef574ffd7f4785a84ea22aaff87161c7d5517f83283dbd74f425d",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-recovery-review.json",
+      "copiedFrom": "tmp/recovery-terminal-acl-independent-review-20261009.json",
+      "rawSha256": "16de166bdc6ff01b45c0cb0af49e9dc8376ed9d4246ae2efe0239d510577a9b6",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-dashboard-initial.json",
+      "copiedFrom": "tmp/dashboard-release-safety-initial-20261009.json",
+      "rawSha256": "f1f05527795355f777572ef2db6129b8986e723ea12ecb40c1ae94ee56bc8405",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-dashboard-intermediate.json",
+      "copiedFrom": "tmp/dashboard-release-safety-fixed-20261009.json",
+      "rawSha256": "d2548eb7078a4b49a7aa8c6e7b1043e43cb6b67fca96fecee687c81f1b8bbeb0",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-dashboard-prefix-initial.json",
+      "copiedFrom": "tmp/dashboard-release-safety-prefix-initial-20261009.json",
+      "rawSha256": "aac7e8e9d3cffd16f0ba3c19fd48b183aec1865e709860c298971219ff8a959e",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-dashboard-local.json",
+      "copiedFrom": "tmp/dashboard-release-safety-prefix-fixed-20261009.json",
+      "rawSha256": "c7a69eff37e52abc90d7d6a76c2cd74c14ba4e497acb0013c71fc8a6917793a1",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-dashboard-initial-review.json",
+      "copiedFrom": "tmp/dashboard-release-20261009-independent-review.json",
+      "rawSha256": "2c154d0d83eee5ec4fb0181c7b489d8cbc39b60e4228bf83b6a51586879ac0a8",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-dashboard-review.json",
+      "copiedFrom": "tmp/dashboard-release-prefix-20261009-independent-review.json",
+      "rawSha256": "034fd8bf097318889fb83e22f7838a8cb81c4f65cee69d6448e80ba78260b4e9",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-owner-readback.json",
+      "copiedFrom": "tmp/owner-execution-readiness-readback-20261009.json",
+      "rawSha256": "0ff23da2b25f36c1da4e59bd907c2953c0f2b97713a9ce87180b705b7210e9ec",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-owner-classification.json",
+      "copiedFrom": "tmp/owner-dashboard-service-classification-20261009.json",
+      "rawSha256": "befd80a974cb43cf586bd80acd5eada69df0e05cf0ad476d01a8f3f3e2973bf1",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-owner-inputs.json",
+      "copiedFrom": "tmp/owner-execution-input-manifest-20261009.json",
+      "rawSha256": "b78a65f351c21232b3cfbff5ca3a3b692110c2dfa81698010fcd4304e5ffea8c",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-infra-local.json",
+      "copiedFrom": "tmp/infra-execution-source-and-input-closeout-20261009.json",
+      "rawSha256": "cec16d8ac63b4507efd11cbee386488934c1f6bbceb7601c004a79d71c1d7456",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-native-inventory.json",
+      "copiedFrom": "tmp/current-native-binary-inventory-20261009.json",
+      "rawSha256": "cdb0d8dd45d614f46d842014e31f573d5c1117cb9305e8226f8a7030cfb8265d",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-native-review.json",
+      "copiedFrom": "tmp/current-native-binary-inventory-20261009-independent-review.json",
+      "rawSha256": "440cc8086edaed27ee624733adc053b05c2a0ceca144f1beb57dbeef42547c5f",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-platform-full.json",
+      "copiedFrom": "tmp/owner-boundary-platform-service-full-proof.json",
+      "rawSha256": "4158a12166321e89d7581719125ad2c1adeeec87b8d5e3154f7c9a2971486b18",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-school-full.json",
+      "copiedFrom": "tmp/owner-boundary-school-core-service-full-proof.json",
+      "rawSha256": "0a72c12d0086199c18b28772a7dc5b358756860ea4cf0bc9ae27bb9751fa82c6",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-prior-publication-runtime.json",
+      "copiedFrom": "tmp/remaining-round-postpublication-runtime-readback.json",
+      "rawSha256": "48031c4c0fc85ffa54e4deac461429ae77988851c1622dbb9a763b810a7f94c6",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-prior-publication-review.json",
+      "copiedFrom": "tmp/remaining-round-final-publication-independent-review.json",
+      "rawSha256": "beb3bfaf1cc490554086bc2ecc661e12693cc49c50343512570a17165e736d2a",
+      "originalBytesPreserved": true
+    },
+    {
+      "path": "docs/security-remediation/acceptance-owner-execution-prior-publication-closeout.json",
+      "copiedFrom": "tmp/remaining-round-final-closeout.json",
+      "rawSha256": "f27de3d5373f35665ca6fd8f829d6c0e0343c4f9ac387f2387544997a9c34a3d",
+      "originalBytesPreserved": true
+    }
+  ],
+  "priorHistoricalJsonRawAndGitBindingsUnchanged": 206,
+  "priorIntegrityManifestRawSha256": "bff2a9b22507dc9c8f906d8713a701e74051cba405ab3a30f03e8237cd023a7f",
+  "fullLocal": {
+    "platform": {
+      "tests": 498,
+      "passed": 498,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "school": {
+      "tests": 986,
+      "passed": 985,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1,
+      "knownWindowsSymlinkPrivilegeSkip": true
+    }
+  },
+  "focusedFullCountsOverlap": true,
+  "ordinaryBootEntryPointsPreserved": true,
+  "sourceCiAcceptanceComplete": false,
+  "devReleaseAcceptanceComplete": false,
+  "wholeSavedSecurityPlanComplete": false,
+  "openOwnerActionIds": [
+    "edge",
+    "repository",
+    "dashboard",
+    "provider",
+    "hardware",
+    "retention_restore",
+    "capacity_cleanup",
+    "http2",
+    "egress_files"
+  ],
+  "additionalOpenFindings": [
+    "residual_native_advisory_applicability",
+    "local_snapshot_custody"
+  ],
+  "nativeInventoryBoundToPriorAcceptedReleaseNotFutureRelease": true,
+  "recoveryLogRawUtf16LeBomPreserved": true,
+  "nativeVexIssued": false,
+  "liveProviderAdmission": false,
+  "fullPhysicalRecoveryAccepted": false,
+  "irreversibleDeletions": 0,
+  "productionChanged": false,
+  "scope": "Three reproduced source gaps and bounded static exact prior-image inventory. Missing account/owner/device/policy/approval facts are not supplied by local fixtures. Historical false/pending/failed checkpoints remain dated and preserved."
+}

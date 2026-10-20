@@ -61,6 +61,14 @@ try {
   $metadata = & (Join-Path $PSScriptRoot 'resolve-image-source-id.ps1') -CommitSha $options.CommitSha `
     -Context ([string]$entry.context) -SourcePaths ([string]$entry.source_paths) -BuildArgs ([string]$entry.build_args) | ConvertFrom-Json
   if ($metadata.sourceId -cnotmatch '^[0-9a-f]{64}$' -or $metadata.sourceTag -cne "src-$($metadata.sourceId)") { throw 'Invalid image source metadata.' }
+  $securityPatchEpoch = [string]$metadata.securityPatchEpoch
+  if ($securityPatchEpoch -ne "") {
+    $parsedEpoch = [datetime]::MinValue
+    if ($securityPatchEpoch -cnotmatch "\A[0-9]{4}-[0-9]{2}-[0-9]{2}(?:-r[1-9][0-9]{0,5})?\z" -or
+        -not [datetime]::TryParseExact($securityPatchEpoch.Substring(0, 10), "yyyy-MM-dd", [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$parsedEpoch)) {
+      throw "Image source metadata contains an invalid security patch epoch."
+    }
+  }
   $resolvedTag = if ($options.Environment -eq 'prod') { "dev-approved-$($metadata.sourceTag)" } else { $metadata.sourceTag }
   $sourceImage = "$($options.SourceRegistry)/$($entry.image)"
   $targetImage = "$($options.RuntimeRegistry)/$($entry.image)"
@@ -111,6 +119,7 @@ try {
   return @{ Index=$Work.Index; Success=$true; Service=[ordered]@{
     service=[string]$entry.name; image=[string]$entry.image; context=[string]$entry.context
     sourceId=[string]$metadata.sourceId; sourceTag=[string]$metadata.sourceTag; resolvedTag=$resolvedTag
+    securityPatchEpoch=if ($securityPatchEpoch -eq "") { $null } else { $securityPatchEpoch }
     digest=$digest; immutableRef=$immutableRef; runtimeDigest=$runtimeDigest; runtimeRef="${targetImage}@$runtimeDigest"
   } }
 } catch {

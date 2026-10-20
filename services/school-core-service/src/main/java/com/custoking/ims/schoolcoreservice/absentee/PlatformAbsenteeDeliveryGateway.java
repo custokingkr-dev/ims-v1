@@ -144,6 +144,9 @@ public class PlatformAbsenteeDeliveryGateway implements AbsenteeDeliveryGateway 
                     ? DeliveryOutcome.dryRun(provider == null ? "platform-dry-run" : provider)
                     : DeliveryOutcome.delivered(provider == null ? "platform" : provider, text(answer, "providerMessageId"));
             case "SUPPRESSED" -> DeliveryOutcome.suppressed(error == null ? "SUPPRESSED" : error);
+            case "UNKNOWN", "SUBMITTING" -> DeliveryOutcome.unknown("PROVIDER_OUTCOME_REQUIRES_RECONCILIATION");
+            case "ACCEPTED" -> DeliveryOutcome.accepted(provider == null ? "platform" : provider, text(answer,"providerMessageId"));
+            case "REJECTED" -> DeliveryOutcome.permanentFailure("PROVIDER_DEFINITIVELY_REJECTED");
             case "FAILED" -> DeliveryOutcome.transientFailure(error == null ? "platform delivery failed" : error);
             case "DEAD_LETTER" -> DeliveryOutcome.permanentFailure(error == null ? "platform dead-lettered the event" : error);
             default -> DeliveryOutcome.transientFailure("unknown platform status: " + status);

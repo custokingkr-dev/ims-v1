@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "repository": "custokingkr-dev/ims-v1",
+  "createdAtUtc": "2026-10-07T19:28:55.538905+00:00",
+  "reachabilityCheckStartedAtUtc": "2026-10-07T19:28:50.728605+00:00",
+  "status": "LOCAL_ALL_REF_AUDIT_FAILED_REMOTE_SCOPE_CLEAR",
+  "readOnlyInvestigation": true,
+  "localAudit": {
+    "result": "FAILED",
+    "branchSensitivePathCount": 0,
+    "historySensitivePathCount": 1,
+    "releaseSensitiveAssetCount": 0,
+    "scope": "git rev-list --objects --all includes local Codex snapshot tree refs, separate from ordinary branch and pushed-origin histories."
+  },
+  "flaggedObject": {
+    "blobSha": "5309531af0534c281e4b9cf32de0157766e150b9",
+    "objectType": "blob",
+    "sizeBytes": 57749,
+    "localSnapshotTreeSha": "30bd0e32af80b38075ae25fa69fd0873603d1290",
+    "localSnapshotTipType": "tree",
+    "localSnapshotRefs": [
+      "refs/codex/turn-diffs/captures/1791364913588/a39e2c74-926b-452c-af0a-d9db61239487/base",
+      "refs/codex/turn-diffs/captures/1791393872941/a2b933c7-3b59-45ed-94db-cf578bc8fb6c/base",
+      "refs/codex/turn-diffs/checkpoints/023390ba53ca11f913c779e528a94993/d275020efef75415843e9a2cb25318ae/1791393013754/19ff47b7-3428-4a80-bae2-f3db210508dc"
+    ],
+    "filenameLogged": false,
+    "contentInspected": false,
+    "contentClassification": "UNDETERMINED; path heuristic alone does not establish personal data or synthetic content."
+  },
+  "reachability": {
+    "headCommit": "cb67c56ee3e9de4f2a87b3ca22df2ff4ebb51a75",
+    "headFlaggedObjectCount": 0,
+    "originDevCommit": "62777c1889609a7ca3518098f134759f40c19e1a",
+    "originDevFlaggedObjectCount": 0,
+    "storedOriginRefCount": 70,
+    "storedOriginFlaggedObjectCount": 0,
+    "localBranchRefCount": 87,
+    "localBranchHistoryFlaggedObjectCount": 0,
+    "currentGitHubBranchCount": 63,
+    "currentGitHubBranchHistoryFlaggedObjectCount": 0,
+    "unavailableCurrentGitHubTipCount": 0,
+    "currentGitHubTagCount": 0,
+    "localTagCount": 0,
+    "originRepositoryIdentityVerified": true,
+    "originTransport": "ssh-scp"
+  },
+  "remotePrivacyGate": {
+    "runId": 37673599157,
+    "jobId": 112971300093,
+    "sourceSha": "898274fedead3aa2b826da688d2af69ed943bd6c",
+    "conclusion": "success",
+    "url": "https://github.com/custokingkr-dev/ims-v1/actions/runs/37673599157/job/112971300093",
+    "counts": {
+      "inspectedBranchRefCount": 63,
+      "branchSensitivePathCount": 0,
+      "historySensitivePathCount": 0,
+      "inspectedReleaseCount": 0,
+      "inspectedReleaseAssetCount": 0,
+      "releaseSensitiveAssetCount": 0
+    },
+    "scope": "Successful fresh CI checkout and release-asset audit; does not clear the local --all-ref audit or classify the snapshot image."
+  },
+  "fixPlan": [
+    "Preserve unrelated snapshot work and local workspace custody.",
+    "Owner reviews local access and privately classifies the exact object; do not print its filename or contents.",
+    "Remove only the exact three snapshot refs if separately authorized after preserving any required unrelated work; no authorization is inferred here.",
+    "Rerun the complete local all-ref export-history audit and independently retain the remote privacy-gate result."
+  ],
+  "filesRemoved": 0,
+  "refsRemoved": 0,
+  "historyRewritten": false,
+  "pushedExposureEstablished": false,
+  "limits": [
+    "Finding is currently confined to local Codex snapshot trees, not the inspected pushed branch histories or release assets.",
+    "Current-ref reachability and the remote gate do not establish whether an object was ever exposed outside those inspected scopes.",
+    "No blob content was inspected, and no personal/synthetic classification is asserted.",
+    "Removing snapshot refs alone would remove reachability; physical object bytes or other recovery copies may remain. Any storage purge requires separate owner review of unrelated retained work."
+  ],
+  "productionChanged": false
+}

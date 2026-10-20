@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-08T17:25:21.337525+00:00",
+  "decision": "SOURCE_PREREQUISITES_IMPLEMENTED_LIVE_OWNER_INPUTS_STILL_UNAVAILABLE",
+  "newSourceEdits": 0,
+  "focusedTestsRun": 0,
+  "readbackProofs": [
+    {
+      "path": "tmp/remaining-owner-state-new-round-20261008.json",
+      "rawSha256": "3a4b9d7bd86b57c6e488ef58b02f8346cda84396a786d9ee0456ab09d8ddb2e9"
+    },
+    {
+      "path": "tmp/remaining-owner-dashboard-followup-new-round.json",
+      "rawSha256": "a9eff19e369aad461eaaa047d361e51a3c89fd2eb6a19dde87ec943ff8fe3003"
+    }
+  ],
+  "readOnlySourceInspection": [
+    {
+      "path": "deploy/gcp/application-edge/main.tf",
+      "normalizedLfSha256": "d651c7eb7ed1c054ecfb40d9cad18bdecefe8c5c04399e534025211cfa9117dd"
+    },
+    {
+      "path": "deploy/gcp/application-edge/variables.tf",
+      "normalizedLfSha256": "b2d59cb92a64f3df03a6f2c8e80c0b14e37dfacfd881641a3422dca65e81a3ef"
+    },
+    {
+      "path": "deploy/gcp/application-egress/README.md",
+      "normalizedLfSha256": "333e5fedccd2e9327af47075f34bedac196432e6a8566749f313f3974d34f77d"
+    },
+    {
+      "path": "tools/live-dashboard/security-config.mjs",
+      "normalizedLfSha256": "64b0a1708a015b8688ec31c4168d2c2fe5a7a103edb4d2e3c1093d2dd6a4d26f"
+    },
+    {
+      "path": "tools/live-dashboard/auth.mjs",
+      "normalizedLfSha256": "5b1b9263715e1976a0f282c81792242207693a149c7f824e3b13666e30f11f54"
+    },
+    {
+      "path": "scripts/security/cleanup-dev-obsolete-revisions.py",
+      "normalizedLfSha256": "b40c570be9df6ee402da1d2458c6e0be16a497241e25f194f3f00beb35ee4c24"
+    }
+  ],
+  "concreteUnblockedSourceDefectsIdentified": [],
+  "requiredInputs": [
+    {
+      "scope": "repository",
+      "required": "Repository administrator; enforce reviewed branch/environment/check bypass policy and independent readback",
+      "observed": "Admin/maintain false; dev unprotected/classic protection unavailable"
+    },
+    {
+      "scope": "dashboard",
+      "required": "Dedicated OAuth client/callback/allowed identities and managed secret references; deploy actual authenticated web service and exercise cross-instance denial/replay/revocation",
+      "observed": "Known dedicated secret/service absent; durable named state exists and exact TTL ACTIVE; no OAuth reuse"
+    },
+    {
+      "scope": "edge",
+      "required": "Owned hostname and explicit cost approval; approved HTTPS/WAF/origin/ingress cutover and legitimate/bypass tests",
+      "observed": "Known mappings/managed forwarding/certificates zero; Cloud DNS API disabled; no API enable"
+    },
+    {
+      "scope": "egress",
+      "required": "Approved destinations/tags/network/subnet/router/Public NAT, PGA and port budget; staged compatibility/effective-rule/path acceptance",
+      "observed": "Known subnet PGA false, regional routers/NAT zero, five Java services private-ranges-only/no dedicated tags; no routing/tag changes"
+    },
+    {
+      "scope": "capacity_cleanup",
+      "required": "Representative workload/SLO/window; exact198 inventory approval and release freeze for irreversible cleanup",
+      "observed": "General complete-all instruction does not authorize exact deletion; reviewed source exact-inventory/revalidation/checkpoint guards retained; no deletion or expanded inventory"
+    }
+  ],
+  "scope": "Fresh bounded dev/GitHub metadata and selective existing source inspection only. No secrets/environment values/provider traffic/production/cloud mutations/Git changes. Missing configuration/approval is not inferred from source tests. No universal completeness or effective network assurance claim."
+}

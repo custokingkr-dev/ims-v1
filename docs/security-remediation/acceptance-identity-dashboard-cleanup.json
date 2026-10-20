@@ -1,0 +1,106 @@
+{
+  "project": "custoking-dev",
+  "temporaryResources": [
+    {
+      "kind": "services",
+      "name": "ims-dev-identity-rotation-cafea1cee37a",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-key-rotation-probe-cafea1cee37a",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "secrets",
+      "name": "ims-dev-rotation-key-cafea1cee37a",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "secrets",
+      "name": "ims-dev-rotation-fixture-cafea1cee37a",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "services",
+      "name": "ims-dev-identity-rotation-b1239c11ca0b",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-key-rotation-probe-b1239c11ca0b",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "secrets",
+      "name": "ims-dev-rotation-key-b1239c11ca0b",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "secrets",
+      "name": "ims-dev-rotation-fixture-b1239c11ca0b",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-security-fixture-20261007092721-684b778a",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-security-fixture-modules-903f42e058c6298c",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-security-fixture-data-fdb1802b27018988",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-security-fixture-recovery-c6abe28e67a83372",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-security-fixture-disable-753721e2233495b7",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-dashboard-state-a-3fee26f8493ea5ae",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-dashboard-state-b-f618bdc52b5328e8",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-dashboard-auth-state-d10ac373b3223204",
+      "independentlyAbsent": true
+    },
+    {
+      "kind": "jobs",
+      "name": "ims-dev-dashboard-ttl-6ce156ede9f73c95",
+      "independentlyAbsent": true
+    }
+  ],
+  "privilegedRecoveryActors": [
+    {
+      "userId": 990007203,
+      "loginStatus": 401,
+      "disabledVerified": true
+    },
+    {
+      "userId": 990007204,
+      "loginStatus": 401,
+      "disabledVerified": true
+    }
+  ],
+  "schoolFixtureCleanupHeldForPitrAndBroker": true,
+  "checkedAtUtc": "2026-10-07T09:57:34.179437+00:00",
+  "evidenceWorktreeCommit": "1f233074d057e0fae98bd00f6b95cadeacee940e",
+  "artifactScope": "Controlled isolated custoking-dev acceptance; not production certification"
+}
