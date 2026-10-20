@@ -408,5 +408,34 @@ class IdentityAuthServiceRotationTest {
         // Assert
         assertThat(result.authResponse().permissions()).containsExactlyInAnyOrder("OPS_READ", "OPS_WRITE");
         verify(rbacRead, times(2)).permissionCodesForRole("OPERATIONS");
+        assertThat(result.authResponse().branchId()).as("no item scope: the stale branch is left as it was").isEqualTo(1L);
+    }
+
+    @Test
+    void login_itemScopedOperator_getsTrackerCodesOnlyAndNoSchoolOutsideTheirSchoolWideSet() {
+        AppUserEntity user = mockUser();
+        when(user.getRole()).thenReturn("OPERATIONS");
+        when(user.getPasswordHash()).thenReturn("hashed-password");
+        when(user.getBranchId()).thenReturn(5L);
+        when(user.getBranchName()).thenReturn("School Five");
+        when(user.getZoneId()).thenReturn(null);
+        when(users.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret", "hashed-password")).thenReturn(true);
+        stubJwtTokenGeneration();
+        when(rbac.roleNames(7L)).thenReturn(List.of("OPERATIONS"));
+        when(rbacRead.effectivePermissions(7L, 5L, null)).thenReturn(List.of());
+        when(rbacRead.operatorSchoolIds(7L)).thenReturn(List.of());
+        when(rbacRead.operatorScopeKeys(7L)).thenReturn(List.of("5:NOTEBOOKS"));
+
+        IdentityAuthService.LoginResult result = service.login(new IdentityAuthService.LoginRequest(EMAIL, "secret"));
+
+        assertThat(result.authResponse().permissions()).containsExactlyInAnyOrder(
+                "workspace:access", "notebook-tracker:read", "notebook-tracker:act", "order:read", "order:update");
+        assertThat(result.authResponse().branchId()).isNull();
+        assertThat(result.authResponse().branchName()).isNull();
+        ArgumentCaptor<AuthenticatedUserSnapshot> token = ArgumentCaptor.forClass(AuthenticatedUserSnapshot.class);
+        verify(jwtService).generateAccessToken(token.capture(), any(), any(), any());
+        assertThat(token.getValue().branchId()).as("the token carries no school id").isNull();
+        verify(rbacRead, never()).permissionCodesForRole("OPERATIONS");
     }
 }

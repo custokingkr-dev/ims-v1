@@ -170,11 +170,11 @@ public class IdentityAuthService {
     }
 
     private LoginResult issueSession(AppUserEntity user, String familyId) {
-        AuthenticatedUserSnapshot snapshot = snapshot(user);
         // Derive the operator school set from the user's active OPERATIONS assignments, not the
         // display-only legacy `role` column. operatorSchoolIds returns [] for non-operators.
         List<Long> opsSchools = rbacRead.operatorSchoolIds(user.getId());
         List<String> opsScopes = rbacRead.operatorScopeKeys(user.getId());
+        AuthenticatedUserSnapshot snapshot = snapshot(user, dropsSchoolContext(user, opsSchools, opsScopes));
         List<String> permissions = loginPermissions(user, opsSchools, opsScopes);
         String accessToken = jwtService.generateAccessToken(snapshot, permissions, opsSchools, opsScopes);
         String refreshToken = jwtService.generateRefreshToken(snapshot);
@@ -199,6 +199,7 @@ public class IdentityAuthService {
         List<Long> operatorSchools = rbacRead.operatorSchoolIds(user.getId());
         List<String> operatorScopes = rbacRead.operatorScopeKeys(user.getId());
         List<String> permissions = loginPermissions(user, operatorSchools, operatorScopes);
+        boolean noSchool = dropsSchoolContext(user, operatorSchools, operatorScopes);
         AuthSessionEntity session = sessions.findByAccessTokenHash(tokenDigest(accessToken)).orElse(null);
         OffsetDateTime stepUp = null;
         if (jdbc != null && session != null) {
@@ -215,8 +216,8 @@ public class IdentityAuthService {
                 user.getFullName(),
                 user.getEmail(),
                 user.getRole(),
-                user.getBranchId(),
-                user.getBranchName(),
+                noSchool ? null : user.getBranchId(),
+                noSchool ? null : user.getBranchName(),
                 user.getZoneId(),
                 user.getZoneName(),
                 roles,
@@ -225,10 +226,18 @@ public class IdentityAuthService {
     }
 
     /**
+     * Everything an operator who holds item scopes is granted for them (owner decision D2): the notebook tracker and the
+     * catalogue order it works on, and nothing else at that school.
+     */
+    private static final List<String> ITEM_OPERATOR_PERMISSIONS =
+            List.of("workspace:access", "notebook-tracker:read", "notebook-tracker:act", "order:read", "order:update");
+
+    /**
      * Resolves the permission codes granted to a user at login: effective permissions scoped to
      * the user's active school/zone (never a cross-school union — see RbacReadRepository#
-     * effectivePermissions), unioned with the OPERATIONS role's codes whenever the user has any
-     * active operator assignment.
+     * effectivePermissions, which ignores item-specific assignments), unioned with the OPERATIONS
+     * role's codes whenever the user has a school-wide operator assignment, and with the fixed
+     * {@link #ITEM_OPERATOR_PERMISSIONS} whenever they hold an item-specific one.
      *
      * <p>The operator union is a deliberate mitigation: {@code syncOperatorSchools} can move an
      * operator onto a school set that no longer includes their stale {@code app_users.branch_id}.
@@ -239,20 +248,33 @@ public class IdentityAuthService {
      */
     private List<String> loginPermissions(AppUserEntity user, List<Long> operatorSchools, List<String> operatorScopes) {
         var codes = new TreeSet<>(rbacRead.effectivePermissions(user.getId(), user.getBranchId(), user.getZoneId()));
-        if (!operatorSchools.isEmpty() || !operatorScopes.isEmpty()) {
+        if (!operatorSchools.isEmpty()) {
             codes.addAll(rbacRead.permissionCodesForRole("OPERATIONS"));
+        }
+        if (!operatorScopes.isEmpty()) {
+            codes.addAll(ITEM_OPERATOR_PERMISSIONS);
         }
         return new ArrayList<>(codes);
     }
 
-    private AuthenticatedUserSnapshot snapshot(AppUserEntity user) {
+    /**
+     * True when the user's {@code branch_id} must not become their school context (introspection {@code branchId}, the
+     * JWT {@code sid}): they hold item scopes and the branch is not one of their school-wide operator schools. Row-level
+     * security admits every row of the request's school, so a branch kept here would open that whole school to an
+     * operator scoped to one catalogue item. Users without item scopes are deliberately unaffected.
+     */
+    private static boolean dropsSchoolContext(AppUserEntity user, List<Long> operatorSchools, List<String> operatorScopes) {
+        return !operatorScopes.isEmpty() && user.getBranchId() != null && !operatorSchools.contains(user.getBranchId());
+    }
+
+    private AuthenticatedUserSnapshot snapshot(AppUserEntity user, boolean noSchool) {
         return new AuthenticatedUserSnapshot(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
                 user.getRole(),
-                user.getBranchId(),
-                user.getBranchName(),
+                noSchool ? null : user.getBranchId(),
+                noSchool ? null : user.getBranchName(),
                 user.getZoneId(),
                 user.getZoneName());
     }

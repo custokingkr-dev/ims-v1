@@ -1,9 +1,11 @@
 package com.custoking.ims.identityservice.persistence;
 
+import com.custoking.ims.identityservice.application.IdentityAuthService;
 import com.custoking.ims.identityservice.application.OperatorDirectory;
 import com.custoking.ims.identityservice.application.OperatorSelection.Outcome;
 import com.custoking.ims.identityservice.infrastructure.TenantSchoolClient;
 import com.custoking.ims.identityservice.persistence.OperatorDirectoryRepository.OperatorRow;
+import com.custoking.ims.identityservice.security.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -68,6 +70,8 @@ class OperatorCatalogScopeIntegrationTest {
     @Autowired OperatorDirectory directory;
     @Autowired JdbcClient jdbc;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired IdentityAuthService auth;
+    @Autowired JwtService jwt;
 
     private static long newSchool() { return SCHOOLS.incrementAndGet(); }
 
@@ -296,7 +300,116 @@ class OperatorCatalogScopeIntegrationTest {
         exec(String.format(insert, operator, roleId, school, "NULL", "'TIES'"));
     }
 
+    // ---- what an operator's login carries (owner decision D2: item-scoped operators get the tracker only) ------------
+
+    /** The fixed permission set of an operator who holds item scopes. */
+    private static final List<String> ITEM_ONLY_PERMISSIONS =
+            List.of("workspace:access", "notebook-tracker:read", "notebook-tracker:act", "order:read", "order:update");
+
+    @Test
+    void itemOnlyOperatorPermissionsAreTrackerOnly() throws Exception {
+        long school = newSchool();
+        LoginUser operator = insertLoginUser("OPERATIONS", school);
+        rbac.assignOperatorScope(operator.id(), school, "NOTEBOOKS", 99L);
+
+        var principal = introspect(login(operator));
+        assertThat(principal.permissions()).as("no students, fees, attendance or other workflows")
+                .containsExactlyInAnyOrderElementsOf(ITEM_ONLY_PERMISSIONS);
+    }
+
+    @Test
+    void itemOnlyOperatorHasNoSchoolContext() throws Exception {
+        long school = newSchool();
+        LoginUser operator = insertLoginUser("OPERATIONS", school);
+        rbac.assignOperatorScope(operator.id(), school, "NOTEBOOKS", 99L);
+
+        var login = login(operator);
+        assertThat(login.authResponse().branchId()).isNull();
+        assertThat(jwt.claims(login.authResponse().accessToken()).get("sid")).as("JWT school id").isNull();
+        var principal = introspect(login);
+        assertThat(principal.branchId()).as("the gateway forwards this as the school id").isNull();
+        assertThat(principal.branchName()).isNull();
+        assertThat(principal.operatorScopes()).containsExactly(school + ":NOTEBOOKS");
+    }
+
+    @Test
+    void operatorWithSchoolWideAndItemKeepsSchoolContext() throws Exception {
+        long a = newSchool();
+        long b = newSchool();
+        LoginUser operator = insertLoginUser("OPERATIONS", a);
+        rbac.syncOperatorSchools(operator.id(), List.of(a), 99L);
+        rbac.assignOperatorScope(operator.id(), b, "NOTEBOOKS", 99L);
+
+        var login = login(operator);
+        var principal = introspect(login);
+        assertThat(principal.branchId()).isEqualTo(a);
+        assertThat(((Number) jwt.claims(login.authResponse().accessToken()).get("sid")).longValue()).isEqualTo(a);
+        assertThat(principal.permissions()).as("the full OPERATIONS set, which carries the tracker codes")
+                .containsExactlyInAnyOrderElementsOf(reads.permissionCodesForRole("OPERATIONS"))
+                .contains("notebook-tracker:read", "notebook-tracker:act")
+                .containsAll(ITEM_ONLY_PERMISSIONS);
+    }
+
+    @Test
+    void theBranchIsDroppedOnlyForAnItemScopedOperatorOutsideTheirSchoolWideSchools() throws Exception {
+        long wide = newSchool();
+        long item = newSchool();
+        long stale = newSchool();
+        LoginUser scoped = insertLoginUser("OPERATIONS", stale);
+        rbac.syncOperatorSchools(scoped.id(), List.of(wide), 99L);
+        rbac.assignOperatorScope(scoped.id(), item, "NOTEBOOKS", 99L);
+        var scopedLogin = login(scoped);
+        assertThat(introspect(scopedLogin).branchId()).as("a stale branch is not a school-wide school").isNull();
+        assertThat(jwt.claims(scopedLogin.authResponse().accessToken()).get("sid")).isNull();
+
+        LoginUser unscoped = insertLoginUser("OPERATIONS", stale);
+        rbac.syncOperatorSchools(unscoped.id(), List.of(wide), 99L);
+        var unscopedLogin = login(unscoped);
+        assertThat(introspect(unscopedLogin).branchId()).as("operators without item scopes are unaffected").isEqualTo(stale);
+        assertThat(((Number) jwt.claims(unscopedLogin.authResponse().accessToken()).get("sid")).longValue()).isEqualTo(stale);
+        assertThat(introspect(unscopedLogin).permissions()).containsExactlyInAnyOrderElementsOf(reads.permissionCodesForRole("OPERATIONS"));
+    }
+
+    @Test
+    void effectivePermissionsIgnoreItemRows() throws Exception {
+        long school = newSchool();
+        long operator = insertUser("OPERATIONS");
+        rbac.assignOperatorScope(operator, school, "NOTEBOOKS", 99L);
+        assertThat(reads.effectivePermissions(operator, school, null)).as("an item scope is not a school-wide role").isEmpty();
+        assertThat(reads.effectivePermissions(operator, null, null)).isEmpty();
+
+        rbac.syncOperatorSchools(operator, List.of(school), 99L);
+        assertThat(reads.effectivePermissions(operator, school, null))
+                .containsExactlyInAnyOrderElementsOf(reads.permissionCodesForRole("OPERATIONS"));
+    }
+
     // ---- helpers ---------------------------------------------------------------------------------------------------
+
+    private static final String PASSWORD = "Str0ng!Passw0rd#2026";
+
+    private record LoginUser(long id, String email) { }
+
+    /** A user who can sign in, with {@code app_users.branch_id} set as provisioning sets it. */
+    private LoginUser insertLoginUser(String role, long branchId) {
+        String email = "login-" + EMAILS.incrementAndGet() + "-" + System.nanoTime() + "@example.com";
+        long id = jdbc.sql("""
+                INSERT INTO identity.app_users (full_name, email, password_hash, role, branch_id, branch_name, created_at)
+                VALUES (:name, :email, :hash, :role, :branch, :branchName, now()) RETURNING id
+                """).param("name", "IT " + role).param("email", email).param("hash", passwordEncoder.encode(PASSWORD))
+                .param("role", role).param("branch", branchId).param("branchName", "School " + branchId)
+                .query(Long.class).single();
+        return new LoginUser(id, email);
+    }
+
+    private IdentityAuthService.LoginResult login(LoginUser user) {
+        return auth.login(new IdentityAuthService.LoginRequest(user.email(), PASSWORD));
+    }
+
+    private IdentityAuthService.AuthResponse introspect(IdentityAuthService.LoginResult login) {
+        var response = auth.introspect(login.authResponse().accessToken());
+        assertThat(response.active()).isTrue();
+        return response.principal();
+    }
 
     private static void assertStatus(org.assertj.core.api.ThrowableAssert.ThrowingCallable call, HttpStatus status, String message) {
         assertThatThrownBy(call).isInstanceOf(ResponseStatusException.class)

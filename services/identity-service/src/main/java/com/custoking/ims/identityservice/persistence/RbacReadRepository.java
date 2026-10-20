@@ -66,6 +66,11 @@ public class RbacReadRepository {
         return spec.query(UserRoleAssignmentRow.class).list();
     }
 
+    /**
+     * Codes granted by the user's school-wide, zone and platform assignments. An item-specific operator assignment
+     * ({@code catalog_category} set) grants nothing here: it confers only the fixed tracker set, which
+     * {@code IdentityAuthService.loginPermissions} adds.
+     */
     public List<String> effectivePermissions(Long userId, Long schoolId, Long zoneId) {
         StringBuilder sql = new StringBuilder("""
                 SELECT DISTINCT p.code
@@ -75,6 +80,7 @@ public class RbacReadRepository {
                 WHERE ura.user_id = :userId
                   AND ura.active = true
                   AND ura.revoked_at IS NULL
+                  AND ura.catalog_category IS NULL
                   AND (ura.valid_from IS NULL OR ura.valid_from <= now())
                   AND (ura.valid_until IS NULL OR ura.valid_until >= now())
                 """);

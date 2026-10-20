@@ -1,7 +1,9 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.api.StudentReadController;
 import com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormRuleEngine;
 import com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorage;
+import com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher;
 import com.custoking.ims.schoolcoreservice.infrastructure.OperatorResolver;
 import com.custoking.ims.schoolcoreservice.infrastructure.TrackerGateway;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
@@ -36,6 +38,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -462,6 +465,37 @@ class NotebookTrackerIntegrationTest {
     @EnableTransactionManagement(proxyTargetClass = true)
     static class TransactionalTestConfiguration {}
 
+    @Test
+    void itemOnlyOperatorCannotListSchoolOrders() {
+        var notebook = placedNotebook(true);
+        var trophyData = Map.of("orderSelections", Map.of(), "lines", List.of(
+                Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 3, "pageCount", 99)));
+        school(1);
+        var trophy = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", trophyData))).id();
+        TenantContext.clear();
+
+        var runtime = new TenantAwareDataSource(new DriverManagerDataSource(pg.getJdbcUrl(), "app_rt", "app_rt"));
+        var runtimeJdbc = JdbcClient.create(runtime);
+        var runtimeTx = new TransactionTemplate(new DataSourceTransactionManager(runtime));
+        var runtimeOutbox = new OutboxWriter(runtimeJdbc, new ObjectMapper(), "tenant_school");
+        var runtimeOrders = new CatalogReadRepository(runtimeJdbc, runtimeOutbox);
+        var students = new StudentReadController(new StudentReadRepository(runtimeJdbc, null, runtimeOutbox), new ImageUrlFetcher(1024), "student-token");
+
+        operator(9L, Set.of(), Set.of("1:NOTEBOOKS"));
+        @SuppressWarnings("unchecked")
+        var listed = (List<CatalogReadRepository.CatalogOrderRow>) runtimeTx.execute(status -> runtimeOrders.ordersPage(null, null, 0, 200).get("content"));
+        assertThat(listed).extracting(CatalogReadRepository.CatalogOrderRow::id).as("no school context, so no school-wide order list")
+                .doesNotContain(trophy);
+        for (Long requested : new Long[]{null, 1L}) {
+            assertThatThrownBy(() -> students.list("student-token", requested, null, null, null, null, null, 0, 50))
+                    .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        }
+        Optional<CatalogReadRepository.CatalogOrderRow> own = runtimeTx.execute(status -> runtimeOrders.order(notebook));
+        Optional<CatalogReadRepository.CatalogOrderRow> other = runtimeTx.execute(status -> runtimeOrders.order(trophy));
+        assertThat(own).as("the notebook order itself stays reachable").isPresent();
+        assertThat(other).isEmpty();
+    }
+
     // ---- who may read a notebook order's tracker data --------------------------------------------------------------------------
 
     @Test
@@ -583,8 +617,22 @@ class NotebookTrackerIntegrationTest {
 
     private static void superadmin() { TenantContext.set(new TenantContext(99L, "superadmin@example.test", "SUPERADMIN", null, null)); }
 
+    /** The OPERATIONS role's codes as identity grants them (V4, V5, V6, V12): no workflow:act. */
+    static final Set<String> OPERATIONS = Set.of("workspace:access", "student:read", "student:create", "student:update",
+            "attendance:read", "attendance:manage", "order:read", "order:create", "order:update", "firefighting:read",
+            "firefighting:create", "firefighting:update", "timetable:read", "workflow:read", "student:photo-import",
+            "student:export", "notebook-tracker:read", "notebook-tracker:act");
+    /** What an operator holding only item scopes is granted (owner decision D2). */
+    static final Set<String> ITEM_ONLY = Set.of("workspace:access", "notebook-tracker:read", "notebook-tracker:act",
+            "order:read", "order:update");
+
+    /**
+     * An operator as the gateway forwards them: a school-wide operator carries their branch (the one school given) as the
+     * school id and the OPERATIONS codes; an operator with item scopes only has no school id and the tracker codes.
+     */
     private static void operator(long userId, Set<Long> schools, Set<String> scopes) {
-        TenantContext.set(new TenantContext(userId, "operator@example.test", "OPERATIONS", null, null, schools,
-                Set.of("order:create", "order:read", "order:update", "workflow:read", "workflow:act"), scopes));
+        Long branch = schools.isEmpty() ? null : schools.iterator().next();
+        Set<String> permissions = !schools.isEmpty() ? OPERATIONS : !scopes.isEmpty() ? ITEM_ONLY : Set.of();
+        TenantContext.set(new TenantContext(userId, "operator@example.test", "OPERATIONS", branch, null, schools, permissions, scopes));
     }
 }

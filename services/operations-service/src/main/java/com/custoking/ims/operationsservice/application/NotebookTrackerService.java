@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Orchestrates the notebook order tracker (spec v4): the pure rules in {@code application.tracker} decide what is
@@ -125,8 +126,11 @@ public class NotebookTrackerService {
         return tx.execute(status -> {
             begin();
             Actor actor = actor(false);
+            if (schoolId != null) requireSchoolAccess(schoolId);
+            // Row-level security also admits the request's school id, so bound an operator to their own schools here too.
+            Set<Long> schools = actor.role() == Role.SUPERADMIN ? null : accessibleSchools();
             OffsetDateTime now = now();
-            return repo.list(schoolId, mine ? actor.userId() : null, includeFinished, limit).stream().map(row -> {
+            return repo.list(schoolId, schools, mine ? actor.userId() : null, includeFinished, limit).stream().map(row -> {
                 TrackerView.Progress progress = new TrackerView.Progress(row.completed(), row.total(), row.activeStep(),
                         row.activeStep() == null ? null : TrackerStep.ofNumber(row.activeStep()).map(TrackerStep::title).orElse(null),
                         row.activeStep() == null);
@@ -539,12 +543,18 @@ public class NotebookTrackerService {
         if (ctx.userId() == null) throw forbidden("Authenticated user required");
         if (ctx.isSuperAdmin()) return new Actor(Role.SUPERADMIN, ctx.userId());
         if (!ctx.isOperations()) throw forbidden("The notebook order tracker is for superadmin and operators only");
-        TenantScope.requirePermission(write ? "workflow:act" : "workflow:read");
+        TenantScope.requirePermission(write ? "notebook-tracker:act" : "notebook-tracker:read");
         return new Actor(Role.OPERATOR, ctx.userId());
     }
 
+    /**
+     * One order's tracker, which the caller must be allowed to see. Row-level security already hides other schools, but it
+     * also admits the request's school id, which can be a school the operator no longer works; this check does not.
+     */
     private TrackerRow tracker(String orderId, boolean lock) {
-        return repo.findByOrder(orderId, lock).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tracker not found"));
+        TrackerRow t = repo.findByOrder(orderId, lock).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tracker not found"));
+        requireSchoolAccess(t.schoolId());
+        return t;
     }
 
     private TrackerProgress progress(TrackerRow t, List<StepRow> rows) {
@@ -602,12 +612,18 @@ public class NotebookTrackerService {
         throw forbidden(step.title() + " is for superadmin only");
     }
 
-    /** Superadmin sees every school; an operator only the schools they are assigned to. */
+    /**
+     * Superadmin sees every school; an operator only the schools where they are school-wide or scoped to notebooks. Used by
+     * every read and write of a tracker, the worklist and the time slots.
+     */
     private void requireSchoolAccess(long schoolId) {
-        TenantContext ctx = TenantContext.get();
-        if (!ctx.isSuperAdmin() && !ctx.operatorSchoolsFor(NotebookTrackerRepository.CATALOG_CATEGORY).contains(schoolId)) {
+        if (!TenantContext.get().isSuperAdmin() && !accessibleSchools().contains(schoolId)) {
             throw forbidden("No access to this school");
         }
+    }
+
+    private static Set<Long> accessibleSchools() {
+        return TenantContext.get().operatorSchoolsFor(NotebookTrackerRepository.CATALOG_CATEGORY);
     }
 
     private void requireSuperadmin(Actor actor, String message) {

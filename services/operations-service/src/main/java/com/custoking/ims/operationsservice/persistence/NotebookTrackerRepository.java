@@ -212,10 +212,11 @@ public class NotebookTrackerRepository {
                           OffsetDateTime dueAt, int completed, int total) { }
 
     /**
-     * Orders in the caller's row-level scope, those with the soonest active-step deadline first. {@code assignee} limits the
-     * list to orders whose active step is assigned to that user.
+     * Orders in the caller's row-level scope, those with the soonest active-step deadline first. {@code schools}, when not
+     * null, further limits the list to those schools; {@code assignee} to orders whose active step is assigned to that user.
      */
-    public List<ListRow> list(Long schoolId, Long assignee, boolean includeFinished, int limit) {
+    public List<ListRow> list(Long schoolId, java.util.Collection<Long> schools, Long assignee, boolean includeFinished, int limit) {
+        if (schools != null && schools.isEmpty()) return List.of();
         StringBuilder sql = new StringBuilder("SELECT t.order_id, t.school_id, t.school_name, t.customised, t.ordered_count, t.placed_at, "
                 + "i.status AS instance_status, s.step_order AS active_step, s.assignee_user_id, s.due_at, "
                 + "(SELECT count(*) FROM " + instanceSteps + " c WHERE c.instance_id = t.instance_id AND c.status = 'COMPLETED') AS completed, "
@@ -224,10 +225,12 @@ public class NotebookTrackerRepository {
                 + "LEFT JOIN " + instanceSteps + " s ON s.instance_id = t.instance_id AND s.status = 'ACTIVE' WHERE 1 = 1");
         if (!includeFinished) sql.append(" AND i.status <> 'COMPLETED'");
         if (schoolId != null) sql.append(" AND t.school_id = :school");
+        if (schools != null) sql.append(" AND t.school_id IN (:schools)");
         if (assignee != null) sql.append(" AND s.assignee_user_id = :assignee");
         sql.append(" ORDER BY s.due_at NULLS LAST, t.placed_at DESC, t.order_id LIMIT :limit");
         var spec = jdbc.sql(sql.toString()).param("limit", Math.max(1, Math.min(limit, 500)));
         if (schoolId != null) spec = spec.param("school", schoolId);
+        if (schools != null) spec = spec.param("schools", List.copyOf(schools));
         if (assignee != null) spec = spec.param("assignee", assignee);
         return spec.query((rs, n) -> new ListRow(rs.getString("order_id"), rs.getLong("school_id"), rs.getString("school_name"),
                 rs.getBoolean("customised"), rs.getInt("ordered_count"), rs.getObject("placed_at", OffsetDateTime.class),

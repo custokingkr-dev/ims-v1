@@ -38,7 +38,19 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** The tracker's real flows against a real PostgreSQL with row-level security and the runtime role. */
 class NotebookTrackerServiceIntegrationTest {
-    static final Set<String> WORKFLOW = Set.of("workflow:read", "workflow:act");
+    /**
+     * What identity really grants (V4, V5, V6 and V12): an operator with a school-wide assignment holds the OPERATIONS
+     * role's codes, which carry {@code workflow:read} but never {@code workflow:act}.
+     */
+    static final Set<String> OPERATIONS = Set.of("workspace:access", "student:read", "student:create", "student:update",
+            "attendance:read", "attendance:manage", "order:read", "order:create", "order:update", "firefighting:read",
+            "firefighting:create", "firefighting:update", "timetable:read", "workflow:read", "student:photo-import",
+            "student:export", "notebook-tracker:read", "notebook-tracker:act");
+    /** An operator whose only assignments are item scopes holds exactly these (owner decision D2). */
+    static final Set<String> ITEM_ONLY = Set.of("workspace:access", "notebook-tracker:read", "notebook-tracker:act",
+            "order:read", "order:update");
+    /** A school admin genuinely holds the generic workflow codes, but the tracker is not theirs. */
+    static final Set<String> SCHOOL_ADMIN_WORKFLOW = Set.of("workflow:read", "workflow:act");
     static final long SUPER = 1, OP_A = 10, OP_C = 12, OP_B = 11;
 
     static PostgreSQLContainer<?> PG;
@@ -119,15 +131,21 @@ class NotebookTrackerServiceIntegrationTest {
 
     static void asSuper() { TenantContext.set(new TenantContext(SUPER, "sa@x", "SUPERADMIN", null, null)); }
 
+    /**
+     * A school-wide operator as the gateway forwards them: their branch (the first school) is their school id and they
+     * hold the OPERATIONS codes. An operator with no assignment at all holds no permission.
+     */
     static void asOperator(long user, Long... schools) {
-        TenantContext.set(new TenantContext(user, "op" + user + "@x", "OPERATIONS", null, null, WORKFLOW, Set.of(schools)));
+        Long branch = schools.length == 0 ? null : schools[0];
+        TenantContext.set(new TenantContext(user, "op" + user + "@x", "OPERATIONS", branch, null,
+                schools.length == 0 ? Set.of() : OPERATIONS, Set.of(schools)));
     }
 
     static void asNobody() { TenantContext.clear(); }
 
-    /** An operator with no school-wide assignment, only item-specific scopes such as "10:NOTEBOOKS". */
+    /** An operator with no school-wide assignment, only item-specific scopes such as "10:NOTEBOOKS": no school id. */
     static void asScopedOperator(long user, String... scopes) {
-        TenantContext.set(new TenantContext(user, "op" + user + "@x", "OPERATIONS", null, null, WORKFLOW, Set.of(), Set.of(scopes)));
+        TenantContext.set(new TenantContext(user, "op" + user + "@x", "OPERATIONS", null, null, ITEM_ONLY, Set.of(), Set.of(scopes)));
     }
 
     static <T> T as(Runnable login, Supplier<T> action) {
@@ -224,7 +242,8 @@ class NotebookTrackerServiceIntegrationTest {
     void anOperatorOutsideTheSchoolCannotSeeTheTrackerAndAnotherSchoolOperatorCanOnlyLookNotWork() {
         String order = create(true, 10L, OP_A);
         assertEquals(404, http(() -> as(() -> asOperator(OP_B, 20L), () -> service.view(order))).status());
-        assertEquals(404, http(() -> as(() -> asOperator(OP_B), () -> service.view(order))).status());
+        assertEquals(403, http(() -> as(() -> asOperator(OP_B), () -> service.view(order))).status(),
+                "an operator with no assignment holds no tracker permission");
 
         TrackerView seen = as(() -> asOperator(OP_C, 10L), () -> service.view(order));
         assertFalse(step(seen, 1).can().canEditDetails());
@@ -235,9 +254,45 @@ class NotebookTrackerServiceIntegrationTest {
     }
 
     @Test
+    void deployedOperatorCanWorkAssignedStep() {
+        String order = create(true, 10L, OP_A);
+        asOperator(OP_A, 10L); // school id 10 from the branch, the real OPERATIONS codes: no workflow:act
+        TrackerView first = service.view(order);
+        TrackerView drafted = service.saveDraft(order, 1, Map.of(), step(first, 1).version());
+        TrackerView atTwo = service.completeStep(order, 1, step(drafted, 1).version());
+        assertEquals(2, atTwo.progress().currentStep());
+        TrackerView sent = service.sendDesign(order);
+        assertEquals("SENT", sent.design().state());
+        assertEquals(3, service.completeStep(order, 2, step(sent, 2).version()).progress().currentStep());
+
+        asSuper();
+        TrackerView approved = service.approveDesign(order, 501, null);
+        service.completeStep(order, 3, step(approved, 3).version());
+
+        asOperator(OP_A, 10L);
+        TrackerView atFour = service.view(order);
+        TrackerView saved = service.saveDraft(order, 4, Map.of("cdrFilename", "cover.cdr"), step(atFour, 4).version());
+        assertEquals("cover.cdr", step(saved, 4).data().get("cdrFilename"));
+    }
+
+    @Test
+    void operatorOutsideSchoolCannotViewTracker() {
+        String order = create(true, 10L, OP_A);
+        // Moved from school 10 to 20: identity leaves an operator without item scopes their old branch, so the school id
+        // still says 10 and row-level security alone would admit this tracker.
+        Runnable moved = () -> TenantContext.set(new TenantContext(OP_B, "op@x", "OPERATIONS", 10L, null, OPERATIONS, Set.of(20L)));
+        assertEquals(403, http(() -> as(moved, () -> service.view(order))).status());
+        assertEquals(403, http(() -> as(moved, () -> service.addInternalNote(order, "not my school"))).status());
+        assertEquals(403, http(() -> as(moved, () -> service.list(false, 10L, true, 500))).status());
+        assertTrue(as(moved, () -> service.list(false, null, true, 500)).stream().noneMatch(item -> item.schoolId() == 10L));
+        assertEquals(404, http(() -> as(() -> asOperator(OP_B, 20L), () -> service.view(order))).status());
+        assertTrue(as(() -> asSuper(), () -> service.view(order)).internalNotes().isEmpty(), "nothing was written");
+    }
+
+    @Test
     void schoolAdminsAndAnonymousCallersAreRefused() {
         String order = create(true, 10L, OP_A);
-        TenantContext.set(new TenantContext(5L, "admin@x", "ADMIN", 10L, null, WORKFLOW));
+        TenantContext.set(new TenantContext(5L, "admin@x", "ADMIN", 10L, null, SCHOOL_ADMIN_WORKFLOW));
         assertEquals(403, http(() -> service.view(order)).status());
         TenantContext.clear();
         assertEquals(403, http(() -> service.view(order)).status());
@@ -600,9 +655,9 @@ class NotebookTrackerServiceIntegrationTest {
     @Test
     void itemScopedAndSchoolWideAccessCombine() {
         String order = create(true, 10L, OP_A);
-        TenantContext.set(new TenantContext(OP_C, "c@x", "OPERATIONS", null, null, WORKFLOW, Set.of(20L), Set.of("10:NOTEBOOKS")));
+        TenantContext.set(new TenantContext(OP_C, "c@x", "OPERATIONS", 20L, null, OPERATIONS, Set.of(20L), Set.of("10:NOTEBOOKS")));
         assertEquals(order, service.view(order).orderId());
-        TenantContext.set(new TenantContext(OP_C, "c@x", "OPERATIONS", null, null, WORKFLOW, Set.of(10L), Set.of("10:TIES")));
+        TenantContext.set(new TenantContext(OP_C, "c@x", "OPERATIONS", 10L, null, OPERATIONS, Set.of(10L), Set.of("10:TIES")));
         assertEquals(order, service.view(order).orderId(), "a school-wide assignment covers every item");
     }
 
@@ -813,7 +868,8 @@ class NotebookTrackerServiceIntegrationTest {
         createNamed(true, 43L, OP_B, "Forty-Three", "2026-10-19T09:00:00+05:30");
         assertEquals(List.of(42L), as(() -> asOperator(OP_A, 42L), () -> service.list(false, null, false, 500)).stream()
                 .map(TrackerView.ListItem::schoolId).filter(id -> id == 42L || id == 43L).toList());
-        assertTrue(as(() -> asOperator(OP_B), () -> service.list(false, null, false, 500)).isEmpty(), "no schools, no orders");
+        assertEquals(403, http(() -> as(() -> asOperator(OP_B), () -> service.list(false, null, false, 500))).status(),
+                "no assignment, no tracker permission");
         assertEquals(1, as(() -> asSuper(), () -> service.list(false, 43L, false, 100)).size());
         assertEquals(2, as(() -> asSuper(), () -> service.list(false, null, false, 500)).stream()
                 .filter(item -> item.schoolId() == 42L || item.schoolId() == 43L).count());
@@ -842,7 +898,7 @@ class NotebookTrackerServiceIntegrationTest {
     @Test
     void theWorklistRefusesSchoolAdminsAndAnonymousCallers() {
         createNamed(true, 10L, OP_A, "Ten", "2026-10-19T09:00:00+05:30");
-        TenantContext.set(new TenantContext(5L, "admin@x", "ADMIN", 10L, null, WORKFLOW));
+        TenantContext.set(new TenantContext(5L, "admin@x", "ADMIN", 10L, null, SCHOOL_ADMIN_WORKFLOW));
         assertEquals(403, http(() -> service.list(false, null, false, 10)).status());
         TenantContext.clear();
         assertEquals(403, http(() -> service.list(false, null, false, 10)).status());
