@@ -53,7 +53,7 @@ export function NotebookWorklistPanel() {
                   <td>{row.schoolName ?? `School ${row.schoolId}`}</td>
                   <td className="ck-num">{row.orderedCount.toLocaleString('en-IN')}</td>
                   <td><span className="ck-status sb2">{getDisplayStatus(row.status)}</span>{row.assigneeUserId === user?.userId ? '' : row.assigneeUserId == null ? ' · unassigned' : ''}</td>
-                  <td className={row.overdue ? 'ck-trk-late' : undefined}>{row.dueAt ? `${row.overdue ? 'Overdue · ' : ''}${new Date(row.dueAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` : '—'}</td>
+                  <td className={row.overdue ? 'ck-trk-late' : undefined}>{row.dueAt ? `${row.overdue ? 'Overdue · ' : ''}${new Date(row.dueAt).toLocaleString('en-IN', { timeZone: row.timeZone, dateStyle: 'medium', timeStyle: 'short' })}` : '—'}</td>
                   <td>{row.completed} of {row.total}</td>
                   <td><button type="button" className="ck-btn ck-btn-ghost" onClick={() => setOpen(row.orderId)}>Open</button></td>
                 </tr>

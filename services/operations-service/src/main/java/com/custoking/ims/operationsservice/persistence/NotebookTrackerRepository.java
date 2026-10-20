@@ -225,7 +225,7 @@ public class NotebookTrackerRepository {
 
     /** One row of the worklist: an order's progress and its active step. */
     public record ListRow(String orderId, long schoolId, String schoolName, boolean customised, int orderedCount,
-                          OffsetDateTime placedAt, String instanceStatus, Integer activeStep, Long assigneeUserId,
+                          OffsetDateTime placedAt, String timeZone, String instanceStatus, Integer activeStep, Long assigneeUserId,
                           OffsetDateTime dueAt, int completed, int total) { }
 
     /**
@@ -235,7 +235,7 @@ public class NotebookTrackerRepository {
     public List<ListRow> list(Long schoolId, java.util.Collection<Long> schools, Long assignee, boolean includeFinished, int limit) {
         if (schools != null && schools.isEmpty()) return List.of();
         StringBuilder sql = new StringBuilder("SELECT t.order_id, t.school_id, t.school_name, t.customised, t.ordered_count, t.placed_at, "
-                + "i.status AS instance_status, s.step_order AS active_step, s.assignee_user_id, s.due_at, "
+                + "t.time_zone, i.status AS instance_status, s.step_order AS active_step, s.assignee_user_id, s.due_at, "
                 + "(SELECT count(*) FROM " + instanceSteps + " c WHERE c.instance_id = t.instance_id AND c.status = 'COMPLETED') AS completed, "
                 + "(SELECT count(*) FROM " + instanceSteps + " c WHERE c.instance_id = t.instance_id) AS total "
                 + "FROM " + trackers + " t JOIN " + instances + " i ON i.id = t.instance_id AND i.school_id = t.school_id "
@@ -251,7 +251,7 @@ public class NotebookTrackerRepository {
         if (assignee != null) spec = spec.param("assignee", assignee);
         return spec.query((rs, n) -> new ListRow(rs.getString("order_id"), rs.getLong("school_id"), rs.getString("school_name"),
                 rs.getBoolean("customised"), rs.getInt("ordered_count"), rs.getObject("placed_at", OffsetDateTime.class),
-                rs.getString("instance_status"), rs.getObject("active_step", Integer.class), rs.getObject("assignee_user_id", Long.class),
+                rs.getString("time_zone"), rs.getString("instance_status"), rs.getObject("active_step", Integer.class), rs.getObject("assignee_user_id", Long.class),
                 rs.getObject("due_at", OffsetDateTime.class), rs.getInt("completed"), rs.getInt("total"))).list();
     }
 

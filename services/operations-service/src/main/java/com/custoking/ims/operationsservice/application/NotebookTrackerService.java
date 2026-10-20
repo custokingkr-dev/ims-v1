@@ -148,7 +148,7 @@ public class NotebookTrackerService {
                         row.activeStep() == null ? null : TrackerStep.ofNumber(row.activeStep()).map(TrackerStep::title).orElse(null),
                         row.activeStep() == null);
                 return new TrackerView.ListItem(row.orderId(), row.schoolId(), row.schoolName(), row.customised(), row.orderedCount(),
-                        row.placedAt(), statusOf(progress), row.activeStep(), progress.currentTitle(), row.assigneeUserId(), row.dueAt(),
+                        row.placedAt(), row.timeZone(), statusOf(progress), row.activeStep(), progress.currentTitle(), row.assigneeUserId(), row.dueAt(),
                         row.activeStep() != null && row.dueAt() != null && now.isAfter(row.dueAt()), row.completed(), row.total());
             }).toList();
         });

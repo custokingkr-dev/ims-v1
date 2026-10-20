@@ -1206,6 +1206,19 @@ class NotebookTrackerServiceIntegrationTest {
     }
 
     @Test
+    void theWorklistCarriesEachOrdersOwnSchoolTimeZone() {
+        String kolkata = createNamed(true, 46L, OP_A, "Forty-Six", "2026-10-19T09:00:00+05:30");
+        String dubai = "ORD-" + ORDERS.incrementAndGet();
+        asNobody();
+        service.create(new CreateTracker(dubai, 46L, true, 1000, OffsetDateTime.parse("2026-10-19T09:00:00+04:00"), "Asia/Dubai", 77L, OP_A, "Forty-Six"));
+
+        var items = as(() -> asSuper(), () -> service.list(false, 46L, false, 100));
+        assertEquals(Map.of(kolkata, "Asia/Kolkata", dubai, "Asia/Dubai"),
+                items.stream().collect(java.util.stream.Collectors.toMap(TrackerView.ListItem::orderId, TrackerView.ListItem::timeZone)),
+                "each worklist row carries the zone its deadlines were computed in");
+    }
+
+    @Test
     void theWorklistIsBoundedByTheCallersScopeAndFilters() {
         createNamed(true, 42L, OP_A, "Forty-Two", "2026-10-19T09:00:00+05:30");
         createNamed(true, 43L, OP_B, "Forty-Three", "2026-10-19T09:00:00+05:30");

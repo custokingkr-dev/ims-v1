@@ -26,10 +26,13 @@ public record TrackerView(
 
     public record Progress(int completed, int total, Integer currentStep, String currentTitle, boolean finished) { }
 
-    /** One order in the worklist. {@code status} is the order's status code: the current step, or COMPLETED. */
+    /**
+     * One order in the worklist. {@code status} is the order's status code: the current step, or COMPLETED. {@code timeZone}
+     * is the school's IANA zone stored with the tracker, in which deadlines are shown.
+     */
     public record ListItem(String orderId, long schoolId, String schoolName, boolean customised, int orderedCount,
-                           OffsetDateTime placedAt, String status, Integer currentStep, String currentTitle, Long assigneeUserId,
-                           OffsetDateTime dueAt, boolean overdue, int completed, int total) { }
+                           OffsetDateTime placedAt, String timeZone, String status, Integer currentStep, String currentTitle,
+                           Long assigneeUserId, OffsetDateTime dueAt, boolean overdue, int completed, int total) { }
 
     public record Contact(String name, String phone) { }
 

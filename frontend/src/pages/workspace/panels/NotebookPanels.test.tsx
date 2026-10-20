@@ -17,7 +17,7 @@ vi.mock('../../../features/tracker/api', async (importOriginal) => {
 });
 
 const row = (orderId: string, over = {}) => ({ orderId, schoolId: 7, schoolName: 'School Seven', customised: true, orderedCount: 2500, placedAt: '2026-10-19T04:00:00Z',
-  status: 'PRINTING_PRESS', currentStep: 7, currentTitle: 'Printing Press', assigneeUserId: 42, dueAt: '2026-10-19T09:00:00Z', overdue: false, completed: 6, total: 12, ...over });
+  timeZone: 'Asia/Kolkata', status: 'PRINTING_PRESS', currentStep: 7, currentTitle: 'Printing Press', assigneeUserId: 42, dueAt: '2026-10-19T09:00:00Z', overdue: false, completed: 6, total: 12, ...over });
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(trackerApi.categories).mockResolvedValue([{ code: 'NOTEBOOKS', label: 'Notebooks' }, { code: 'TROPHIES', label: 'Trophies' }]); vi.mocked(trackerApi.operatorUsers).mockResolvedValue([{ userId: 12, fullName: 'Op Twelve', email: 'op12@x.test' }]); vi.mocked(trackerApi.schools).mockResolvedValue([{ id: 7, name: 'School Seven' }]); });
 afterEach(cleanup);
 
@@ -32,6 +32,18 @@ it('lists my notebook orders soonest first, flags overdue ones and opens the tra
   expect(screen.getAllByText('6 of 12')).toHaveLength(2);
   fireEvent.click(screen.getAllByRole('button', { name: 'Open' })[0]);
   expect(await screen.findByText('tracker for CK-1')).toBeInTheDocument();
+});
+
+it("shows each deadline in its school's time zone, whatever the browser's zone is", async () => {
+  // 20:00 UTC on 19 October is already 01:30 on 20 October in Kolkata, and still 16:00 on the 19th in New York.
+  vi.mocked(trackerApi.worklist).mockResolvedValue([
+    row('CK-1', { dueAt: '2026-10-19T20:00:00Z', timeZone: 'Asia/Kolkata' }),
+    row('CK-2', { dueAt: '2026-10-19T20:00:00Z', timeZone: 'America/New_York', overdue: true }),
+  ]);
+  render(<NotebookWorklistPanel />);
+  const due = async (orderId: string) => within((await screen.findByText(orderId)).closest('tr')!).getAllByRole('cell')[4];
+  expect(await due('CK-1')).toHaveTextContent(/^20 Oct 2026,\s1:30\sam$/);
+  expect(await due('CK-2')).toHaveTextContent(/^Overdue · 19 Oct 2026,\s4:00\spm$/);
 });
 
 it('groups the worklist filters under a legend', async () => {

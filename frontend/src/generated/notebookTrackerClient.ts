@@ -6,7 +6,7 @@ import type { AxiosInstance } from 'axios';
 
 export type TrackerProgress = { "completed": number; "total": number; "currentStep": number | null; "currentTitle": string | null; "finished": boolean; };
 
-export type TrackerListItem = { "orderId": string; "schoolId": number; "schoolName": string | null; "customised": boolean; "orderedCount": number; "placedAt": string; "status": string; "currentStep": number | null; "currentTitle": string | null; "assigneeUserId": number | null; "dueAt": string | null; "overdue": boolean; "completed": number; "total": number; };
+export type TrackerListItem = { "orderId": string; "schoolId": number; "schoolName": string | null; "customised": boolean; "orderedCount": number; "placedAt": string; "timeZone": string; "status": string; "currentStep": number | null; "currentTitle": string | null; "assigneeUserId": number | null; "dueAt": string | null; "overdue": boolean; "completed": number; "total": number; };
 
 export type TrackerContact = { "name": string | null; "phone": string | null; };
 
