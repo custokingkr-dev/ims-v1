@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import api from '../../../services/api';
 import { errorMessage } from '../../../features/catalog/api';
 import { trackerApi, type OperatorRow } from '../../../features/tracker/api';
 import { slaLabel } from '../../../features/tracker/steps';
@@ -45,7 +44,7 @@ function OperatorsTab({ schools }: { schools: SchoolOption[] }) {
           : rows.map((r) => (
             <tr key={r.assignmentId}><td>{r.fullName}<div className="ck-product-muted">{r.email}</div></td><td>{name(r.schoolId)}</td>
               <td>{r.catalogCategory ?? 'School-wide'}</td>
-              <td><button className="ck-btn ck-btn-ghost" onClick={() => void run(async () => { await api.delete(`/rbac/users/${r.userId}/roles/${r.assignmentId}`); await load(); }, 'Assignment revoked.')}>Revoke</button></td></tr>
+              <td><button className="ck-btn ck-btn-ghost" onClick={() => void run(async () => { await trackerApi.revokeAssignment(r.userId, r.assignmentId); await load(); }, 'Assignment revoked.')}>Revoke</button></td></tr>
           ))}</tbody>
       </table></div>
       <h4>Scope an operator to one catalogue item at a school</h4>
@@ -175,7 +174,7 @@ export function NotebookAdminPanel() {
   const [tab, setTab] = useState<'operators' | 'designers' | 'slots'>('operators');
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   useEffect(() => {
-    api.get('/sa/schools').then((res) => setSchools(Array.isArray(res.data) ? res.data : [])).catch(() => setSchools([]));
+    trackerApi.schools().then(setSchools).catch(() => setSchools([]));
   }, []);
   return (
     <div className="ck-trk">

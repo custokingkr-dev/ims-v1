@@ -1,11 +1,17 @@
 import api from '../../services/api';
 import { parseProductCategories } from '../catalog/api';
 import { createNotebookTrackerClient } from '../../generated/notebookTrackerClient';
+import { createCatalogClient } from '../../generated/catalogClient';
+import { createOperatorAdminClient } from '../../generated/operatorAdminClient';
+import { createTenantSchoolClient } from '../../generated/tenantSchoolClient';
 import type { DesignerRow, DraftImage, OperatorUser, OrderSummary, SlaRow, TrackerView, WorklistItem } from './types';
 
 export interface OperatorRow { assignmentId: number; userId: number; fullName: string; email: string; schoolId: number; catalogCategory: string | null }
 
 const client = createNotebookTrackerClient(api);
+const catalog = createCatalogClient(api);
+const operatorAdmin = createOperatorAdminClient(api);
+const tenant = createTenantSchoolClient(api);
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** A tracker response is trusted only when it has the parts the screen reads; anything else is a bad response, not a blank screen. */
@@ -59,30 +65,31 @@ export const trackerApi = {
 
   // Design drafts live with the order in school-core; the tracker only decides who may change them.
   draftImages: async (orderId: string): Promise<DraftImage[]> => {
-    const { data } = await api.get<Array<Record<string, unknown>>>(`/supply/orders/${encodeURIComponent(orderId)}/assets`);
-    return (Array.isArray(data) ? data : []).filter((a) => a.assetKind === 'DESIGN_DRAFT' && !a.supersededAt) as unknown as DraftImage[];
+    const assets = await catalog.listOrderAssets({ id: orderId });
+    return (Array.isArray(assets) ? assets : []).filter((a) => a.assetKind === 'DESIGN_DRAFT' && !a.supersededAt) as unknown as DraftImage[];
   },
-  uploadDraft: async (orderId: string, file: File) => {
-    const form = new FormData(); form.append('file', file); form.append('assetKind', 'DESIGN_DRAFT');
-    await api.post(`/supply/orders/${encodeURIComponent(orderId)}/assets`, form);
-  },
-  deleteDraft: async (orderId: string, assetId: number) => { await api.delete(`/supply/orders/${encodeURIComponent(orderId)}/assets/${assetId}`); },
-  draftBlob: async (orderId: string, assetId: number) =>
-    (await api.get<Blob>(`/supply/orders/${encodeURIComponent(orderId)}/assets/${assetId}/content`, { responseType: 'blob' })).data,
+  uploadDraft: async (orderId: string, file: File) => { await catalog.uploadOrderAsset({ id: orderId }, { assetKind: 'DESIGN_DRAFT', file }); },
+  deleteDraft: (orderId: string, assetId: number) => catalog.deleteOrderAsset({ id: orderId, assetId }),
+  draftBlob: (orderId: string, assetId: number) => catalog.getOrderAssetContent({ id: orderId, assetId }),
 
   // The order itself lives in school-core: its summary, and starting a tracker whose creation failed at placement.
-  summary: async (orderId: string) => (await api.get<OrderSummary>(`/catalog/orders/${encodeURIComponent(orderId)}/tracker-summary`)).data,
-  startTracker: async (orderId: string) => (await api.post<{ trackerPending: boolean }>(`/catalog/orders/${encodeURIComponent(orderId)}/tracker/ensure`)).data,
+  summary: (orderId: string): Promise<OrderSummary> => catalog.getNotebookTrackerSummary({ id: orderId }) as Promise<OrderSummary>,
+  startTracker: (orderId: string) => catalog.ensureNotebookTracker({ id: orderId }),
 
   operatorUsers: async (): Promise<OperatorUser[]> => {
-    const { data } = await api.get<Array<{ id: number; fullName?: string; email?: string }>>('/users', { params: { role: 'OPERATIONS', active: true, limit: 500 } });
-    return (Array.isArray(data) ? data : []).filter((u) => u.id > 0).map((u) => ({ userId: u.id, fullName: u.fullName ?? '', email: u.email ?? '' }));
+    const users = await operatorAdmin.listUsers({ role: 'OPERATIONS', active: true, limit: 500 });
+    return (Array.isArray(users) ? users : []).filter((u) => u.id > 0).map((u) => ({ userId: u.id, fullName: u.fullName ?? '', email: u.email ?? '' }));
   },
   // An operator may only be scoped to an item the catalogue has, so the choices come from the catalogue itself.
   categories: async (): Promise<Array<{ code: string; label: string }>> =>
-    parseProductCategories((await api.get<unknown>('/supply/product-catalog/categories')).data).filter((c) => c.active).map((c) => ({ code: c.code, label: c.label })),
-  scopeOperator: async (userId: number, schoolId: number, catalogCategory: string) => { await api.post(`/rbac/users/${userId}/operator-scopes`, { schoolId, catalogCategory }); },
-  createScopedOperator: async (schoolId: number, body: { fullName: string; email: string; temporaryPassword: string }, catalogCategory: string) =>
-    (await api.post<{ userId: number }>(`/users/provisioning/schools/${schoolId}/users/OPERATIONS`, { ...body, catalogCategory })).data,
-  operators: async () => (await api.get<OperatorRow[]>('/rbac/operators')).data,
+    parseProductCategories(await catalog.listProductCategories()).filter((c) => c.active).map((c) => ({ code: c.code, label: c.label })),
+  scopeOperator: async (userId: number, schoolId: number, catalogCategory: string) => { await operatorAdmin.assignOperatorScope({ userId }, { schoolId, catalogCategory }); },
+  revokeAssignment: (userId: number, assignmentId: number) => operatorAdmin.revokeRoleAssignment({ userId, assignmentId }),
+  createScopedOperator: (schoolId: number, body: { fullName: string; email: string; temporaryPassword: string }, catalogCategory: string) =>
+    operatorAdmin.provisionSchoolUser({ schoolId, role: 'OPERATIONS' }, { ...body, catalogCategory }),
+  operators: (): Promise<OperatorRow[]> => operatorAdmin.listOperators(),
+  schools: async (): Promise<Array<{ id: number; name: string }>> => {
+    const rows = await tenant.listSuperadminSchools();
+    return Array.isArray(rows) ? rows : [];
+  },
 };

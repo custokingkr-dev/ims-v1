@@ -73,24 +73,50 @@ describe('tracker wire contract', () => {
     expect(last(api.delete)[0]).toBe('/workflows/notebook-orders/time-slots/7/5');
   });
 
-  it('reaches school-core for drafts, the summary and starting a tracker, and provisions item-scoped operators', async () => {
+  it('reaches school-core for drafts, the summary and starting a tracker, through the generated catalog client', async () => {
     vi.mocked(api.get).mockResolvedValue({ data: [{ id: 1, assetKind: 'DESIGN_DRAFT' }, { id: 2, assetKind: 'DESIGN_DRAFT', supersededAt: 'x' }, { id: 3, assetKind: 'DESIGN' }] });
-    expect((await trackerApi.draftImages('CK-1')).map((d) => d.id)).toEqual([1]);
-    expect(api.get).toHaveBeenLastCalledWith('/supply/orders/CK-1/assets');
+    expect((await trackerApi.draftImages('CK 1')).map((d) => d.id)).toEqual([1]);
+    expect(api.get).toHaveBeenLastCalledWith('/catalog/orders/CK%201/assets');
     await trackerApi.summary('CK-1');
     expect(api.get).toHaveBeenLastCalledWith('/catalog/orders/CK-1/tracker-summary');
     await trackerApi.startTracker('CK-1');
-    expect(last(api.post)[0]).toBe('/catalog/orders/CK-1/tracker/ensure');
+    expect(api.post).toHaveBeenLastCalledWith('/catalog/orders/CK-1/tracker/ensure');
+    const file = new File(['x'], 'v1.png', { type: 'image/png' });
+    await trackerApi.uploadDraft('CK-1', file);
+    expect(last(api.post)[0]).toBe('/catalog/orders/CK-1/assets');
+    const form = last(api.post)[1] as FormData;
+    expect(form.get('assetKind')).toBe('DESIGN_DRAFT');
+    expect((form.get('file') as File).name).toBe('v1.png');
+    vi.mocked(api.delete).mockResolvedValue({ data: undefined });
+    await trackerApi.deleteDraft('CK-1', 9);
+    expect(api.delete).toHaveBeenLastCalledWith('/catalog/orders/CK-1/assets/9');
+    const blob = new Blob(['x']);
+    vi.mocked(api.get).mockResolvedValue({ data: blob });
+    expect(await trackerApi.draftBlob('CK-1', 9)).toBe(blob);
+    expect(api.get).toHaveBeenLastCalledWith('/catalog/orders/CK-1/assets/9/content', { responseType: 'blob' });
+  });
+
+  it('reaches identity for operator scopes, provisioning, revoking and the operator list, through the generated operator client', async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: { userId: 5 } });
     await trackerApi.createScopedOperator(7, { fullName: 'N', email: 'n@x.test', temporaryPassword: 'Temp#12345' }, 'TROPHIES');
     expect(api.post).toHaveBeenLastCalledWith('/users/provisioning/schools/7/users/OPERATIONS',
       { fullName: 'N', email: 'n@x.test', temporaryPassword: 'Temp#12345', catalogCategory: 'TROPHIES' });
     await trackerApi.scopeOperator(12, 7, 'NOTEBOOKS');
     expect(api.post).toHaveBeenLastCalledWith('/rbac/users/12/operator-scopes', { schoolId: 7, catalogCategory: 'NOTEBOOKS' });
-    const file = new File(['x'], 'v1.png', { type: 'image/png' });
-    await trackerApi.uploadDraft('CK-1', file);
-    const form = last(api.post)[1] as FormData;
-    expect(form.get('assetKind')).toBe('DESIGN_DRAFT');
-    expect((form.get('file') as File).name).toBe('v1.png');
+    vi.mocked(api.delete).mockResolvedValue({ data: undefined });
+    await trackerApi.revokeAssignment(12, 34);
+    expect(api.delete).toHaveBeenLastCalledWith('/rbac/users/12/roles/34');
+    vi.mocked(api.get).mockResolvedValue({ data: [{ assignmentId: 1 }] });
+    expect(await trackerApi.operators()).toEqual([{ assignmentId: 1 }]);
+    expect(api.get).toHaveBeenLastCalledWith('/rbac/operators', { params: { schoolId: undefined, catalogCategory: undefined } });
+  });
+
+  it('lists schools for the superadmin pickers and tolerates a malformed answer', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [{ id: 4, name: 'S' }] });
+    expect(await trackerApi.schools()).toEqual([{ id: 4, name: 'S' }]);
+    expect(api.get).toHaveBeenLastCalledWith('/sa/schools');
+    vi.mocked(api.get).mockResolvedValue({ data: 'nope' });
+    expect(await trackerApi.schools()).toEqual([]);
   });
 
   it('offers only active catalogue items as operator scopes, and refuses an unreadable catalogue', async () => {
@@ -105,7 +131,7 @@ describe('tracker wire contract', () => {
   it('lists operators for the picker and tolerates a malformed directory', async () => {
     vi.mocked(api.get).mockResolvedValue({ data: [{ id: 5, fullName: 'Op', email: 'o@x.test' }, { id: 0 }] });
     expect(await trackerApi.operatorUsers()).toEqual([{ userId: 5, fullName: 'Op', email: 'o@x.test' }]);
-    expect(api.get).toHaveBeenLastCalledWith('/users', { params: { role: 'OPERATIONS', active: true, limit: 500 } });
+    expect(api.get).toHaveBeenLastCalledWith('/users', { params: { role: 'OPERATIONS', branchId: undefined, zoneId: undefined, active: true, limit: 500 } });
     vi.mocked(api.get).mockResolvedValue({ data: 'nope' });
     expect(await trackerApi.operatorUsers()).toEqual([]);
   });

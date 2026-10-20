@@ -1,21 +1,19 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import api from '../../../services/api';
 import { trackerApi } from '../../../features/tracker/api';
 import { NotebookAdminPanel } from './NotebookAdminPanel';
 import { NotebookWorklistPanel } from './NotebookWorklistPanel';
 
 vi.mock('../../../contexts/AuthContext', () => ({ useAuth: () => ({ user: { role: 'OPERATIONS', userId: 42 } }) }));
-vi.mock('../../../services/api', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() } }));
 vi.mock('../../../features/tracker/NotebookTracker', () => ({ NotebookTracker: ({ orderId }: { orderId: string }) => <div>tracker for {orderId}</div> }));
 vi.mock('../../../features/tracker/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../features/tracker/api')>();
-  return { ...actual, trackerApi: { worklist: vi.fn(), operators: vi.fn(), operatorUsers: vi.fn(), createScopedOperator: vi.fn(), scopeOperator: vi.fn(), categories: vi.fn(), designers: vi.fn(), createDesigner: vi.fn(), updateDesigner: vi.fn(), timeSlots: vi.fn(), setTimeSlot: vi.fn(), clearTimeSlot: vi.fn() } };
+  return { ...actual, trackerApi: { worklist: vi.fn(), operators: vi.fn(), operatorUsers: vi.fn(), createScopedOperator: vi.fn(), scopeOperator: vi.fn(), revokeAssignment: vi.fn(), schools: vi.fn(), categories: vi.fn(), designers: vi.fn(), createDesigner: vi.fn(), updateDesigner: vi.fn(), timeSlots: vi.fn(), setTimeSlot: vi.fn(), clearTimeSlot: vi.fn() } };
 });
 
 const row = (orderId: string, over = {}) => ({ orderId, schoolId: 7, schoolName: 'School Seven', customised: true, orderedCount: 2500, placedAt: '2026-10-19T04:00:00Z',
   status: 'PRINTING_PRESS', currentStep: 7, currentTitle: 'Printing Press', assigneeUserId: 42, dueAt: '2026-10-19T09:00:00Z', overdue: false, completed: 6, total: 12, ...over });
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(trackerApi.categories).mockResolvedValue([{ code: 'NOTEBOOKS', label: 'Notebooks' }, { code: 'TROPHIES', label: 'Trophies' }]); vi.mocked(trackerApi.operatorUsers).mockResolvedValue([{ userId: 12, fullName: 'Op Twelve', email: 'op12@x.test' }]); vi.mocked(api.get).mockResolvedValue({ data: [{ id: 7, name: 'School Seven' }] }); });
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(trackerApi.categories).mockResolvedValue([{ code: 'NOTEBOOKS', label: 'Notebooks' }, { code: 'TROPHIES', label: 'Trophies' }]); vi.mocked(trackerApi.operatorUsers).mockResolvedValue([{ userId: 12, fullName: 'Op Twelve', email: 'op12@x.test' }]); vi.mocked(trackerApi.schools).mockResolvedValue([{ id: 7, name: 'School Seven' }]); });
 afterEach(cleanup);
 
 it('lists my notebook orders soonest first, flags overdue ones and opens the tracker', async () => {
@@ -49,7 +47,7 @@ it('shows the server reason when the worklist cannot load', async () => {
 
 it('scopes an operator to notebooks at a chosen school and revokes an assignment', async () => {
   vi.mocked(trackerApi.operators).mockResolvedValue([{ assignmentId: 9, userId: 3, fullName: 'Op Three', email: 'op3@x.test', schoolId: 7, catalogCategory: null }]);
-  vi.mocked(api.delete).mockResolvedValue({ data: {} });
+  vi.mocked(trackerApi.revokeAssignment).mockResolvedValue(undefined);
   render(<NotebookAdminPanel />);
   expect(await screen.findByText('Op Three')).toBeInTheDocument();
   expect(screen.getByText('School-wide')).toBeInTheDocument();
@@ -62,12 +60,12 @@ it('scopes an operator to notebooks at a chosen school and revokes an assignment
   fireEvent.click(assign);
   await waitFor(() => expect(trackerApi.scopeOperator).toHaveBeenCalledWith(12, 7, 'TROPHIES'));
   fireEvent.click(screen.getByRole('button', { name: 'Revoke' }));
-  await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/rbac/users/3/roles/9'));
+  await waitFor(() => expect(trackerApi.revokeAssignment).toHaveBeenCalledWith(3, 9));
 });
 
 it('creates a notebook-only operator at a school and refreshes the lists', async () => {
   vi.mocked(trackerApi.operators).mockResolvedValue([]);
-  vi.mocked(trackerApi.createScopedOperator).mockResolvedValue({ userId: 30 });
+  vi.mocked(trackerApi.createScopedOperator).mockResolvedValue({ userId: 30, fullName: 'N', email: 'n@x.test', branchId: 7, branchName: 'School Seven' });
   render(<NotebookAdminPanel />);
   const create = await screen.findByRole('button', { name: 'Create operator' });
   expect(create).toBeDisabled();

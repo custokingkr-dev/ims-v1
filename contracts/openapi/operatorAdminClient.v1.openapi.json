@@ -1,0 +1,599 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking operator administration",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "identity-service",
+  "x-ims-gateway-service": "identity",
+  "x-ims-controller": "OperatorScopeController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "OperatorAdminClient",
+  "x-ims-client-file": "operatorAdminClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/rbac/operators": {
+      "get": {
+        "operationId": "listOperators",
+        "summary": "Active operator assignments, optionally for one school and/or catalogue item",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "catalogCategory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OperatorAssignment"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/rbac/users/{userId}/operator-scopes": {
+      "post": {
+        "operationId": "assignOperatorScope",
+        "summary": "Scope an existing operator to one catalogue item at one school",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperatorScopeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scope assigned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleAssignment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/rbac/users/{userId}/roles/{assignmentId}": {
+      "delete": {
+        "operationId": "revokeRoleAssignment",
+        "summary": "Revoke a role assignment (an operator scope is revoked this way)",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "assignmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "x-ims-controller": "RbacReadController",
+        "responses": {
+          "200": {
+            "description": "Revoked"
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "operationId": "listUsers",
+        "summary": "The user directory, filtered",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "zoneId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "x-ims-controller": "UserDirectoryController",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DirectoryUser"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/users/provisioning/schools/{schoolId}/users/{role}": {
+      "post": {
+        "operationId": "provisionSchoolUser",
+        "summary": "Create (or, for an operator, reuse) a school user, optionally scoped to one catalogue item",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "role",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-ims-controller": "IdentityProvisioningController",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProvisionSchoolUserRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User provisioned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisionedSchoolUser"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "OperatorAssignment": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assignmentId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "catalogCategory": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "assignmentId",
+          "userId",
+          "fullName",
+          "email",
+          "schoolId",
+          "catalogCategory"
+        ],
+        "x-ims-java-record": {
+          "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/persistence/OperatorDirectoryRepository.java",
+          "name": "OperatorRow",
+          "requireAll": true
+        }
+      },
+      "OperatorScopeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "schoolId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "catalogCategory": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schoolId",
+          "catalogCategory"
+        ],
+        "x-ims-java-record": {
+          "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/OperatorScopeController.java",
+          "name": "ScopeRequest",
+          "requireAll": true
+        }
+      },
+      "RoleAssignment": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "roleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "role": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "effective": {
+            "type": "boolean"
+          },
+          "schoolId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "zoneId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "catalogCategory": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "role",
+          "active",
+          "effective"
+        ]
+      },
+      "DirectoryUser": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fullName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "branchId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "branchName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "zoneId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "zoneName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deletedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "active": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "x-ims-java-record": {
+          "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/persistence/UserDirectoryReadRepository.java",
+          "name": "UserDirectoryRow"
+        }
+      },
+      "ProvisionSchoolUserRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "temporaryPassword": {
+            "type": "string"
+          },
+          "catalogCategory": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fullName",
+          "email",
+          "temporaryPassword"
+        ]
+      },
+      "ProvisionedSchoolUser": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "catalogCategory": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "fullName",
+          "email",
+          "branchId",
+          "branchName"
+        ]
+      }
+    }
+  }
+}

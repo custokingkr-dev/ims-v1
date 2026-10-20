@@ -5,7 +5,7 @@ and `node scripts/generate-openapi-typescript-client.js --check` in verification
 The route inventory must first be current (`node scripts/generate-api-route-inventory.js`).
 The always-run CI architecture job checks generation and the generator/routing tests.
 
-Current coverage is **130 canonical operations across 13 contract files/clients**:
+Current coverage is **143 canonical operations across 15 contract files/clients**:
 
 | Contract | Operations | Covered workflow |
 | --- | ---: | --- |
@@ -17,11 +17,13 @@ Current coverage is **130 canonical operations across 13 contract files/clients*
 | Billing | 1 | Complete invoice statistics; Java-bound payment DTO exported with exact compatibility-route binding |
 | Broadcasts | 8 | Draft/list, capabilities, preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
 | Quotation documents | 4 | Capabilities, multipart upload, authenticated download, removal |
-| Catalog | 6 | Paginated order read, scoped statistics, guarded status/delivery, annual-plan review/confirmation |
+| Catalog | 13 | Paginated order read, scoped statistics, guarded status/delivery, annual-plan review/confirmation; the notebook tracker's order summary, tracker start, design-draft attachment list/upload/delete/download, and the catalogue item list. Order rows carry `trackerManaged` |
 | Reporting | 7 | Workspace, command-center dashboard, fee defaulters, low-attendance sections/students, vendor dues and reorder signals |
 | Firefighting creation | 2 | Stable-key request and quotation creation |
 | Workflow decisions | 3 | Read versioned instance, approve and reject with required reviewed expectedVersion |
 | Notebook order tracker | 22 | Worklist and tracker read, step drafts/stage notes/complete/reopen/sign-off, assignment, follow-ups, design send/approve/request-changes, vendor/designer/internal notes, designers and per-school time slots. Request and response schemas bind to the Java records; the browser sends `expectedVersion` from the loaded step. The two machine-only endpoints (tracker creation and design-image access) are deliberately not in a browser contract. |
+| Operator administration | 5 | Identity operator list and scope assignment, role-assignment revoke, user directory, school-user provisioning (with the operator's `catalogCategory`) |
+| Tenant schools | 1 | Superadmin school list |
 
 These are critical browser contracts, not a claim of complete coverage of every
 controller. Legacy report row extensions and receipt detail fields remain explicit

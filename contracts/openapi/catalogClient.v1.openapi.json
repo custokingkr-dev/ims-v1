@@ -322,6 +322,331 @@
           }
         }
       }
+    },
+    "/api/v1/catalog/orders/{id}/tracker-summary": {
+      "get": {
+        "operationId": "getNotebookTrackerSummary",
+        "summary": "Header data for the notebook order tracker",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-ims-controller": "CatalogOrderFormController",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotebookTrackerSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/orders/{id}/tracker/ensure": {
+      "post": {
+        "operationId": "ensureNotebookTracker",
+        "summary": "Start the tracker of a placed notebook order whose tracker is not created yet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-ims-controller": "CatalogOrderFormController",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerEnsureResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/orders/{id}/assets": {
+      "get": {
+        "operationId": "listOrderAssets",
+        "summary": "Every attachment of the order, superseded ones included",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-ims-controller": "CatalogOrderFormController",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrderAsset"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      },
+      "post": {
+        "operationId": "uploadOrderAsset",
+        "summary": "Upload an attachment (a design draft uses assetKind DESIGN_DRAFT)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-ims-controller": "CatalogOrderFormController",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderAssetUpload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderAsset"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/orders/{id}/assets/{assetId}": {
+      "delete": {
+        "operationId": "deleteOrderAsset",
+        "summary": "Remove an attachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "x-ims-controller": "CatalogOrderFormController",
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/orders/{id}/assets/{assetId}/content": {
+      "get": {
+        "operationId": "getOrderAssetContent",
+        "summary": "The attachment's bytes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "x-ims-controller": "CatalogOrderFormController",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/supply/product-catalog/categories": {
+      "get": {
+        "operationId": "listProductCategories",
+        "summary": "The active catalogue items",
+        "parameters": [],
+        "x-ims-controller": "CatalogProductFormController",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductCategory"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -349,6 +674,13 @@
           },
           "totalAmount": {
             "type": "number"
+          },
+          "trackerManaged": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "True for a notebook order placed on the notebook order tracker; one placed before it keeps the approval flow."
           }
         },
         "required": [
@@ -581,6 +913,258 @@
           "confirmation"
         ],
         "additionalProperties": true
+      },
+      "NotebookTrackerSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "schoolName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schoolContactEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schoolContactPhone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "customised": {
+            "type": "boolean"
+          },
+          "requiredByDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "placedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schoolNotes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "orderedCount": {
+            "type": "integer"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "lineNo": {
+                  "type": "integer"
+                },
+                "selections": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "spec": {
+                            "type": "string"
+                          },
+                          "specText": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "label"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "bookCount": {
+                  "type": "integer"
+                },
+                "pageCount": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "lineNo",
+                "selections",
+                "bookCount",
+                "pageCount"
+              ]
+            }
+          },
+          "trackerPending": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "orderId",
+          "schoolId",
+          "schoolName",
+          "schoolContactEmail",
+          "schoolContactPhone",
+          "status",
+          "customised",
+          "requiredByDate",
+          "placedAt",
+          "schoolNotes",
+          "orderedCount",
+          "lines",
+          "trackerPending"
+        ]
+      },
+      "TrackerEnsureResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "trackerPending": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "trackerPending"
+        ]
+      },
+      "OrderAsset": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "assetKind": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "checksumSha256": {
+            "type": "string"
+          },
+          "originalFilename": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uploadedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uploadedAt": {
+            "type": "string"
+          },
+          "supersededAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "assetKind",
+          "contentType",
+          "sizeBytes",
+          "uploadedAt"
+        ]
+      },
+      "OrderAssetUpload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assetKind": {
+            "type": "string"
+          },
+          "file": {
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "required": [
+          "assetKind",
+          "file"
+        ]
+      },
+      "ProductCategory": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "emoji": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "orderType": {
+            "type": "string"
+          },
+          "formEnabled": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "emoji",
+          "description",
+          "orderType",
+          "formEnabled",
+          "sortOrder",
+          "active"
+        ]
       }
     }
   },
