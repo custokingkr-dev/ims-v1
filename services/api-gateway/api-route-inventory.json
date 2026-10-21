@@ -12,10 +12,10 @@
   "summary": {
     "services": 5,
     "controllers": 54,
-    "endpoints": 483,
+    "endpoints": 484,
     "canonicalEndpoints": 373,
     "compatibilityEndpoints": 90,
-    "internalEndpoints": 20,
+    "internalEndpoints": 21,
     "diagnosticAliases": 12,
     "gatewayRoutes": 70,
     "frontendCompatibilityCalls": 0,
@@ -1030,7 +1030,7 @@
       "basePaths": [
         "/api/v1/internal/operator-directory"
       ],
-      "endpointCount": 2,
+      "endpointCount": 3,
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/internal/OperatorDirectoryController.java"
     },
     {
@@ -1819,7 +1819,16 @@
       "path": "/api/v1/internal/operator-directory/eligible",
       "classification": "internal",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/internal/OperatorDirectoryController.java",
-      "line": 45
+      "line": 52
+    },
+    {
+      "service": "identity-service",
+      "controller": "OperatorDirectoryController",
+      "method": "POST",
+      "path": "/api/v1/internal/operator-directory/names",
+      "classification": "internal",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/internal/OperatorDirectoryController.java",
+      "line": 65
     },
     {
       "service": "identity-service",
@@ -1828,7 +1837,7 @@
       "path": "/api/v1/internal/operator-directory/resolve",
       "classification": "internal",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/internal/OperatorDirectoryController.java",
-      "line": 34
+      "line": 41
     },
     {
       "service": "identity-service",

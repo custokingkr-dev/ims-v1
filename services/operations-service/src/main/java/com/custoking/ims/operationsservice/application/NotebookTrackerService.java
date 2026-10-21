@@ -40,7 +40,7 @@ import java.util.Set;
  * Orchestrates the notebook order tracker (spec v4): the pure rules in {@code application.tracker} decide what is
  * allowed, this class loads and saves the state inside one transaction per change, with the order's tracker row locked
  * so two people cannot move the same order at once. Peers (identity, the catalogue) are asked before that transaction
- * opens or after it commits, never while the lock is held.
+ * opens or after it commits, never while the lock is held: that includes the staff names a returned view carries.
  */
 @Service
 public class NotebookTrackerService {
@@ -50,15 +50,18 @@ public class NotebookTrackerService {
     private final OperatorEligibility eligibility;
     private final CatalogOrderGateway catalog;
     private final TrackerStatusOutbox statuses;
+    private final StaffNames names;
 
     public NotebookTrackerService(NotebookTrackerRepository repo, TransactionTemplate tx, Clock clock,
-                                  OperatorEligibility eligibility, CatalogOrderGateway catalog, TrackerStatusOutbox statuses) {
+                                  OperatorEligibility eligibility, CatalogOrderGateway catalog, TrackerStatusOutbox statuses,
+                                  StaffNames names) {
         this.repo = repo;
         this.tx = tx;
         this.clock = clock;
         this.eligibility = eligibility;
         this.catalog = catalog;
         this.statuses = statuses;
+        this.names = names;
     }
 
     /** Who is acting, reduced to the two roles the tracker knows. */
@@ -154,12 +157,13 @@ public class NotebookTrackerService {
         });
     }
 
+    /** The tracker screen for one order; staff names are added once the read has committed (see {@link StaffNames}). */
     public TrackerView view(String orderId) {
-        return tx.execute(status -> {
+        return names.named(tx.execute(status -> {
             begin();
             Actor actor = actor(false);
             return assemble(actor, tracker(orderId, false));
-        });
+        }));
     }
 
     // ---- step work ----------------------------------------------------------------------------------------------------
@@ -515,7 +519,8 @@ public class NotebookTrackerService {
         });
         // After commit, with no lock held: a failed push never undoes the user's action and stays queued for the relay.
         if (statusQueued[0]) statuses.attempt(orderId);
-        return view;
+        // Also after commit: identity is asked for staff names with no connection held, and its absence only leaves them null.
+        return names.named(view);
     }
 
     /** The order's status is the current step's code, or COMPLETED once every step is. */
@@ -745,7 +750,7 @@ public class NotebookTrackerService {
                     worker && progress.canEditDetails(actor.role(), step),
                     worker && progress.canEditStageNote(actor.role(), step), canComplete,
                     actor.role() == Role.SUPERADMIN && "COMPLETED".equals(row.status()));
-            return new TrackerView.Step(step.number(), step.title(), step.customisedOnly(), row.status(), row.assigneeUserId(),
+            return new TrackerView.Step(step.number(), step.title(), step.customisedOnly(), row.status(), row.assigneeUserId(), null,
                     row.startedAt(), row.dueAt(), active && row.dueAt() != null && now.isAfter(row.dueAt()), sla,
                     row.completedAt(), row.completedBy(), row.data(), row.stageNote(), row.version(), can);
         }).toList();
@@ -759,7 +764,7 @@ public class NotebookTrackerService {
                 new TrackerView.Progress(progress.completedCount(), progress.total(), current.map(TrackerStep::number).orElse(null),
                         current.map(TrackerStep::title).orElse(null), progress.finished()),
                 vendor, designer, design, steps,
-                repo.internalNotes(t.instanceId()).stream().map(n -> new TrackerView.Note(n.id(), n.authorUserId(), n.body(), n.createdAt())).toList(),
+                repo.internalNotes(t.instanceId()).stream().map(n -> new TrackerView.Note(n.id(), n.authorUserId(), null, n.body(), n.createdAt())).toList(),
                 repo.followUps(t.instanceId()).stream().map(f -> new TrackerView.FollowUp(f.id(), f.percentComplete(), f.nextFollowUpOn(),
                         f.contactPhone(), f.createdBy(), f.createdAt())).toList(),
                 t.version());

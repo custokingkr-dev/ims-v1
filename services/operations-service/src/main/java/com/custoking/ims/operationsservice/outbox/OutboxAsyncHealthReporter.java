@@ -2,11 +2,13 @@ package com.custoking.ims.operationsservice.outbox;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 
 import static net.logstash.logback.argument.StructuredArguments.kv;
@@ -16,6 +18,7 @@ public class OutboxAsyncHealthReporter {
     private static final Logger log = LoggerFactory.getLogger(OutboxAsyncHealthReporter.class);
     private final JdbcClient jdbc;
     private final String table;
+    private List<QueueBacklog> backlogs = List.of();
 
     public OutboxAsyncHealthReporter(JdbcClient jdbc,
                                      @Value("${operations.outbox.db.schema:firefighting}") String schema) {
@@ -24,6 +27,15 @@ public class OutboxAsyncHealthReporter {
             throw new IllegalArgumentException("Invalid outbox schema");
         }
         this.table = schema + ".outbox_events";
+    }
+
+    /**
+     * This service's other retry queues (the notebook tracker status outbox): their backlog is added into the outbox
+     * figures below, counts summed and the oldest age the larger, so the outbox log metrics and their alerts cover them.
+     */
+    @Autowired(required = false)
+    public void configureBacklogs(List<QueueBacklog> backlogs) {
+        this.backlogs = backlogs == null ? List.of() : List.copyOf(backlogs);
     }
 
     @Scheduled(initialDelayString = "${operations.outbox.health.initial-delay-ms:30000}",
@@ -38,7 +50,7 @@ public class OutboxAsyncHealthReporter {
     }
 
     Map<String, Object> snapshot() {
-        return jdbc.sql("""
+        QueueBacklog.Backlog total = jdbc.sql("""
                         SELECT (SELECT count(*) FROM %1$s
                                 WHERE published_at IS NULL AND dead_lettered_at IS NULL) AS pending,
                                (SELECT count(*) FROM %1$s
@@ -48,10 +60,19 @@ public class OutboxAsyncHealthReporter {
                                          WHERE published_at IS NULL AND dead_lettered_at IS NULL
                                          ORDER BY occurred_at LIMIT 1), 0) AS oldest_age
                         """.formatted(table))
-                .query((rs, row) -> Map.<String, Object>of(
-                        "pendingCount", rs.getLong("pending"),
-                        "deadLetterCount", rs.getLong("dead_letter"),
-                        "oldestPendingAgeSeconds", rs.getLong("oldest_age")))
+                .query((rs, row) -> new QueueBacklog.Backlog(rs.getLong("pending"), rs.getLong("dead_letter"), rs.getLong("oldest_age")))
                 .single();
+        for (QueueBacklog backlog : backlogs) {
+            // One queue that cannot be counted must not silence the outbox figures, which the alerts read every minute.
+            try {
+                total = total.plus(backlog.backlog());
+            } catch (RuntimeException ex) {
+                log.warn("outbox.async.health.backlog_failed source={} error={}", backlog.getClass().getSimpleName(), ex.getMessage());
+            }
+        }
+        return Map.of(
+                "pendingCount", total.pendingCount(),
+                "deadLetterCount", total.deadLetterCount(),
+                "oldestPendingAgeSeconds", total.oldestPendingAgeSeconds());
     }
 }

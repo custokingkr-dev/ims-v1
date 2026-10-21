@@ -300,24 +300,32 @@ public class WorkflowReadRepository {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Workflow changed; reload before deciding");
     }
 
+    /**
+     * The instance a generic decision acts on, locked. A notebook order tracker is not found here, exactly like an id that
+     * does not exist: the same 404 and message, for every caller including superadmin, so the generic mutations neither
+     * touch a tracker nor reveal that one exists (the generic reads hide trackers the same way).
+     */
     private Map<String, Object> lockedInstance(Long id) {
         requireActor();
-        Map<String, Object> instance = jdbc.sql(instanceSelect() + " WHERE id = :id FOR UPDATE")
+        Map<String, Object> instance = jdbc.sql(instanceSelect() + " WHERE id = :id" + NOT_A_TRACKER + " FOR UPDATE")
                 .param("id", id).query((rs, rowNum) -> instanceRowMap(rs)).optional()
-                .orElseThrow(() -> new IllegalArgumentException("Workflow instance not found"));
+                .orElseThrow(WorkflowReadRepository::instanceNotFound);
         requireTenant(instance);
         rejectTrackerEntity(String.valueOf(instance.get("entityType")));
         return instance;
     }
 
+    private static ResponseStatusException instanceNotFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow instance not found");
+    }
+
     /**
      * Notebook order trackers move only through the tracker API, which enforces step order, roles and gates. The
-     * generic submit/approve/reject/cancel/complete endpoints must never touch them, even for superadmin.
+     * generic create/submit/approve/reject/cancel/complete endpoints never touch them, even for superadmin, and answer
+     * as if there were none: 404.
      */
     private void rejectTrackerEntity(String entityType) {
-        if (NOTEBOOK_TRACKER_ENTITY.equalsIgnoreCase(entityType)) {
-            throw new IllegalArgumentException("Notebook order trackers are managed through the notebook order tracker API");
-        }
+        if (NOTEBOOK_TRACKER_ENTITY.equalsIgnoreCase(entityType)) throw instanceNotFound();
     }
 
     private void requireTenant(Map<String, Object> instance) {

@@ -1500,6 +1500,7 @@
           "customisedOnly",
           "status",
           "assigneeUserId",
+          "assigneeName",
           "startedAt",
           "dueAt",
           "overdue",
@@ -1534,6 +1535,13 @@
               "integer",
               "null"
             ]
+          },
+          "assigneeName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The assignee's full name from identity; null when it is not known (identity unreachable, or the user is no longer staff)."
           },
           "startedAt": {
             "type": [
@@ -1604,6 +1612,7 @@
         "required": [
           "id",
           "authorUserId",
+          "authorName",
           "body",
           "createdAt"
         ],
@@ -1613,6 +1622,13 @@
           },
           "authorUserId": {
             "type": "integer"
+          },
+          "authorName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The author's full name from identity; null when it is not known (identity unreachable, or the user is no longer staff)."
           },
           "body": {
             "type": "string"

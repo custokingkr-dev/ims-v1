@@ -12,7 +12,16 @@ public interface CatalogOrderGateway {
 
     /**
      * Shows the tracker's current step as the order's status. {@code trackerVersion} orders the pushes: the catalogue
-     * ignores one no newer than the last it applied. Throws {@link IllegalStateException} on failure.
+     * ignores one no newer than the last it applied. Throws {@link OrderClosedException} when the order can show no
+     * tracker status, and {@link IllegalStateException} on any other failure.
      */
     void pushStatus(String orderId, String status, long trackerVersion);
+
+    /**
+     * The catalogue refuses every tracker status for this order because it is closed: school-core answers 409 for a
+     * cancelled (or draft) order. Retrying cannot change that, so the status is dropped rather than retried.
+     */
+    class OrderClosedException extends IllegalStateException {
+        public OrderClosedException(String message, Throwable cause) { super(message, cause); }
+    }
 }

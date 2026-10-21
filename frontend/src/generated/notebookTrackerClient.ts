@@ -18,9 +18,9 @@ export type TrackerSla = { "value": number; "unit": "HOURS" | "WORKING_DAYS"; "s
 
 export type TrackerCapabilities = { "canEditDetails": boolean; "canEditStageNote": boolean; "canComplete": boolean; "canReopen": boolean; };
 
-export type TrackerStep = { "step": number; "title": string; "customisedOnly": boolean; "status": "LOCKED" | "ACTIVE" | "COMPLETED"; "assigneeUserId": number | null; "startedAt": string | null; "dueAt": string | null; "overdue": boolean; "sla": (TrackerSla | null); "completedAt": string | null; "completedBy": number | null; "data": { [key: string]: unknown; }; "stageNote": string | null; "version": number; "can": TrackerCapabilities; };
+export type TrackerStep = { "step": number; "title": string; "customisedOnly": boolean; "status": "LOCKED" | "ACTIVE" | "COMPLETED"; "assigneeUserId": number | null; "assigneeName": string | null; "startedAt": string | null; "dueAt": string | null; "overdue": boolean; "sla": (TrackerSla | null); "completedAt": string | null; "completedBy": number | null; "data": { [key: string]: unknown; }; "stageNote": string | null; "version": number; "can": TrackerCapabilities; };
 
-export type TrackerNote = { "id": number; "authorUserId": number; "body": string; "createdAt": string; };
+export type TrackerNote = { "id": number; "authorUserId": number; "authorName": string | null; "body": string; "createdAt": string; };
 
 export type TrackerFollowUp = { "id": number; "percentComplete": number; "nextFollowUpOn": string | null; "contactPhone": string | null; "createdBy": number; "createdAt": string; };
 

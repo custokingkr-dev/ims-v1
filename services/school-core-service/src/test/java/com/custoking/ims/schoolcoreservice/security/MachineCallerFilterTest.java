@@ -62,7 +62,8 @@ class MachineCallerFilterTest {
    "GET /api/v1/internal/catalog-orders/CK-2026_0001/draft-images","operations",
    "PUT /api/v1/internal/catalog-orders/CK-2026_0001/tracker-status","operations",
    "GET /api/v1/internal/operator-directory/resolve","school-core",
-   "GET /api/v1/internal/operator-directory/eligible","operations");
+   "GET /api/v1/internal/operator-directory/eligible","operations",
+   "POST /api/v1/internal/operator-directory/names","operations");
  private static MockEnvironment trackerAllowLists() {
   return new MockEnvironment().withProperty("NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS","school-core@project.iam.gserviceaccount.com")
     .withProperty("CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS","operations@project.iam.gserviceaccount.com")
@@ -96,7 +97,8 @@ class MachineCallerFilterTest {
     "POST /api/v1/internal/notebook-trackers/a/b/image-access","POST /api/v1/internal/notebook-trackers//image-access",
     "POST /api/v1/internal/notebook-trackers/"+"x".repeat(256)+"/image-access","POST /api/v1/internal/notebook-trackers/CK-1",
     "GET /api/v1/internal/catalog-orders/a.b/draft-images","PUT /api/v1/internal/catalog-orders/a%20b/tracker-status",
-    "GET /api/v1/internal/operator-directory/resolve/extra","GET /api/v1/internal/operator-directory")) {
+    "GET /api/v1/internal/operator-directory/resolve/extra","GET /api/v1/internal/operator-directory",
+    "POST /api/v1/internal/operator-directory/names/extra","POST /api/v1/internal/operator-directory/names/")) {
    assertFalse(admitted(filter,route,"school-core"),route);
    assertFalse(admitted(filter,route,"operations"),route);
   }

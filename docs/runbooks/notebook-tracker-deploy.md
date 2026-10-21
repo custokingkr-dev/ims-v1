@@ -154,6 +154,12 @@ The probe passes only when all three hold. Record the order ID and the timestamp
   `POST /api/v1/supply/orders/{orderId}/tracker/ensure`. A creation that fails 48 times (about two days) is given up:
   school-core logs an ERROR with `event=tracker_creation_dead_lettered`, the row counts in the outbox dead-letter
   alert, and only that `ensure` call (it revives the row with fresh retries) starts it again.
+- **A status is not delivered:** the reason is in `workflow.workflow_tracker_status_outbox.last_error`. A status that
+  fails 48 times is given up the same way: operations logs an ERROR with `event=tracker_status_dead_lettered` (with
+  `orderId` and `trackerVersion`) and the row counts in operations' outbox dead-letter figure. The order's next step
+  change revives it with fresh retries. To retry it without one, as the database owner:
+  `UPDATE workflow.workflow_tracker_status_outbox SET dead_lettered_at = NULL, attempts = 0, next_attempt_at = now() WHERE order_id = '<orderId>';`
+  A status school-core refuses because the order is cancelled (HTTP 409) is dropped at once, not retried.
 - **A 403 on an internal route:** a missing invoker binding (Cloud Run refuses the request before it reaches the
   container) or an allow-list that does not name the caller (the service answers `MACHINE_CALLER_REJECTED`). Check
   the grants first, then the callee's `*_CALLER_SERVICE_ACCOUNTS` value.

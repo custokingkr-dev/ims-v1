@@ -60,6 +60,7 @@ public class MachineCallerFilter extends OncePerRequestFilter {
         if(path.matches("/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/tracker-status")) return "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS";
         if(path.equals("/api/v1/internal/operator-directory/resolve")) return "OPERATOR_DIRECTORY_RESOLVE_CALLER_SERVICE_ACCOUNTS";
         if(path.equals("/api/v1/internal/operator-directory/eligible")) return "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS";
+        if(path.equals("/api/v1/internal/operator-directory/names")) return "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS";
         return null;
     }
     @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException {

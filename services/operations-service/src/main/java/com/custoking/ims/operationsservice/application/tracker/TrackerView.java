@@ -24,6 +24,17 @@ public record TrackerView(
         List<FollowUp> followUps,
         long version) {
 
+    /** This view with the staff names that are known filled in; any id missing from {@code names} keeps a null name. */
+    public TrackerView withStaffNames(Map<Long, String> names) {
+        List<Step> named = steps.stream().map(s -> new Step(s.step(), s.title(), s.customisedOnly(), s.status(), s.assigneeUserId(),
+                s.assigneeUserId() == null ? null : names.get(s.assigneeUserId()), s.startedAt(), s.dueAt(), s.overdue(), s.sla(),
+                s.completedAt(), s.completedBy(), s.data(), s.stageNote(), s.version(), s.can())).toList();
+        List<Note> notes = internalNotes.stream().map(n -> new Note(n.id(), n.authorUserId(), names.get(n.authorUserId()), n.body(),
+                n.createdAt())).toList();
+        return new TrackerView(orderId, schoolId, customised, orderedCount, placedAt, timeZone, schoolName, instanceStatus, progress,
+                vendor, designer, design, named, notes, followUps, version);
+    }
+
     public record Progress(int completed, int total, Integer currentStep, String currentTitle, boolean finished) { }
 
     /**
@@ -46,12 +57,14 @@ public record TrackerView(
 
     public record Capabilities(boolean canEditDetails, boolean canEditStageNote, boolean canComplete, boolean canReopen) { }
 
-    public record Step(int step, String title, boolean customisedOnly, String status, Long assigneeUserId,
+    /** {@code assigneeName} is the assignee's full name from identity, or null when it is not known (see {@code StaffNames}). */
+    public record Step(int step, String title, boolean customisedOnly, String status, Long assigneeUserId, String assigneeName,
                        OffsetDateTime startedAt, OffsetDateTime dueAt, boolean overdue, Sla sla,
                        OffsetDateTime completedAt, Long completedBy, Map<String, Object> data, String stageNote,
                        long version, Capabilities can) { }
 
-    public record Note(long id, long authorUserId, String body, OffsetDateTime createdAt) { }
+    /** {@code authorName} is the author's full name from identity, or null when it is not known (see {@code StaffNames}). */
+    public record Note(long id, long authorUserId, String authorName, String body, OffsetDateTime createdAt) { }
 
     public record FollowUp(long id, int percentComplete, LocalDate nextFollowUpOn, String contactPhone,
                            long createdBy, OffsetDateTime createdAt) { }

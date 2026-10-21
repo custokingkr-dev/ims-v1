@@ -75,4 +75,21 @@ class SchoolCoreCatalogClientTest {
         assertThrows(IllegalStateException.class, () -> new SchoolCoreCatalogClient("", "never", 300, 300).draftImages("CK-1"));
         assertThrows(IllegalStateException.class, () -> new SchoolCoreCatalogClient(null, null, 300, 300).pushStatus("CK-1", "PRINTING_PRESS", 7));
     }
+
+    /**
+     * School-core answers 409 for an order that can show no tracker status (a cancelled order, say): retrying cannot help,
+     * so the client says so with its own exception. Every other refusal stays an ordinary, retried failure.
+     */
+    @Test
+    void aClosedOrderIsToldApartFromAFailure() throws Exception {
+        var closed = clientFor(409, "{\"message\":\"A cancelled order has no tracker status\"}");
+        var refused = assertThrows(CatalogOrderGateway.OrderClosedException.class, () -> closed.pushStatus("CK-1", "PRINTING_PRESS", 7));
+        assertEquals("the order catalogue answered HTTP 409", refused.getMessage());
+        for (int status : new int[]{400, 403, 404, 500, 503}) {
+            stop();
+            var client = clientFor(status, "{}");
+            var failure = assertThrows(IllegalStateException.class, () -> client.pushStatus("CK-1", "PRINTING_PRESS", 7));
+            assertFalse(failure instanceof CatalogOrderGateway.OrderClosedException, "status " + status);
+        }
+    }
 }

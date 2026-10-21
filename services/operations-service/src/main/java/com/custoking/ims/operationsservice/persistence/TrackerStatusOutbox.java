@@ -1,6 +1,7 @@
 package com.custoking.ims.operationsservice.persistence;
 
 import com.custoking.ims.operationsservice.infrastructure.CatalogOrderGateway;
+import com.custoking.ims.operationsservice.outbox.QueueBacklog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 /**
  * Delivers the tracker's status to the catalogue (school-core), which shows it as the order's status (review fix, spec
  * §3.3). A step change {@link #record records} the new status with the tracker's instance version in the transaction
@@ -25,14 +28,22 @@ import java.util.Optional;
  * survives for its own delivery. School-core ignores a version no newer than the one it has applied, so a late or
  * repeated push never moves an order backwards.
  *
+ * <p><b>Giving up.</b> After {@link #MAX_ATTEMPTS} failed attempts the row is dead-lettered: drains skip it, an ERROR log
+ * says so, and the outbox health report counts it ({@link #backlog}). A newer status for the order revives it with fresh
+ * retries. A status school-core refuses because the order is closed (its 409, for a cancelled order) can never be
+ * shown, so that row is dropped at once instead of being retried.
+ *
  * <p><b>Tenant safety.</b> Delivery has no user, so a claim enables the RLS bypass transaction-locally only to pick one
  * due row across schools, turns it off again and scopes the rest of that transaction to the row's school (the pattern of
  * school-core's {@code NotebookTrackerCreationQueue}). Every later write for that row is scoped to its school too. The
  * peer call runs with no transaction open and no row locked.
  */
 @Repository
-public class TrackerStatusOutbox {
+public class TrackerStatusOutbox implements QueueBacklog {
     private static final Logger LOG = LoggerFactory.getLogger(TrackerStatusOutbox.class);
+    /** About two days of retries at the backoff (2, 4, 8, 16, 32 minutes, then hourly). */
+    public static final int MAX_ATTEMPTS = 48;
+    static final String DEAD_LETTERED_EVENT = "tracker_status_dead_lettered";
 
     private final JdbcClient jdbc;
     private final CatalogOrderGateway catalog;
@@ -55,13 +66,14 @@ public class TrackerStatusOutbox {
 
     /**
      * In the step change's own transaction, under the acting user's scope: the order now shows {@code status}. Unless a
-     * newer version is already queued, the row takes this status and version and is due at once with fresh retries.
+     * newer version is already queued, the row takes this status and version and is due at once with fresh retries, even
+     * one that had been given up on.
      */
     public void record(String orderId, long schoolId, String status, long trackerVersion) {
         jdbc.sql("INSERT INTO " + table + " AS queued (order_id, school_id, status, tracker_version) "
                         + "VALUES (:order, :school, :status, :version) "
                         + "ON CONFLICT (order_id) DO UPDATE SET status = EXCLUDED.status, tracker_version = EXCLUDED.tracker_version, "
-                        + "attempts = 0, next_attempt_at = now(), last_error = NULL, updated_at = now() "
+                        + "attempts = 0, next_attempt_at = now(), last_error = NULL, dead_lettered_at = NULL, updated_at = now() "
                         + "WHERE EXCLUDED.tracker_version > queued.tracker_version")
                 .param("order", orderId).param("school", schoolId).param("status", status).param("version", trackerVersion).update();
     }
@@ -105,17 +117,37 @@ public class TrackerStatusOutbox {
     }
 
     /**
-     * Claims one due row (this order's, or any) in a short transaction of its own. Moving the next attempt out by the
-     * backoff at claim time doubles as the lease: a concurrent drain skips the row while its push is in flight, and an
-     * attempt that dies midway is retried after the backoff. {@code claimed} excludes orders already tried in this drain
-     * and receives the picked order id before anything else can fail, so the caller can skip it.
+     * Rows still being retried, rows given up on, and how long the oldest row still being retried has waited since its
+     * order's status first went undelivered, across every school. Added into the outbox health report so the outbox
+     * alerts cover this outbox.
+     */
+    @Override
+    public Backlog backlog() {
+        return step.execute(status -> {
+            // Counts only, for the health log; the bypass ends with this transaction.
+            jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
+            return jdbc.sql("SELECT count(*) FILTER (WHERE dead_lettered_at IS NULL) AS pending, "
+                            + "count(*) FILTER (WHERE dead_lettered_at IS NOT NULL) AS dead_letter, "
+                            + "COALESCE(EXTRACT(EPOCH FROM now() - min(created_at) FILTER (WHERE dead_lettered_at IS NULL))::bigint, 0) AS oldest_age "
+                            + "FROM " + table)
+                    .query((rs, n) -> new Backlog(rs.getLong("pending"), rs.getLong("dead_letter"), rs.getLong("oldest_age"))).single();
+        });
+    }
+
+    /**
+     * Claims one due row (this order's, or any) that has not been given up on, in a short transaction of its own. Moving
+     * the next attempt out by the backoff at claim time doubles as the lease: a concurrent drain skips the row while its
+     * push is in flight, and an attempt that dies midway is retried after the backoff. {@code claimed} excludes orders
+     * already tried in this drain and receives the picked order id before anything else can fail, so the caller can skip
+     * it.
      */
     private Optional<Claim> claim(String orderId, List<String> claimed) {
         Optional<Claim> result = step.execute(status -> {
             jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
             Optional<Claim> due;
             try {
-                var select = jdbc.sql("SELECT order_id, school_id, status, tracker_version FROM " + table + " WHERE next_attempt_at <= now()"
+                var select = jdbc.sql("SELECT order_id, school_id, status, tracker_version FROM " + table
+                        + " WHERE next_attempt_at <= now() AND dead_lettered_at IS NULL"
                         + (orderId == null ? "" : " AND order_id = :order") + (claimed.isEmpty() ? "" : " AND order_id NOT IN (:claimed)")
                         + " ORDER BY next_attempt_at, order_id LIMIT 1 FOR UPDATE SKIP LOCKED");
                 if (orderId != null) select = select.param("order", orderId);
@@ -143,26 +175,55 @@ public class TrackerStatusOutbox {
     private boolean deliver(Claim claim) {
         try {
             catalog.pushStatus(claim.orderId(), claim.status(), claim.trackerVersion());
+        } catch (CatalogOrderGateway.OrderClosedException closed) {
+            return dropped(claim, closed.getMessage());
         } catch (RuntimeException failure) {
             // The client's failures carry fixed messages; anything else is recorded by type only.
             return failed(claim, failure instanceof IllegalStateException ? failure.getMessage() : failure.getClass().getSimpleName());
         }
+        deleteSent(claim);
+        return true;
+    }
+
+    /**
+     * The catalogue will never show a status for this order (it is cancelled, say): the row is done rather than retried
+     * for two days into a dead letter. A newer status queued meanwhile is kept; it meets the same answer on its own turn.
+     */
+    private boolean dropped(Claim claim, String reason) {
+        LOG.warn("Status {} of order {} dropped: the catalogue refuses it because the order is closed ({})",
+                claim.status(), claim.orderId(), reason);
+        deleteSent(claim);
+        return false;
+    }
+
+    private void deleteSent(Claim claim) {
         step.executeWithoutResult(status -> {
             scopeTo(claim.schoolId());
             jdbc.sql("DELETE FROM " + table + " WHERE order_id = :order AND tracker_version = :sent")
                     .param("order", claim.orderId()).param("sent", claim.trackerVersion()).update();
         });
-        return true;
     }
 
-    /** The row keeps the backoff its claim set; only the reason is recorded, and only against the version that failed. */
+    /**
+     * The row keeps the backoff its claim set and records the reason; at {@link #MAX_ATTEMPTS} it is given up on. Only the
+     * row as this claim left it is touched: a newer status queued meanwhile starts its retries afresh.
+     */
     private boolean failed(Claim claim, String reason) {
-        LOG.warn("Status {} of order {} not delivered on attempt {}: {}", claim.status(), claim.orderId(), claim.attempts(), reason);
-        step.executeWithoutResult(status -> {
+        boolean giveUp = claim.attempts() >= MAX_ATTEMPTS;
+        Integer changed = step.execute(status -> {
             scopeTo(claim.schoolId());
-            jdbc.sql("UPDATE " + table + " SET last_error = left(:error, 500), updated_at = now() WHERE order_id = :order AND tracker_version = :sent")
-                    .param("error", String.valueOf(reason)).param("order", claim.orderId()).param("sent", claim.trackerVersion()).update();
+            return jdbc.sql("UPDATE " + table + " SET last_error = left(:error, 500), updated_at = now(), "
+                            + "dead_lettered_at = CASE WHEN :giveUp THEN now() ELSE dead_lettered_at END "
+                            + "WHERE order_id = :order AND tracker_version = :sent AND attempts = :attempts")
+                    .param("error", String.valueOf(reason)).param("giveUp", giveUp).param("order", claim.orderId())
+                    .param("sent", claim.trackerVersion()).param("attempts", claim.attempts()).update();
         });
+        if (giveUp && changed != null && changed > 0) {
+            LOG.error("Tracker status delivery given up: {} {} {} {} {}", kv("event", DEAD_LETTERED_EVENT), kv("orderId", claim.orderId()),
+                    kv("trackerVersion", claim.trackerVersion()), kv("attempts", claim.attempts()), kv("lastError", String.valueOf(reason)));
+        } else {
+            LOG.warn("Status {} of order {} not delivered on attempt {}: {}", claim.status(), claim.orderId(), claim.attempts(), reason);
+        }
         return false;
     }
 

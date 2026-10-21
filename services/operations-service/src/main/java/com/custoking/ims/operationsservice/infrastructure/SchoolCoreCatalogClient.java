@@ -57,7 +57,10 @@ public class SchoolCoreCatalogClient implements CatalogOrderGateway {
                     .headers(http::authorize).body(new StatusBody(status, trackerVersion)).retrieve().toBodilessEntity();
         } catch (RestClientResponseException refused) {
             // Kept as the queued status's last error, so a status the catalogue keeps refusing is told apart from an outage.
-            throw new IllegalStateException("the order catalogue answered HTTP " + refused.getStatusCode().value(), refused);
+            String answer = "the order catalogue answered HTTP " + refused.getStatusCode().value();
+            // School-core's 409: the order is cancelled (or still a draft) and can show no tracker status, now or later.
+            if (refused.getStatusCode().value() == 409) throw new OrderClosedException(answer, refused);
+            throw new IllegalStateException(answer, refused);
         } catch (RestClientException failure) {
             throw new IllegalStateException("the order catalogue is unavailable", failure);
         }

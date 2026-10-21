@@ -242,6 +242,57 @@ class OperatorCatalogScopeIntegrationTest {
         assertThat(directory.list(other, "NOTEBOOKS")).isEmpty();
     }
 
+    /**
+     * The tracker shows who is assigned a step and who wrote a note (names route for operations-service). Identity answers
+     * only for active users who currently hold an active OPERATIONS or SUPERADMIN assignment; any other id is left out.
+     */
+    @Test
+    void namesEndpointReturnsOnlyStaffNames() throws Exception {
+        long school = newSchool();
+        long wide = insertUser("OPERATIONS");
+        long item = insertUser("OPERATIONS");
+        long superadmin = insertUser("SUPERADMIN");
+        long schoolAdmin = insertUser("ADMIN");
+        long deleted = insertUser("OPERATIONS");
+        long revoked = insertUser("OPERATIONS");
+        long expired = insertUser("OPERATIONS");
+        long notYet = insertUser("OPERATIONS");
+        long roleColumnOnly = insertUser("OPERATIONS");
+        rbac.syncOperatorSchools(wide, List.of(school), 99L);
+        rbac.assignOperatorScope(item, school, "NOTEBOOKS", 99L);
+        assign(superadmin, "SUPERADMIN", null);
+        assign(schoolAdmin, "ADMIN", school);
+        rbac.syncOperatorSchools(deleted, List.of(school), 99L);
+        exec("UPDATE identity.app_users SET deleted_at = now() WHERE id = " + deleted);
+        long revokedAssignment = ((Number) rbac.assignOperatorScope(revoked, school, "NOTEBOOKS", 99L).get("id")).longValue();
+        rbac.revokeAssignment(revoked, revokedAssignment, Map.of("revokedBy", 99L));
+        rbac.syncOperatorSchools(expired, List.of(school), 99L);
+        exec("UPDATE identity.user_role_assignments SET valid_until = now() - interval '1 day' WHERE user_id = " + expired);
+        rbac.syncOperatorSchools(notYet, List.of(school), 99L);
+        exec("UPDATE identity.user_role_assignments SET valid_from = now() + interval '1 day' WHERE user_id = " + notYet);
+        exec("UPDATE identity.app_users SET full_name = 'Wide Operator' WHERE id = " + wide);
+        exec("UPDATE identity.app_users SET full_name = 'Item Operator' WHERE id = " + item);
+        exec("UPDATE identity.app_users SET full_name = 'Super Admin' WHERE id = " + superadmin);
+
+        List<Long> asked = List.of(wide, item, superadmin, schoolAdmin, deleted, revoked, expired, notYet, roleColumnOnly, 9_999_999L, wide);
+        assertThat(directory.names(asked)).containsExactly(
+                new OperatorDirectoryRepository.StaffName(wide, "Wide Operator"),
+                new OperatorDirectoryRepository.StaffName(item, "Item Operator"),
+                new OperatorDirectoryRepository.StaffName(superadmin, "Super Admin"));
+        assertThat(directory.names(List.of())).isEmpty();
+        assertThatThrownBy(() -> directory.names(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> directory.names(java.util.stream.LongStream.rangeClosed(1, 201).boxed().toList()))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("200");
+        assertThat(directory.names(java.util.stream.LongStream.rangeClosed(1, 200).boxed().toList())).isNotNull();
+    }
+
+    /** A role assignment as an administrator would add it, with no catalogue item. */
+    private void assign(long userId, String role, Long schoolId) {
+        jdbc.sql("INSERT INTO identity.user_role_assignments (user_id, role_id, school_id) "
+                        + "SELECT :user, id, CAST(:school AS bigint) FROM identity.roles WHERE name = :role")
+                .param("user", userId).param("school", schoolId).param("role", role).update();
+    }
+
     // ---- provisioning ---------------------------------------------------------------------------------------------
 
     @Test

@@ -3,6 +3,7 @@ package com.custoking.ims.identityservice.persistence;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 /** Read-only lookups over active operator assignments: who covers a school, and a school plus catalogue item. */
@@ -27,6 +28,38 @@ public class OperatorDirectoryRepository {
     }
 
     public record OperatorRow(long assignmentId, long userId, String fullName, String email, long schoolId, String catalogCategory) { }
+
+    /** A staff member's display name, for the notebook tracker's assignees and note authors. */
+    public record StaffName(long userId, String fullName) { }
+
+    /**
+     * The staff among these users, by id: not deleted, and holding an active, in-window OPERATIONS or SUPERADMIN
+     * assignment now (any school, any catalogue item). Everyone else, school admins and former operators included, is
+     * left out, so the names answer reveals nothing about other users.
+     */
+    public List<StaffName> staffNames(Collection<Long> userIds) {
+        if (userIds.isEmpty()) return List.of();
+        return jdbc.sql("""
+                        SELECT u.id, u.full_name
+                        FROM identity.app_users u
+                        WHERE u.id IN (:ids)
+                          AND u.deleted_at IS NULL
+                          AND u.full_name IS NOT NULL
+                          AND EXISTS (
+                              SELECT 1
+                              FROM identity.user_role_assignments ura
+                              JOIN identity.roles r ON r.id = ura.role_id AND UPPER(r.name) IN ('OPERATIONS', 'SUPERADMIN')
+                              WHERE ura.user_id = u.id
+                                AND ura.active = true
+                                AND ura.revoked_at IS NULL
+                                AND (ura.valid_from IS NULL OR ura.valid_from <= now())
+                                AND (ura.valid_until IS NULL OR ura.valid_until >= now()))
+                        ORDER BY u.id
+                        """)
+                .param("ids", List.copyOf(userIds))
+                .query((rs, n) -> new StaffName(rs.getLong("id"), rs.getString("full_name")))
+                .list();
+    }
 
     /** Operators scoped to exactly this catalogue item at this school. */
     public List<Long> itemSpecific(long schoolId, String category) {

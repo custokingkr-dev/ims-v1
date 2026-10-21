@@ -68,7 +68,7 @@ $iamOnlyControllerContracts["services/school-core-service/src/main/java/com/cust
     GatewayRoute = "/api/v1/internal/identity-directory"; CallerEnv = "IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS"; DirectoryPeer = $true; Scheduler = $false
 }
 
-# Notebook order tracker peer calls (spec 3.1): six exact routes, each its own contract with its own caller allow-list.
+# Notebook order tracker peer calls (spec 3.1): seven exact routes, each its own contract with its caller allow-list.
 # A controller that serves several routes lists one contract per route; together they must account for every mapping.
 # Route is the exact text MachineCallerFilter registers (path.equals for a literal, path.matches for a regex). A regex
 # can never appear verbatim in a gateway file, so a regex Route also names the literal GatewayRoute prefix to keep out.
@@ -88,6 +88,10 @@ $iamOnlyControllerContracts["services/identity-service/src/main/java/com/custoki
     @{ MethodMappings = @('@GetMapping("/resolve")'); Route = "/api/v1/internal/operator-directory/resolve"; Service = "identity-service"
        CallerEnv = "OPERATOR_DIRECTORY_RESOLVE_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false },
     @{ MethodMappings = @('@GetMapping("/eligible")'); Route = "/api/v1/internal/operator-directory/eligible"; Service = "identity-service"
+       CallerEnv = "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false },
+    # Staff names for the tracker's assignees and note authors: called by operations-service only, like eligible, so it
+    # shares eligible's allow-list.
+    @{ MethodMappings = @('@PostMapping("/names")'); Route = "/api/v1/internal/operator-directory/names"; Service = "identity-service"
        CallerEnv = "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false }
 )
 

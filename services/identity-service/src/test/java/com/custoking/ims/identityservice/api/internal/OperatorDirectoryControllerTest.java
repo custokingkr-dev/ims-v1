@@ -2,7 +2,9 @@ package com.custoking.ims.identityservice.api.internal;
 
 import com.custoking.ims.identityservice.application.OperatorDirectory;
 import com.custoking.ims.identityservice.application.OperatorSelection;
+import com.custoking.ims.identityservice.persistence.OperatorDirectoryRepository.StaffName;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -10,7 +12,11 @@ import java.util.List;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -47,6 +53,27 @@ class OperatorDirectoryControllerTest {
         mvc.perform(get("/api/v1/internal/operator-directory/eligible").param("userId", "8").param("schoolId", "4").param("catalogCategory", "NOTEBOOKS"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.eligible").value(false));
         mvc.perform(get("/api/v1/internal/operator-directory/eligible").param("userId", "7").param("schoolId", "4").param("catalogCategory", "bad code"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void namesAnswerTheStaffAmongTheIdsAskedAbout() throws Exception {
+        when(directory.names(List.of(7L, 9L, 12L))).thenReturn(List.of(new StaffName(7L, "Asha Operator"), new StaffName(9L, "Sam Super")));
+        mvc.perform(post("/api/v1/internal/operator-directory/names").contentType(MediaType.APPLICATION_JSON).content("{\"userIds\":[7,9,12]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].userId").value(7)).andExpect(jsonPath("$[0].fullName").value("Asha Operator"))
+                .andExpect(jsonPath("$[1].userId").value(9)).andExpect(jsonPath("$[1].fullName").value("Sam Super"));
+    }
+
+    @Test
+    void namesWithoutIdsOrWithTooManyAreA400() throws Exception {
+        doThrow(new IllegalArgumentException("userIds is required")).when(directory).names(isNull());
+        doThrow(new IllegalArgumentException("At most 200 userIds")).when(directory).names(argThat(ids -> ids != null && ids.size() > 200));
+        mvc.perform(post("/api/v1/internal/operator-directory/names").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest());
+        String tooMany = java.util.stream.LongStream.rangeClosed(1, 201).mapToObj(Long::toString).collect(java.util.stream.Collectors.joining(",", "{\"userIds\":[", "]}"));
+        mvc.perform(post("/api/v1/internal/operator-directory/names").contentType(MediaType.APPLICATION_JSON).content(tooMany))
                 .andExpect(status().isBadRequest());
     }
 }

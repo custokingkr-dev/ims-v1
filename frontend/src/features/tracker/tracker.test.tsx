@@ -30,7 +30,7 @@ vi.mock('../catalog/ProductOrderDetail', async () => {
 
 const can = (over: Partial<TrackerStep['can']> = {}): TrackerStep['can'] => ({ canEditDetails: false, canEditStageNote: false, canComplete: false, canReopen: false, ...over });
 const step = (n: number, title: string, over: Partial<TrackerStep> = {}): TrackerStep => ({
-  step: n, title, customisedOnly: false, status: 'LOCKED', assigneeUserId: 42, startedAt: null, dueAt: null, overdue: false,
+  step: n, title, customisedOnly: false, status: 'LOCKED', assigneeUserId: 42, assigneeName: null, startedAt: null, dueAt: null, overdue: false,
   sla: { value: 4, unit: 'HOURS', source: 'DEFAULT' }, completedAt: null, completedBy: null, data: {}, stageNote: null, version: 3, can: can(), ...over,
 });
 function tracker(over: Partial<TrackerView> = {}): TrackerView {
@@ -274,7 +274,7 @@ describe('NotebookTracker', () => {
   });
 
   it('adds an internal note and clears the box', async () => {
-    vi.mocked(trackerApi.addInternalNote).mockResolvedValue(tracker({ internalNotes: [{ id: 1, authorUserId: 42, body: 'Called the vendor', createdAt: '2026-10-19T05:00:00Z' }] }));
+    vi.mocked(trackerApi.addInternalNote).mockResolvedValue(tracker({ internalNotes: [{ id: 1, authorUserId: 42, authorName: null, body: 'Called the vendor', createdAt: '2026-10-19T05:00:00Z' }] }));
     render(<NotebookTracker orderId="CK-1" initial={tracker()} onBack={vi.fn()} />);
     fireEvent.change(screen.getByLabelText(/Add a note/), { target: { value: 'Called the vendor' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add note' }));
@@ -352,9 +352,9 @@ describe('NotebookTracker', () => {
     vi.mocked(trackerApi.operators).mockResolvedValue([operator(12, 'Op Twelve')]);
     const at = '2026-10-19T05:00:00Z';
     render(<NotebookTracker orderId="CK-1" onBack={vi.fn()} initial={tracker({ internalNotes: [
-      { id: 1, authorUserId: 12, body: 'Vendor called back', createdAt: at },
-      { id: 2, authorUserId: 1, body: 'Checked the artwork', createdAt: at },
-      { id: 3, authorUserId: 99, body: 'Old note', createdAt: at },
+      { id: 1, authorUserId: 12, authorName: null, body: 'Vendor called back', createdAt: at },
+      { id: 2, authorUserId: 1, authorName: null, body: 'Checked the artwork', createdAt: at },
+      { id: 3, authorUserId: 99, authorName: null, body: 'Old note', createdAt: at },
     ] })} />);
     const notes = screen.getByRole('list', { name: 'Internal notes' });
     expect(await within(notes).findByText(/Op Twelve ·/)).toBeInTheDocument();

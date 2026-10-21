@@ -9,7 +9,14 @@ import com.custoking.ims.operationsservice.persistence.TrackerStatusOutbox;
 import com.custoking.ims.operationsservice.persistence.WorkflowReadRepository;
 import com.custoking.ims.operationsservice.security.TenantAwareDataSource;
 import com.custoking.ims.operationsservice.security.TenantContext;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.custoking.ims.operationsservice.outbox.OutboxAsyncHealthReporter;
 import com.zaxxer.hikari.HikariDataSource;
+import net.logstash.logback.encoder.LogstashEncoder;
+import org.slf4j.LoggerFactory;
+import tools.jackson.databind.JsonNode;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -92,6 +99,23 @@ class NotebookTrackerServiceIntegrationTest {
         return "NOTEBOOKS".equals(category) && schoolId == 10 && ELIGIBLE_FOR_10.contains(userId);
     };
     static com.custoking.ims.operationsservice.infrastructure.CatalogOrderGateway catalog;
+    /** The runtime pool, so a peer stub can see how many connections are checked out while it is called. */
+    static HikariDataSource pool;
+    /** Who identity knows as staff (an active OPERATIONS or SUPERADMIN user), by id. */
+    static final Map<Long, String> STAFF = new java.util.concurrent.ConcurrentHashMap<>();
+    static volatile boolean directoryDown = false;
+    /** One entry per names call: the ids asked about, the pool's active connections and whether a transaction was open. */
+    static final List<String> NAME_CALLS = new java.util.concurrent.CopyOnWriteArrayList<>();
+    static final com.custoking.ims.operationsservice.infrastructure.StaffDirectory DIRECTORY = ids -> {
+        NAME_CALLS.add(ids.stream().sorted().toList() + " active=" + pool.getHikariPoolMXBean().getActiveConnections()
+                + " transaction=" + TransactionSynchronizationManager.isActualTransactionActive());
+        if (directoryDown) throw new IllegalStateException("identity is down");
+        Map<Long, String> found = new java.util.HashMap<>();
+        for (Long id : ids) if (STAFF.containsKey(id)) found.put(id, STAFF.get(id));
+        return found;
+    };
+    /** The catalogue answers that the order is closed (school-core's 409 for a cancelled order). */
+    static volatile boolean catalogClosed = false;
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -109,7 +133,7 @@ class NotebookTrackerServiceIntegrationTest {
         try (var c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner"); var st = c.createStatement()) {
             st.execute("GRANT USAGE ON SCHEMA workflow TO app_rt");
         }
-        HikariDataSource pool = new HikariDataSource();
+        pool = new HikariDataSource();
         pool.setJdbcUrl(PG.getJdbcUrl());
         pool.setUsername("app_rt");
         pool.setPassword("app_rt");
@@ -132,14 +156,20 @@ class NotebookTrackerServiceIntegrationTest {
                 Runnable during = DURING_PUSH.getAndSet(null);
                 if (during != null) during.run();
                 if (catalogDown) throw new IllegalStateException("catalogue is down");
+                if (catalogClosed) throw new OrderClosedException("the order catalogue answered HTTP 409", null);
                 PUSHED.add(orderId + ":" + status);
                 PUSHED_VERSIONS.add(trackerVersion);
             }
         };
         statuses = new TrackerStatusOutbox(JdbcClient.create(ds), catalog, manager, "workflow");
-        service = new NotebookTrackerService(
-                new NotebookTrackerRepository(JdbcClient.create(ds), JsonMapper.builder().build(), "workflow"),
-                transactions, CLOCK, ELIGIBILITY, catalog, statuses);
+        // The shared service never finds a name, so only the name tests' own services call the directory stub.
+        service = serviceWith(new StaffNames(ids -> Map.of(), CLOCK));
+    }
+
+    /** A service with its own name cache, so a test that looks at names starts with nothing cached. */
+    static NotebookTrackerService serviceWith(StaffNames names) {
+        return new NotebookTrackerService(new NotebookTrackerRepository(JdbcClient.create(dataSource), JsonMapper.builder().build(), "workflow"),
+                transactions, CLOCK, ELIGIBILITY, catalog, statuses, names);
     }
 
     @AfterAll
@@ -155,6 +185,10 @@ class NotebookTrackerServiceIntegrationTest {
         identityDown = false;
         ELIGIBLE_FOR_10.clear();
         catalogDown = false;
+        catalogClosed = false;
+        STAFF.clear();
+        directoryDown = false;
+        NAME_CALLS.clear();
         PUSHED.clear();
         PUSHED_VERSIONS.clear();
         DURING_PUSH.set(null);
@@ -281,7 +315,8 @@ class NotebookTrackerServiceIntegrationTest {
             }
         };
         asNobody();
-        NotebookTrackerService.Created result = new NotebookTrackerService(racing, transactions, CLOCK, ELIGIBILITY, catalog, statuses).create(placed);
+        NotebookTrackerService.Created result = new NotebookTrackerService(racing, transactions, CLOCK, ELIGIBILITY, catalog, statuses,
+                new StaffNames(DIRECTORY, CLOCK)).create(placed);
 
         assertTrue(winner.get().created());
         assertFalse(result.created(), "the loser reports the tracker that already exists");
@@ -1271,24 +1306,45 @@ class NotebookTrackerServiceIntegrationTest {
                 "Asia/Kolkata", 1L, null, "x".repeat(201)))).status());
     }
 
+    /**
+     * The generic workflow mutations treat a tracker as not there, exactly like the generic reads: the same 404 and message
+     * as an id that does not exist, for every caller including superadmin, so nobody learns a tracker exists from them.
+     */
     @Test
-    void theGenericWorkflowEndpointsCannotTouchATracker() {
+    void genericMutationsAnswerNotFoundForTrackers() {
         String order = "ORD-GEN-" + ORDERS.incrementAndGet();
         asNobody();
         long instanceId = service.create(new CreateTracker(order, 10, true, 1000,
                 OffsetDateTime.parse("2026-10-19T09:30:00+05:30"), "Asia/Kolkata", 77L, OP_A)).instanceId();
+        long missing = owner.sql("SELECT COALESCE(max(id), 0) + 1000 FROM workflow.workflow_instances").query(Long.class).single();
         WorkflowReadRepository generic = new WorkflowReadRepository(JdbcClient.create(dataSource), "workflow");
-
-        asSuper();
         Map<String, Object> action = Map.of("expectedVersion", 0L, "actorId", SUPER);
-        assertTrue(assertThrows(IllegalArgumentException.class, () -> generic.approve(instanceId, action)).getMessage().contains("notebook order tracker"));
-        assertThrows(IllegalArgumentException.class, () -> generic.reject(instanceId, action));
-        assertThrows(IllegalArgumentException.class, () -> generic.submit(instanceId, action));
-        assertThrows(IllegalArgumentException.class, () -> generic.cancel(instanceId, action));
-        assertThrows(IllegalArgumentException.class, () -> generic.complete(instanceId, action));
-        assertThrows(IllegalArgumentException.class, () -> generic.createOrGetInstance(
-                Map.of("entityType", "NOTEBOOK_ORDER", "entityId", "ORD-X", "schoolId", 10L, "definitionId", "NOTEBOOK_ORDER_TRACKER")));
-        assertEquals("IN_PROGRESS", service.view(order).instanceStatus(), "the tracker is untouched");
+        Map<String, java.util.function.LongConsumer> mutations = new java.util.LinkedHashMap<>();
+        mutations.put("submit", id -> generic.submit(id, action));
+        mutations.put("approve", id -> generic.approve(id, action));
+        mutations.put("reject", id -> generic.reject(id, action));
+        mutations.put("cancel", id -> generic.cancel(id, action));
+        mutations.put("complete", id -> generic.complete(id, action));
+
+        Runnable schoolAdmin = () -> TenantContext.set(new TenantContext(5L, "admin@x", "ADMIN", 10L, null, SCHOOL_ADMIN_WORKFLOW));
+        Runnable superadmin = NotebookTrackerServiceIntegrationTest::asSuper;
+        for (Runnable login : List.of(schoolAdmin, superadmin)) {
+            for (var mutation : mutations.entrySet()) {
+                ResponseStatusException tracker = as(login, () -> assertThrows(ResponseStatusException.class,
+                        () -> mutation.getValue().accept(instanceId), mutation.getKey()));
+                ResponseStatusException unknown = as(login, () -> assertThrows(ResponseStatusException.class,
+                        () -> mutation.getValue().accept(missing), mutation.getKey()));
+                assertEquals(404, tracker.getStatusCode().value(), mutation.getKey() + " on a tracker");
+                assertEquals(404, unknown.getStatusCode().value(), mutation.getKey() + " on an unknown id");
+                assertEquals(unknown.getReason(), tracker.getReason(), "no hint that the tracker exists");
+            }
+            ResponseStatusException create = as(login, () -> assertThrows(ResponseStatusException.class, () -> generic.createOrGetInstance(
+                    Map.of("entityType", "notebook_order", "entityId", order, "schoolId", 10L, "definitionId", "NOTEBOOK_ORDER_TRACKER"))));
+            assertEquals(404, create.getStatusCode().value(), "create-or-get never hands out a tracker either");
+        }
+        assertEquals("IN_PROGRESS", as(() -> asSuper(), () -> service.view(order)).instanceStatus(), "the tracker is untouched");
+        assertEquals(0L, owner.sql("SELECT count(*) FROM workflow.workflow_actions WHERE instance_id = :id AND action IN ('SUBMIT', 'APPROVE', 'REJECT', 'CANCEL', 'COMPLETE')")
+                .param("id", instanceId).query(Long.class).single());
     }
 
     /**
@@ -1342,5 +1398,240 @@ class NotebookTrackerServiceIntegrationTest {
         TrackerView signed = service.signOff(order, 8, step(service.view(order), 8).version());
         assertNotNull(step(signed, 8).data().get("signOff"));
         assertEquals("https://example.test/late", step(signed, 8).data().get("sampleLink"), "the data seen is the data signed");
+    }
+
+    // ---- status outbox: dead letter, revival, closed orders and health (review follow-ups) ------------------------------
+
+    static boolean deadLettered(String order) {
+        return owner.sql("SELECT dead_lettered_at IS NOT NULL FROM workflow.workflow_tracker_status_outbox WHERE order_id = :order")
+                .param("order", order).query(Boolean.class).single();
+    }
+
+    static String lastError(String order) {
+        return owner.sql("SELECT last_error FROM workflow.workflow_tracker_status_outbox WHERE order_id = :order")
+                .param("order", order).query(String.class).single();
+    }
+
+    static ListAppender<ILoggingEvent> capture(Class<?> type) {
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        ((ch.qos.logback.classic.Logger) LoggerFactory.getLogger(type)).addAppender(appender);
+        return appender;
+    }
+
+    static void release(Class<?> type, ListAppender<ILoggingEvent> appender) {
+        ((ch.qos.logback.classic.Logger) LoggerFactory.getLogger(type)).detachAppender(appender);
+    }
+
+    /** The event as the JSON encoder writes it to Cloud Logging, whose log metrics read these fields. */
+    static JsonNode json(ILoggingEvent event) {
+        LogstashEncoder encoder = new LogstashEncoder();
+        encoder.setContext((ch.qos.logback.classic.LoggerContext) LoggerFactory.getILoggerFactory());
+        encoder.start();
+        try {
+            return JsonMapper.builder().build().readTree(new String(encoder.encode(event), java.nio.charset.StandardCharsets.UTF_8));
+        } finally {
+            encoder.stop();
+        }
+    }
+
+    @Test
+    void statusRowDeadLettersAfterMaxAttempts() {
+        String order = create(false, 10L, OP_A);
+        catalogDown = true;
+        as(() -> asOperator(OP_A, 10L), () -> service.completeStep(order, 1, step(service.view(order), 1).version()));
+        long version = queued(order).orElseThrow().trackerVersion();
+        owner.sql("UPDATE workflow.workflow_tracker_status_outbox SET attempts = 47 WHERE order_id = :order").param("order", order).update();
+        due(order);
+
+        ListAppender<ILoggingEvent> logs = capture(TrackerStatusOutbox.class);
+        try {
+            assertEquals(0, statuses.drain(10));
+        } finally {
+            release(TrackerStatusOutbox.class, logs);
+        }
+        assertEquals(48, queued(order).orElseThrow().attempts());
+        assertTrue(deadLettered(order));
+        assertEquals("catalogue is down", lastError(order));
+        List<ILoggingEvent> errors = logs.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
+        assertEquals(1, errors.size(), logs.list.toString());
+        JsonNode logged = json(errors.get(0));
+        assertEquals("tracker_status_dead_lettered", logged.path("event").asString());
+        assertEquals(order, logged.path("orderId").asString());
+        assertEquals(version, logged.path("trackerVersion").asLong());
+        assertEquals(48, logged.path("attempts").asInt());
+        assertEquals("catalogue is down", logged.path("lastError").asString());
+
+        catalogDown = false;
+        due(order);
+        assertEquals(0, statuses.drain(10), "the drain skips a dead-lettered row");
+        assertFalse(statuses.attempt(order), "and so does a direct attempt");
+        assertTrue(PUSHED.isEmpty());
+        assertEquals(48, queued(order).orElseThrow().attempts());
+        assertTrue(deadLettered(order));
+    }
+
+    @Test
+    void newerVersionRevivesDeadLetteredStatus() {
+        String order = create(false, 10L, OP_A);
+        catalogDown = true;
+        asSuper();
+        service.completeStep(order, 1, step(service.view(order), 1).version());
+        Queued given = queued(order).orElseThrow();
+        owner.sql("UPDATE workflow.workflow_tracker_status_outbox SET attempts = 48, dead_lettered_at = now(), "
+                + "next_attempt_at = now() + interval '1 hour' WHERE order_id = :order").param("order", order).update();
+
+        // The same or an older version changes nothing: the row stays given up on.
+        transactions.executeWithoutResult(status -> statuses.record(order, 10L, given.status(), given.trackerVersion()));
+        assertTrue(deadLettered(order));
+        assertEquals(48, queued(order).orElseThrow().attempts());
+
+        service.completeStep(order, 5, step(service.view(order), 5).version());
+        Queued revived = queued(order).orElseThrow();
+        assertFalse(deadLettered(order), "a newer status revives the row");
+        assertEquals("BOARD_PROCUREMENT", revived.status());
+        assertTrue(revived.trackerVersion() > given.trackerVersion());
+        assertEquals(1, revived.attempts(), "with fresh retries, of which the attempt after commit was the first");
+
+        catalogDown = false;
+        due(order);
+        assertEquals(1, statuses.drain(10));
+        assertEquals(List.of(order + ":BOARD_PROCUREMENT"), PUSHED);
+        assertTrue(queued(order).isEmpty());
+        TenantContext.clear();
+    }
+
+    /** School-core refuses any status for a closed order (409, e.g. cancelled): the row is dropped, not retried for two days. */
+    @Test
+    void aClosedOrdersStatusIsDroppedNotRetried() {
+        String order = create(false, 10L, OP_A);
+        catalogClosed = true;
+        as(() -> asOperator(OP_A, 10L), () -> service.completeStep(order, 1, step(service.view(order), 1).version()));
+        assertTrue(queued(order).isEmpty(), "the attempt after commit dropped it");
+        assertTrue(PUSHED.isEmpty());
+
+        // The same from the relay.
+        catalogClosed = false;
+        catalogDown = true;
+        as(() -> asSuper(), () -> service.completeStep(order, 5, step(service.view(order), 5).version()));
+        assertTrue(queued(order).isPresent());
+        catalogDown = false;
+        catalogClosed = true;
+        due(order);
+        assertEquals(0, statuses.drain(10));
+        assertTrue(queued(order).isEmpty());
+    }
+
+    @Test
+    void healthReportIncludesStatusOutbox() {
+        Flyway.configure().dataSource(PG.getJdbcUrl(), "owner", "owner").schemas("firefighting").defaultSchema("firefighting")
+                .locations("classpath:db/migration/firefighting").load().migrate();
+        catalogDown = true;
+        String waiting = create(false, 10L, OP_A);
+        String stuck = create(false, 20L, OP_B);
+        as(() -> asSuper(), () -> service.completeStep(waiting, 1, step(service.view(waiting), 1).version()));
+        as(() -> asSuper(), () -> service.completeStep(stuck, 1, step(service.view(stuck), 1).version()));
+        owner.sql("UPDATE workflow.workflow_tracker_status_outbox SET created_at = now() - interval '2 hours', "
+                + "updated_at = now() WHERE order_id = :order").param("order", waiting).update();
+        owner.sql("UPDATE workflow.workflow_tracker_status_outbox SET dead_lettered_at = now(), created_at = now() - interval '9 hours' "
+                + "WHERE order_id = :order").param("order", stuck).update();
+        long outboxPending = owner.sql("SELECT count(*) FROM firefighting.outbox_events WHERE published_at IS NULL AND dead_lettered_at IS NULL")
+                .query(Long.class).single();
+        long outboxDead = owner.sql("SELECT count(*) FROM firefighting.outbox_events WHERE dead_lettered_at IS NOT NULL").query(Long.class).single();
+
+        OutboxAsyncHealthReporter reporter = new OutboxAsyncHealthReporter(owner, "firefighting");
+        reporter.configureBacklogs(List.of(statuses));
+        ListAppender<ILoggingEvent> logs = capture(OutboxAsyncHealthReporter.class);
+        try {
+            reporter.report();
+        } finally {
+            release(OutboxAsyncHealthReporter.class, logs);
+        }
+        assertEquals(1, logs.list.size(), logs.list.toString());
+        JsonNode outbox = json(logs.list.get(0)).path("health").path("outbox");
+        assertEquals(outboxPending + 1, outbox.path("pendingCount").asLong());
+        assertEquals(outboxDead + 1, outbox.path("deadLetterCount").asLong());
+        long age = outbox.path("oldestPendingAgeSeconds").asLong();
+        assertTrue(age >= 7200 && age < 7300, "the oldest pending status has waited since it was first queued, not since it was last tried: " + age);
+
+        // A backlog that cannot be counted is skipped with a warning; the outbox figures are still reported.
+        reporter.configureBacklogs(List.of(() -> { throw new IllegalStateException("cannot count"); }, statuses));
+        ListAppender<ILoggingEvent> again = capture(OutboxAsyncHealthReporter.class);
+        try {
+            reporter.report();
+        } finally {
+            release(OutboxAsyncHealthReporter.class, again);
+        }
+        assertTrue(again.list.stream().anyMatch(event -> event.getLevel() == Level.WARN && event.getFormattedMessage().contains("cannot count")), again.list.toString());
+        JsonNode still = again.list.stream().filter(event -> event.getLevel() == Level.INFO).map(NotebookTrackerServiceIntegrationTest::json)
+                .findFirst().orElseThrow().path("health").path("outbox");
+        assertEquals(outboxPending + 1, still.path("pendingCount").asLong());
+    }
+
+    // ---- staff names (review follow-up: who is assigned, who wrote a note) ------------------------------------------------
+
+    @Test
+    void trackerViewCarriesAuthorAndAssigneeNames() {
+        STAFF.put(OP_A, "Asha Operator");
+        STAFF.put(SUPER, "Sam Super");
+        NotebookTrackerService named = serviceWith(new StaffNames(DIRECTORY, CLOCK));
+        String order = create(true, 10L, OP_A);
+        as(() -> asOperator(OP_A, 10L), () -> named.addInternalNote(order, "Called the school"));
+        // OP_C is not staff in identity's answer (a former operator, say): the name stays unknown.
+        owner.sql("UPDATE workflow.workflow_instance_steps SET assignee_user_id = :user WHERE step_order = 2 AND instance_id = "
+                + "(SELECT instance_id FROM workflow.workflow_notebook_trackers WHERE order_id = :order)").param("user", OP_C).param("order", order).update();
+        TrackerView noted = as(() -> asSuper(), () -> named.addInternalNote(order, "Approved the vendor"));
+
+        assertEquals(List.of("Asha Operator", "Sam Super"), noted.internalNotes().stream().map(TrackerView.Note::authorName).toList(),
+                "a mutation's answer carries the names");
+        TrackerView view = as(() -> asOperator(OP_A, 10L), () -> named.view(order));
+        assertEquals("Asha Operator", step(view, 1).assigneeName());
+        assertEquals(OP_C, step(view, 2).assigneeUserId());
+        assertNull(step(view, 2).assigneeName());
+        assertEquals(List.of("Asha Operator", "Sam Super"), view.internalNotes().stream().map(TrackerView.Note::authorName).toList());
+
+        String unassigned = create(false, 10L, null);
+        assertNull(step(as(() -> asSuper(), () -> named.view(unassigned)), 1).assigneeName());
+        long asked = NAME_CALLS.size();
+        as(() -> asSuper(), () -> named.view(order));
+        assertEquals(asked, NAME_CALLS.size(), "names are cached");
+    }
+
+    @Test
+    void namesFallBackToNullWhenIdentityIsDown() {
+        STAFF.put(OP_A, "Asha Operator");
+        NotebookTrackerService named = serviceWith(new StaffNames(DIRECTORY, CLOCK));
+        String order = create(false, 10L, OP_A);
+        directoryDown = true;
+        TrackerView noted = as(() -> asOperator(OP_A, 10L), () -> named.addInternalNote(order, "Vendor called back"));
+        assertNull(step(noted, 1).assigneeName());
+        assertNull(noted.internalNotes().get(0).authorName());
+        assertEquals("Vendor called back", noted.internalNotes().get(0).body(), "the change and its answer still go through");
+        assertNull(step(as(() -> asOperator(OP_A, 10L), () -> named.view(order)), 1).assigneeName());
+
+        directoryDown = false;
+        TrackerView view = as(() -> asOperator(OP_A, 10L), () -> named.view(order));
+        assertEquals("Asha Operator", step(view, 1).assigneeName(), "an outage is not remembered");
+        assertEquals("Asha Operator", view.internalNotes().get(0).authorName());
+    }
+
+    /** The pool has five connections in production: identity is asked with none checked out and no transaction open. */
+    @Test
+    void nameLookupHoldsNoConnection() {
+        STAFF.put(OP_A, "Asha Operator");
+        STAFF.put(SUPER, "Sam Super");
+        String order = create(false, 10L, OP_A);
+        as(() -> asOperator(OP_A, 10L), () -> serviceWith(new StaffNames(DIRECTORY, CLOCK)).view(order));
+        as(() -> asOperator(OP_A, 10L), () -> serviceWith(new StaffNames(DIRECTORY, CLOCK)).addInternalNote(order, "A note"));
+        long loaded = step(as(() -> asSuper(), () -> service.view(order)), 1).version();
+        as(() -> asSuper(), () -> serviceWith(new StaffNames(DIRECTORY, CLOCK)).completeStep(order, 1, loaded));
+        assertEquals(3, NAME_CALLS.size(), NAME_CALLS.toString());
+        assertTrue(NAME_CALLS.stream().allMatch(call -> call.endsWith(" active=0 transaction=false")), NAME_CALLS.toString());
+
+        // Asked from inside a caller's transaction, the lookup does not call identity and the names stay unknown.
+        NAME_CALLS.clear();
+        TrackerView inside = as(() -> asSuper(), () -> transactions.execute(status -> serviceWith(new StaffNames(DIRECTORY, CLOCK)).view(order)));
+        assertTrue(NAME_CALLS.isEmpty(), NAME_CALLS.toString());
+        assertNull(step(inside, 1).assigneeName());
     }
 }
