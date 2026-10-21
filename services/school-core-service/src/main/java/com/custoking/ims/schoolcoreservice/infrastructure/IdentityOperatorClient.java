@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Map;
 
@@ -42,6 +43,9 @@ public class IdentityOperatorClient implements OperatorResolver {
             if (answer == null || !(answer.get("outcome") instanceof String outcome)) throw new IllegalStateException("operator directory returned no outcome");
             Long userId = answer.get("userId") instanceof Number number ? number.longValue() : null;
             return new Resolution(outcome, userId);
+        } catch (RestClientResponseException answered) {
+            // Kept as the queued order's last error: a 403 points at the caller allow-list or invoker grant, a 5xx at identity.
+            throw new IllegalStateException("operator directory answered HTTP " + answered.getStatusCode().value(), answered);
         } catch (RestClientException failure) {
             throw new IllegalStateException("operator directory is unavailable", failure);
         }

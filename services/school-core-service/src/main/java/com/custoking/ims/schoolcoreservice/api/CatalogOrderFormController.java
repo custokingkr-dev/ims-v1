@@ -66,8 +66,8 @@ public class CatalogOrderFormController {
     }
 
     /**
-     * Starts the tracker of a placed notebook order whose tracker is not created yet. The attempt runs once the request's
-     * transaction commits, so the answer is read afterwards.
+     * Starts the tracker of a placed notebook order whose tracker is not created yet. The service queues it, commits, and
+     * attempts it with no transaction open, so the answer is read afterwards.
      */
     @PostMapping("/{id}/tracker/ensure")
     public Map<String, Object> ensureTracker(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,

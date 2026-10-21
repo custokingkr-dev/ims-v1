@@ -54,7 +54,7 @@ class NotebookTrackerEndpointsTest {
         mvc.perform(post("/api/v1/catalog/orders/CK-1/tracker/ensure")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/v1/catalog/orders/CK-1/tracker/ensure").header("X-Catalog-Service-Token", "test-token"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.trackerPending").value(false));
-        // The flag is read only once ensureTracker has committed and made its after-commit attempt.
+        // The flag is read only once ensureTracker has committed and, with no transaction open, made its attempt.
         var calls = org.mockito.Mockito.inOrder(forms);
         calls.verify(forms).ensureTracker("CK-1");
         calls.verify(forms).trackerPending("CK-1");

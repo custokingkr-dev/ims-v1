@@ -345,6 +345,15 @@ public class CatalogReadRepository {
         return created;
     }
 
+    /**
+     * For the placing controllers, once {@link #placeOrder} has returned (its transaction committed and its connection back
+     * in the pool): one attempt at a newly placed notebook order's tracker, with no transaction open (spec §3.3). Does
+     * nothing for any other order. Never throws; the relay trigger retries whatever the attempt leaves.
+     */
+    public void attemptTrackerAfterPlacement(CatalogOrderRow placed) {
+        if (forms != null && placed != null && Boolean.TRUE.equals(placed.trackerManaged())) forms.attemptTracker(placed.id());
+    }
+
     @Transactional
     public CatalogOrderRow placeOrder(String id, Long actorId) {
         if (forms != null && forms.isStructured(id)) {

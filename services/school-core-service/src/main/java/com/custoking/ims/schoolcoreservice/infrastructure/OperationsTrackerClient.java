@@ -6,6 +6,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -50,6 +51,9 @@ public class OperationsTrackerClient implements TrackerGateway {
         try {
             http.client.post().uri("/api/v1/internal/notebook-trackers").contentType(MediaType.APPLICATION_JSON)
                     .headers(http::authorize).body(body).retrieve().toBodilessEntity();
+        } catch (RestClientResponseException answered) {
+            // Kept as the queued order's last error: a 403 points at the caller allow-list or invoker grant, a 5xx at the tracker.
+            throw new IllegalStateException("notebook tracker answered HTTP " + answered.getStatusCode().value(), answered);
         } catch (RestClientException failure) {
             throw new IllegalStateException("notebook tracker is unavailable", failure);
         }

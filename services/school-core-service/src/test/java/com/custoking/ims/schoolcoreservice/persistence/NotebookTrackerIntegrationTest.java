@@ -1,13 +1,26 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.custoking.ims.schoolcoreservice.api.CatalogOrderFormController;
+import com.custoking.ims.schoolcoreservice.api.CatalogReadController;
 import com.custoking.ims.schoolcoreservice.api.StudentReadController;
+import com.custoking.ims.schoolcoreservice.api.compat.CatalogPublicCompatibilityController;
 import com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormRuleEngine;
 import com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorage;
 import com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher;
 import com.custoking.ims.schoolcoreservice.infrastructure.OperatorResolver;
 import com.custoking.ims.schoolcoreservice.infrastructure.TrackerGateway;
+import com.custoking.ims.schoolcoreservice.outbox.OutboxAsyncHealthReporter;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
+import com.zaxxer.hikari.HikariDataSource;
+import net.logstash.logback.encoder.LogstashEncoder;
+import org.slf4j.LoggerFactory;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.PlatformTransactionManager;
+import tools.jackson.databind.JsonNode;
 import com.custoking.ims.schoolcoreservice.security.TenantAwareDataSource;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -130,6 +143,8 @@ class NotebookTrackerIntegrationTest {
                 new CatalogOrderAssetStorage("", "local", assets.toString()), outbox, null);
         queue = new NotebookTrackerCreationQueue(jdbc, TRACKER, OPERATORS, manager);
         forms.configureTracker(TRACKER, queue);
+        // As in the application: the form service opens and closes its own transactions around the tracker's calls.
+        forms.configureTransactions(manager);
         orders = new CatalogReadRepository(jdbc, outbox);
         orders.configureProductForms(forms, products);
         jdbc.sql("INSERT INTO tenant_school.schools(id, name, short_code, active, created_at, time_zone, contact_email, contact_phone) VALUES (1,'School A','SCA',true,now(),'Asia/Kolkata','office@school-a.test','+91 98765 43210'),(2,'School B','SCB',true,now(),'Asia/Kolkata',NULL,NULL)").update();
@@ -162,7 +177,7 @@ class NotebookTrackerIntegrationTest {
         OPERATORS.outcome = "ITEM_SPECIFIC";
         OPERATORS.userId = 42L;
         var order = notebook(true);
-        var placed = tx(() -> orders.placeOrder(order, 7L));
+        var placed = place(order);
 
         assertThat(placed.status()).isEqualTo("ORDER_DETAILS");
         assertThat(TRACKER.created).hasSize(1);
@@ -183,37 +198,253 @@ class NotebookTrackerIntegrationTest {
     void aSchoolWideOperatorIsUsedWhenNoItemOperatorExistsAndAmbiguityLeavesTheOrderUnassigned() {
         OPERATORS.outcome = "SCHOOL_WIDE";
         OPERATORS.userId = 6L;
-        tx(() -> orders.placeOrder(notebook(false), 7L));
+        place(notebook(false));
         assertThat(TRACKER.created.getFirst().assigneeUserId()).isEqualTo(6L);
         assertThat(TRACKER.created.getFirst().customised()).isFalse();
 
         TRACKER.reset();
         OPERATORS.outcome = "AMBIGUOUS";
         OPERATORS.userId = null;
-        tx(() -> orders.placeOrder(notebook(true), 7L));
+        place(notebook(true));
         assertThat(TRACKER.created.getFirst().assigneeUserId()).isNull();
 
         TRACKER.reset();
         OPERATORS.outcome = "NONE";
-        tx(() -> orders.placeOrder(notebook(true), 7L));
+        place(notebook(true));
         assertThat(TRACKER.created.getFirst().assigneeUserId()).isNull();
     }
 
+    /**
+     * Without an answer from identity the order's operator is unknown, not absent: the order stays queued and a later attempt
+     * assigns it. Only a definitive answer (no operator, or several) creates the tracker unassigned for superadmin.
+     */
     @Test
-    void anUnreachableOperatorDirectoryStillPlacesAndCreatesTheTrackerUnassigned() {
+    void identityUnavailableKeepsTheOrderQueued() {
         OPERATORS.down = true;
         var order = notebook(true);
-        assertThat(tx(() -> orders.placeOrder(order, 7L)).status()).isEqualTo("ORDER_DETAILS");
-        assertThat(TRACKER.created).hasSize(1);
-        assertThat(TRACKER.created.getFirst().assigneeUserId()).isNull();
+        assertThat(place(order).status()).isEqualTo("ORDER_DETAILS");
+        assertThat(TRACKER.createCalls()).as("no tracker until identity answers").isZero();
+        assertThat(queued(order)).isEqualTo(1);
+        assertThat(pending(order)).isTrue();
+        assertThat(lastError(order)).isEqualTo("identity down");
+
+        OPERATORS.down = false;
+        OPERATORS.outcome = "ITEM_SPECIFIC";
+        OPERATORS.userId = 42L;
+        due(order);
+        TenantContext.clear();
+        assertThat(queue.drain(5)).isEqualTo(1);
+        assertThat(TRACKER.created).singleElement().satisfies(created -> assertThat(created.assigneeUserId()).as("the retry finds the operator").isEqualTo(42L));
+        assertThat(queued(order)).isZero();
+
+        // An answer that cannot be read is no answer either.
+        TRACKER.reset();
+        OPERATORS.outcome = "SOMETHING_NEW";
+        OPERATORS.userId = null;
+        var unreadable = notebook(false);
+        place(unreadable);
+        assertThat(TRACKER.createCalls()).isZero();
+        assertThat(queued(unreadable)).isEqualTo(1);
+
+        for (String definitive : List.of("NONE", "AMBIGUOUS")) {
+            TRACKER.reset();
+            OPERATORS.outcome = definitive;
+            var answered = notebook(false);
+            place(answered);
+            assertThat(TRACKER.created).as(definitive).singleElement().satisfies(created -> assertThat(created.assigneeUserId()).isNull());
+            assertThat(queued(answered)).isZero();
+            assertThat(pending(answered)).isFalse();
+        }
+    }
+
+    /** A row that keeps failing stops being retried after MAX_ATTEMPTS and says so loudly, with fields a log metric can read. */
+    @Test
+    void creationRowDeadLettersAfterMaxAttempts() {
+        TRACKER.failCreate = true;
+        var order = notebook(false);
+        place(order);
+        TenantContext.clear();
+        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 47 WHERE order_id = :id").param("id", order).update();
+        due(order);
+
+        var logs = capture(NotebookTrackerCreationQueue.class);
+        try {
+            assertThat(queue.drain(5)).isZero();
+        } finally {
+            release(NotebookTrackerCreationQueue.class, logs);
+        }
+        assertThat(attempts(order)).isEqualTo(48);
+        assertThat(deadLettered(order)).isTrue();
+        assertThat(lastError(order)).isEqualTo("tracker down");
+        assertThat(logs.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList()).singleElement().satisfies(event -> {
+            JsonNode logged = json(event);
+            assertThat(logged.path("event").asString()).isEqualTo("tracker_creation_dead_lettered");
+            assertThat(logged.path("orderId").asString()).isEqualTo(order);
+            assertThat(logged.path("attempts").asInt()).isEqualTo(48);
+            assertThat(logged.path("lastError").asString()).isEqualTo("tracker down");
+        });
+
+        int calls = TRACKER.createCalls();
+        due(order);
+        assertThat(queue.drain(5)).as("the drain skips a dead-lettered row").isZero();
+        assertThat(queue.attempt(order)).isFalse();
+        assertThat(TRACKER.createCalls()).isEqualTo(calls);
+        assertThat(attempts(order)).isEqualTo(48);
+        assertThat(pending(order)).as("the order still waits for its tracker").isTrue();
+    }
+
+    @Test
+    void ensureTrackerRevivesADeadLetteredRow() {
+        TRACKER.failCreate = true;
+        OPERATORS.outcome = "ITEM_SPECIFIC";
+        OPERATORS.userId = 42L;
+        var order = notebook(true);
+        place(order);
+        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 48, dead_lettered_at = now(), next_attempt_at = now() + interval '1 hour' WHERE order_id = :id")
+                .param("id", order).update();
+        int calls = TRACKER.createCalls();
+
+        superadmin();
+        forms.ensureTracker(order);
+        assertThat(TRACKER.createCalls()).as("retried at once").isEqualTo(calls + 1);
+        assertThat(deadLettered(order)).as("back in the queue").isFalse();
+        assertThat(attempts(order)).as("with fresh retries, of which this was the first").isEqualTo(1);
+        assertThat(minutesToNextAttempt(order)).isCloseTo(2.0, within(0.2));
+
+        TRACKER.failCreate = false;
+        forms.ensureTracker(order);
+        assertThat(TRACKER.created).singleElement().satisfies(created -> assertThat(created.assigneeUserId()).isEqualTo(42L));
+        assertThat(queued(order)).isZero();
         assertThat(pending(order)).isFalse();
+    }
+
+    /** The queue's backlog is added into the outbox health figures, so the outbox pending, age and dead-letter alerts cover it. */
+    @Test
+    void healthReportIncludesTrackerQueue() {
+        TRACKER.failCreate = true;
+        var waiting = notebook(false);
+        place(waiting);
+        var stuck = notebook(false);
+        place(stuck);
+        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET created_at = now() - interval '2 hours' WHERE order_id = :id").param("id", waiting).update();
+        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET dead_lettered_at = now() WHERE order_id = :id").param("id", stuck).update();
+        long outboxPending = jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events WHERE published_at IS NULL AND dead_lettered_at IS NULL")
+                .query(Long.class).single();
+        long outboxDead = jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events WHERE dead_lettered_at IS NOT NULL").query(Long.class).single();
+        TenantContext.clear();
+
+        var reporter = new OutboxAsyncHealthReporter(jdbc, "tenant_school");
+        reporter.configureBacklogs(List.of(queue));
+        var logs = capture(OutboxAsyncHealthReporter.class);
+        try {
+            reporter.report();
+        } finally {
+            release(OutboxAsyncHealthReporter.class, logs);
+        }
+        assertThat(logs.list).singleElement().satisfies(event -> {
+            JsonNode outbox = json(event).path("health").path("outbox");
+            assertThat(outbox.path("pendingCount").asLong()).isEqualTo(outboxPending + 1);
+            assertThat(outbox.path("deadLetterCount").asLong()).isEqualTo(outboxDead + 1);
+            assertThat(outbox.path("oldestPendingAgeSeconds").asLong()).isBetween(7200L, 7300L);
+        });
+    }
+
+    /** Called from inside a transaction, a peer call is refused rather than made while that transaction holds its connection. */
+    @Test
+    void aPeerCallInsideATransactionIsRefusedRatherThanMadeHoldingItsConnection() throws Exception {
+        var order = notebook(true);
+        tx(() -> orders.placeOrder(order, 7L));
+        assertThat(tx(() -> queue.attempt(order))).as("an attempt inside a transaction leaves the order for the relay").isFalse();
+        assertThatThrownBy(() -> tx(() -> queue.drain(5))).isInstanceOf(IllegalStateException.class);
+        assertThat(TRACKER.createCalls()).isZero();
+        assertThat(attempts(order)).isZero();
+
+        superadmin();
+        var png = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "png", png);
+        assertThatThrownBy(() -> tx(() -> forms.upload(order, "DESIGN_DRAFT", png.toByteArray(), "draft.png"))).isInstanceOf(IllegalStateException.class);
+        assertThat(TRACKER.accessChecks).isEmpty();
+        assertThat(currentDrafts(order)).isZero();
+
+        assertThat(queue.attempt(order)).as("outside one, it goes ahead").isTrue();
+    }
+
+    /**
+     * The pool holds five connections and waits 30 s for one. A peer call made while holding one, plus the second a nested
+     * step takes, let five concurrent requests stall it. So the placing request releases its connection before the tracker
+     * is attempted, and the ensure attempt and the draft image-access check run with none checked out. Driven through the
+     * real controllers and transaction proxies over a HikariCP pool, as deployed.
+     */
+    @Test
+    void noPooledConnectionHeldDuringPeerCalls() throws Exception {
+        List<String> observed = new java.util.concurrent.CopyOnWriteArrayList<>();
+        try (var pool = new HikariDataSource()) {
+            pool.setJdbcUrl(pg.getJdbcUrl());
+            pool.setUsername("app_rt");
+            pool.setPassword("app_rt");
+            pool.setMaximumPoolSize(5);
+            pool.setConnectionTimeout(5000);
+            java.util.function.IntSupplier active = () -> pool.getHikariPoolMXBean().getActiveConnections();
+            TrackerGateway peer = new TrackerGateway() {
+                @Override public void create(NewTracker tracker) { observed.add("create " + active.getAsInt()); }
+                @Override public ImageAccess imageAccess(String orderId, long userId, String role) {
+                    observed.add("image-access " + active.getAsInt());
+                    return new ImageAccess(true, null);
+                }
+            };
+            OperatorResolver identity = (school, category) -> {
+                observed.add("resolve " + active.getAsInt());
+                return new OperatorResolver.Resolution("NONE", null);
+            };
+            var runtime = new TenantAwareDataSource(pool);
+            var runtimeJdbc = JdbcClient.create(runtime);
+            var runtimeManager = new DataSourceTransactionManager(runtime);
+            var runtimeOutbox = new OutboxWriter(runtimeJdbc, new ObjectMapper(), "tenant_school");
+            try (var context = new AnnotationConfigApplicationContext()) {
+                context.register(TransactionalTestConfiguration.class);
+                context.registerBean("transactionManager", PlatformTransactionManager.class, () -> runtimeManager);
+                context.registerBean(TrackerGateway.class, () -> peer);
+                context.registerBean(NotebookTrackerCreationQueue.class, () -> new NotebookTrackerCreationQueue(runtimeJdbc, peer, identity, runtimeManager));
+                context.registerBean(ProductCatalogRepository.class, () -> new ProductCatalogRepository(runtimeJdbc, new ObjectMapper(), runtimeOutbox, true));
+                context.registerBean(CatalogOrderFormService.class, () -> new CatalogOrderFormService(runtimeJdbc,
+                        context.getBean(ProductCatalogRepository.class), new ProductFormRuleEngine(),
+                        new CatalogOrderAssetStorage("", "local", assets.toString()), runtimeOutbox, null));
+                context.registerBean(CatalogReadRepository.class, () -> new CatalogReadRepository(runtimeJdbc, runtimeOutbox));
+                context.refresh();
+                var runtimeOrders = context.getBean(CatalogReadRepository.class);
+                var runtimeForms = context.getBean(CatalogOrderFormService.class);
+                var catalogApi = new CatalogReadController(runtimeOrders, "tok");
+                var compatibleApi = new CatalogPublicCompatibilityController(runtimeOrders, "tok");
+                var formApi = new CatalogOrderFormController(runtimeForms, runtimeOrders, "tok");
+
+                school(1);
+                String first = runtimeOrders.createOrder(Map.of("schoolId", 1, "category", "NOTEBOOKS", "orderData", data(true, 400, 600))).id();
+                String second = runtimeOrders.createOrder(Map.of("schoolId", 1, "category", "NOTEBOOKS", "orderData", data(false, 30, 30))).id();
+                catalogApi.placeOrder("tok", first, null);
+                compatibleApi.placeOrder("tok", second);
+                assertThat(observed).as("the attempt after each placement").containsExactly("resolve 0", "create 0", "resolve 0", "create 0");
+
+                observed.clear();
+                superadmin();
+                assertThat(formApi.ensureTracker("tok", first)).containsEntry("trackerPending", false);
+                var png = new ByteArrayOutputStream();
+                ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "png", png);
+                var drafted = formApi.upload("tok", first, "DESIGN_DRAFT", new MockMultipartFile("file", "draft.png", "image/png", png.toByteArray()));
+                formApi.remove("tok", first, id(drafted));
+                assertThat(observed).as("ensure, then the draft upload's and delete's access checks")
+                        .containsExactly("resolve 0", "create 0", "image-access 0", "image-access 0");
+                assertThat(currentDrafts(first)).isZero();
+                assertThat(pending(first) || pending(second)).isFalse();
+                assertThat(active.getAsInt()).isZero();
+            }
+        }
     }
 
     @Test
     void placementCommitsWhenTrackerUnreachable() {
         TRACKER.failCreate = true;
         var order = notebook(true);
-        var placed = tx(() -> orders.placeOrder(order, 7L));
+        var placed = place(order);
 
         assertThat(placed.status()).isEqualTo("ORDER_DETAILS");
         assertThat(status(order)).as("committed, not rolled back").isEqualTo("ORDER_DETAILS");
@@ -230,7 +461,7 @@ class NotebookTrackerIntegrationTest {
         OPERATORS.outcome = "ITEM_SPECIFIC";
         OPERATORS.userId = 42L;
         var order = notebook(true);
-        tx(() -> orders.placeOrder(order, 7L));
+        place(order);
 
         assertThat(TRACKER.createdInTransaction).containsExactly(false);
         assertThat(OPERATORS.resolvedInTransaction).containsExactly(false);
@@ -245,7 +476,7 @@ class NotebookTrackerIntegrationTest {
     void drainCreatesTrackerOnce() {
         TRACKER.failCreate = true;
         var order = notebook(true);
-        tx(() -> orders.placeOrder(order, 7L));
+        place(order);
         TenantContext.clear(); // the relay trigger runs with no user
 
         assertThat(queue.drain(5)).as("still backing off after the failed attempt").isZero();
@@ -269,7 +500,7 @@ class NotebookTrackerIntegrationTest {
     void failedAttemptsBackOffDoublingUpToAnHour() {
         TRACKER.failCreate = true;
         var order = notebook(false);
-        tx(() -> orders.placeOrder(order, 7L));
+        place(order);
         TenantContext.clear();
         assertThat(attempts(order)).isEqualTo(1);
         assertThat(minutesToNextAttempt(order)).isCloseTo(2.0, within(0.2));
@@ -290,7 +521,7 @@ class NotebookTrackerIntegrationTest {
     void aRowThatHasFailedForWeeksIsStillClaimedAndWaitsAtMostAnHour() {
         TRACKER.failCreate = true;
         var order = notebook(false);
-        tx(() -> orders.placeOrder(order, 7L));
+        place(order);
         TenantContext.clear();
         // About six weeks at the hourly cap: 2^1101 minutes would overflow PostgreSQL's float8.
         jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 1100 WHERE order_id = :id").param("id", order).update();
@@ -306,12 +537,12 @@ class NotebookTrackerIntegrationTest {
     void oneFailingRowNeverStopsTheDrainFromReachingTheNextDueRow() {
         TRACKER.failCreate = true;
         var refusedAtClaim = notebook(false);
-        tx(() -> orders.placeOrder(refusedAtClaim, 7L));
+        place(refusedAtClaim);
         school(2);
         var failsWhileCreating = tx(() -> orders.createOrder(Map.of("schoolId", 2, "category", "NOTEBOOKS", "orderData", data(false, 30, 30)))).id();
-        tx(() -> orders.placeOrder(failsWhileCreating, 7L));
+        place(failsWhileCreating);
         var healthy = notebook(false);
-        tx(() -> orders.placeOrder(healthy, 7L));
+        place(healthy);
         TenantContext.clear();
         TRACKER.failCreate = false;
         OPERATORS.brokenSchool = 2L;
@@ -343,13 +574,13 @@ class NotebookTrackerIntegrationTest {
         OPERATORS.outcome = "ITEM_SPECIFIC";
         OPERATORS.userId = 42L;
         var order = notebook(true);
-        assertThat(tx(() -> orders.placeOrder(order, 7L)).status()).isEqualTo("ORDER_DETAILS");
+        assertThat(place(order).status()).isEqualTo("ORDER_DETAILS");
         assertThat(TRACKER.created).isEmpty();
         assertThat(pending(order)).isTrue();
 
         TRACKER.failCreate = false;
         superadmin();
-        tx(() -> { forms.ensureTracker(order); return null; });
+        forms.ensureTracker(order);
         assertThat(TRACKER.created).hasSize(1);
         assertThat(TRACKER.created.getFirst().assigneeUserId()).isEqualTo(42L);
         assertThat(TRACKER.createdInTransaction).containsOnly(false);
@@ -361,9 +592,9 @@ class NotebookTrackerIntegrationTest {
     void ensuringATrackerNeedsAPlacedNotebookOrderAndAnOperatorOrSuperadmin() {
         var draft = notebook(true);
         superadmin();
-        assertThatThrownBy(() -> tx(() -> { forms.ensureTracker(draft); return null; })).isInstanceOf(ResponseStatusException.class).hasMessageContaining("placed notebook");
+        assertThatThrownBy(() -> forms.ensureTracker(draft)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("placed notebook");
         school(1);
-        assertThatThrownBy(() -> tx(() -> { forms.ensureTracker(draft); return null; })).isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+        assertThatThrownBy(() -> forms.ensureTracker(draft)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
         assertThat(TRACKER.createCalls()).isZero();
     }
 
@@ -374,10 +605,10 @@ class NotebookTrackerIntegrationTest {
         superadmin();
         for (String closed : List.of("CANCELLED", "DELIVERED", "COMPLETED")) {
             jdbc.sql("UPDATE catalog.catalog_orders SET status = :status WHERE id = :id").param("status", closed).param("id", order).update();
-            assertThatThrownBy(() -> tx(() -> { forms.ensureTracker(order); return null; }), closed)
+            assertThatThrownBy(() -> forms.ensureTracker(order), closed)
                     .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
         }
-        assertThatThrownBy(() -> tx(() -> { forms.ensureTracker(legacy); return null; })).as("an order placed before the tracker keeps its old flow")
+        assertThatThrownBy(() -> forms.ensureTracker(legacy)).as("an order placed before the tracker keeps its old flow")
                 .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
         assertThat(TRACKER.createCalls()).isZero();
         assertThat(queued(order) + queued(legacy)).isZero();
@@ -389,7 +620,7 @@ class NotebookTrackerIntegrationTest {
                 Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 3, "pageCount", 99)));
         var trophy = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", data)));
         assertThat(trophy.pricingStatus()).isEqualTo("PENDING_PRICING");
-        assertThat(tx(() -> orders.placeOrder(trophy.id(), 7L)).status()).isEqualTo("PROCESSING");
+        assertThat(place(trophy.id()).status()).isEqualTo("PROCESSING");
         assertThat(TRACKER.created).isEmpty();
         assertThatThrownBy(() -> tx(() -> forms.trackerSummary(trophy.id()))).isInstanceOf(ResponseStatusException.class);
     }
@@ -411,7 +642,7 @@ class NotebookTrackerIntegrationTest {
 
         assertThat(id(draft(order, 3))).as("the same file again is not a new draft").isEqualTo(ids.get(2));
 
-        tx(() -> { forms.removeAsset(order, ids.get(0)); return null; });
+        forms.removeAsset(order, ids.get(0));
         assertThat(currentDrafts(order)).isEqualTo(5);
         draft(order, 7);
         assertThat(currentDrafts(order)).isEqualTo(6);
@@ -431,7 +662,8 @@ class NotebookTrackerIntegrationTest {
         ids.add(id(draft(order, 6)));
         assertThat(intents(order)).as("the sixth draft adds nothing").hasSize(1);
 
-        tx(() -> { forms.removeAsset(order, ids.get(0)); forms.removeAsset(order, ids.get(1)); return null; });
+        forms.removeAsset(order, ids.get(0));
+        forms.removeAsset(order, ids.get(1));
         assertThat(currentDrafts(order)).isEqualTo(4);
         draft(order, 8);
         assertThat(intents(order)).as("back above four after dropping to four").containsExactly("5:NOT_SENT:ACTIVE_SUPERADMINS", "5:NOT_SENT:ACTIVE_SUPERADMINS");
@@ -451,7 +683,7 @@ class NotebookTrackerIntegrationTest {
         TRACKER.access = new TrackerGateway.ImageAccess(true, null);
         var kept = id(draft(order, 1));
         TRACKER.access = new TrackerGateway.ImageAccess(false, "locked");
-        assertThatThrownBy(() -> tx(() -> { forms.removeAsset(order, kept); return null; })).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> forms.removeAsset(order, kept)).isInstanceOf(ResponseStatusException.class);
         assertThat(currentDrafts(order)).isEqualTo(1);
 
         TRACKER.access = new TrackerGateway.ImageAccess(true, null);
@@ -517,7 +749,7 @@ class NotebookTrackerIntegrationTest {
         operator(8L, Set.of(1L), Set.of());
         long first = id(draft(order, 1));
         long second = id(draft(order, 2));
-        tx(() -> { forms.removeAsset(order, first); return null; });
+        forms.removeAsset(order, first);
         TenantContext.clear();
 
         var listed = tx(() -> forms.draftImagesForTracker(order));
@@ -569,7 +801,7 @@ class NotebookTrackerIntegrationTest {
                 Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 3, "pageCount", 99)));
         school(1);
         var trophy = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", data)));
-        tx(() -> orders.placeOrder(trophy.id(), 7L));
+        place(trophy.id());
         TenantContext.clear();
         assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(trophy.id(), "PRINTING_PRESS", 1L); return null; })).isInstanceOf(ResponseStatusException.class);
     }
@@ -631,7 +863,7 @@ class NotebookTrackerIntegrationTest {
         school(2);
         var notebookAtTwo = tx(() -> orders.createOrder(Map.of("schoolId", 2, "category", "NOTEBOOKS", "orderData", data(true, 400, 600)))).id();
         // Placed, so it is on the tracker: an item-only operator finds nothing off it (H1), which is not what this checks.
-        tx(() -> orders.placeOrder(notebookAtTwo, 7L));
+        place(notebookAtTwo);
         var trophyData = Map.of("orderSelections", Map.of(), "lines", List.of(
                 Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 3, "pageCount", 99)));
         school(1);
@@ -663,7 +895,7 @@ class NotebookTrackerIntegrationTest {
             assertThat(runtimeForms.detail(notebookAtOne)).containsEntry("formVersion", 2);
             assertThat(runtimeForms.trackerSummary(notebookAtOne)).containsEntry("schoolName", "School A");
             assertThatThrownBy(() -> runtimeForms.detail(trophyAtOne)).as("another item at the same school")
-                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("404");
             assertThatThrownBy(() -> runtimeForms.detail(notebookAtTwo)).as("the same item at another school")
                     .isInstanceOf(ResponseStatusException.class).hasMessageContaining("404");
 
@@ -688,10 +920,10 @@ class NotebookTrackerIntegrationTest {
     void theCreationQueueRunsAsTheRuntimeRoleUnderRowLevelSecurity() {
         TRACKER.failCreate = true;
         var atOne = notebook(true);
-        tx(() -> orders.placeOrder(atOne, 7L));
+        place(atOne);
         school(2);
         var atTwo = tx(() -> orders.createOrder(Map.of("schoolId", 2, "category", "NOTEBOOKS", "orderData", data(false, 30, 30)))).id();
-        tx(() -> orders.placeOrder(atTwo, 7L));
+        place(atTwo);
 
         var runtime = new TenantAwareDataSource(new DriverManagerDataSource(pg.getJdbcUrl(), "app_rt", "app_rt"));
         var runtimeJdbc = JdbcClient.create(runtime);
@@ -757,12 +989,12 @@ class NotebookTrackerIntegrationTest {
         operator(9L, Set.of(), Set.of("1:NOTEBOOKS"));
         assertThat(tx(() -> forms.detail(notebook))).containsEntry("formVersion", 2);
         assertThat(tx(() -> forms.trackerSummary(notebook))).containsEntry("orderId", notebook);
-        assertThatThrownBy(() -> tx(() -> forms.detail(trophy.id()))).isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+        assertThatThrownBy(() -> tx(() -> forms.detail(trophy.id()))).isInstanceOf(ResponseStatusException.class).hasMessageContaining("404");
 
         operator(9L, Set.of(), Set.of("1:TIES"));
-        assertThatThrownBy(() -> tx(() -> forms.detail(notebook))).isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+        assertThatThrownBy(() -> tx(() -> forms.detail(notebook))).isInstanceOf(ResponseStatusException.class).hasMessageContaining("404");
         operator(9L, Set.of(), Set.of("2:NOTEBOOKS"));
-        assertThatThrownBy(() -> tx(() -> forms.detail(notebook))).isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+        assertThatThrownBy(() -> tx(() -> forms.detail(notebook))).isInstanceOf(ResponseStatusException.class).hasMessageContaining("404");
 
         operator(9L, Set.of(1L), Set.of());
         assertThat(tx(() -> forms.detail(trophy.id()))).as("a school-wide operator covers every item").containsEntry("formVersion", 2);
@@ -773,7 +1005,7 @@ class NotebookTrackerIntegrationTest {
         school(1);
         var order = tx(() -> orders.createOrder(Map.of("schoolId", 1, "category", "NOTEBOOKS", "notes", "Please use green",
                 "requiredByDate", "2026-12-15", "orderData", data(true, 400, 600))));
-        tx(() -> orders.placeOrder(order.id(), 7L));
+        place(order.id());
 
         superadmin();
         var summary = tx(() -> forms.trackerSummary(order.id()));
@@ -829,8 +1061,8 @@ class NotebookTrackerIntegrationTest {
                 () -> tx(() -> { forms.updateDraft(draftOrder, Map.of("version", draftVersion, "orderData", data(true, 500, 500))); return null; }),
                 () -> upload(legacy, "DESIGN", 21),
                 () -> upload(legacy, "PRINT_REFERENCE", 22),
-                () -> tx(() -> { forms.removeAsset(legacy, reference); return null; }),
-                () -> tx(() -> { forms.removeAsset(legacy, artwork); return null; }),
+                () -> forms.removeAsset(legacy, reference),
+                () -> forms.removeAsset(legacy, artwork),
                 () -> tx(() -> orders.markDesignApproved(legacy)),
                 () -> tx(() -> orders.updateOrderStatus(legacy, "DESIGN_APPROVED_PROCESSING")),
                 () -> tx(() -> orders.markDelivered(legacyApproved, 9L)))) {
@@ -870,12 +1102,12 @@ class NotebookTrackerIntegrationTest {
         assertThatThrownBy(() -> tx(() -> forms.content(legacy, artwork))).as("nor is its artwork")
                 .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
         assertThat(tx(() -> forms.trackerSummary(tracked))).containsEntry("orderId", tracked);
-        tx(() -> { forms.ensureTracker(tracked); return null; });
+        forms.ensureTracker(tracked);
         assertThat(tx(() -> forms.trackerPending(tracked))).isFalse();
         long drafted = id(draft(tracked, 5));
         assertThat(tx(() -> forms.assets(tracked))).extracting(a -> a.get("assetKind")).containsExactly("DESIGN", "DESIGN_DRAFT");
         assertThat(tx(() -> forms.content(tracked, drafted)).bytes()).isNotEmpty();
-        tx(() -> { forms.removeAsset(tracked, drafted); return null; });
+        forms.removeAsset(tracked, drafted);
         assertThat(currentDrafts(tracked)).isZero();
         assertThat(TRACKER.accessChecks).isNotEmpty().allMatch(check -> check.equals(tracked + ":9:OPERATIONS"));
 
@@ -910,7 +1142,7 @@ class NotebookTrackerIntegrationTest {
             reads.put("GET /assets/{id}/content", () -> tx(() -> forms.content(order, asset)));
             reads.put("GET /tracker-summary", () -> tx(() -> forms.trackerSummary(order)));
             reads.put("tracker pending", () -> tx(() -> forms.trackerPending(order)));
-            reads.put("POST /tracker/ensure", () -> tx(() -> { forms.ensureTracker(order); return null; }));
+            reads.put("POST /tracker/ensure", () -> forms.ensureTracker(order));
             reads.forEach((path, read) -> assertThatThrownBy(read::run).as(order + " " + path)
                     .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND)));
             assertThat(tx(() -> orders.order(order))).as(order + " GET /orders/{id} and the order half of /form").isEmpty();
@@ -933,6 +1165,46 @@ class NotebookTrackerIntegrationTest {
         assertThat(tx(() -> forms.detail(legacy))).as("the school's admin").containsEntry("formVersion", 2);
         assertThat(tx(() -> orders.order(draftOrder))).isPresent();
         assertThat(tx(() -> forms.content(draftOrder, draftArtwork)).bytes()).isNotEmpty();
+    }
+
+    /**
+     * D2: another catalogue item's order at the item operator's own school is not theirs to know about, so every path that
+     * reads it answers "not found", as for an order that does not exist, never "forbidden" (order ids are sequential).
+     */
+    @Test
+    void itemOnlyOperatorGetsNotFoundForOtherCategories() {
+        var trophyData = Map.of("orderSelections", Map.of(), "lines", List.of(
+                Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 3, "pageCount", 99)));
+        school(1);
+        var draft = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", trophyData))).id();
+        var placed = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", trophyData))).id();
+        long artwork = id(upload(placed, "DESIGN", 11));
+        place(placed);
+        long draftVersion = orderVersion(draft);
+
+        operator(9L, Set.of(), Set.of("1:NOTEBOOKS"));
+        for (String order : List.of(draft, placed)) {
+            Map<String, Runnable> paths = new java.util.LinkedHashMap<>();
+            paths.put("GET /form", () -> tx(() -> forms.detail(order)));
+            paths.put("PATCH /{id}", () -> tx(() -> { forms.updateDraft(order, Map.of("version", draftVersion, "orderData", trophyData)); return null; }));
+            paths.put("GET /assets", () -> tx(() -> forms.assetHistory(order)));
+            paths.put("GET /assets/{id}/content", () -> tx(() -> forms.content(order, artwork)));
+            for (String kind : List.of("DESIGN", "PRINT_REFERENCE", "PRE_DELIVERY_PHOTO", "DESIGN_DRAFT")) {
+                paths.put("POST /assets " + kind, () -> upload(order, kind, 21));
+            }
+            paths.put("DELETE /assets/{id}", () -> forms.removeAsset(order, artwork));
+            paths.put("GET /tracker-summary", () -> tx(() -> forms.trackerSummary(order)));
+            paths.put("POST /tracker/ensure", () -> forms.ensureTracker(order));
+            paths.put("tracker pending", () -> tx(() -> forms.trackerPending(order)));
+            paths.put("POST /orders/{id}/place", () -> tx(() -> orders.placeOrder(order, 9L)));
+            paths.forEach((path, call) -> assertThatThrownBy(call::run).as(order + " " + path)
+                    .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND)));
+        }
+        assertThat(TRACKER.accessChecks).as("the tracker is never asked about them").isEmpty();
+        assertThat(currentAssetIds(placed)).containsExactly(artwork);
+        assertThat(currentAssetIds(draft)).isEmpty();
+        assertThat(orderVersion(draft)).isEqualTo(draftVersion);
+        assertThat(status(draft)).isEqualTo("DRAFT");
     }
 
     /** Spec v4: a tracker order records delivery in the tracker, so the school's old delivery photo is refused there only. */
@@ -996,9 +1268,44 @@ class NotebookTrackerIntegrationTest {
         return tx(() -> orders.createOrder(Map.of("schoolId", 1, "category", "NOTEBOOKS", "orderData", data(custom, 400, 600)))).id();
     }
 
+    /** As the placing controllers do: place in the request's own transaction, then, with it committed and released, attempt the tracker. */
+    private static CatalogReadRepository.CatalogOrderRow place(String order) {
+        var placed = tx(() -> orders.placeOrder(order, 7L));
+        orders.attemptTrackerAfterPlacement(placed);
+        return placed;
+    }
+
+    private boolean deadLettered(String order) {
+        return jdbc.sql("SELECT dead_lettered_at IS NOT NULL FROM catalog.notebook_tracker_creation_queue WHERE order_id = :id")
+                .param("id", order).query(Boolean.class).single();
+    }
+
+    private static ListAppender<ILoggingEvent> capture(Class<?> type) {
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        ((ch.qos.logback.classic.Logger) LoggerFactory.getLogger(type)).addAppender(appender);
+        return appender;
+    }
+
+    private static void release(Class<?> type, ListAppender<ILoggingEvent> appender) {
+        ((ch.qos.logback.classic.Logger) LoggerFactory.getLogger(type)).detachAppender(appender);
+    }
+
+    /** The event as the JSON encoder writes it to Cloud Logging, whose log metrics read these fields. */
+    private static JsonNode json(ILoggingEvent event) {
+        var encoder = new LogstashEncoder();
+        encoder.setContext((ch.qos.logback.classic.LoggerContext) LoggerFactory.getILoggerFactory());
+        encoder.start();
+        try {
+            return new ObjectMapper().readTree(new String(encoder.encode(event), java.nio.charset.StandardCharsets.UTF_8));
+        } finally {
+            encoder.stop();
+        }
+    }
+
     private String placedNotebook(boolean custom) {
         var id = notebook(custom);
-        tx(() -> orders.placeOrder(id, 7L));
+        place(id);
         TRACKER.forget();
         OPERATORS.resolvedInTransaction.clear();
         return id;
@@ -1029,7 +1336,7 @@ class NotebookTrackerIntegrationTest {
             image.setRGB(0, 0, color);
             var output = new ByteArrayOutputStream();
             ImageIO.write(image, "png", output);
-            return tx(() -> forms.upload(id, kind, output.toByteArray(), "draft.png"));
+            return forms.upload(id, kind, output.toByteArray(), "draft.png");
         } catch (java.io.IOException ex) { throw new AssertionError(ex); }
     }
 

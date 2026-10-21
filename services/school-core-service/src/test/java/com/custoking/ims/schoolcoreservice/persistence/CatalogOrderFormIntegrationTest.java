@@ -259,6 +259,63 @@ class CatalogOrderFormIntegrationTest {
         assertThat(tx(() -> orders.markDelivered(legacy.id(), 99L)).status()).isEqualTo("DELIVERED");
     }
 
+    /**
+     * Every notebook draft goes onto the tracker when it is placed, and the tracker records delivery itself, so a draft takes
+     * no pre-delivery photo either. An order placed before the tracker, and every other category, take it as before.
+     */
+    @Test
+    void preDeliveryPhotoRefusedOnNotebookDrafts() {
+        for (boolean custom : new boolean[]{true, false}) {
+            var draft = create(custom, 400, 600);
+            assertThatThrownBy(() -> upload(draft.id(), "PRE_DELIVERY_PHOTO", 1), "customised " + custom)
+                    .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(refused.getReason()).isEqualTo("Notebook orders on the tracker record delivery in the tracker");
+                    });
+            assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_order_assets WHERE order_id = :id").param("id", draft.id())
+                    .query(Long.class).single()).isZero();
+        }
+        var legacy = create(true, 400, 600);
+        placeBeforeTheTracker(legacy.id(), true);
+        assertThat(upload(legacy.id(), "PRE_DELIVERY_PHOTO", 2)).containsEntry("assetKind", "PRE_DELIVERY_PHOTO");
+
+        var trophyData = Map.of("orderSelections", Map.of(), "lines", List.of(
+                Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 3, "pageCount", 99)));
+        var trophyDraft = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", trophyData)));
+        assertThat(upload(trophyDraft.id(), "PRE_DELIVERY_PHOTO", 3)).containsEntry("assetKind", "PRE_DELIVERY_PHOTO");
+    }
+
+    /** A damaged file is refused with one plain message before anything is written: no attachment row and no stored object. */
+    @Test
+    void aDamagedFileIsRefusedAndNothingIsStored() throws Exception {
+        var created = create(true, 400, 600);
+        long filesBefore = storedFiles();
+        var pageless = """
+                %PDF-1.4
+                1 0 obj << /Type /Catalog >> endobj
+                trailer << /Root 1 0 R >>
+                %%EOF
+                """.getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        var png = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB), "png", png);
+        var truncated = java.util.Arrays.copyOf(png.toByteArray(), png.size() / 2);
+        for (var file : Map.of("design.pdf", pageless, "design.png", truncated).entrySet()) {
+            assertThatThrownBy(() -> tx(() -> forms.upload(created.id(), "DESIGN", file.getValue(), file.getKey())), file.getKey())
+                    .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(refused.getReason()).isEqualTo("This file is damaged or is not a valid PDF or image.");
+                    });
+        }
+        assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_order_assets WHERE order_id = :id").param("id", created.id())
+                .query(Long.class).single()).isZero();
+        assertThat(storedFiles()).isEqualTo(filesBefore);
+    }
+
+    private static long storedFiles() throws java.io.IOException {
+        if (!java.nio.file.Files.exists(assets)) return 0;
+        try (var files = java.nio.file.Files.walk(assets)) { return files.filter(java.nio.file.Files::isRegularFile).count(); }
+    }
+
     @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> rulesOf(Object definition) {
         return (List<Map<String, Object>>) asMap(definition).get("rules");

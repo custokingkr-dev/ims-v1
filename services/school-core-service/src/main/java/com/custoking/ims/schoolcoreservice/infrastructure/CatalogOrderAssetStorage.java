@@ -140,20 +140,29 @@ public class CatalogOrderAssetStorage {
         }
     }
 
+    /**
+     * A file that cannot be decoded is the user's to fix, not a server fault: whatever the decoder throws (an IOException,
+     * or a runtime exception such as the parser's NullPointerException on a PDF without a page tree) becomes this 400.
+     * Our own refusals, and the busy-processing 429, keep their status and message.
+     */
+    static final String DAMAGED_FILE = "This file is damaged or is not a valid PDF or image.";
+
     private void validateImage(byte[] bytes) {
         try (var budget = MediaWorkBudget.acquire();
              ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
             var readers = ImageIO.getImageReaders(input);
-            if (!readers.hasNext()) throw bad("The image cannot be decoded");
+            if (!readers.hasNext()) throw bad(DAMAGED_FILE);
             ImageReader reader = readers.next();
             try {
                 reader.setInput(input, true, true);
                 long pixels = (long) reader.getWidth(0) * reader.getHeight(0);
                 if (pixels <= 0 || pixels > 40_000_000L) throw bad("Image dimensions exceed the 40 megapixel limit");
-                if (reader.read(0) == null) throw bad("The image cannot be decoded");
+                if (reader.read(0) == null) throw bad(DAMAGED_FILE);
             } finally { reader.dispose(); }
-        } catch (IOException | IllegalArgumentException ex) {
-            throw bad("Upload a valid PNG, JPEG, or WEBP image");
+        } catch (ResponseStatusException refused) {
+            throw refused;
+        } catch (IOException | RuntimeException damaged) {
+            throw bad(DAMAGED_FILE);
         }
     }
 
@@ -165,8 +174,12 @@ public class CatalogOrderAssetStorage {
             if (reader.getJavaScript() != null && !reader.getJavaScript().isBlank()) throw bad("PDF scripts are not permitted");
             var visited = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<com.lowagie.text.pdf.PdfObject, Boolean>());
             for (int index = 1; index < reader.getXrefSize(); index++) inspectPdfObject(reader.getPdfObject(index), visited, 0);
-        } catch (IOException | IllegalArgumentException ex) {
-            throw bad("Upload a valid, unencrypted PDF");
+        } catch (ResponseStatusException refused) {
+            throw refused;
+        } catch (com.lowagie.text.exceptions.BadPasswordException encrypted) {
+            throw bad("Upload an unencrypted PDF with 1 to 200 pages");
+        } catch (IOException | RuntimeException damaged) {
+            throw bad(DAMAGED_FILE);
         }
     }
 

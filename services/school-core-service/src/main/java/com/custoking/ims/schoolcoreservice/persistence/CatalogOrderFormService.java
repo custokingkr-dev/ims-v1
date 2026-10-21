@@ -13,9 +13,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
@@ -28,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 
 @Service
 public class CatalogOrderFormService {
@@ -40,6 +43,8 @@ public class CatalogOrderFormService {
     private final ModuleEntitlementGuard moduleGuard;
     private TrackerGateway tracker;
     private NotebookTrackerCreationQueue trackers;
+    private TransactionTemplate writes;
+    private TransactionTemplate reads;
 
     /**
      * A notebook order placed now follows the notebook order tracker instead of the quote, approval and delivery flow. One
@@ -71,6 +76,19 @@ public class CatalogOrderFormService {
     public void configureTracker(TrackerGateway tracker, NotebookTrackerCreationQueue trackers) {
         this.tracker = tracker;
         this.trackers = trackers;
+    }
+
+    /**
+     * The upload, attachment-removal and tracker-start paths ask a peer (operations' tracker, identity) and must not hold
+     * a pooled connection while they do, so they open and close their own transactions around those calls instead of
+     * running in one. Without a manager (unit tests that wrap each call in their own transaction) the work joins the
+     * caller's transaction.
+     */
+    @Autowired(required = false)
+    public void configureTransactions(PlatformTransactionManager manager) {
+        this.writes = new TransactionTemplate(manager);
+        this.reads = new TransactionTemplate(manager);
+        this.reads.setReadOnly(true);
     }
 
     public boolean handlesCreation(String category) {
@@ -382,18 +400,38 @@ public class CatalogOrderFormService {
                 .orElse(CatalogOrderAssetStorage.MAX_BYTES);
     }
 
-    @Transactional
+    /**
+     * Stores an attachment. A design draft first asks the tracker whether this user may change drafts now, after a short
+     * read that has committed and returned its connection, so the call holds no pooled connection and no lock (spec
+     * finding 9); everything is checked again under the order lock in the transaction that stores the file. Runs in a
+     * transaction of its own: call it with none open.
+     */
     public Map<String, Object> upload(String id, String assetKind, byte[] bytes, String filename) {
         TenantScope.requirePermissionIfAuthenticated("order:update");
         String kind = string(assetKind).toUpperCase(Locale.ROOT);
         boolean draft = DesignDraftRules.KIND.equals(kind);
-        if (draft) requireDraftAccess(load(id, false));
+        if (draft) {
+            read(() -> {
+                Map<String, Object> order = load(id, false);
+                requireV2(order);
+                requireDraftEligible(order);
+                return null;
+            });
+            requireTrackerDraftAccess(id);
+        }
+        return write(() -> store(id, kind, draft, bytes, filename));
+    }
+
+    private Map<String, Object> store(String id, String kind, boolean draft, byte[] bytes, String filename) {
         Map<String, Object> order = load(id, true);
         if (!draft) refuseItemOnlyOperator(order);
         requireV2(order);
         if (!Set.of("DESIGN", "PRE_DELIVERY_PHOTO", "PRINT_REFERENCE", DesignDraftRules.KIND).contains(kind)) throw bad("Select a valid attachment kind");
-        // Spec v4: the tracker records delivery itself; an order placed before the tracker still takes its photo (D1).
-        if ("PRE_DELIVERY_PHOTO".equals(kind) && trackerManaged(order)) throw bad("Notebook orders on the tracker record delivery in the tracker");
+        // Spec v4: the tracker records delivery itself, and every notebook draft goes onto the tracker when it is placed. An
+        // order placed before the tracker still takes its photo (D1), as does every other category.
+        if ("PRE_DELIVERY_PHOTO".equals(kind) && (trackerManaged(order) || isNotebook(order) && "DRAFT".equals(order.get("status")))) {
+            throw bad("Notebook orders on the tracker record delivery in the tracker");
+        }
         if (draft) requireDraftEligible(order);
         requireAssetEditable(order, kind);
         var validated = storage.validate(bytes, filename, kind, maxUploadBytes(string(order.get("category")), kind));
@@ -434,41 +472,69 @@ public class CatalogOrderFormService {
         return assets(id).stream().filter(asset -> number(asset.get("id")) == assetId).findFirst().orElseThrow();
     }
 
-    @Transactional
+    /**
+     * Removes an attachment. Removing a design draft asks the tracker first, as {@link #upload} does, with no connection
+     * held; the removal itself re-checks everything under the order lock. Runs in transactions of its own: call it with
+     * none open.
+     */
     public void removeAsset(String id, long assetId) {
         TenantScope.requirePermissionIfAuthenticated("order:update");
-        Map<String, Object> unlocked = load(id, false);
-        boolean draft = DesignDraftRules.KIND.equals(string(asset(id, assetId).get("asset_kind")));
-        if (!draft) refuseItemOnlyOperator(unlocked);
-        if (draft) requireDraftAccess(unlocked);
-        Map<String, Object> order = load(id, true);
-        requireV2(order);
-        Map<String, Object> asset = asset(id, assetId);
-        String kind = string(asset.get("asset_kind"));
-        if (draft) requireDraftEligible(order);
-        requireAssetEditable(order, kind);
-        jdbc.sql("UPDATE catalog.catalog_order_assets SET superseded_at = now() WHERE id = :asset AND order_id = :id")
-                .param("asset", assetId).param("id", id).update();
-        assetChanged(order, kind);
-        emit(id);
+        boolean draft = Boolean.TRUE.equals(read(() -> {
+            Map<String, Object> unlocked = load(id, false);
+            boolean isDraft = DesignDraftRules.KIND.equals(string(asset(id, assetId).get("asset_kind")));
+            if (isDraft) {
+                requireV2(unlocked);
+                requireDraftEligible(unlocked);
+            } else {
+                refuseItemOnlyOperator(unlocked);
+            }
+            return isDraft;
+        }));
+        if (draft) requireTrackerDraftAccess(id);
+        write(() -> {
+            Map<String, Object> order = load(id, true);
+            requireV2(order);
+            Map<String, Object> asset = asset(id, assetId);
+            String kind = string(asset.get("asset_kind"));
+            if (DesignDraftRules.KIND.equals(kind)) requireDraftEligible(order);
+            else refuseItemOnlyOperator(order);
+            requireAssetEditable(order, kind);
+            jdbc.sql("UPDATE catalog.catalog_order_assets SET superseded_at = now() WHERE id = :asset AND order_id = :id")
+                    .param("asset", assetId).param("id", id).update();
+            assetChanged(order, kind);
+            emit(id);
+            return null;
+        });
     }
 
     /**
-     * Starts the tracker by hand when it is still waiting to be created: queues it now and attempts it once this commits,
-     * so no peer is called while the order is locked. Idempotent: the tracker ignores a second create. Superadmin and the
-     * order's operators only, for a tracker-managed order that is still open. Read {@link #trackerPending} afterwards.
+     * Starts the tracker by hand when it is still waiting to be created, or when its creation was given up on: queues it
+     * with fresh retries, commits, and then, with no transaction open and no row locked, attempts it once. Idempotent: the
+     * tracker ignores a second create. Superadmin and the order's operators only, for a tracker-managed order that is still
+     * open. Runs in a transaction of its own: call it with none open. Read {@link #trackerPending} afterwards.
      */
-    @Transactional
     public void ensureTracker(String id) {
         TenantScope.requireOperationsOrSuperAdmin();
-        Map<String, Object> order = load(id, true);
-        requireV2(order);
-        if (!trackerManaged(order)) throw bad("Only a placed notebook order on the tracker has one; this order follows order approval");
-        String status = string(order.get("status"));
-        if (Set.of("CANCELLED", "DELIVERED", "COMPLETED").contains(status)) {
-            throw bad("A " + status.toLowerCase(Locale.ROOT) + " order gets no tracker");
-        }
-        queueTracker(id, number(order.get("school_id")));
+        write(() -> {
+            Map<String, Object> order = load(id, true);
+            requireV2(order);
+            if (!trackerManaged(order)) throw bad("Only a placed notebook order on the tracker has one; this order follows order approval");
+            String status = string(order.get("status"));
+            if (Set.of("CANCELLED", "DELIVERED", "COMPLETED").contains(status)) {
+                throw bad("A " + status.toLowerCase(Locale.ROOT) + " order gets no tracker");
+            }
+            if (trackers != null) trackers.enqueue(id, number(order.get("school_id")));
+            return null;
+        });
+        attemptTracker(id);
+    }
+
+    /**
+     * One attempt at the order's tracker, for a caller whose transaction has committed and released its connection (the
+     * placing controllers, after a placement). Never throws; the relay trigger retries whatever this leaves.
+     */
+    public void attemptTracker(String id) {
+        if (trackers != null) trackers.attempt(id);
     }
 
     /** Whether the order's tracker is still waiting to be created. Superadmin and the order's operators only. */
@@ -708,22 +774,25 @@ public class CatalogOrderFormService {
         Map<String, Object> order = jdbc.sql("SELECT * FROM catalog.catalog_orders WHERE id = :id" + (lock ? " FOR UPDATE" : ""))
                 .param("id", id).query().listOfRows().stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
         long schoolId = number(order.get("school_id"));
+        // Before the scope check, whose refusal is a 403: for an item-only operator that refusal would confirm the order.
+        hideFromItemOnlyOperator(order);
         TenantScope.requireCatalogOrderReadScope(schoolId, string(order.get("category")));
-        hideOffTrackerOrderFromItemOnlyOperator(order);
         requireModule(schoolId);
         return order;
     }
 
     /**
      * Owner decision D2: an operator who reaches the order's school only through an item scope works that item's orders in
-     * the tracker and nothing else. An order placed before the tracker (D1), or one not placed yet, never reaches the tracker,
-     * so for them it does not exist: "not found", like an order out of scope, because order ids are sequential and a refusal
-     * would confirm one. Every user's read and write of an order here starts with {@link #load}, so this one check covers
-     * them all; the tracker's own machine calls do not come through here.
+     * the tracker and nothing else. Any other order there (another item's, one placed before the tracker (D1), or one not
+     * placed yet) does not exist for them: "not found", like an order out of scope, because order ids are sequential and a
+     * refusal would confirm one. Every user's read and write of an order here starts with {@link #load}, so this one check
+     * covers them all; the tracker's own machine calls do not come through here.
      */
-    private static void hideOffTrackerOrderFromItemOnlyOperator(Map<String, Object> order) {
+    private static void hideFromItemOnlyOperator(Map<String, Object> order) {
         TenantContext ctx = TenantContext.get();
-        if (ctx.isOperations() && !ctx.operatorSchools().contains(number(order.get("school_id"))) && !trackerManaged(order)) {
+        long schoolId = number(order.get("school_id"));
+        if (ctx.isOperations() && !ctx.operatorSchools().contains(schoolId)
+                && !(trackerManaged(order) && ctx.operatesItem(schoolId, string(order.get("category"))))) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
     }
@@ -808,7 +877,7 @@ public class CatalogOrderFormService {
      * there) works the order in the notebook order tracker and nothing else. What the tracker needs stays open to them on a
      * tracker order: reading the order, its form and attachments, the tracker summary, starting a pending tracker, and design
      * drafts (which the tracker itself gates). Every other write, the old order flow's, is refused here. Any other order is
-     * not found for them at all ({@link #hideOffTrackerOrderFromItemOnlyOperator}).
+     * not found for them at all ({@link #hideFromItemOnlyOperator}).
      */
     private static void refuseItemOnlyOperator(Map<String, Object> order) {
         TenantContext ctx = TenantContext.get();
@@ -843,16 +912,19 @@ public class CatalogOrderFormService {
 
     /**
      * The tracker decides whether this user may change drafts right now (the assigned operator in step 2, or after a change
-     * request). It is asked before the order row is locked, so a slow tracker never holds the lock.
+     * request). The caller has already checked, in a read that committed, that the order takes drafts. The tracker is asked
+     * with no transaction open, so a slow tracker holds neither a pooled connection nor the order lock; asking it from inside
+     * a transaction is a programming error.
      */
-    private void requireDraftAccess(Map<String, Object> order) {
-        requireV2(order);
-        requireDraftEligible(order);
+    private void requireTrackerDraftAccess(String id) {
+        if (TransactionSynchronizationManager.isActualTransactionActive() || TransactionSynchronizationManager.isSynchronizationActive()) {
+            throw new IllegalStateException("The tracker must be asked about design drafts with no transaction open");
+        }
         if (tracker == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "The notebook order tracker is not available");
         TenantContext ctx = TenantContext.get();
         TrackerGateway.ImageAccess access;
         try {
-            access = tracker.imageAccess(string(order.get("id")), ctx.userId() == null ? 0 : ctx.userId(), ctx.role());
+            access = tracker.imageAccess(id, ctx.userId() == null ? 0 : ctx.userId(), ctx.role());
         } catch (IllegalStateException unavailable) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "The notebook order tracker is not available");
         }
@@ -862,8 +934,10 @@ public class CatalogOrderFormService {
     }
 
     /**
-     * Makes a freshly placed notebook order tracker-managed and queues its tracker, all in the placing transaction. A draft
-     * saved before the tracker existed still carries a pending quote, which placement settles: tracker orders are not quoted.
+     * Makes a freshly placed notebook order tracker-managed and queues its tracker, all in the placing transaction; no peer
+     * is called in it. The placing controller attempts the tracker once that transaction has committed and released its
+     * connection ({@link #attemptTracker}), and the relay trigger retries whatever that attempt leaves. A draft saved before
+     * the tracker existed still carries a pending quote, which placement settles: tracker orders are not quoted.
      */
     private void startTracker(String id, long schoolId) {
         jdbc.sql("""
@@ -871,23 +945,17 @@ public class CatalogOrderFormService {
                     attributes = attributes || jsonb_build_object('trackerManaged', true, 'trackerPending', true)
                 WHERE id = :id
                 """).param("id", id).update();
-        queueTracker(id, schoolId);
+        if (trackers != null) trackers.enqueue(id, schoolId);
     }
 
-    /**
-     * Queues the tracker's creation in the caller's transaction and attempts it once after commit, so no peer is called
-     * while the order row is locked or the transaction is open. The relay trigger retries whatever that attempt leaves.
-     */
-    private void queueTracker(String id, long schoolId) {
-        if (trackers == null) return;
-        trackers.enqueue(id, schoolId);
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            trackers.attempt(id);
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override public void afterCommit() { trackers.attempt(id); }
-        });
+    /** Runs {@code work} in a read-only transaction of its own, or in the caller's when no manager is configured. */
+    private <T> T read(Supplier<T> work) {
+        return reads == null ? work.get() : reads.execute(status -> work.get());
+    }
+
+    /** Runs {@code work} in a transaction of its own (joining one already open), or in the caller's when no manager is configured. */
+    private <T> T write(Supplier<T> work) {
+        return writes == null ? work.get() : writes.execute(status -> work.get());
     }
 
     private static boolean customized(Map<String, Object> selections) {

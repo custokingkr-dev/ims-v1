@@ -23,7 +23,7 @@ The tracker's service-to-service calls use internal routes guarded by Cloud Run 
   (`${identity_url}`), operations `OPERATIONS_IDENTITY_BASE_URL` (`${identity_url}`), each with `*_CLOUD_RUN_AUTH: auto`.
   `deploy/clouddeploy/targets-*.yaml` are unchanged. Because `deploy/cloudrun/*` changed, the dev release goes
   through Cloud Deploy rather than the fast direct path.
-- Migrations: identity `V11`–`V12`, operations `workflow/V8`–`V11`, school-core `catalog/V27`–`V29`. Each Java
+- Migrations: identity `V11`–`V12`, operations `workflow/V8`–`V11`, school-core `catalog/V27`–`V30`. Each Java
   service finishes its isolated migration job before its release is created ([release operator](release-operator.md)).
 - Ship identity, school-core and operations from one commit: school-core now requires the `trackerVersion` that
   operations sends. While the services roll out one after another, a placement can hit an operations revision that
@@ -148,16 +148,20 @@ The probe passes only when all three hold. Record the order ID and the timestamp
 
 - **The order stays "tracker pending"** (step 1), or **the status does not move** (step 2): school-core's creation
   queue and operations' status outbox both retry on the existing relay trigger (`POST /api/v1/internal/outbox/relay`,
-  Cloud Scheduler every minute) with a growing backoff, so nothing is lost while you fix the cause. Superadmin can
-  retry a pending order at once with `POST /api/v1/supply/orders/{orderId}/tracker/ensure`.
+  Cloud Scheduler every minute) with a growing backoff, so nothing is lost while you fix the cause. The reason of the
+  last failed creation is in `catalog.notebook_tracker_creation_queue.last_error` (for example `operator directory
+  answered HTTP 403`). Superadmin can retry a pending order at once with
+  `POST /api/v1/supply/orders/{orderId}/tracker/ensure`. A creation that fails 48 times (about two days) is given up:
+  school-core logs an ERROR with `event=tracker_creation_dead_lettered`, the row counts in the outbox dead-letter
+  alert, and only that `ensure` call (it revives the row with fresh retries) starts it again.
 - **A 403 on an internal route:** a missing invoker binding (Cloud Run refuses the request before it reaches the
   container) or an allow-list that does not name the caller (the service answers `MACHINE_CALLER_REJECTED`). Check
   the grants first, then the callee's `*_CALLER_SERVICE_ACCOUNTS` value.
 - **A 404 on an internal route:** the callee revision predates this release; it resolves once every service has
   rolled out.
-- **A tracker exists but nobody is assigned:** its creation could not reach identity to find the school's operator, so
-  it was created unassigned rather than held back. It stays that way; superadmin opens the order and uses
-  "Assign order" in the tracker's side panel.
+- **A tracker exists but nobody is assigned:** identity answered that the school has no notebook operator, or more
+  than one. (When identity cannot be asked, the order stays "tracker pending" and is retried instead.) Superadmin opens
+  the order and uses "Assign order" in the tracker's side panel.
 
 ## Production
 

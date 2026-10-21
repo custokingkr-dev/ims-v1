@@ -62,6 +62,54 @@ class CatalogOrderAssetStorageTest {
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("photo");
     }
 
+    static final String DAMAGED = "This file is damaged or is not a valid PDF or image.";
+
+    /** A PDF that cannot be parsed answers 400 with one plain message, never a 500 from the parser (a page-less PDF used to NPE). */
+    @Test
+    void damagedPdfIs400() throws Exception {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        var valid = new ByteArrayOutputStream();
+        try (Document document = new Document()) {
+            PdfWriter.getInstance(document, valid);
+            document.open();
+            document.add(new Paragraph("Notebook design"));
+        }
+        byte[] whole = valid.toByteArray();
+        var damaged = new java.util.LinkedHashMap<String, byte[]>();
+        damaged.put("no page tree", """
+                %PDF-1.4
+                1 0 obj << /Type /Catalog >> endobj
+                trailer << /Root 1 0 R >>
+                %%EOF
+                """.getBytes(StandardCharsets.US_ASCII));
+        damaged.put("truncated", java.util.Arrays.copyOf(whole, whole.length / 2));
+        damaged.put("garbage after the header", "%PDF-1.4\ninvalid".getBytes(StandardCharsets.US_ASCII));
+        damaged.forEach((name, bytes) -> assertThatThrownBy(() -> storage.validate(bytes, "design.pdf", "DESIGN"), name)
+                .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                    assertThat(refused.getStatusCode().value()).isEqualTo(400);
+                    assertThat(refused.getReason()).isEqualTo(DAMAGED);
+                }));
+    }
+
+    @Test
+    void truncatedImageIs400() throws Exception {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        var png = new ByteArrayOutputStream();
+        BufferedImage image = new BufferedImage(64, 64, BufferedImage.TYPE_INT_RGB);
+        for (int x = 0; x < 64; x++) for (int y = 0; y < 64; y++) image.setRGB(x, y, x * 4099 + y * 131);
+        ImageIO.write(image, "png", png);
+        byte[] whole = png.toByteArray();
+        // Cut inside the image data. (A PNG missing only its trailing checksum and end chunk still decodes in full, and is not damaged.)
+        for (int keep : new int[]{40, whole.length / 2, whole.length - 200}) {
+            byte[] truncated = java.util.Arrays.copyOf(whole, keep);
+            assertThatThrownBy(() -> storage.validate(truncated, "photo.png", "DESIGN"), "kept " + keep + " bytes")
+                    .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                        assertThat(refused.getStatusCode().value()).isEqualTo(400);
+                        assertThat(refused.getReason()).isEqualTo(DAMAGED);
+                    });
+        }
+    }
+
     @Test
     void rejectsTraversalAndMissingCloudConfiguration() {
         var local = new CatalogOrderAssetStorage("", "local", directory.toString());

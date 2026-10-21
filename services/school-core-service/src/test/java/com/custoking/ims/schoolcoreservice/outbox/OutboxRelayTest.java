@@ -176,6 +176,23 @@ class OutboxRelayTest {
         assertThat((Long) state.get("oldestPendingAgeSeconds")).isGreaterThanOrEqualTo(0L);
     }
 
+    /** Other retry queues add into the outbox figures (counts summed, the older wait kept); one that cannot be counted is skipped. */
+    @Test
+    void healthSnapshot_addsOtherQueuesAndSurvivesOneThatCannotBeCounted() throws Exception {
+        insertOutboxEvent("SchoolUpserted:backlog-" + System.nanoTime(), "School", 67L);
+        var reporter = new OutboxAsyncHealthReporter(jdbc, "tenant_school");
+        Map<String, Object> outboxOnly = reporter.snapshot();
+        reporter.configureBacklogs(List.of(
+                () -> new QueueBacklog.Backlog(2, 1, 86_400),
+                () -> { throw new IllegalStateException("queue unavailable"); }));
+
+        Map<String, Object> state = reporter.snapshot();
+
+        assertThat(state.get("pendingCount")).isEqualTo((Long) outboxOnly.get("pendingCount") + 2);
+        assertThat(state.get("deadLetterCount")).isEqualTo((Long) outboxOnly.get("deadLetterCount") + 1);
+        assertThat(state.get("oldestPendingAgeSeconds")).isEqualTo(86_400L);
+    }
+
     private long insertOutboxEvent(String aggregateId, String aggregateType, long schoolId) throws Exception {
         String eventType = "School".equals(aggregateType) ? "school.upserted.v1" : "school-section.upserted.v1";
         try (Connection c = dataSource.getConnection();
