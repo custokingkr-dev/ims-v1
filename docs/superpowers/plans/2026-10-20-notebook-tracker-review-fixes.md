@@ -184,3 +184,87 @@
 - [ ] **Step 3: Implement.** Import `product-form.css` where `ck-product-*` classes are used; replace the inline `style={{width:70}}` with a class; use the existing `ck-*` classes and tokens.
 - [ ] **Step 4: Verify** `npm run test:coverage && npm run build` passes; `npx tsc --noEmit -p .` passes.
 - [ ] **Step 5: Commit** `fix(frontend): tracker error states, spec alignment and accessibility`.
+
+---
+
+## Follow-up tasks (2026-10-21, owner request: close every open gap before the dev deploy)
+
+The branch was reviewed clean at 3846523c. These close the gaps that review left open. Same Global Constraints; new
+migrations only (catalog `V30`, workflow `V12`).
+
+### Task 9: School-core hardening
+
+**Files:** `CatalogOrderFormService.java`, `NotebookTrackerCreationQueue.java`, `CatalogOrderAssetStorage.java`, the
+catalog order controllers that trigger tracker attempts, `outbox/OutboxAsyncHealthReporter.java`,
+`catalog/V30__tracker_creation_dead_letter.sql`; tests in `NotebookTrackerIntegrationTest`, `CatalogOrderFormIntegrationTest`,
+`CatalogOrderAssetStorageTest`.
+
+**Interfaces:** Produces `notebook_tracker_creation_queue.dead_lettered_at TIMESTAMPTZ NULL`; `MAX_ATTEMPTS = 48`;
+the queue's pending/dead-letter/oldest-age figures are added into the `health.outbox` totals that
+`OutboxAsyncHealthReporter` already logs (so the existing `outbox_dead_letter_count` metric and its alerts cover them).
+
+- [ ] **Step 1: Failing tests:**
+  - `preDeliveryPhotoRefusedOnNotebookDrafts`: a PRE_DELIVERY_PHOTO upload on a NOTEBOOKS order in DRAFT → 400. Legacy placed notebook orders and other categories are unchanged.
+  - `itemOnlyOperatorGetsNotFoundForOtherCategories`: an item-only operator asking for another category's order at their scoped school gets 404, not 403, on every `/form`-family path.
+  - `damagedPdfIs400` and `truncatedImageIs400`: upload answers 400 "This file is damaged or is not a valid PDF or image." and stores nothing.
+  - `noPooledConnectionHeldDuringPeerCalls`: during the tracker-creation attempt after placement, the ensure attempt and the draft upload/delete image-access check, the peer stub observes zero active pooled connections.
+  - `identityUnavailableKeepsTheOrderQueued`: an unreachable identity → no tracker created, row kept with `last_error`. Definitive "none" or "several" answers still create the tracker unassigned.
+  - `creationRowDeadLettersAfterMaxAttempts`: a row at attempt 47 that fails again gets `dead_lettered_at`, the drain skips it, and an ERROR log carries kv fields `event=tracker_creation_dead_lettered`, `orderId`, `attempts`.
+  - `ensureTrackerRevivesADeadLetteredRow`: the attempts reset and the row is retried.
+  - `healthReportIncludesTrackerQueue`: the counts appear in `health.outbox`.
+- [ ] **Step 2: Run the tests; confirm they fail.**
+- [ ] **Step 3: Implement.** Run peer calls only after the transactional work has committed and released its connection, as operations' `TrackerStatusOutbox.attempt` already does.
+- [ ] **Step 4: Verify.** Run the school-core suite and the authorization audit.
+- [ ] **Step 5: Commit** `fix(catalog): harden tracker creation, uploads and item-scope answers`.
+
+### Task 10: Operations and identity follow-ups
+
+**Files:** operations `WorkflowReadRepository.java`, `TrackerStatusOutbox.java`, `outbox/OutboxAsyncHealthReporter.java`,
+`NotebookTrackerService.java`, `OperatorDirectoryClient.java`, `TrackerView.java`, `workflow/V12__tracker_status_dead_letter.sql`;
+identity `api/internal/OperatorDirectoryController.java`, `OperatorDirectory*`; all five `MachineCallerFilter.java`;
+`scripts/audit-service-authorization-boundaries.ps1`; `contracts/openapi/notebookTrackerClient.v1.openapi.json`;
+route inventory; new `scripts/tests/tracker_status_codes_test.py`, wired into `.github/workflows/ci-pr.yml`'s static audits.
+
+**Interfaces:**
+- Identity gets a new internal route, `POST /api/v1/internal/operator-directory/names`. It is registered in `MachineCallerFilter` against the existing env `OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS`, so no manifest change is needed.
+  - Request body: `{"userIds":[long…≤200]}`.
+  - Response body: `[{"userId":long,"fullName":string}]`.
+  - It answers only for active users who hold OPERATIONS or SUPERADMIN.
+- `TrackerView.Note.authorName` and `TrackerView.Step.assigneeName` are added, both nullable strings.
+  - Operations resolves them after the transaction, with no lock or connection held.
+  - It caches them per user id for 10 minutes.
+  - If identity cannot be reached, both stay null.
+- `workflow_tracker_status_outbox.dead_lettered_at TIMESTAMPTZ NULL`, with `MAX_ATTEMPTS = 48`.
+  - A newer version arriving revives the row.
+  - The counts are added to operations' `health.outbox`.
+
+- [ ] **Step 1: Failing tests:**
+  - `genericMutationsAnswerNotFoundForTrackers`: every generic workflow mutation on a tracker instance answers 404, not 400.
+  - `statusRowDeadLettersAfterMaxAttempts`: the row gets `dead_lettered_at` and an ERROR kv log with `event=tracker_status_dead_lettered`.
+  - `newerVersionRevivesDeadLetteredStatus`.
+  - `healthReportIncludesStatusOutbox`.
+  - `namesEndpointReturnsOnlyStaffNames`: a school admin id or a deleted user is omitted, and the endpoint answers 403 for any caller other than operations.
+  - `trackerViewCarriesAuthorAndAssigneeNames`.
+  - `namesFallBackToNullWhenIdentityIsDown`.
+  - `nameLookupHoldsNoConnection`.
+  - `tracker_status_codes_test`: school-core's `TRACKER_STATUSES` equals operations' `TrackerStep` names plus `COMPLETED`.
+- [ ] **Step 2: Run the tests; confirm they fail.**
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Verify.** Run the operations and identity suites, the authorization audit, the machine-proof test, the drift check, the route inventory and OpenAPI `--check`, and the new python test.
+- [ ] **Step 5: Commit** `fix(tracker): dead-letter stuck statuses, show staff names and answer trackers uniformly`.
+
+### Task 11: Frontend follow-ups
+
+**Files:** `SaAllOrdersPanel.tsx`, `ProductFormBuilder.tsx`, `features/tracker/*` (notes, assignment), tests.
+
+**Interfaces:** Consumes `authorName` and `assigneeName` from Task 10's regenerated client.
+
+- [ ] **Step 1: Failing tests:**
+  - Superadmin "All orders" rows that are tracker-managed show "—" for the amount and their current step, while other rows are unchanged.
+  - The NOTEBOOKS form builder shows no BEFORE_DELIVERY asset requirement even when an old draft's snapshot carries the rule.
+  - Notes show `authorName` (or "You" for your own notes), falling back to "User {id}" only when the name is null.
+  - The assignment shows `assigneeName`.
+- [ ] **Step 2: Run the tests; confirm they fail.**
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Verify.** Run `tsc`, `npm run test:coverage && npm run build`, and the OpenAPI `--check`.
+- [ ] **Step 5: Commit** `fix(frontend): finish tracker orders in superadmin lists and show staff names`.
