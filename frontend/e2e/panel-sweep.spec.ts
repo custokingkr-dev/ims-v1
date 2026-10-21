@@ -102,7 +102,7 @@ async function signInAs(page: Page, role: string, permissions: string[]) {
     else if (pathname.includes('academic-year')) body = academicYears;
     else if (pathname.includes('/fees/structure') || pathname.includes('fee-structure')) body = feeStructure;
     else if (pathname.includes('command-center') || pathname.includes('command-centre/brief')) body = commandCenter;
-    else if (/(list|students|schools|zones|staff|orders|invoices|plans|sections|classes|years)$/.test(pathname)) body = [];
+    else if (/(list|students|schools|zones|staff|orders|invoices|plans|sections|classes|years|designers|operators|users|time-slots|categories)$/.test(pathname)) body = [];
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
   await page.addInitScript(() => localStorage.setItem('custoking_isLoggedIn', 'true'));

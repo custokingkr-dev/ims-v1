@@ -117,6 +117,19 @@ class CatalogOrderEventEmissionIntegrationTest {
     }
 
     @Test
+    void aNotebookIsActiveWhileItsTrackerRunsAndDeliveredWhenItEnds() {
+        repo.createOrder(Map.of("schoolId", 1, "category", "NOTEBOOKS", "totalAmount", 0, "status", "PRINTING_PRESS"));
+        repo.createOrder(Map.of("schoolId", 1, "category", "NOTEBOOKS", "totalAmount", 0, "status", "DELIVERY_INVOICING"));
+        repo.createOrder(Map.of("schoolId", 1, "category", "NOTEBOOKS", "totalAmount", 0, "status", "COMPLETED"));
+
+        Map<String, Object> stats = repo.orderStats(1L);
+
+        assertThat(((Number) stats.get("activeOrders")).longValue()).isEqualTo(2L);
+        assertThat(((Number) stats.get("deliveredCount")).longValue()).isEqualTo(1L);
+        assertThat(((Number) repo.orderStats(null).get("deliveredCount")).longValue()).isEqualTo(1L);
+    }
+
+    @Test
     void markDeliveredMovesApprovedToDeliveredAndEmits() {
         var created = repo.createOrder(Map.of("schoolId", 1, "category", "STATIONERY",
                 "totalAmount", 1180, "status", "APPROVED"));

@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -135,7 +136,7 @@ class CatalogOrderFormIntegrationTest {
     void savesRequestedAndNormalizedCountsWithSnapshotAndCompatibilityItems() {
         var created = create(true, 400, 600);
         assertThat(created.formVersion()).isEqualTo(2);
-        assertThat(created.pricingStatus()).isEqualTo("PENDING_PRICING");
+        assertThat(created.pricingStatus()).as("notebook orders are not quoted").isEqualTo("NOT_APPLICABLE");
         assertThat(created.totalAmount()).isZero();
         assertThat(created.orderData()).contains("items", "Long", "Jumbo Long", "196 printed pages");
         var detail = tx(() -> forms.detail(created.id()));
@@ -150,7 +151,7 @@ class CatalogOrderFormIntegrationTest {
         assertThat(String.valueOf(line.get("appliedRules"))).contains("FLOOR_VALUE");
         assertThat(detailLines(detail).get(1).get("bookCount")).isEqualTo(1000);
         upload(created.id(), "DESIGN", 1);
-        assertThat(tx(() -> orders.placeOrder(created.id(), 7L)).status()).isEqualTo("DESIGN_APPROVAL");
+        assertThat(tx(() -> orders.placeOrder(created.id(), 7L)).status()).isEqualTo("ORDER_DETAILS");
     }
 
     @Test
@@ -165,51 +166,197 @@ class CatalogOrderFormIntegrationTest {
     }
 
     @Test
-    void nonCustomizedSkipsDesignButRequiresQuoteAndTrustedSuperadmin() {
+    void trackerManagedOrderRefusesOldActions() {
         var created = create(false, 25, 30);
         var placed = tx(() -> orders.placeOrder(created.id(), 7L));
-        assertThat(placed.status()).isEqualTo("PROCESSING");
+        assertThat(placed.status()).isEqualTo("ORDER_DETAILS");
         assertThat(placed.designStatus()).isEqualTo("NOT_REQUIRED");
-        assertThatThrownBy(() -> tx(() -> { forms.quote(created.id(), quote(created.id(), 125, 90)); return null; }))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
+        assertThat(placed.pricingStatus()).isEqualTo("NOT_APPLICABLE");
+        assertThat(managed(created.id())).isTrue();
+        assertThat(placed.trackerManaged()).as("the order payload the order screen reads").isTrue();
         superadmin();
-        assertThatThrownBy(() -> tx(() -> orders.approveBySuperadmin(created.id())))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("quote");
-        tx(() -> { forms.quote(created.id(), quote(created.id(), 125, 90)); return null; });
-        var quoted = tx(() -> orders.order(created.id()).orElseThrow());
-        assertThat(quoted.totalAmount()).isEqualTo(55 * 125 + 90);
-        assertThat(quoted.pricingStatus()).isEqualTo("QUOTED");
-        assertThat(jdbc.sql("SELECT quoted_by FROM catalog.catalog_orders WHERE id = :id").param("id", created.id()).query(Long.class).single()).isEqualTo(99);
-        var event = jdbc.sql("SELECT payload::text FROM tenant_school.outbox_events WHERE event_type = 'catalog-order.upserted.v1' ORDER BY id DESC LIMIT 1").query(String.class).single();
-        assertThat(event).contains("QUOTED", "formVersion", "version", "6965");
-        tx(() -> orders.approveBySuperadmin(created.id()));
-        assertThat(tx(() -> orders.markDelivered(created.id(), 99L)).status()).isEqualTo("DELIVERED");
+        assertThatThrownBy(() -> tx(() -> { forms.quote(created.id(), quote(created.id(), 125, 90)); return null; }))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("not quoted");
+        for (Supplier<?> oldAction : List.<Supplier<?>>of(
+                () -> orders.approveBySuperadmin(created.id()),
+                () -> orders.markDelivered(created.id(), 99L),
+                () -> orders.markDesignApproved(created.id()),
+                () -> orders.updateOrderStatus(created.id(), "APPROVED"),
+                () -> orders.updateOrderStatus(created.id(), "DELIVERED"),
+                () -> { forms.returnOrder(created.id(), "again"); return null; })) {
+            assertThatThrownBy(() -> tx(oldAction)).isInstanceOfSatisfying(ResponseStatusException.class,
+                    ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        }
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).status()).isEqualTo("ORDER_DETAILS");
+
+        // Even in a state the approval queue lists, a tracker-managed order stays out of Order Approvals.
+        jdbc.sql("UPDATE catalog.catalog_orders SET status = 'PROCESSING', superadmin_approval_status = 'PENDING' WHERE id = :id")
+                .param("id", created.id()).update();
+        assertThat(tx(() -> orders.pendingApprovalOrders(100))).extracting(CatalogReadRepository.PendingCatalogOrderRow::id)
+                .doesNotContain(created.id());
     }
 
     @Test
-    void replacingArtworkInvalidatesApprovalAndPhotoBlocksDelivery() {
+    void legacyNotebookOrderKeepsOldFlow() {
+        // Customised: design approval, the approval queue, the quote, final approval and delivery, as before the tracker.
+        var custom = create(true, 400, 600);
+        upload(custom.id(), "DESIGN", 1);
+        placeBeforeTheTracker(custom.id(), true);
+        superadmin();
+        assertThat(tx(() -> orders.markDesignApproved(custom.id())).status()).isEqualTo("DESIGN_APPROVED_PROCESSING");
+        assertThat(tx(() -> orders.pendingApprovalOrders(100))).extracting(CatalogReadRepository.PendingCatalogOrderRow::id).contains(custom.id());
+        tx(() -> { forms.quote(custom.id(), quote(custom.id(), 120, 0)); return null; });
+        assertThat(tx(() -> orders.order(custom.id()).orElseThrow()).pricingStatus()).isEqualTo("QUOTED");
+        assertThat(tx(() -> orders.approveBySuperadmin(custom.id())).status()).isEqualTo("APPROVED");
+        upload(custom.id(), "PRE_DELIVERY_PHOTO", 3);
+        assertThat(tx(() -> orders.markDelivered(custom.id(), 99L)).status()).isEqualTo("DELIVERED");
+        assertThat(managed(custom.id())).isFalse();
+        assertThat(tx(() -> orders.order(custom.id()).orElseThrow()).trackerManaged()).isFalse();
+
+        // Not customised: straight into the approval queue, and the superadmin status aliases still work.
+        school(1);
+        var plain = create(false, 25, 30);
+        placeBeforeTheTracker(plain.id(), false);
+        superadmin();
+        assertThat(tx(() -> orders.pendingApprovalOrders(100))).extracting(CatalogReadRepository.PendingCatalogOrderRow::id).contains(plain.id());
+        tx(() -> { forms.quote(plain.id(), quote(plain.id(), 125, 90)); return null; });
+        assertThat(tx(() -> orders.updateOrderStatus(plain.id(), "APPROVED")).status()).isEqualTo("APPROVED");
+        assertThat(tx(() -> orders.updateOrderStatus(plain.id(), "DELIVERED")).status()).isEqualTo("DELIVERED");
+        assertThat(managed(plain.id())).isFalse();
+    }
+
+    /**
+     * Spec v4: the school is no longer asked for a pre-delivery photo, so V29 retires the notebook rule (deactivated, not
+     * deleted). An order drafted before then carries the rule in its own form snapshot, and delivering it still needs the
+     * photo (D1): the delivery check reads the snapshot, not the live rule.
+     */
+    @Test
+    void theNotebookDeliveryPhotoRuleIsRetiredButAnOrderPlacedBeforeTheTrackerStillNeedsThePhoto() {
+        java.util.function.Predicate<Map<String, Object>> deliveryPhoto = rule -> "REQUIRE_ASSET".equals(rule.get("ruleType"))
+                && "PRE_DELIVERY_PHOTO".equals(asMap(rule.get("params")).get("assetKind"))
+                && "BEFORE_DELIVERY".equals(asMap(rule.get("params")).get("stage"));
+        assertThat(rulesOf(tx(() -> products.form("NOTEBOOKS", false)))).as("the NOTEBOOKS form definition").noneMatch(deliveryPhoto);
+        var retired = rulesOf(tx(() -> products.form("NOTEBOOKS", true))).stream().filter(deliveryPhoto).toList();
+        assertThat(retired).as("kept, inactive").singleElement().satisfies(rule -> assertThat(rule.get("active")).isEqualTo(false));
+        var drafted = create(true, 400, 600);
+        assertThat(rulesOf(tx(() -> forms.detail(drafted.id())).get("formDefinition"))).as("a new draft's snapshot").noneMatch(deliveryPhoto);
+
+        // An order drafted before V29: its snapshot holds the rule as it was then, active.
+        var legacy = create(true, 400, 600);
+        Map<String, Object> asItWas = new LinkedHashMap<>(retired.getFirst());
+        asItWas.put("active", true);
+        jdbc.sql("UPDATE catalog.catalog_orders SET form_snapshot = jsonb_set(form_snapshot, '{rules}', (form_snapshot -> 'rules') || jsonb_build_array(CAST(:rule AS jsonb))) WHERE id = :id")
+                .param("id", legacy.id()).param("rule", Json.write(asItWas)).update();
+        upload(legacy.id(), "DESIGN", 1);
+        placeBeforeTheTracker(legacy.id(), true);
+        superadmin();
+        tx(() -> orders.markDesignApproved(legacy.id()));
+        tx(() -> { forms.quote(legacy.id(), quote(legacy.id(), 120, 0)); return null; });
+        assertThat(tx(() -> orders.approveBySuperadmin(legacy.id())).status()).isEqualTo("APPROVED");
+        assertThatThrownBy(() -> tx(() -> orders.markDelivered(legacy.id(), 99L))).isInstanceOf(ProductFormValidationException.class)
+                .hasMessage("Upload a pre-delivery photo before marking this order delivered");
+        upload(legacy.id(), "PRE_DELIVERY_PHOTO", 3);
+        assertThat(tx(() -> orders.markDelivered(legacy.id(), 99L)).status()).isEqualTo("DELIVERED");
+    }
+
+    /**
+     * Every notebook draft goes onto the tracker when it is placed, and the tracker records delivery itself, so a draft takes
+     * no pre-delivery photo either. An order placed before the tracker, and every other category, take it as before.
+     */
+    @Test
+    void preDeliveryPhotoRefusedOnNotebookDrafts() {
+        for (boolean custom : new boolean[]{true, false}) {
+            var draft = create(custom, 400, 600);
+            assertThatThrownBy(() -> upload(draft.id(), "PRE_DELIVERY_PHOTO", 1), "customised " + custom)
+                    .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(refused.getReason()).isEqualTo("Notebook orders on the tracker record delivery in the tracker");
+                    });
+            assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_order_assets WHERE order_id = :id").param("id", draft.id())
+                    .query(Long.class).single()).isZero();
+        }
+        var legacy = create(true, 400, 600);
+        placeBeforeTheTracker(legacy.id(), true);
+        assertThat(upload(legacy.id(), "PRE_DELIVERY_PHOTO", 2)).containsEntry("assetKind", "PRE_DELIVERY_PHOTO");
+
+        var trophyData = Map.of("orderSelections", Map.of(), "lines", List.of(
+                Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 3, "pageCount", 99)));
+        var trophyDraft = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", trophyData)));
+        assertThat(upload(trophyDraft.id(), "PRE_DELIVERY_PHOTO", 3)).containsEntry("assetKind", "PRE_DELIVERY_PHOTO");
+    }
+
+    /** A damaged file is refused with one plain message before anything is written: no attachment row and no stored object. */
+    @Test
+    void aDamagedFileIsRefusedAndNothingIsStored() throws Exception {
+        var created = create(true, 400, 600);
+        long filesBefore = storedFiles();
+        var pageless = """
+                %PDF-1.4
+                1 0 obj << /Type /Catalog >> endobj
+                trailer << /Root 1 0 R >>
+                %%EOF
+                """.getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        var png = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB), "png", png);
+        var truncated = java.util.Arrays.copyOf(png.toByteArray(), png.size() / 2);
+        var picture = com.custoking.ims.schoolcoreservice.infrastructure.TestImages.picture(128);
+        var baseline = com.custoking.ims.schoolcoreservice.infrastructure.TestImages.jpeg(picture, false);
+        var progressive = com.custoking.ims.schoolcoreservice.infrastructure.TestImages.jpeg(picture, true);
+        for (var file : Map.of("design.pdf", pageless, "design.png", truncated,
+                "baseline.jpg", java.util.Arrays.copyOf(baseline, baseline.length / 2),
+                "progressive.jpg", java.util.Arrays.copyOf(progressive, progressive.length / 2)).entrySet()) {
+            assertThatThrownBy(() -> tx(() -> forms.upload(created.id(), "DESIGN", file.getValue(), file.getKey())), file.getKey())
+                    .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(refused.getReason()).isEqualTo("This file is damaged or is not a valid PDF or image.");
+                    });
+        }
+        assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_order_assets WHERE order_id = :id").param("id", created.id())
+                .query(Long.class).single()).isZero();
+        assertThat(storedFiles()).isEqualTo(filesBefore);
+    }
+
+    private static long storedFiles() throws java.io.IOException {
+        if (!java.nio.file.Files.exists(assets)) return 0;
+        try (var files = java.nio.file.Files.walk(assets)) { return files.filter(java.nio.file.Files::isRegularFile).count(); }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> rulesOf(Object definition) {
+        return (List<Map<String, Object>>) asMap(definition).get("rules");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asMap(Object value) {
+        return value instanceof Map<?, ?> ? (Map<String, Object>) value : Json.readMap(String.valueOf(value));
+    }
+
+    @Test
+    void aDraftSavedBeforeTheTrackerIsPlacedOntoTheTracker() {
+        var created = create(true, 400, 600);
+        // What draft creation stored before the tracker: a quote pending and a design to approve.
+        jdbc.sql("UPDATE catalog.catalog_orders SET pricing_status = 'PENDING_PRICING', design_status = 'PENDING' WHERE id = :id")
+                .param("id", created.id()).update();
+        var placed = tx(() -> orders.placeOrder(created.id(), 7L));
+        assertThat(placed.status()).isEqualTo("ORDER_DETAILS");
+        assertThat(placed.pricingStatus()).isEqualTo("NOT_APPLICABLE");
+        assertThat(placed.designStatus()).isEqualTo("NOT_REQUIRED");
+        assertThat(managed(created.id())).isTrue();
+    }
+
+    @Test
+    void replacingTheSampleDesignAfterPlacementNeverMovesANotebookOrderBackIntoApproval() {
         var created = create(true, 400, 600);
         var design = upload(created.id(), "DESIGN", 1);
-        assertThat(upload(created.id(), "DESIGN", 1).get("id")).isEqualTo(design.get("id"));
+        assertThat(upload(created.id(), "DESIGN", 1).get("id")).as("the same file is not stored twice").isEqualTo(design.get("id"));
         tx(() -> orders.placeOrder(created.id(), 7L));
-        superadmin();
-        tx(() -> orders.markDesignApproved(created.id()));
-        tx(() -> { forms.quote(created.id(), quote(created.id(), 120, 0)); return null; });
         var replacement = upload(created.id(), "DESIGN", 2);
         assertThat(replacement.get("id")).isNotEqualTo(design.get("id"));
         assertThat(tx(() -> forms.assetHistory(created.id()))).hasSize(2);
         assertThat(tx(() -> forms.content(created.id(), ((Number) design.get("id")).longValue())).bytes()).isNotEmpty();
-        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).status()).isEqualTo("DESIGN_APPROVAL");
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).status()).isEqualTo("ORDER_DETAILS");
         assertThat(tx(() -> forms.detail(created.id())).get("approvedDesignAssetId")).isNull();
-        assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "APPROVED"))).isInstanceOf(ResponseStatusException.class);
-        tx(() -> orders.markDesignApproved(created.id()));
-        tx(() -> orders.approveBySuperadmin(created.id()));
-        assertThatThrownBy(() -> upload(created.id(), "DESIGN", 3)).isInstanceOf(ResponseStatusException.class);
-        assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "DELIVERED"))).isInstanceOf(ProductFormValidationException.class);
-        upload(created.id(), "PRE_DELIVERY_PHOTO", 3);
-        assertThat(tx(() -> orders.updateOrderStatus(created.id(), "DELIVERED")).status()).isEqualTo("DELIVERED");
-        assertThatThrownBy(() -> tx(() -> { forms.removeAsset(created.id(), ((Number) replacement.get("id")).longValue()); return null; }))
-                .isInstanceOf(ResponseStatusException.class);
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).designStatus()).isEqualTo("NOT_REQUIRED");
     }
 
     @Test
@@ -228,14 +375,19 @@ class CatalogOrderFormIntegrationTest {
         var created = create(true, 400, 600);
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "PROCESSING"))).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "APPROVED"))).isInstanceOf(ResponseStatusException.class);
-        // DESIGN_APPROVAL is a real transition for a customised order and no longer waits on artwork.
-        assertThat(tx(() -> orders.updateOrderStatus(created.id(), "DESIGN_APPROVAL")).status()).isEqualTo("DESIGN_APPROVAL");
+        // A notebook order is placed with the place action only; the old DESIGN_APPROVAL alias no longer places it.
+        assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "DESIGN_APPROVAL")))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("place action");
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).status()).isEqualTo("DRAFT");
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "FULFILLED"))).isInstanceOf(ResponseStatusException.class);
     }
 
     @Test
     void quoteCoverageAndVersionConflictsRollBackPricesAndTotals() {
-        var created = create(false, 1, 2);
+        // Notebooks are no longer quoted, so the quote rules are exercised on a category that still is.
+        var data = Map.of("orderSelections", Map.of(), "lines", List.of(
+                Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 1, "pageCount", 1)));
+        var created = tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", data)));
         tx(() -> orders.placeOrder(created.id(), 7L));
         superadmin();
         Map<String, Object> old = quote(created.id(), 100, 0);
@@ -243,10 +395,10 @@ class CatalogOrderFormIntegrationTest {
         assertThatThrownBy(() -> tx(() -> { forms.quote(created.id(), old); return null; }))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("409");
         var invalid = new LinkedHashMap<>(quote(created.id(), 200, 0));
-        invalid.put("lines", List.of(Map.of("id", detailLines(tx(() -> forms.detail(created.id()))).getFirst().get("id"), "unitPricePaise", 200)));
+        invalid.put("lines", List.of());
         assertThatThrownBy(() -> tx(() -> { forms.quote(created.id(), invalid); return null; })).isInstanceOf(ResponseStatusException.class);
-        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).totalAmount()).isEqualTo(300);
-        assertThatThrownBy(() -> tx(() -> { forms.updateDraft(created.id(), Map.of("version", 0, "orderData", data(false, 2, 3))); return null; }))
+        assertThat(tx(() -> orders.order(created.id()).orElseThrow()).totalAmount()).isEqualTo(100);
+        assertThatThrownBy(() -> tx(() -> { forms.updateDraft(created.id(), Map.of("version", 0, "orderData", data)); return null; }))
                 .isInstanceOf(ResponseStatusException.class);
     }
 
@@ -325,7 +477,7 @@ class CatalogOrderFormIntegrationTest {
             ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "png", output);
             var asset = actualForms.upload(created.id(), "DESIGN", output.toByteArray(), "design.png");
             assertThat(actualForms.content(created.id(), ((Number) asset.get("id")).longValue()).bytes()).isEqualTo(output.toByteArray());
-            assertThat(actualOrders.placeOrder(created.id(), 8L).status()).isEqualTo("DESIGN_APPROVAL");
+            assertThat(actualOrders.placeOrder(created.id(), 8L).status()).isEqualTo("ORDER_DETAILS");
             var trophyData = Map.of("orderSelections", Map.of(), "lines", List.of(
                     Map.of("selections", Map.of("VARIANT", "T_A_3_B"), "bookCount", 10, "pageCount", 1)));
             var trophyOrder = actualOrders.createOrder(Map.of("schoolId", 1, "category", "TROPHIES", "orderData", trophyData));
@@ -412,6 +564,20 @@ class CatalogOrderFormIntegrationTest {
             ImageIO.write(image, "png", output);
             return tx(() -> forms.upload(id, kind, output.toByteArray(), "artwork.png"));
         } catch (java.io.IOException ex) { throw new AssertionError(ex); }
+    }
+
+    /** Puts a draft where placement left notebook orders before the tracker existed: on the approval flow, no tracker attributes. */
+    private static void placeBeforeTheTracker(String id, boolean custom) {
+        jdbc.sql("""
+                UPDATE catalog.catalog_orders SET status = :status, design_status = :design, superadmin_approval_status = :approval,
+                    pricing_status = 'PENDING_PRICING', placed_at = now(), placed_by = 7, attributes = '{}'::jsonb WHERE id = :id
+                """).param("id", id).param("status", custom ? "DESIGN_APPROVAL" : "PROCESSING")
+                .param("design", custom ? "PENDING" : "NOT_REQUIRED").param("approval", custom ? "NOT_SUBMITTED" : "PENDING").update();
+    }
+
+    private static boolean managed(String id) {
+        return Boolean.TRUE.equals(jdbc.sql("SELECT (attributes ->> 'trackerManaged')::boolean FROM catalog.catalog_orders WHERE id = :id")
+                .param("id", id).query(Boolean.class).optional().orElse(false));
     }
 
     @SuppressWarnings("unchecked")

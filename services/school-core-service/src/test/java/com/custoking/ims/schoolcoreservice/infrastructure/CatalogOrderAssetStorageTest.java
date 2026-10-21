@@ -62,6 +62,87 @@ class CatalogOrderAssetStorageTest {
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("photo");
     }
 
+    static final String DAMAGED = "This file is damaged or is not a valid PDF or image.";
+
+    /** A PDF that cannot be parsed answers 400 with one plain message, never a 500 from the parser (a page-less PDF used to NPE). */
+    @Test
+    void damagedPdfIs400() throws Exception {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        var valid = new ByteArrayOutputStream();
+        try (Document document = new Document()) {
+            PdfWriter.getInstance(document, valid);
+            document.open();
+            document.add(new Paragraph("Notebook design"));
+        }
+        byte[] whole = valid.toByteArray();
+        var damaged = new java.util.LinkedHashMap<String, byte[]>();
+        damaged.put("no page tree", """
+                %PDF-1.4
+                1 0 obj << /Type /Catalog >> endobj
+                trailer << /Root 1 0 R >>
+                %%EOF
+                """.getBytes(StandardCharsets.US_ASCII));
+        damaged.put("truncated", java.util.Arrays.copyOf(whole, whole.length / 2));
+        damaged.put("garbage after the header", "%PDF-1.4\ninvalid".getBytes(StandardCharsets.US_ASCII));
+        damaged.forEach((name, bytes) -> assertThatThrownBy(() -> storage.validate(bytes, "design.pdf", "DESIGN"), name)
+                .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                    assertThat(refused.getStatusCode().value()).isEqualTo(400);
+                    assertThat(refused.getReason()).isEqualTo(DAMAGED);
+                }));
+    }
+
+    /**
+     * A truncated image answers 400. The JDK's JPEG reader decodes a truncated JPEG without an exception and only reports
+     * "premature end" or "missing EOI" as warnings, so those count as damage too, for baseline and progressive JPEGs alike.
+     */
+    @Test
+    void truncatedImageIs400() throws Exception {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        var picture = TestImages.picture(128);
+        byte[] png = TestImages.png(picture);
+        byte[] baseline = TestImages.jpeg(picture, false);
+        byte[] progressive = TestImages.jpeg(picture, true);
+        var truncated = new java.util.LinkedHashMap<String, byte[]>();
+        // Cut inside the image data. (A PNG missing only its trailing checksum and end chunk still decodes in full, and is not damaged.)
+        for (int keep : new int[]{40, png.length / 2, png.length - 200}) truncated.put("png kept " + keep, java.util.Arrays.copyOf(png, keep));
+        for (int keep : new int[]{baseline.length / 2, baseline.length - 200, baseline.length - 2}) {
+            truncated.put("baseline jpeg kept " + keep, java.util.Arrays.copyOf(baseline, keep));
+        }
+        for (int keep : new int[]{progressive.length / 2, progressive.length - 2}) {
+            truncated.put("progressive jpeg kept " + keep, java.util.Arrays.copyOf(progressive, keep));
+        }
+        truncated.forEach((name, bytes) -> assertThatThrownBy(() -> storage.validate(bytes, "photo", "DESIGN"), name)
+                .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                    assertThat(refused.getStatusCode().value()).isEqualTo(400);
+                    assertThat(refused.getReason()).isEqualTo(DAMAGED);
+                }));
+    }
+
+    /** Whole files still pass: baseline and progressive JPEGs, a CMYK JPEG, and a JPEG whose bad colour profile the reader ignores. */
+    @Test
+    void validJpegsAreAccepted() {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        var picture = TestImages.picture(128);
+        var valid = new java.util.LinkedHashMap<String, byte[]>();
+        valid.put("baseline", TestImages.jpeg(picture, false));
+        valid.put("progressive", TestImages.jpeg(picture, true));
+        valid.put("cmyk", TestImages.cmykJpeg());
+        valid.put("invalid colour profile", TestImages.withInvalidColourProfile(TestImages.jpeg(picture, false)));
+        valid.forEach((name, bytes) -> assertThat(storage.validate(bytes, "photo.jpg", "DESIGN").contentType()).as(name).isEqualTo("image/jpeg"));
+    }
+
+    /** A valid image the decoder has no colour model for is not "damaged": the user is told what to change. */
+    @Test
+    void aValidImageInAnUnsupportedColourFormatIsToldSo() {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        assertThatThrownBy(() -> storage.validate(TestImages.twoComponentJpeg(), "photo.jpg", "DESIGN"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                    assertThat(refused.getStatusCode().value()).isEqualTo(400);
+                    assertThat(refused.getReason()).isEqualTo(
+                            "This image's colour format isn't supported. Save it as an RGB PNG, JPEG or WEBP and upload again.");
+                });
+    }
+
     @Test
     void rejectsTraversalAndMissingCloudConfiguration() {
         var local = new CatalogOrderAssetStorage("", "local", directory.toString());

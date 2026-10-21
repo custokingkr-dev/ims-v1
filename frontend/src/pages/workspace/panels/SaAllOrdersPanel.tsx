@@ -5,7 +5,8 @@ import { ModuleShell, Field, Info, PanelMessage, Stat } from '../ui';
 import { formatIsoDay, formatMoney, todayIso } from '../utils';
 import { getDisplayStatus } from '../../../shared/display/status';
 import { useCategoryLabel } from '../../../features/catalog/useCategoryLabel';
-import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
+import { TrackerStep } from './TrackerStep';
+import { OrderDetailEntry } from '../../../features/tracker/OrderDetailEntry';
 
 interface Props {
   onNewOrder: () => void;
@@ -13,7 +14,8 @@ interface Props {
 }
 
 export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
-  const [notebookOrderId, setNotebookOrderId] = useState<string | null>(null);
+  // A placed form order opens in its own screen; a notebook order on the tracker opens as the tracker there.
+  const [formOrder, setFormOrder] = useState<{ id: string; trackerManaged: boolean } | null>(null);
   const categoryLabel = useCategoryLabel();
 
   const [orders, setOrders] = useState<any[]>([]);
@@ -94,7 +96,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     setDetailLoading(true); setDetailError(''); setDetailOpen(true); setDetailOrder(null);
     try {
       const res = await api.get(`/catalog/orders/${orderId}`);
-      if (Number(res.data?.formVersion) === 2) { setDetailOpen(false); setNotebookOrderId(orderId); return; }
+      if (Number(res.data?.formVersion) === 2) { setDetailOpen(false); setFormOrder({ id: orderId, trackerManaged: res.data?.trackerManaged === true }); return; }
       setDetailOrder(res.data); setNewStatus(res.data?.status || '');
     } catch (e: any) {
       setDetailError(e?.response?.data?.message || 'Failed to load order.');
@@ -194,7 +196,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     }
   };
 
-  if (notebookOrderId) return <ProductOrderDetail orderId={notebookOrderId} onBack={() => setNotebookOrderId(null)} onChanged={() => void load()} />;
+  if (formOrder) return <OrderDetailEntry orderId={formOrder.id} trackerManaged={formOrder.trackerManaged} onBack={() => setFormOrder(null)} onChanged={() => void load()} />;
   return (
     <>
       <ModuleShell title="All orders" subtitle="All catalog orders across all schools" actions={canManage ? <button className="ck-btn ck-btn-g" onClick={onNewOrder}>+ New order request</button> : undefined}>
@@ -249,13 +251,13 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                       <td><div className="tb">{row.id}</div></td>
                       <td>{row.schoolName || row.school || '—'}</td>
                       <td className="ck-whole">{categoryLabel(row.category)}</td>
-                      <td className="ck-num">{row.pricingStatus === 'PENDING_PRICING'
+                      <td className="ck-num">{row.trackerManaged === true ? '—' : row.pricingStatus === 'PENDING_PRICING'
                         ? <span style={{ color: 'var(--ink3)' }}>Pending pricing</span>
                         : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
-                      <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span></td>
+                      <td>{row.trackerManaged === true ? <TrackerStep status={row.status} /> : <span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span>}</td>
                       <td className="ck-whole">{formatIsoDay(row.placedAt || row.createdAt)}</td>
                       <td><div className="ck-row-actions">
-                        <button className="ck-btn ck-btn-ghost" onClick={() => Number(row.formVersion) === 2 ? setNotebookOrderId(row.id) : void openDetail(row.id)}>View</button>
+                        <button className="ck-btn ck-btn-ghost" onClick={() => Number(row.formVersion) === 2 ? setFormOrder({ id: row.id, trackerManaged: row.trackerManaged === true }) : void openDetail(row.id)}>View</button>
                         {canManage && Number(row.formVersion) !== 2 && (String(row.status).toUpperCase() === 'AWAITING_APPROVAL'
                           ? <button className="ck-btn ck-btn-g" onClick={() => acceptOrder(row.id)}>Accept</button>
                           : (

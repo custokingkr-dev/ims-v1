@@ -1,0 +1,2136 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking notebook order tracker",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "operations-service",
+  "x-ims-gateway-service": "workflow",
+  "x-ims-controller": "NotebookTrackerController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "NotebookTrackerClient",
+  "x-ims-client-file": "notebookTrackerClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/workflows/notebook-orders": {
+      "get": {
+        "operationId": "listNotebookOrders",
+        "summary": "The worklist",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mine",
+                "all"
+              ]
+            }
+          },
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "includeFinished",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrackerListItem"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}": {
+      "get": {
+        "operationId": "getNotebookTracker",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/draft": {
+      "put": {
+        "operationId": "saveNotebookStepDraft",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerDraftRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/stage-note": {
+      "put": {
+        "operationId": "saveNotebookStageNote",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerNoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/complete": {
+      "post": {
+        "operationId": "completeNotebookStep",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/reopen": {
+      "post": {
+        "operationId": "reopenNotebookStep",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/sign-off": {
+      "post": {
+        "operationId": "signOffNotebookStep",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/assignee": {
+      "put": {
+        "operationId": "assignNotebookStep",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerAssigneeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/assignee": {
+      "put": {
+        "operationId": "assignNotebookOrder",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerAssigneeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/follow-ups": {
+      "post": {
+        "operationId": "addNotebookFollowUp",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerFollowUpRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/design/send": {
+      "post": {
+        "operationId": "sendNotebookDesign",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/design/approve": {
+      "post": {
+        "operationId": "approveNotebookDesign",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerApproveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/design/request-changes": {
+      "post": {
+        "operationId": "requestNotebookDesignChanges",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerCommentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/vendor": {
+      "put": {
+        "operationId": "setNotebookVendor",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerVendorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/designer": {
+      "put": {
+        "operationId": "setNotebookDesigner",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerDesignerChoice"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/internal-notes": {
+      "post": {
+        "operationId": "addNotebookInternalNote",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerBodyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/designers": {
+      "get": {
+        "operationId": "listNotebookDesigners",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrackerDesignerRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createNotebookDesigner",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerDesignerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerDesignerRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/designers/{id}": {
+      "put": {
+        "operationId": "updateNotebookDesigner",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerDesignerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerDesignerRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/time-slots/{schoolId}": {
+      "get": {
+        "operationId": "listNotebookTimeSlots",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrackerSlaRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/time-slots/{schoolId}/{step}": {
+      "put": {
+        "operationId": "setNotebookTimeSlot",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerSlaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful response"
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "clearNotebookTimeSlot",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful response"
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TrackerProgress": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "completed",
+          "total",
+          "currentStep",
+          "currentTitle",
+          "finished"
+        ],
+        "properties": {
+          "completed": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "currentStep": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "currentTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished": {
+            "type": "boolean"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "Progress",
+          "requireAll": true
+        }
+      },
+      "TrackerListItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "orderId",
+          "schoolId",
+          "schoolName",
+          "customised",
+          "orderedCount",
+          "placedAt",
+          "timeZone",
+          "status",
+          "currentStep",
+          "currentTitle",
+          "assigneeUserId",
+          "dueAt",
+          "overdue",
+          "completed",
+          "total"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "schoolName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customised": {
+            "type": "boolean"
+          },
+          "orderedCount": {
+            "type": "integer"
+          },
+          "placedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "The school's IANA time zone stored with the tracker; show dueAt and placedAt in it."
+          },
+          "status": {
+            "type": "string"
+          },
+          "currentStep": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "currentTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assigneeUserId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "dueAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "completed": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "ListItem",
+          "requireAll": true
+        }
+      },
+      "TrackerContact": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "phone"
+        ],
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "Contact",
+          "requireAll": true
+        }
+      },
+      "TrackerDesigner": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "phone"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "Designer",
+          "requireAll": true
+        }
+      },
+      "TrackerDesign": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "comment",
+          "at",
+          "by",
+          "approvedDraftRef",
+          "canManageImages"
+        ],
+        "properties": {
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "by": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "approvedDraftRef": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "canManageImages": {
+            "type": "boolean"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "Design",
+          "requireAll": true
+        }
+      },
+      "TrackerSla": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "unit",
+          "source"
+        ],
+        "properties": {
+          "value": {
+            "type": "integer"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "HOURS",
+              "WORKING_DAYS"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "DEFAULT",
+              "SCHOOL"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "Sla",
+          "requireAll": true
+        }
+      },
+      "TrackerCapabilities": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "canEditDetails",
+          "canEditStageNote",
+          "canComplete",
+          "canReopen"
+        ],
+        "properties": {
+          "canEditDetails": {
+            "type": "boolean"
+          },
+          "canEditStageNote": {
+            "type": "boolean"
+          },
+          "canComplete": {
+            "type": "boolean"
+          },
+          "canReopen": {
+            "type": "boolean"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "Capabilities",
+          "requireAll": true
+        }
+      },
+      "TrackerStep": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step",
+          "title",
+          "customisedOnly",
+          "status",
+          "assigneeUserId",
+          "assigneeName",
+          "startedAt",
+          "dueAt",
+          "overdue",
+          "sla",
+          "completedAt",
+          "completedBy",
+          "data",
+          "stageNote",
+          "version",
+          "can"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "customisedOnly": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "LOCKED",
+              "ACTIVE",
+              "COMPLETED"
+            ]
+          },
+          "assigneeUserId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "assigneeName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The assignee's full name from identity; null when it is not known (identity unreachable, or the user is no longer staff)."
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "dueAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "sla": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TrackerSla"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "completedBy": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "stageNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer"
+          },
+          "can": {
+            "$ref": "#/components/schemas/TrackerCapabilities"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "Step",
+          "requireAll": true
+        }
+      },
+      "TrackerNote": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "authorUserId",
+          "authorName",
+          "body",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "authorUserId": {
+            "type": "integer"
+          },
+          "authorName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The author's full name from identity; null when it is not known (identity unreachable, or the user is no longer staff)."
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "Note",
+          "requireAll": true
+        }
+      },
+      "TrackerFollowUp": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "percentComplete",
+          "nextFollowUpOn",
+          "contactPhone",
+          "createdBy",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "percentComplete": {
+            "type": "integer"
+          },
+          "nextFollowUpOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "contactPhone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdBy": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "FollowUp",
+          "requireAll": true
+        }
+      },
+      "TrackerView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "orderId",
+          "schoolId",
+          "customised",
+          "orderedCount",
+          "placedAt",
+          "timeZone",
+          "schoolName",
+          "instanceStatus",
+          "progress",
+          "vendor",
+          "designer",
+          "design",
+          "steps",
+          "internalNotes",
+          "followUps",
+          "version"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "customised": {
+            "type": "boolean"
+          },
+          "orderedCount": {
+            "type": "integer"
+          },
+          "placedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "schoolName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "instanceStatus": {
+            "type": "string"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/TrackerProgress"
+          },
+          "vendor": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TrackerContact"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "designer": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TrackerDesigner"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "design": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TrackerDesign"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrackerStep"
+            }
+          },
+          "internalNotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrackerNote"
+            }
+          },
+          "followUps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TrackerFollowUp"
+            }
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/tracker/TrackerView.java",
+          "name": "TrackerView",
+          "requireAll": true
+        }
+      },
+      "TrackerDesignerRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "phone",
+          "active"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/persistence/NotebookTrackerRepository.java",
+          "name": "DesignerRow",
+          "requireAll": true
+        }
+      },
+      "TrackerSlaRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step",
+          "title",
+          "sla"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "sla": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TrackerSla"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/NotebookTrackerService.java",
+          "name": "SlaRow",
+          "requireAll": true
+        }
+      },
+      "TrackerDraftRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "expectedVersion"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "DraftRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerNoteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "note",
+          "expectedVersion"
+        ],
+        "properties": {
+          "note": {
+            "type": "string"
+          },
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "NoteRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerVersionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "VersionRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerApproveRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "draftRef",
+          "comment"
+        ],
+        "properties": {
+          "draftRef": {
+            "type": "integer"
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "ApproveRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerCommentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "comment"
+        ],
+        "properties": {
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "CommentRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerVendorRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "phone"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "VendorRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerDesignerChoice": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "designerId"
+        ],
+        "properties": {
+          "designerId": {
+            "type": "integer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "DesignerChoice",
+          "requireAll": true
+        }
+      },
+      "TrackerBodyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "body"
+        ],
+        "properties": {
+          "body": {
+            "type": "string"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "BodyRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerAssigneeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "userId"
+        ],
+        "properties": {
+          "userId": {
+            "type": "integer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "AssigneeRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerFollowUpRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "percentComplete",
+          "nextFollowUpOn",
+          "contactPhone"
+        ],
+        "properties": {
+          "percentComplete": {
+            "type": "integer"
+          },
+          "nextFollowUpOn": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "contactPhone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "FollowUpRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerDesignerRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "phone",
+          "active"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "active": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "DesignerRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerSlaRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "unit"
+        ],
+        "properties": {
+          "value": {
+            "type": "integer"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "HOURS",
+              "WORKING_DAYS"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "SlaRequest",
+          "requireAll": true
+        }
+      }
+    }
+  }
+}

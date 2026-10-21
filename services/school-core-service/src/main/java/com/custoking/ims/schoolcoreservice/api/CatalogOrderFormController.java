@@ -65,6 +65,26 @@ public class CatalogOrderFormController {
         return detailResponse(id);
     }
 
+    /**
+     * Starts the tracker of a placed notebook order whose tracker is not created yet. The service queues it, commits, and
+     * attempts it with no transaction open, so the answer is read afterwards.
+     */
+    @PostMapping("/{id}/tracker/ensure")
+    public Map<String, Object> ensureTracker(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+                                             @PathVariable String id) {
+        requireToken(token, "order:update");
+        forms.ensureTracker(id);
+        return Map.of("trackerPending", forms.trackerPending(id));
+    }
+
+    /** Header data for the notebook order tracker: lines, quantity, delivery date and the school's notes. */
+    @GetMapping("/{id}/tracker-summary")
+    public Map<String, Object> trackerSummary(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+                                              @PathVariable String id) {
+        requireToken(token, "order:read");
+        return forms.trackerSummary(id);
+    }
+
     @GetMapping("/{id}/assets")
     public List<Map<String, Object>> assets(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
                                            @PathVariable String id) {

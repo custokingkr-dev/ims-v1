@@ -4,7 +4,7 @@
 
 import type { AxiosInstance } from 'axios';
 
-export type CatalogOrder = { "id": string; "category": string; "schoolId": number; "status": string; "totalAmount"?: number; [key: string]: unknown; };
+export type CatalogOrder = { "id": string; "category": string; "schoolId": number; "status": string; "totalAmount"?: number; "trackerManaged"?: boolean | null; [key: string]: unknown; };
 
 export type CatalogOrderPage = { "content": Array<CatalogOrder>; "page": number; "size": number; "totalElements": number; "totalPages": number; [key: string]: unknown; };
 
@@ -16,6 +16,16 @@ export type AnnualPlanReviewItem = { "id": string; "term": string | null; "categ
 
 export type AnnualPlanReview = { "schoolId": number; "academicYearId": string; "yearLabel": string; "items": Array<AnnualPlanReviewItem>; "fingerprint": string; "confirmation": (AnnualPlanConfirmation | null); [key: string]: unknown; };
 
+export type NotebookTrackerSummary = { "orderId": string; "schoolId": number; "schoolName": string | null; "schoolContactEmail": string | null; "schoolContactPhone": string | null; "status": string; "customised": boolean; "requiredByDate": string | null; "placedAt": string | null; "schoolNotes": string | null; "orderedCount": number; "lines": Array<{ "lineNo": number; "selections": { [key: string]: (string | { "code": string; "label": string; "spec"?: string; "specText"?: string; [key: string]: unknown; }); }; "bookCount": number; "pageCount": number; }>; "trackerPending": boolean; };
+
+export type TrackerEnsureResult = { "trackerPending": boolean; };
+
+export type OrderAsset = { "id": number; "assetKind": string; "contentType": string; "sizeBytes": number; "checksumSha256"?: string; "originalFilename"?: string | null; "uploadedBy"?: string | null; "uploadedAt": string; "supersededAt"?: string | null; [key: string]: unknown; };
+
+export type OrderAssetUpload = { "assetKind": string; "file": Blob; };
+
+export type ProductCategory = { "code": string; "label": string; "emoji": string; "description": string; "orderType": string; "formEnabled": boolean; "sortOrder": number; "active": boolean; [key: string]: unknown; };
+
 export interface CatalogClient {
   getOrderPage(parameters?: { schoolId?: number; status?: string; page?: number; size?: number; }): Promise<CatalogOrderPage>;
   getOrderSummary(parameters?: { schoolId?: number; }): Promise<CatalogOrderStatistics>;
@@ -23,6 +33,13 @@ export interface CatalogClient {
   markDelivered(parameters: { id: string; }): Promise<CatalogOrder>;
   reviewAnnualPlan(parameters?: { schoolId?: number; }): Promise<AnnualPlanReview>;
   confirmAnnualPlan(parameters: { schoolId?: number; }, request: { "fingerprint": string; [key: string]: unknown; }): Promise<AnnualPlanConfirmation>;
+  getNotebookTrackerSummary(parameters: { id: string; }): Promise<NotebookTrackerSummary>;
+  ensureNotebookTracker(parameters: { id: string; }): Promise<TrackerEnsureResult>;
+  listOrderAssets(parameters: { id: string; }): Promise<Array<OrderAsset>>;
+  uploadOrderAsset(parameters: { id: string; }, request: OrderAssetUpload): Promise<OrderAsset>;
+  deleteOrderAsset(parameters: { id: string; assetId: number; }): Promise<void>;
+  getOrderAssetContent(parameters: { id: string; assetId: number; }): Promise<Blob>;
+  listProductCategories(): Promise<Array<ProductCategory>>;
 }
 
 export function createCatalogClient(http: AxiosInstance): CatalogClient {
@@ -49,6 +66,36 @@ export function createCatalogClient(http: AxiosInstance): CatalogClient {
     },
     async confirmAnnualPlan(parameters: { schoolId?: number; }, request: { "fingerprint": string; [key: string]: unknown; }) {
       const response = await http.post<AnnualPlanConfirmation>("/catalog/annual-plan/confirm", request, { params: { schoolId: parameters.schoolId } });
+      return response.data;
+    },
+    async getNotebookTrackerSummary(parameters: { id: string; }) {
+      const response = await http.get<NotebookTrackerSummary>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/tracker-summary`);
+      return response.data;
+    },
+    async ensureNotebookTracker(parameters: { id: string; }) {
+      const response = await http.post<TrackerEnsureResult>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/tracker/ensure`);
+      return response.data;
+    },
+    async listOrderAssets(parameters: { id: string; }) {
+      const response = await http.get<Array<OrderAsset>>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/assets`);
+      return response.data;
+    },
+    async uploadOrderAsset(parameters: { id: string; }, request: OrderAssetUpload) {
+      const form = new FormData();
+      form.append("assetKind", request.assetKind);
+      form.append("file", request.file);
+      const response = await http.post<OrderAsset>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/assets`, form);
+      return response.data;
+    },
+    async deleteOrderAsset(parameters: { id: string; assetId: number; }) {
+      await http.delete(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/assets/${encodeURIComponent(String(parameters.assetId))}`);
+    },
+    async getOrderAssetContent(parameters: { id: string; assetId: number; }) {
+      const response = await http.get<Blob>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/assets/${encodeURIComponent(String(parameters.assetId))}/content`, { responseType: 'blob' });
+      return response.data;
+    },
+    async listProductCategories() {
+      const response = await http.get<Array<ProductCategory>>("/supply/product-catalog/categories");
       return response.data;
     },
   };

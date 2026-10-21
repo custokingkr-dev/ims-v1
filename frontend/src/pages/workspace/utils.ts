@@ -1,6 +1,7 @@
 // Pure utility functions shared across workspace panels.
 // No React state dependencies — safe to import anywhere.
 
+import { getDisplayStatus } from '../../shared/display/status';
 import {
   financialYearOptions as sharedFinancialYearOptions,
 } from '../../utils/academicCalendar';
@@ -155,7 +156,7 @@ export function prettyOrderStatus(status?: string): string {
   if (value === 'PROCESSING') return 'Processing';
   if (value === 'APPROVED') return 'Approved';
   if (value === 'DELIVERED') return 'Delivered';
-  return value.replace(/_/g, ' ');
+  return getDisplayStatus(value);
 }
 
 /**

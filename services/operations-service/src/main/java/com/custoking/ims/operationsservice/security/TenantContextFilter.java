@@ -25,7 +25,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 trimToNull(request.getHeader("X-Authenticated-Role")),
                 parseLong(request.getHeader("X-Authenticated-School-Id")),
                 parseLong(request.getHeader("X-Authenticated-Zone-Id")),
-                parsePermissions(request.getHeader("X-Authenticated-Permissions"))));
+                parsePermissions(request.getHeader("X-Authenticated-Permissions")),
+                parseLongSet(request.getHeader("X-Authenticated-Operator-Schools")),
+                parsePermissions(request.getHeader("X-Authenticated-Operator-Scopes"))));
         try {
             filterChain.doFilter(request, response);
         } finally {
@@ -40,6 +42,17 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
     private static String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private static java.util.Set<Long> parseLongSet(String header) {
+        if (!StringUtils.hasText(header)) return java.util.Set.of();
+        java.util.Set<Long> out = new java.util.LinkedHashSet<>();
+        for (String part : header.split(",")) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty()) continue;
+            try { out.add(Long.parseLong(trimmed)); } catch (NumberFormatException ignored) { /* skip malformed entries */ }
+        }
+        return out;
     }
 
     private static java.util.Set<String> parsePermissions(String header) {

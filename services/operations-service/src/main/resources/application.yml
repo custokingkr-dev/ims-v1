@@ -78,6 +78,11 @@ firefighting:
     schema: ${FIREFIGHTING_DB_SCHEMA:firefighting}
 
 operations:
+  identity:
+    # Operator directory: asks identity's internal route whether a user may be assigned notebook tracker work, with
+    # this service's Cloud Run identity token. Blank = assignment is refused.
+    base-url: ${OPERATIONS_IDENTITY_BASE_URL:}
+    cloud-run-auth: ${OPERATIONS_IDENTITY_CLOUD_RUN_AUTH:auto}
   tenant-school:
     base-url: ${OPERATIONS_TENANT_SCHOOL_BASE_URL:}
     token: ${OPERATIONS_TENANT_SCHOOL_TOKEN:}

@@ -142,6 +142,18 @@ describe('ProductFormBuilder, 2026-09-25 product decisions', () => {
   });
 });
 
+describe('ProductFormBuilder notebook photo rule', () => {
+  it('shows no before-delivery asset requirement on a notebook form, even if an old draft snapshot carries the rule', () => {
+    expect(notebookDefinition.rules.some((r) => r.ruleType === 'REQUIRE_ASSET' && r.params.stage === 'BEFORE_DELIVERY')).toBe(true);
+    render(<ProductFormBuilder definition={notebookDefinition} schoolId={7} preview />);
+    fireEvent.change(screen.getByLabelText('Size'), { target: { value: 'LONG' } });
+    fireEvent.change(screen.getByLabelText('Quantity for Single rule'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to order' }));
+    expect(screen.queryByText('Pre-delivery photo')).not.toBeInTheDocument();
+    expect(screen.queryByText('Required before delivery')).not.toBeInTheDocument();
+  });
+});
+
 describe('ProductFormBuilder', () => {
   it('renders typed entries with their unit and no page column for a non-paged category', () => {
     render(<ProductFormBuilder categoryCode="FLEX" definition={flexDefinition} preview />);
@@ -174,7 +186,7 @@ describe('ProductFormBuilder', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add to order' }));
     expect(screen.getAllByText('All sizes combined')).toHaveLength(1);
     expect(screen.getByText('Required total met')).toBeInTheDocument();
-    expect(screen.getByText('Pending pricing')).toBeInTheDocument();
+    expect(screen.queryByText('Pending pricing')).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/price|GST/i)).not.toBeInTheDocument();
   });
 
@@ -216,7 +228,7 @@ describe('ProductFormBuilder', () => {
     expect(await screen.findByText('Temporary failure')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Place order' })).toBeEnabled());
     fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
-    expect(await screen.findByText(/Order placed. Processing and pricing are pending/)).toBeInTheDocument();
+    expect(await screen.findByText('Order placed. Our team will start work on it shortly.')).toBeInTheDocument();
     expect(vi.mocked(api.post).mock.calls.filter(([url]) => url === '/catalog/orders')).toHaveLength(1);
     expect(api.patch).toHaveBeenCalledWith('/supply/orders/ORD-42', expect.objectContaining({ version: 0 }));
     expect(vi.mocked(api.post).mock.calls[0][1]).toEqual(expect.objectContaining({ schoolId: 7, status: 'DRAFT', orderData: expect.objectContaining({ orderSelections: { CUSTOMIZATION: 'NON_CUSTOMIZED' } }) }));

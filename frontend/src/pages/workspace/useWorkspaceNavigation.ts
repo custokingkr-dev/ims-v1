@@ -13,10 +13,23 @@ interface WorkspaceNavigationOptions {
   activeModules: Set<string> | null;
   can: (permission: string) => boolean;
   canAny: (permissions: string[]) => boolean;
+  /** An operator whose only assignments are catalogue items at a school; see {@link isItemOnlyOperator}. */
+  itemOnlyOperator?: boolean;
 }
 
+/**
+ * An operator assigned only to catalogue items (for example NOTEBOOKS at a school) and to no school as a whole. They work
+ * that item's orders in the notebook order tracker and nothing else (owner decision D2), so their workspace offers only
+ * "Notebook orders", even though they hold order:read for the tracker's order calls.
+ */
+export function isItemOnlyOperator(user: Pick<AuthUser, 'role' | 'operatorSchools' | 'operatorScopes'> | null | undefined): boolean {
+  return user?.role === 'OPERATIONS' && !user.operatorSchools?.length && !!user.operatorScopes?.length;
+}
+
+const ITEM_ONLY_PANELS: PanelKey[] = ['nb-work'];
+
 /** Owns task URLs and UI permission/entitlement policy; server authorization remains authoritative. */
-export function useWorkspaceNavigation({ role, activeModules, can, canAny }: WorkspaceNavigationOptions) {
+export function useWorkspaceNavigation({ role, activeModules, can, canAny, itemOnlyOperator = false }: WorkspaceNavigationOptions) {
   const [searchParams, setSearchParams] = useSearchParams();
   const isPlatformAdmin = role === 'SUPERADMIN' || can('platform:admin');
   const isZoneAdmin = !isPlatformAdmin && (role === 'ZONE_ADMIN' || can('zone:manage'));
@@ -26,6 +39,8 @@ export function useWorkspaceNavigation({ role, activeModules, can, canAny }: Wor
   const isViewer = role === 'VIEWER';
   const defaultPanel: PanelKey = isPlatformAdmin
     ? 'orders'
+    : itemOnlyOperator
+      ? 'nb-work'
     : isOperations
       ? 'photoimport'
     : isZoneAdmin
@@ -92,6 +107,7 @@ export function useWorkspaceNavigation({ role, activeModules, can, canAny }: Wor
       case 'feestructure': return ['fee_structure:read', 'fee:read'];
       case 'catalog': return ['order:read'];
       case 'orders': return ['order:read'];
+      case 'nb-work': return ['notebook-tracker:read'];
       case 'planning': return ['plan:read', 'order:read'];
       case 'ff-dashboard': return ['firefighting:read'];
       case 'ff-new': return ['firefighting:create'];
@@ -113,7 +129,8 @@ export function useWorkspaceNavigation({ role, activeModules, can, canAny }: Wor
   const navSections = isPlatformAdmin
     ? moduleFilteredSections
     : moduleFilteredSections
-        .map(section => ({ ...section, items: section.items.filter(item => panelAllowedByPermission(item.key)) }))
+        .map(section => ({ ...section, items: section.items.filter(item => panelAllowedByPermission(item.key)
+          && (!itemOnlyOperator || ITEM_ONLY_PANELS.includes(item.key))) }))
         .filter(section => section.items.length > 0);
   const allowedPanelKeys = navSections.flatMap(section => section.items.map(item => item.key));
   const studentSubpanelAllowed = (panel === 'addstudent' || panel === 'bulkimport')

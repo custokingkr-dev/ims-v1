@@ -18,6 +18,9 @@ import java.util.Optional;
 @Repository
 public class WorkflowReadRepository {
 
+    /** Entity type of notebook order trackers; see {@code NotebookTrackerRepository}. */
+    public static final String NOTEBOOK_TRACKER_ENTITY = "NOTEBOOK_ORDER";
+
     private final JdbcClient jdbc;
     private final String definitionsTable;
     private final String stepsTable;
@@ -57,8 +60,15 @@ public class WorkflowReadRepository {
                 .list();
     }
 
+    /**
+     * The generic reads never find a notebook order tracker, for any caller: its progress, people and notes belong to the
+     * tracker API, which admits only superadmin and the order's operators (spec v4 acceptance criterion 1). School admins
+     * hold {@code workflow:read} for their school's ordinary workflows, so excluding trackers here is what keeps them out.
+     */
+    private static final String NOT_A_TRACKER = " AND UPPER(entity_type) <> '" + NOTEBOOK_TRACKER_ENTITY + "'";
+
     public List<WorkflowInstanceRow> instances(Long schoolId, String status, String entityType, int limit) {
-        StringBuilder sql = new StringBuilder(instanceSelect()).append(" WHERE 1=1");
+        StringBuilder sql = new StringBuilder(instanceSelect()).append(" WHERE 1=1").append(NOT_A_TRACKER);
         if (schoolId != null) sql.append(" AND school_id = :schoolId");
         if (status != null && !status.isBlank()) sql.append(" AND status = :status");
         if (entityType != null && !entityType.isBlank()) sql.append(" AND entity_type = :entityType");
@@ -75,20 +85,23 @@ public class WorkflowReadRepository {
         return instances(schoolId, "PENDING", null, limit);
     }
 
+    /** Empty for a notebook order tracker, as for an id that does not exist. */
     public Optional<WorkflowInstanceRow> instance(Long id) {
-        return jdbc.sql(instanceSelect() + " WHERE id = :id")
+        return jdbc.sql(instanceSelect() + " WHERE id = :id" + NOT_A_TRACKER)
                 .param("id", id)
                 .query(WorkflowInstanceRow.class)
                 .optional();
     }
 
+    /** Empty for a notebook order tracker, as for an id that does not exist. */
     public List<WorkflowActionRow> actions(Long instanceId) {
         return jdbc.sql("""
                 SELECT id, instance_id, step_order, action, actor_id, actor_email, notes, acted_at
                 FROM %s
                 WHERE instance_id = :instanceId
+                  AND NOT EXISTS (SELECT 1 FROM %s i WHERE i.id = :instanceId AND UPPER(i.entity_type) = '%s')
                 ORDER BY acted_at ASC, id ASC
-                """.formatted(actionsTable)).param("instanceId", instanceId)
+                """.formatted(actionsTable, instancesTable, NOTEBOOK_TRACKER_ENTITY)).param("instanceId", instanceId)
                 .query(WorkflowActionRow.class)
                 .list();
     }
@@ -97,6 +110,7 @@ public class WorkflowReadRepository {
     public Map<String, Object> createOrGetInstance(Map<String, Object> request) {
         requireActor();
         String entityType = requireText(request.get("entityType"), "entityType is required");
+        rejectTrackerEntity(entityType);
         requireCreationAuthority(entityType);
         String entityId = requireText(request.get("entityId"), "entityId is required");
         Long schoolId = TenantScope.resolveSchoolId(longValue(request.get("schoolId"), null));
@@ -286,13 +300,32 @@ public class WorkflowReadRepository {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Workflow changed; reload before deciding");
     }
 
+    /**
+     * The instance a generic decision acts on, locked. A notebook order tracker is not found here, exactly like an id that
+     * does not exist: the same 404 and message, for every caller including superadmin, so the generic mutations neither
+     * touch a tracker nor reveal that one exists (the generic reads hide trackers the same way).
+     */
     private Map<String, Object> lockedInstance(Long id) {
         requireActor();
-        Map<String, Object> instance = jdbc.sql(instanceSelect() + " WHERE id = :id FOR UPDATE")
+        Map<String, Object> instance = jdbc.sql(instanceSelect() + " WHERE id = :id" + NOT_A_TRACKER + " FOR UPDATE")
                 .param("id", id).query((rs, rowNum) -> instanceRowMap(rs)).optional()
-                .orElseThrow(() -> new IllegalArgumentException("Workflow instance not found"));
+                .orElseThrow(WorkflowReadRepository::instanceNotFound);
         requireTenant(instance);
+        rejectTrackerEntity(String.valueOf(instance.get("entityType")));
         return instance;
+    }
+
+    private static ResponseStatusException instanceNotFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Workflow instance not found");
+    }
+
+    /**
+     * Notebook order trackers move only through the tracker API, which enforces step order, roles and gates. The
+     * generic create/submit/approve/reject/cancel/complete endpoints never touch them, even for superadmin, and answer
+     * as if there were none: 404.
+     */
+    private void rejectTrackerEntity(String entityType) {
+        if (NOTEBOOK_TRACKER_ENTITY.equalsIgnoreCase(entityType)) throw instanceNotFound();
     }
 
     private void requireTenant(Map<String, Object> instance) {

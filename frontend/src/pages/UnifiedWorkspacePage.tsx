@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { X, ChevronDown, PanelLeft, PanelLeftClose } from 'lucide-react';
-import { useWorkspaceNavigation } from './workspace/useWorkspaceNavigation';
+import { isItemOnlyOperator, useWorkspaceNavigation } from './workspace/useWorkspaceNavigation';
 import { useWorkspaceDrawer } from './workspace/useWorkspaceDrawer';
 import { useSupplyOrders } from './workspace/useSupplyOrders';
 import { SupplyOrdersPanels } from './workspace/SupplyOrdersPanels';
@@ -33,7 +33,7 @@ function WorkspaceContent() {
     role, isPlatformAdmin, isZoneAdmin, isOperations, isTeacher,
     panel, setPanel, openFfDraft, ffEditingCode, currentTitle,
     navSections, panelAllowed, entitlementsReady, dashboardModuleAccess,
-  } = useWorkspaceNavigation({ role: user?.role, activeModules, can, canAny });
+  } = useWorkspaceNavigation({ role: user?.role, activeModules, can, canAny, itemOnlyOperator: isItemOnlyOperator(user) });
   const {
     sidebarOpen, setSidebarOpen, drawerIsModal,
     sidebarRef, mainRef, menuToggleRef, sidebarCloseRef,

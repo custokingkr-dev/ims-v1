@@ -108,11 +108,16 @@ public class RbacCommandRepository {
                 .update();
         logAudit("ROLE_REVOKED", actorId, userId, ((Number) assignment.get("roleId")).longValue(),
                 assignment.get("role").toString(), (Long) assignment.get("schoolId"),
-                (Long) assignment.get("zoneId"));
+                (Long) assignment.get("zoneId"), catalogScopeNote((String) assignment.get("catalogCategory")));
     }
 
     private Map<String, Object> assignScopedRole(Long userId, String roleCode, Long schoolId, Long zoneId,
                                                  Long assignedBy) {
+        return assignScopedRole(userId, roleCode, schoolId, zoneId, assignedBy, null);
+    }
+
+    private Map<String, Object> assignScopedRole(Long userId, String roleCode, Long schoolId, Long zoneId,
+                                                 Long assignedBy, String catalogCategory) {
         if (!userExists(userId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found");
         }
@@ -122,26 +127,27 @@ public class RbacCommandRepository {
                 .query(Long.class)
                 .optional()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "unknown role"));
-        if (activeAssignmentExists(userId, roleId, schoolId, zoneId)) {
+        if (activeAssignmentExists(userId, roleId, schoolId, zoneId, catalogCategory)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "active assignment already exists for this user/role/scope combination");
         }
         try {
             Long assignmentId = jdbc.sql("""
                             INSERT INTO identity.user_role_assignments
-                                (user_id, role_id, school_id, zone_id, assigned_at, assigned_by, active, valid_from)
+                                (user_id, role_id, school_id, zone_id, catalog_category, assigned_at, assigned_by, active, valid_from)
                             VALUES
-                                (:userId, :roleId, :schoolId, :zoneId, now(), :assignedBy, true, now())
+                                (:userId, :roleId, :schoolId, :zoneId, :catalogCategory, now(), :assignedBy, true, now())
                             RETURNING id
                             """)
                     .param("userId", userId)
                     .param("roleId", roleId)
                     .param("schoolId", schoolId)
                     .param("zoneId", zoneId)
+                    .param("catalogCategory", catalogCategory)
                     .param("assignedBy", assignedBy)
                     .query(Long.class)
                     .single();
-            logAudit("ROLE_ASSIGNED", assignedBy, userId, roleId, roleName, schoolId, zoneId);
+            logAudit("ROLE_ASSIGNED", assignedBy, userId, roleId, roleName, schoolId, zoneId, catalogScopeNote(catalogCategory));
             return assignmentView(assignmentId);
         } catch (DuplicateKeyException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -186,6 +192,7 @@ public class RbacCommandRepository {
                           AND active = true
                           AND revoked_at IS NULL
                           AND school_id IS NOT NULL
+                          AND catalog_category IS NULL
                         """)
                 .param("userId", userId)
                 .param("roleId", roleId)
@@ -204,6 +211,7 @@ public class RbacCommandRepository {
                                 UPDATE identity.user_role_assignments
                                 SET active = false, revoked_at = now(), revoked_by = :actorId
                                 WHERE user_id = :userId AND role_id = :roleId AND school_id = :schoolId
+                                  AND catalog_category IS NULL
                                   AND active = true AND revoked_at IS NULL
                                 """)
                         .param("userId", userId)
@@ -219,6 +227,39 @@ public class RbacCommandRepository {
         view.put("userId", userId);
         view.put("schoolIds", new java.util.ArrayList<>(target));
         return view;
+    }
+
+    /**
+     * Scopes an operator to one catalogue item at one school (for example NOTEBOOKS at school 4). The operator keeps any
+     * other assignments; revoking this scope goes through the ordinary assignment revoke. Like the school sync, it only
+     * ever applies to operator users, so it cannot hand OPERATIONS permissions to an arbitrary account.
+     */
+    @Transactional
+    public Map<String, Object> assignOperatorScope(Long userId, Long schoolId, String catalogCategory, Long actorId) {
+        if (schoolId == null || schoolId <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
+        }
+        String category;
+        try {
+            category = com.custoking.ims.identityservice.application.CatalogScope.normalize(catalogCategory);
+        } catch (IllegalArgumentException invalid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, invalid.getMessage());
+        }
+        if (category == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "catalogCategory is required");
+        }
+        if (!userExists(userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found");
+        }
+        boolean isOperator = Boolean.TRUE.equals(jdbc.sql(
+                        "SELECT EXISTS (SELECT 1 FROM identity.app_users WHERE id = :userId AND UPPER(role) = 'OPERATIONS' AND deleted_at IS NULL)")
+                .param("userId", userId)
+                .query(Boolean.class)
+                .single());
+        if (!isOperator) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "user is not an operator");
+        }
+        return assignScopedRole(userId, "OPERATIONS", schoolId, null, actorId, category);
     }
 
     private boolean userExists(Long userId) {
@@ -300,7 +341,7 @@ public class RbacCommandRepository {
         return view;
     }
 
-    private boolean activeAssignmentExists(Long userId, Long roleId, Long schoolId, Long zoneId) {
+    private boolean activeAssignmentExists(Long userId, Long roleId, Long schoolId, Long zoneId, String catalogCategory) {
         return Boolean.TRUE.equals(jdbc.sql("""
                         SELECT EXISTS (
                             SELECT 1
@@ -311,6 +352,7 @@ public class RbacCommandRepository {
                               AND revoked_at IS NULL
                               AND school_id IS NOT DISTINCT FROM :schoolId
                               AND zone_id IS NOT DISTINCT FROM :zoneId
+                              AND catalog_category IS NOT DISTINCT FROM :catalogCategory
                               AND (valid_from IS NULL OR valid_from <= now())
                               AND (valid_until IS NULL OR valid_until > now())
                         )
@@ -319,6 +361,7 @@ public class RbacCommandRepository {
                 .param("roleId", roleId)
                 .param("schoolId", schoolId)
                 .param("zoneId", zoneId)
+                .param("catalogCategory", catalogCategory)
                 .query(Boolean.class)
                 .single());
     }
@@ -329,7 +372,7 @@ public class RbacCommandRepository {
                                (ura.active = true AND ura.revoked_at IS NULL
                                 AND (ura.valid_from IS NULL OR ura.valid_from <= now())
                                 AND (ura.valid_until IS NULL OR ura.valid_until > now())) AS effective,
-                               ura.school_id, ura.zone_id, ura.valid_from, ura.valid_until,
+                               ura.school_id, ura.zone_id, ura.catalog_category, ura.valid_from, ura.valid_until,
                                ura.assigned_at, ura.assigned_by, ura.revoked_at, ura.revoked_by
                         FROM identity.user_role_assignments ura
                         JOIN identity.roles r ON r.id = ura.role_id
@@ -351,6 +394,7 @@ public class RbacCommandRepository {
         view.put("effective", rs.getBoolean("effective"));
         view.put("schoolId", nullableLong(rs, "school_id"));
         view.put("zoneId", nullableLong(rs, "zone_id"));
+        view.put("catalogCategory", rs.getString("catalog_category"));
         view.put("validFrom", nullableOffsetDateTime(rs, "valid_from"));
         view.put("validUntil", nullableOffsetDateTime(rs, "valid_until"));
         view.put("assignedAt", nullableOffsetDateTime(rs, "assigned_at"));
@@ -360,14 +404,24 @@ public class RbacCommandRepository {
         return view;
     }
 
+    private static String catalogScopeNote(String catalogCategory) {
+        return catalogCategory == null ? null : "catalogCategory=" + catalogCategory;
+    }
+
     private void logAudit(String eventType, Long actorId, Long targetUserId, Long roleId, String roleName,
                           Long schoolId, Long zoneId) {
+        logAudit(eventType, actorId, targetUserId, roleId, roleName, schoolId, zoneId, null);
+    }
+
+    private void logAudit(String eventType, Long actorId, Long targetUserId, Long roleId, String roleName,
+                          Long schoolId, Long zoneId, String newValue) {
         jdbc.sql("""
                         INSERT INTO identity.rbac_audit_log
-                            (event_type, actor_user_id, target_user_id, role_id, role_name, school_id, zone_id, created_at)
+                            (event_type, actor_user_id, target_user_id, role_id, role_name, school_id, zone_id, new_value, created_at)
                         VALUES
-                            (:eventType, :actorId, :targetUserId, :roleId, :roleName, :schoolId, :zoneId, now())
+                            (:eventType, :actorId, :targetUserId, :roleId, :roleName, :schoolId, :zoneId, :newValue, now())
                         """)
+                .param("newValue", newValue)
                 .param("eventType", eventType)
                 .param("actorId", actorId)
                 .param("targetUserId", targetUserId)

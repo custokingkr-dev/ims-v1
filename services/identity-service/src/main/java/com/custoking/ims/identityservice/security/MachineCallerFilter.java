@@ -6,6 +6,8 @@ import jakarta.servlet.http.*;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
@@ -17,13 +19,20 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Order(Ordered.HIGHEST_PRECEDENCE + 3)
 public class MachineCallerFilter extends OncePerRequestFilter {
     private static final TokenVerifier GOOGLE=TokenVerifier.newBuilder().setIssuer("https://accounts.google.com").build();
+    private static final Logger LOG=LoggerFactory.getLogger(MachineCallerFilter.class);
     private final Environment env;
     private final Function<String,Optional<String>> verifier;
+    private final boolean localTrust;
     @org.springframework.beans.factory.annotation.Autowired
     public MachineCallerFilter(Environment env) {
         this(env, token -> verify(token,env));
     }
-    MachineCallerFilter(Environment env,Function<String,Optional<String>> verifier) { this.env=env; this.verifier=verifier; }
+    MachineCallerFilter(Environment env,Function<String,Optional<String>> verifier) {
+        this.env=env; this.verifier=verifier;
+        // A laptop has no metadata server to sign peer calls. Cloud Run always sets K_SERVICE, so this never applies there.
+        this.localTrust="true".equals(env.getProperty("MACHINE_CALLER_LOCAL_TRUST")) && env.getProperty("K_SERVICE")==null;
+        if(localTrust) LOG.warn("MACHINE_CALLER_LOCAL_TRUST is active: registered internal routes are admitted without a signed caller. Never set it outside a local stack.");
+    }
     private static Optional<String> verify(String token,Environment env) {
         try {
             var payload=GOOGLE.verify(token).getPayload();
@@ -45,6 +54,13 @@ public class MachineCallerFilter extends OncePerRequestFilter {
         if(path.equals("/api/v1/internal/notifications/broadcast-recipients") || path.equals("/api/v1/internal/notifications/broadcast-recipients/fee-reminders") || path.equals("/api/v1/internal/notifications/broadcast-recipients/absentees")) return "BROADCAST_POLICY_CALLER_SERVICE_ACCOUNTS";
         if(path.equals("/api/v1/internal/password-reset/drain")) return "PASSWORD_RESET_DRAIN_CALLER_SERVICE_ACCOUNTS";
         if(path.matches("/api/v1/internal/identity-directory/(schools|zones)/[0-9]+")) return "IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS";
+        if(path.equals("/api/v1/internal/notebook-trackers")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";
+        if(path.matches("/api/v1/internal/notebook-trackers/[A-Za-z0-9_-]{1,255}/image-access")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";
+        if(path.matches("/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/draft-images")) return "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS";
+        if(path.matches("/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/tracker-status")) return "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS";
+        if(path.equals("/api/v1/internal/operator-directory/resolve")) return "OPERATOR_DIRECTORY_RESOLVE_CALLER_SERVICE_ACCOUNTS";
+        if(path.equals("/api/v1/internal/operator-directory/eligible")) return "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS";
+        if(path.equals("/api/v1/internal/operator-directory/names")) return "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS";
         return null;
     }
     @Override protected void doFilterInternal(HttpServletRequest request,HttpServletResponse response,FilterChain chain) throws ServletException,IOException {
@@ -66,6 +82,7 @@ public class MachineCallerFilter extends OncePerRequestFilter {
             if(path.startsWith("/api/v1/internal/")) { response.setStatus(403);return; }
             chain.doFilter(request,response); return;
         }
+        if(localTrust) { chain.doFilter(request,response); return; }
         // Never decode Cloud Run's signature-stripped X-Serverless-Authorization as application authority.
         String authorization=request.getHeader("Authorization");
         String email=authorization!=null && authorization.startsWith("Bearer ") ? verifier.apply(authorization.substring(7)).orElse(null) : null;

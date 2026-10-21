@@ -627,6 +627,36 @@ test('proxy preserves the permanent-delete confirmation header and authenticated
   }
 });
 
+test('proxy forwards the operator school and scope headers and ignores any the client sends', async () => {
+  let received = null;
+  const upstream = http.createServer((req, res) => {
+    received = { schools: req.headers['x-authenticated-operator-schools'], scopes: req.headers['x-authenticated-operator-scopes'] };
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end('{}');
+  });
+  await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+  try {
+    const req = Readable.from([]);
+    req.method = 'GET';
+    req.headers = { 'x-authenticated-operator-scopes': '1:FORGED', 'x-authenticated-operator-schools': '1' };
+    req.socket = { remoteAddress: '127.0.0.1' };
+    const res = { statusCode: 0, setHeader() {}, write() {}, end() {} };
+    const target = new URL(`http://127.0.0.1:${upstream.address().port}/api/v1/workflows/notebook-orders/ORD-1`);
+    await proxyToUrl(req, res, target, 'scope-request', 'workflow', {
+      userId: 9, email: 'op@example.test', role: 'OPERATIONS', branchId: null, zoneId: null,
+      permissions: ['workflow:read'], operatorSchools: [2], operatorScopes: ['4:NOTEBOOKS', '4:TIES'],
+    });
+    assert.deepEqual(received, { schools: '2', scopes: '4:NOTEBOOKS,4:TIES' });
+
+    await proxyToUrl(req, res, target, 'scope-request-2', 'workflow', {
+      userId: 9, email: 'op@example.test', role: 'OPERATIONS', branchId: null, zoneId: null, permissions: [], operatorSchools: [],
+    });
+    assert.deepEqual(received, { schools: '', scopes: '' });
+  } finally {
+    await new Promise((resolve) => upstream.close(resolve));
+  }
+});
+
 test('proxy targets retain the configured upstream origin and canonicalize untrusted path/query data', () => {
   const upstream = new URL('https://school-core.example.test');
   const target = buildUpstreamTarget(
@@ -830,6 +860,10 @@ test('isClientSpoofableHeader flags gateway-only headers', () => {
   assert.equal(isClientSpoofableHeader('x-billing-service-token'), true);
   assert.equal(isClientSpoofableHeader('x-authenticated-permissions'), true);
   assert.equal(isClientSpoofableHeader('x-authenticated-operator-schools'), true);
+  assert.equal(isClientSpoofableHeader('x-authenticated-operator-scopes'), true);
+  // The machine-only tokens of the notebook tracker and the operator directory can never come from a client.
+  assert.equal(isClientSpoofableHeader('x-notebook-tracker-service-token'), true);
+  assert.equal(isClientSpoofableHeader('x-operator-directory-service-token'), true);
   assert.equal(isClientSpoofableHeader('content-type'), false);
   assert.equal(isClientSpoofableHeader('x-request-id'), false);
 });
@@ -920,7 +954,7 @@ test('verifyJwtLocally rejects a 3-segment token whose payload is not valid JSON
 
 test('principalFromClaims maps an enriched claim set', () => {
   assert.deepEqual(principalFromClaims(enrichedClaims), {
-    userId: 42, email: 'a@b.com', role: 'ADMIN', branchId: 7, zoneId: 3, permissions: [], operatorSchools: [],
+    userId: 42, email: 'a@b.com', role: 'ADMIN', branchId: 7, zoneId: 3, permissions: [], operatorSchools: [], operatorScopes: [],
   });
 });
 
@@ -948,6 +982,17 @@ test('principalFromClaims defaults permissions to [] for ver 2', () => {
 test('principalFromClaims exposes operatorSchools for ver>=3', () => {
   const p = principalFromClaims({ ver: 3, uid: 7, sub: 'a@x', role: 'OPERATIONS', ops_schools: [2, 3] });
   assert.deepEqual(p.operatorSchools, [2, 3]);
+});
+
+test('principalFromClaims exposes item-specific operator scopes separately from school-wide schools', () => {
+  const p = principalFromClaims({ ver: 3, uid: 7, sub: 'a@x', role: 'OPERATIONS', ops_schools: [2], ops_scopes: ['4:NOTEBOOKS', '4:TIES'] });
+  assert.deepEqual(p.operatorSchools, [2]);
+  assert.deepEqual(p.operatorScopes, ['4:NOTEBOOKS', '4:TIES']);
+});
+
+test('principalFromClaims defaults operatorScopes to [] when ops_scopes is absent or malformed', () => {
+  assert.deepEqual(principalFromClaims({ ver: 3, uid: 7, sub: 'a@x', role: 'OPERATIONS' }).operatorScopes, []);
+  assert.deepEqual(principalFromClaims({ ver: 3, uid: 7, sub: 'a@x', role: 'OPERATIONS', ops_scopes: '4:NOTEBOOKS' }).operatorScopes, []);
 });
 
 test('principalFromClaims defaults operatorSchools to [] when ops_schools absent', () => {

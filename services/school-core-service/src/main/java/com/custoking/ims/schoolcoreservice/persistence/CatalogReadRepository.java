@@ -114,6 +114,19 @@ public class CatalogReadRepository {
 
     @Transactional(readOnly = true)
     public Optional<CatalogOrderRow> order(String id) {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isOperations() && !ctx.scopedSchools().isEmpty()) {
+            // An operator scoped to a catalogue item reads exactly that item at its school: row-level security admits the
+            // school, and the item is checked here once the order is read. Owner decision D2: through an item scope alone,
+            // only the item's orders on the tracker; an order placed before it, or not placed yet, is not found. School-wide
+            // operators are unaffected.
+            java.util.Set<Long> admitted = new java.util.LinkedHashSet<>(ctx.operatorSchools());
+            admitted.addAll(ctx.scopedSchools());
+            jdbc.sql("SELECT set_config('app.operator_schools', :csv, true)")
+                    .param("csv", String.join(",", admitted.stream().map(String::valueOf).toList())).query(String.class).single();
+            return orderQuery(id).filter(row -> ctx.operatesItem(row.schoolId(), row.category())
+                    && (ctx.operatorSchools().contains(row.schoolId()) || Boolean.TRUE.equals(row.trackerManaged())));
+        }
         allowCrossSchoolReadForOperations();
         return orderQuery(id);
     }
@@ -144,6 +157,7 @@ public class CatalogReadRepository {
                 LEFT JOIN tenant_school.schools s ON s.id = co.school_id
                 WHERE UPPER(co.status) IN ('DESIGN_APPROVED_PROCESSING', 'PROCESSING')
                   AND UPPER(co.superadmin_approval_status) = 'PENDING'
+                  AND NOT co.attributes @> jsonb_build_object('trackerManaged', true)
                 ORDER BY co.created_at DESC NULLS LAST
                 LIMIT :limit
                 """)
@@ -158,7 +172,8 @@ public class CatalogReadRepository {
         // "active" = placed and still in-flight: not a draft, not rejected/returned, and not yet
         // DELIVERED (APPROVED is now active/awaiting-delivery; DELIVERED is the real fulfilled
         // state). termSpend = value of everything placed (non-draft), in paise.
-        String activePred = "UPPER(status) NOT IN ('DRAFT','REJECTED','RETURNED','DELIVERED')";
+        // A completed notebook tracker is the notebook equivalent of DELIVERED.
+        String activePred = "UPPER(status) NOT IN ('DRAFT','REJECTED','RETURNED','DELIVERED','COMPLETED')";
         if (schoolId == null) {
             Map<String, Object> stats = new LinkedHashMap<>();
             stats.put("totalOrders", count("SELECT count(*) FROM catalog.catalog_orders"));
@@ -169,7 +184,7 @@ public class CatalogReadRepository {
             stats.put("activeOrders", count("SELECT count(*) FROM catalog.catalog_orders WHERE " + activePred));
             stats.put("termSpend", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders WHERE UPPER(status) <> 'DRAFT'"));
             stats.put("activeServices", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(category) IN ('HOUSEKEEPING','HEALTH') AND " + activePred));
-            stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(status) = 'DELIVERED'"));
+            stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(status) IN ('DELIVERED','COMPLETED')"));
             return stats;
         }
         Map<String, Object> stats = new LinkedHashMap<>();
@@ -181,7 +196,7 @@ public class CatalogReadRepository {
         stats.put("activeOrders", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND " + activePred, schoolId));
         stats.put("termSpend", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) <> 'DRAFT'", schoolId));
         stats.put("activeServices", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(category) IN ('HOUSEKEEPING','HEALTH') AND " + activePred, schoolId));
-        stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) = 'DELIVERED'", schoolId));
+        stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) IN ('DELIVERED','COMPLETED')", schoolId));
         return stats;
     }
 
@@ -328,6 +343,15 @@ public class CatalogReadRepository {
         CatalogOrderRow created = orderQuery(id).orElseThrow();
         emitOrderUpserted(created);
         return created;
+    }
+
+    /**
+     * For the placing controllers, once {@link #placeOrder} has returned (its transaction committed and its connection back
+     * in the pool): one attempt at a newly placed notebook order's tracker, with no transaction open (spec §3.3). Does
+     * nothing for any other order. Never throws; the relay trigger retries whatever the attempt leaves.
+     */
+    public void attemptTrackerAfterPlacement(CatalogOrderRow placed) {
+        if (forms != null && placed != null && Boolean.TRUE.equals(placed.trackerManaged())) forms.attemptTracker(placed.id());
     }
 
     @Transactional
@@ -609,7 +633,8 @@ public class CatalogReadRepository {
                        co.design_status, co.superadmin_approval_status, co.required_by_date,
                        co.estimated_delivery, co.placed_by, co.placed_at, co.notes, co.created_at, co.school_id,
                        co.version, co.created_by, co.updated_by, co.vendor_paid_at, co.vendor_paid_by,
-                       co.vendor_payment_notes, s.name AS school_name, co.form_version, co.pricing_status
+                       co.vendor_payment_notes, s.name AS school_name, co.form_version, co.pricing_status,
+                       co.attributes @> jsonb_build_object('trackerManaged', true) AS tracker_managed
                 FROM catalog.catalog_orders co
                 LEFT JOIN tenant_school.schools s ON s.id = co.school_id
                 """;
@@ -649,8 +674,15 @@ public class CatalogReadRepository {
                 .optional();
     }
 
+    /**
+     * The order a write here acts on, or has just written. An operator writes only at a school they are assigned
+     * school-wide: an item scope admits a school to row-level security for that item's tracker orders alone (owner
+     * decision D2), so through one, an order on the older, unstructured form is not found.
+     */
     private CatalogOrderRow requiredOrder(String id) {
-        return orderQuery(id).orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        TenantContext ctx = TenantContext.get();
+        return orderQuery(id).filter(row -> !ctx.isOperations() || ctx.operatorSchools().contains(row.schoolId()))
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
     }
 
     /**
@@ -846,7 +878,9 @@ public class CatalogReadRepository {
             String vendorPaymentNotes,
             String schoolName,
             Integer formVersion,
-            String pricingStatus) {
+            String pricingStatus,
+            /* True for a notebook order placed on the notebook order tracker; one placed before it keeps the approval flow. */
+            Boolean trackerManaged) {
         public CatalogOrderRow(String id, String category, String orderData, Long subtotal, Long gst,
                 Long totalAmount, String status, String classGroup, String logoOnUniform, String notebookCoverLogo,
                 String notebookDeliveryMode, String notebookSpineName, String stationeryPackType, String eventName,
@@ -858,7 +892,7 @@ public class CatalogReadRepository {
                     notebookDeliveryMode, notebookSpineName, stationeryPackType, eventName, eventDate, designStatus,
                     superadminApprovalStatus, requiredByDate, estimatedDelivery, placedBy, placedAt, notes, createdAt,
                     schoolId, version, createdBy, updatedBy, vendorPaidAt, vendorPaidBy, vendorPaymentNotes, schoolName,
-                    1, "NOT_APPLICABLE");
+                    1, "NOT_APPLICABLE", false);
         }
     }
 

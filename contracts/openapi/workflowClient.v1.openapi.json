@@ -57,6 +57,9 @@
           "403": {
             "description": "Tenant, domain permission, step role or separation-of-duty denied"
           },
+          "404": {
+            "description": "No such instance, or a notebook order tracker, which the generic workflow API never shows"
+          },
           "409": {
             "description": "Stale expectedVersion; reload and review current instance before retry"
           }
@@ -108,6 +111,9 @@
           "403": {
             "description": "Tenant, domain permission, step role or separation-of-duty denied"
           },
+          "404": {
+            "description": "No such instance, or a notebook order tracker (managed only through the tracker API); both answer alike"
+          },
           "409": {
             "description": "Stale expectedVersion; reload and review current instance before retry"
           }
@@ -158,6 +164,9 @@
           },
           "403": {
             "description": "Tenant, domain permission, step role or separation-of-duty denied"
+          },
+          "404": {
+            "description": "No such instance, or a notebook order tracker (managed only through the tracker API); both answer alike"
           },
           "409": {
             "description": "Stale expectedVersion; reload and review current instance before retry"

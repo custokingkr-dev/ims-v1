@@ -1,5 +1,6 @@
 """Regression proof for the exact source authorization audit; fixtures never change shared sources."""
 import pathlib
+import re
 import shutil
 import subprocess
 import tempfile
@@ -19,7 +20,8 @@ class MachineProofAuditTest(unittest.TestCase):
             self.copy(ROOT / "services/api-gateway" / name)
         for path in ROOT.glob("services/*-service/src/main/java/**/MachineCallerFilter.java"):
             self.copy(path)
-        names = {"OutboxRelayTriggerController.java", "AsyncWorkTriggerController.java", "PasswordResetDrainController.java", "IdentityDirectoryController.java", "TenantSchoolClient.java", "GenericNotificationReportController.java", "NotificationReportAuthority.java", "GoogleIdentityTokenVerifier.java"}
+        names = {"OutboxRelayTriggerController.java", "AsyncWorkTriggerController.java", "PasswordResetDrainController.java", "IdentityDirectoryController.java", "TenantSchoolClient.java", "GenericNotificationReportController.java", "NotificationReportAuthority.java", "GoogleIdentityTokenVerifier.java",
+                 "NotebookTrackerMachineController.java", "CatalogTrackerMachineController.java", "OperatorDirectoryController.java"}
         for path in ROOT.glob("services/*-service/src/main/java/**/*.java"):
             if path.name in names: self.copy(path)
     def tearDown(self): self.temp.cleanup()
@@ -27,14 +29,14 @@ class MachineProofAuditTest(unittest.TestCase):
         target = self.root / path.relative_to(ROOT)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(path, target)
-    def audit(self):
-        return subprocess.run([POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "scripts/audit-service-authorization-boundaries.ps1"),
+    def audit(self, script=ROOT / "scripts/audit-service-authorization-boundaries.ps1"):
+        return subprocess.run([POWERSHELL, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script),
             "-GatewayTemplate", str(ROOT / "services/api-gateway/server.js"), "-ComposeFile", str(ROOT / "docker-compose.yml"),
             "-GatewayRoutesTemplate", str(self.root / "services/api-gateway/routing.js"),
             "-CloudRunDirectory", str(ROOT / "deploy/cloudrun"), "-AsyncSchedulerScript", str(ROOT / "scripts/configure-async-relay-scheduler.ps1")],
             cwd=self.root, capture_output=True, text=True, timeout=30)
-    def alter(self, name, before, after):
-        path = next(self.root.glob("services/identity-service/src/main/java/**/" + name))
+    def alter(self, name, before, after, service="identity-service"):
+        path = next(self.root.glob("services/" + service + "/src/main/java/**/" + name))
         self.assertIn(before, path.read_text())
         path.write_text(path.read_text().replace(before, after))
     def test_reviewed_exact_machine_capabilities_pass(self):
@@ -45,6 +47,10 @@ class MachineProofAuditTest(unittest.TestCase):
         for route, message in [
             ("/api/v1/internal/outbox/relay", "exposed through the API gateway"),
             ("/api/v1/internal/notifications/reports/reconcile", "gateway-exposed"),
+            # Regex routes can never appear verbatim in a gateway file; each is guarded through its literal prefix.
+            ("/api/v1/internal/catalog-orders", "exposed through the API gateway"),
+            ("/api/v1/internal/notebook-trackers", "exposed through the API gateway"),
+            ("/api/v1/internal/identity-directory", "exposed through the API gateway"),
         ]:
             with self.subTest(route=route):
                 path.write_text(original.replace("const routes = [", "const routes = [\n  route('notification', '" + route + "'),"), encoding="utf-8")
@@ -70,6 +76,58 @@ class MachineProofAuditTest(unittest.TestCase):
         result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("carrier proof missing", result.stdout)
     def test_added_internal_method_cannot_borrow_controller_exception(self):
         self.alter("PasswordResetDrainController.java", "@PostMapping(\"/drain\")", "@PostMapping(\"/extra\") public void extra() {}\n @PostMapping(\"/drain\")")
+        result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("mapping drifted", result.stdout)
+    def test_added_method_on_a_multi_route_machine_controller_fails(self):
+        self.alter("OperatorDirectoryController.java", '@GetMapping("/resolve")', '@GetMapping("/extra") public void extra() {}\n @GetMapping("/resolve")')
+        result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("mapping drifted", result.stdout)
+    def test_each_machine_route_is_pinned_to_its_own_caller_list(self):
+        # Every caller list stays present in the filter, so only an exact route -> list check can catch these.
+        resolve = '"/api/v1/internal/operator-directory/resolve")) return "OPERATOR_DIRECTORY_RESOLVE_CALLER_SERVICE_ACCOUNTS";'
+        eligible = '"/api/v1/internal/operator-directory/eligible")) return "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS";'
+        create = '"/api/v1/internal/notebook-trackers")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'
+        for label, service, edits in [
+            ("resolve and eligible swapped", "identity-service", [(resolve, resolve.replace("_RESOLVE_", "_ELIGIBILITY_")), (eligible, eligible.replace("_ELIGIBILITY_", "_RESOLVE_"))]),
+            ("create on the catalog list", "operations-service", [(create, create.replace("NOTEBOOK_TRACKER_", "CATALOG_TRACKER_"))]),
+        ]:
+            with self.subTest(label):
+                path = next(self.root.glob("services/" + service + "/src/main/java/**/MachineCallerFilter.java")); original = path.read_text()
+                for before, after in edits: self.alter("MachineCallerFilter.java", before, after, service=service)
+                result = self.audit(); path.write_text(original)
+                self.assertNotEqual(0, result.returncode, result.stdout); self.assertIn("lacks exact signed caller filter", result.stdout)
+    def test_each_machine_route_needs_its_own_registry_line(self):
+        for service, line in [
+            ("operations-service", 'if(path.equals("/api/v1/internal/notebook-trackers")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
+            ("operations-service", 'if(path.matches("/api/v1/internal/notebook-trackers/[A-Za-z0-9_-]{1,255}/image-access")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
+            ("school-core-service", 'if(path.matches("/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/draft-images")) return "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
+            ("school-core-service", 'if(path.matches("/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/tracker-status")) return "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
+            ("school-core-service", 'if(path.matches("/api/v1/internal/identity-directory/(schools|zones)/[0-9]+")) return "IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS";'),
+            ("identity-service", 'if(path.equals("/api/v1/internal/operator-directory/resolve")) return "OPERATOR_DIRECTORY_RESOLVE_CALLER_SERVICE_ACCOUNTS";'),
+            ("identity-service", 'if(path.equals("/api/v1/internal/operator-directory/eligible")) return "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS";'),
+        ]:
+            with self.subTest(line):
+                path = next(self.root.glob("services/" + service + "/src/main/java/**/MachineCallerFilter.java")); original = path.read_text()
+                self.alter("MachineCallerFilter.java", line, "", service=service)
+                result = self.audit(); path.write_text(original)
+                self.assertNotEqual(0, result.returncode, result.stdout); self.assertIn("lacks exact signed caller filter", result.stdout)
+    def test_regex_route_contract_needs_a_literal_gateway_route(self):
+        source = (ROOT / "scripts/audit-service-authorization-boundaries.ps1").read_bytes()
+        before = b'GatewayRoute = "/api/v1/internal/catalog-orders"; '
+        self.assertIn(before, source)
+        script = self.root / "audit-fixture.ps1"; script.write_bytes(source.replace(before, b"", 1))
+        result = self.audit(script); self.assertNotEqual(0, result.returncode, result.stdout); self.assertIn("needs a literal GatewayRoute", result.stdout)
+    CREATE = r'(@PostMapping\(""\))\s+(public ResponseEntity<CreateResponse> create\()'
+    def test_create_mapping_contract_does_not_depend_on_line_layout(self):
+        path = next(self.root.glob("services/operations-service/src/main/java/**/NotebookTrackerMachineController.java")); original = path.read_text()
+        for layout in ("\n    ", " "):
+            with self.subTest(layout=repr(layout)):
+                text, count = re.subn(self.CREATE, lambda m: m.group(1) + layout + m.group(2), original); self.assertEqual(1, count)
+                path.write_text(text)
+                result = self.audit(); self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        path.write_text(original)
+    def test_create_mapping_cannot_move_to_another_path(self):
+        path = next(self.root.glob("services/operations-service/src/main/java/**/NotebookTrackerMachineController.java"))
+        text, count = re.subn(self.CREATE, lambda m: '@PostMapping("/extra")\n    ' + m.group(2), path.read_text()); self.assertEqual(1, count)
+        path.write_text(text)
         result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("mapping drifted", result.stdout)
     def alter_platform(self, name, before, after):
         path = next(self.root.glob("services/platform-service/src/main/java/**/" + name))

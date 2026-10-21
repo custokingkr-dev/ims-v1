@@ -2,16 +2,19 @@ import Paginator from '../../../components/Paginator';
 import { useState } from 'react';
 import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 import { ModuleShell, Stat } from '../ui';
+import { TrackerStep } from './TrackerStep';
 import { formatMoney, prettyOrderStatus, orderItemsSummary } from '../utils';
 
 // Supply order status → stage index mapping.
 // DESIGN_APPROVAL / DESIGN_APPROVED_PROCESSING are mid-review sub-states.
+// A notebook order on the tracker never passes through these stages; its row shows its tracker step instead
+// (TrackerStep below). The step codes stay mapped for any row that arrives without its trackerManaged flag.
 const ORDER_STAGES = [
   { label: 'Draft',       statuses: ['DRAFT'] },
   { label: 'Submitted',   statuses: ['SUBMITTED', 'AWAITING_APPROVAL'] },
   { label: 'Approval',    statuses: ['DESIGN_APPROVAL', 'DESIGN_APPROVED_PROCESSING', 'APPROVED'] },
-  { label: 'Processing',  statuses: ['PROCESSING'] },
-  { label: 'Delivered',   statuses: ['DELIVERED', 'FULFILLED'] },
+  { label: 'Processing',  statuses: ['PROCESSING', 'ORDER_DETAILS', 'DESIGNING_ACTIVITY', 'HEAD_APPROVAL', 'CDR_CONVERSION', 'PRODUCTION_PLANNING', 'BOARD_PROCUREMENT', 'PRINTING_PRESS', 'PRE_PRINT_QUALITY_GATE', 'FACTORY_HANDOVER', 'PRODUCTION_FOLLOW_UP', 'VALIDATION_COUNT', 'DELIVERY_INVOICING'] },
+  { label: 'Delivered',   statuses: ['DELIVERED', 'FULFILLED', 'COMPLETED'] },
 ] as const;
 
 function resolveStageIdx(status: string): number {
@@ -20,7 +23,7 @@ function resolveStageIdx(status: string): number {
 }
 
 function orderStatusClass(status: string): string {
-  if (['DELIVERED', 'FULFILLED'].includes(status)) return 'spaid';
+  if (['DELIVERED', 'FULFILLED', 'COMPLETED'].includes(status)) return 'spaid';
   if (status === 'APPROVED' || status === 'CUSTOKING_APPROVED') return 'sapproved';
   if (status === 'PROCESSING') return 'spending';
   if (status.includes('DESIGN')) return 'spartial';
@@ -137,14 +140,16 @@ export function AdminOrdersPanel({
                 </tr>
               ) : orders.map((row: any, i: number) => {
                 const status = String(row.status).toUpperCase();
+                // A notebook order on the tracker is not priced for the school; one placed before it keeps its quote (D1).
+                const onTracker = row.trackerManaged === true;
                 return (
                   <tr key={i}>
                     <td><div className="tb">{row.id || row.code}</div><div className="ts">{row.description || row.title || row.category}</div></td>
                     <td>{row.category}</td>
                     <td>{orderItemsSummary(row.orderData) || row.items || '—'}</td>
-                    <td className="col-money">{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? row.amount ?? 0) / 100)}`}</td>
+                    <td className="col-money">{onTracker ? '—' : row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? row.amount ?? 0) / 100)}`}</td>
                     <td style={{ minWidth: 200 }}>
-                      <OrderWorkflowBanner status={status} />
+                      {onTracker ? <TrackerStep status={row.status} /> : <OrderWorkflowBanner status={status} />}
                     </td>
                     <td>
                       <span className={`ck-status ${orderStatusClass(status)}`}>{prettyOrderStatus(row.status)}</span>

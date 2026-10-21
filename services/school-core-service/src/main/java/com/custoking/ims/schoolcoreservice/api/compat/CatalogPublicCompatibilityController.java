@@ -122,7 +122,10 @@ public class CatalogPublicCompatibilityController {
         requireToken(token, "catalog:read");
         TenantScope.requirePermissionIfAuthenticated("order:create");
         requireOrderModule(TenantContext.get().schoolId());
-        return command(() -> catalog.placeOrder(id, TenantContext.get().userId()));
+        Object placed = command(() -> catalog.placeOrder(id, TenantContext.get().userId()));
+        // Committed, and its connection is back in the pool: only now is the tracker's peer called (spec §3.3).
+        if (placed instanceof CatalogReadRepository.CatalogOrderRow row) catalog.attemptTrackerAfterPlacement(row);
+        return placed;
     }
 
     @PatchMapping({"/api/v1/supply/orders/{id}/status", "/api/v1/sa/orders/{id}/status"})

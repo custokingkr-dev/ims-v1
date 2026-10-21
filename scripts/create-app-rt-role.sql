@@ -62,6 +62,14 @@ FROM (VALUES ('identity'),('tenant_school'),('student'),('attendance'),('fee'),
 JOIN pg_namespace n ON n.nspname = s.name
 \gexec
 
+-- The notebook tracker's logs are append-only (operations workflow V11 revokes UPDATE and DELETE on them). The blanket
+-- table grant above hands both back on every re-run (environment rebuilds, ensure-app-rt-local.ps1), so take them away
+-- again. Selecting from pg_tables makes this a no-op until the operations service has created the tables.
+SELECT format('REVOKE UPDATE, DELETE ON %I.%I FROM app_rt', schemaname, tablename)
+FROM pg_tables
+WHERE schemaname = 'workflow' AND tablename IN ('workflow_internal_notes', 'workflow_follow_ups')
+\gexec
+
 -- Final assertions (run as owner; pg catalogs are world-readable).
 DO $$
 BEGIN

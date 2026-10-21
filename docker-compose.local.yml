@@ -1,0 +1,53 @@
+# Overlay for running the full stack on a developer machine so it behaves like dev for the notebook order work.
+# It changes nothing in docker-compose.yml, which stays as the shared baseline.
+#
+#   * SPRING_PROFILES_ACTIVE=local   the baseline uses `prod`, whose machine-caller filter rejects the gateway's
+#                                    forwarded principal headers (403 PRINCIPAL_CARRIER_REJECTED) because nothing on a
+#                                    laptop signs them with a Cloud Run identity token.
+#   * OTEL_SDK_DISABLED=false        every service's RequestCorrelationFilter is built around a BatchSpanProcessor, which
+#                                    exists only while the SDK is enabled; with the baseline's `true` the service does not start.
+#                                    The baseline keeps OTEL_TRACES_EXPORTER=none and MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED=false,
+#                                    so spans are collected but not exported.
+#   * MACHINE_CALLER_LOCAL_TRUST     service-to-service calls (tracker creation, draft images, tracker status, operator
+#                                    lookups) use /api/v1/internal/** routes that admit only a Google-signed caller, and a
+#                                    laptop has no metadata server to sign one. With "true", and only while K_SERVICE is
+#                                    unset (Cloud Run always sets it), each service admits its registered internal routes
+#                                    without a signed caller and logs a WARN at startup. Unregistered internal routes stay 403.
+#   * *_CLOUD_RUN_AUTH=never         the tracker's peer clients do not ask a metadata server for an identity token.
+#   * CATALOG_ASSETS_MODE=local      order attachments (artwork, design drafts) go to the container's disk instead of the
+#                                    baseline's private GCS bucket, which a laptop cannot reach.
+#   * CATALOG_PRODUCT_FORM_ENABLED   turns on the structured product order form (the notebook form and its tracker).
+#
+# Usage: docker compose -f docker-compose.yml -f docker-compose.local.yml --profile full up -d --build
+services:
+  identity-service:
+    environment:
+      OTEL_SDK_DISABLED: "false"
+      SPRING_PROFILES_ACTIVE: local
+      MACHINE_CALLER_LOCAL_TRUST: "true"
+  school-core-service:
+    environment:
+      OTEL_SDK_DISABLED: "false"
+      SPRING_PROFILES_ACTIVE: local
+      MACHINE_CALLER_LOCAL_TRUST: "true"
+      CATALOG_PRODUCT_FORM_ENABLED: "true"
+      CATALOG_TRACKER_CLOUD_RUN_AUTH: never
+      CATALOG_OPERATOR_DIRECTORY_CLOUD_RUN_AUTH: never
+      CATALOG_ASSETS_MODE: local
+      CATALOG_ASSETS_LOCAL_DIRECTORY: /tmp/catalog-assets
+  billing-service:
+    environment:
+      OTEL_SDK_DISABLED: "false"
+      SPRING_PROFILES_ACTIVE: local
+      MACHINE_CALLER_LOCAL_TRUST: "true"
+  operations-service:
+    environment:
+      OTEL_SDK_DISABLED: "false"
+      SPRING_PROFILES_ACTIVE: local
+      MACHINE_CALLER_LOCAL_TRUST: "true"
+      OPERATIONS_IDENTITY_CLOUD_RUN_AUTH: never
+  platform-service:
+    environment:
+      OTEL_SDK_DISABLED: "false"
+      SPRING_PROFILES_ACTIVE: local
+      MACHINE_CALLER_LOCAL_TRUST: "true"

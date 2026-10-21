@@ -50,7 +50,7 @@ public class RbacReadRepository {
         StringBuilder sql = new StringBuilder("""
                 SELECT ura.id, ura.user_id, ura.role_id, r.name AS role_name, ura.assigned_at,
                        ura.assigned_by, ura.revoked_by, ura.revoked_at, ura.school_id, ura.zone_id,
-                       ura.active, ura.valid_from, ura.valid_until,
+                       ura.catalog_category, ura.active, ura.valid_from, ura.valid_until,
                        u.email AS user_email, u.full_name AS user_full_name
                 FROM identity.user_role_assignments ura
                 JOIN identity.roles r ON r.id = ura.role_id
@@ -66,6 +66,11 @@ public class RbacReadRepository {
         return spec.query(UserRoleAssignmentRow.class).list();
     }
 
+    /**
+     * Codes granted by the user's school-wide, zone and platform assignments. An item-specific operator assignment
+     * ({@code catalog_category} set) grants nothing here: it confers only the fixed tracker set, which
+     * {@code IdentityAuthService.loginPermissions} adds.
+     */
     public List<String> effectivePermissions(Long userId, Long schoolId, Long zoneId) {
         StringBuilder sql = new StringBuilder("""
                 SELECT DISTINCT p.code
@@ -75,6 +80,7 @@ public class RbacReadRepository {
                 WHERE ura.user_id = :userId
                   AND ura.active = true
                   AND ura.revoked_at IS NULL
+                  AND ura.catalog_category IS NULL
                   AND (ura.valid_from IS NULL OR ura.valid_from <= now())
                   AND (ura.valid_until IS NULL OR ura.valid_until >= now())
                 """);
@@ -114,6 +120,7 @@ public class RbacReadRepository {
                 .list();
     }
 
+    /** Schools where the user is a school-wide operator. Item-specific assignments are excluded on purpose. */
     public List<Long> operatorSchoolIds(Long userId) {
         return jdbc.sql("""
                 SELECT DISTINCT ura.school_id
@@ -123,6 +130,7 @@ public class RbacReadRepository {
                   AND ura.active = true
                   AND ura.revoked_at IS NULL
                   AND ura.school_id IS NOT NULL
+                  AND ura.catalog_category IS NULL
                   AND (ura.valid_from IS NULL OR ura.valid_from <= now())
                   AND (ura.valid_until IS NULL OR ura.valid_until >= now())
                   AND UPPER(r.name) = 'OPERATIONS'
@@ -130,6 +138,27 @@ public class RbacReadRepository {
                 """)
                 .param("userId", userId)
                 .query(Long.class)
+                .list();
+    }
+
+    /** Item-specific operator scopes as {@code schoolId:CATEGORY} keys, for the token and the gateway principal. */
+    public List<String> operatorScopeKeys(Long userId) {
+        return jdbc.sql("""
+                SELECT DISTINCT ura.school_id || ':' || ura.catalog_category AS scope
+                FROM identity.user_role_assignments ura
+                JOIN identity.roles r ON r.id = ura.role_id
+                WHERE ura.user_id = :userId
+                  AND ura.active = true
+                  AND ura.revoked_at IS NULL
+                  AND ura.school_id IS NOT NULL
+                  AND ura.catalog_category IS NOT NULL
+                  AND (ura.valid_from IS NULL OR ura.valid_from <= now())
+                  AND (ura.valid_until IS NULL OR ura.valid_until >= now())
+                  AND UPPER(r.name) = 'OPERATIONS'
+                ORDER BY scope
+                """)
+                .param("userId", userId)
+                .query(String.class)
                 .list();
     }
 
@@ -159,7 +188,7 @@ public class RbacReadRepository {
     public record UserRoleAssignmentRow(Long id, Long userId, Long roleId, String roleName,
                                          OffsetDateTime assignedAt, Long assignedBy, Long revokedBy,
                                          OffsetDateTime revokedAt, Long schoolId, Long zoneId,
-                                         Boolean active, OffsetDateTime validFrom,
+                                         String catalogCategory, Boolean active, OffsetDateTime validFrom,
                                          OffsetDateTime validUntil, String userEmail,
                                          String userFullName) {}
 

@@ -155,3 +155,22 @@ test('UUID record type changes fail the photo contract gate', () => {
   spec.components.schemas.PhotoImportBatch.properties.id = { type: 'integer' };
   assert.throws(() => validateContract(spec, inventory), /type drifted from Java UUID/);
 });
+
+test('the tracker\'s school-core and identity calls are contracted and bound to their Java records', () => {
+  const catalog = read('catalogClient.v1.openapi.json');
+  const generated = renderClient(catalog, 'catalogClient.v1.openapi.json');
+  assert.match(generated, /form\.append\("assetKind", request\.assetKind\);/);
+  assert.match(generated, /form\.append\("file", request\.file\);/);
+  assert.match(generated, /responseType: 'blob'/);
+  assert.ok(catalog.components.schemas.CatalogOrder.properties.trackerManaged);
+
+  const admin = read('operatorAdminClient.v1.openapi.json');
+  validateContract(admin, inventory);
+  for (const [schema, field] of [['OperatorAssignment', 'catalogCategory'], ['OperatorScopeRequest', 'schoolId']]) {
+    const drifted = structuredClone(admin);
+    delete drifted.components.schemas[schema].properties[field];
+    assert.throws(() => validateContract(drifted, inventory), /properties drifted/);
+  }
+  assert.match(renderClient(admin, 'operatorAdminClient.v1.openapi.json'), /provisionSchoolUser\(parameters: \{ schoolId: number; role: string; \}, request: ProvisionSchoolUserRequest\)/);
+  validateContract(read('tenantSchoolClient.v1.openapi.json'), inventory);
+});

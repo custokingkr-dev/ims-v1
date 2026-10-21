@@ -67,6 +67,12 @@ public class JwtService {
 
     public String generateAccessToken(AuthenticatedUserSnapshot user, java.util.List<String> permissions,
                                        java.util.List<Long> opsSchools) {
+        return generateAccessToken(user, permissions, opsSchools, java.util.List.of());
+    }
+
+    /** {@code opsScopes} are item-specific operator scopes as {@code schoolId:CATEGORY}; {@code opsSchools} stay school-wide only. */
+    public String generateAccessToken(AuthenticatedUserSnapshot user, java.util.List<String> permissions,
+                                       java.util.List<Long> opsSchools, java.util.List<String> opsScopes) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.role());
         claims.put("type", "access");
@@ -80,6 +86,7 @@ public class JwtService {
         claims.put("perms", permissions == null ? java.util.List.of() : permissions);
         claims.put("ver", 3);
         claims.put("ops_schools", opsSchools == null ? java.util.List.of() : opsSchools);
+        claims.put("ops_scopes", opsScopes == null ? java.util.List.of() : opsScopes);
         return token(user.email(), claims, expirationMs);
     }
 

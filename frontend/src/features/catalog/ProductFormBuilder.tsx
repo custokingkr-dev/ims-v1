@@ -67,7 +67,10 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
 
   const evaluation = useMemo(() => evaluateProductForm(definition.rules, input), [definition.rules, input]);
   const customized = input.orderSelections.CUSTOMIZATION === 'CUSTOMIZED';
+  // The tracker runs a notebook order's delivery, so a notebook form never asks the school for a before-delivery asset,
+  // whatever a draft saved before that change still carries in its snapshot (the server refuses the upload too).
   const assetRules = definition.rules.filter((r) => r.active !== false && r.ruleType === 'REQUIRE_ASSET'
+    && !(definition.category.code === 'NOTEBOOKS' && r.params.stage === 'BEFORE_DELIVERY')
     && input.lines.some((line) => matches(r.matchOptions, { ...line.selections, ...input.orderSelections })));
   // Every prototype also offers an optional upload, and bill books and fliers take several print
   // references. An offer is dropped when the same kind is already required, so a customised
@@ -204,7 +207,7 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
       }
       if (queued.length) { setFiles({}); setReferenceFiles([]); }
       if (place) { await api.post(`/catalog/orders/${detail.order.id}/place`); detail = await getFormOrder(detail.order.id); recordSaved(detail); }
-      setNotice(place ? customized ? 'Order placed. Design approval and pricing are pending.' : 'Order placed. Processing and pricing are pending; no design approval is required.' : `Draft ${detail.order.id} saved.`);
+      setNotice(place ? definition.category.code === 'NOTEBOOKS' ? 'Order placed. Our team will start work on it shortly.' : customized ? 'Order placed. Design approval and pricing are pending.' : 'Order placed. Processing and pricing are pending; no design approval is required.' : `Draft ${detail.order.id} saved.`);
       onSaved?.(detail, place);
     } catch (error) {
       setErrors({ ...fieldErrorsFrom(error), _api: errorMessage(error) });
@@ -274,7 +277,7 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
 
   const builderSelections = { ...context, ...input.orderSelections };
   return <div className="ck-product-form">
-    <div className="ck-product-section-head"><h2>{definition.category.label} order</h2><span className="ck-status sam">Pending pricing</span></div>
+    <div className="ck-product-section-head"><h2>{definition.category.label} order</h2>{definition.category.code !== 'NOTEBOOKS' && <span className="ck-status sam">Pending pricing</span>}</div>
     {notice && <div className="ck-alert ck-alert-g" role="status"><Check size={17} aria-hidden="true" />{notice}</div>}
     {!!Object.keys(errors).length && <div className="ck-alert ck-alert-re" role="alert"><div>{Object.entries(errors).map(([key, value]) => <div key={key}>{value}</div>)}</div></div>}
 

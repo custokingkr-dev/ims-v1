@@ -525,6 +525,7 @@
           "roles",
           "permissions",
           "operatorSchools",
+          "operatorScopes",
           "sessionId",
           "stepUpExpiresAt"
         ],
@@ -599,6 +600,13 @@
             "items": {
               "type": "integer",
               "format": "int64"
+            }
+          },
+          "operatorScopes": {
+            "type": "array",
+            "description": "Item-specific operator scopes as schoolId:CATEGORY; operatorSchools lists school-wide assignments only.",
+            "items": {
+              "type": "string"
             }
           },
           "sessionId": {

@@ -1,5 +1,5 @@
 import { catalogClient } from '../../services/catalogApi';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Check, RefreshCw, Save, Truck } from 'lucide-react';
 import api from '../../services/api';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -12,7 +12,13 @@ import { selectionCodes, selectionLabel, selectionSpec, type AssetKind, type For
 import { matches } from './productFormRules';
 import './product-form.css';
 
-export function ProductOrderDetail({ orderId, onBack, onChanged }: { orderId: string; onBack: () => void; onChanged?: () => void }) {
+/**
+ * `onTrackerManaged` is called whenever the loaded order says the notebook order tracker runs it, so a host that opened this
+ * screen from a stale list row (an order placed after the list loaded, or placed here) can open the tracker instead.
+ */
+export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManaged }: {
+  orderId: string; onBack: () => void; onChanged?: () => void; onTrackerManaged?: () => void;
+}) {
   const { can } = usePermissions();
   const { user } = useAuth();
   const superadmin = user?.role === 'SUPERADMIN';
@@ -24,6 +30,9 @@ export function ProductOrderDetail({ orderId, onBack, onChanged }: { orderId: st
   const [busy, setBusy] = useState(false);
   const [prices, setPrices] = useState<Record<number, string>>({});
   const [gst, setGst] = useState('0');
+  const reportTracker = useRef(onTrackerManaged);
+  reportTracker.current = onTrackerManaged;
+  useEffect(() => { if (detail?.order.trackerManaged === true) reportTracker.current?.(); }, [detail?.order.trackerManaged]);
   const load = async () => {
     const next = await getFormOrder(orderId); setDetail(next);
     setPrices(Object.fromEntries(next.lines.map((line) => [line.id, line.unitPricePaise === null ? '' : String(line.unitPricePaise / 100)])));
@@ -51,11 +60,17 @@ export function ProductOrderDetail({ orderId, onBack, onChanged }: { orderId: st
   const currentAssets = detail?.assets.filter((a) => !a.supersededAt) || [];
   const design = currentAssets.find((asset) => asset.assetKind === 'DESIGN');
   const designApproved = customization !== 'CUSTOMIZED' || (!!detail?.approvedDesignAssetId && detail.approvedDesignAssetId === design?.id);
-  const quoted = detail?.pricingStatus === 'QUOTED';
+  // A notebook order placed on the order tracker is run there: it is never quoted, design-approved or delivered from this
+  // screen. One placed before the tracker keeps this flow to the end (owner decision D1).
+  const onTracker = detail?.order.trackerManaged === true;
+  const quoted = !onTracker && detail?.pricingStatus === 'QUOTED';
   const final = ['APPROVED', 'CUSTOKING_APPROVED', 'DELIVERED', 'FULFILLED', 'CANCELLED'].includes(status);
-  const canQuote = superadmin && can('catalog:quote') && status !== 'DRAFT' && !final;
-  const waitingDesign = status === 'DESIGN_APPROVAL';
-  const readyForApproval = ['DESIGN_APPROVED_PROCESSING', 'PROCESSING', 'IN_PROGRESS', 'AWAITING_APPROVAL'].includes(status);
+  const canQuote = !onTracker && superadmin && can('catalog:quote') && status !== 'DRAFT' && !final;
+  const waitingDesign = !onTracker && status === 'DESIGN_APPROVAL';
+  const readyForApproval = !onTracker && ['DESIGN_APPROVED_PROCESSING', 'PROCESSING', 'IN_PROGRESS', 'AWAITING_APPROVAL'].includes(status);
+  // Spec v4: a notebook order on the tracker leaves the delivery flow (its delivery proof is tracker step 12), so the school is
+  // never asked for a pre-delivery photo. An order placed before the tracker keeps the requirement and its upload (D1).
+  const assetKinds: AssetKind[] = onTracker ? ['DESIGN'] : ['DESIGN', 'PRE_DELIVERY_PHOTO'];
   const missingDeliveryAsset = detail?.formDefinition.rules.some((rule) => rule.active !== false && rule.ruleType === 'REQUIRE_ASSET' && rule.params.stage === 'BEFORE_DELIVERY' && detail.lines.some((line) => matches(rule.matchOptions, { ...selectionCodes(line.optionSelections), ...selectionCodes(detail.orderSelections) })) && !currentAssets.some((asset) => asset.assetKind === rule.params.assetKind));
   const pricing = (paise: number) => `Rs. ${formatMoney(Number(paise || 0) / 100)}`;
   const paged = detail?.formDefinition.category.paged !== false;
@@ -66,9 +81,9 @@ export function ProductOrderDetail({ orderId, onBack, onChanged }: { orderId: st
     {error && <div className="ck-alert ck-alert-re" role="alert">{error}</div>}
     {notice && <div className="ck-alert ck-alert-g" role="status">{notice}</div>}
     {loading ? <p role="status">Loading order...</p> : detail && (status === 'DRAFT' ? <ProductFormBuilder key={`${orderId}-${detail.version}`} definition={detail.formDefinition} initialOrder={detail} onSaved={(next, placed) => { setDetail(next); onChanged?.(); if (placed) void load(); }} /> : <>
-      <div className="ck-product-section-head"><h2>{detail.formDefinition.category.label}</h2><span className={`ck-status ${quoted ? 'sg' : 'sam'}`}>{quoted ? 'Quoted' : 'Pending pricing'}</span></div>
+      <div className="ck-product-section-head"><h2>{detail.formDefinition.category.label}</h2>{!onTracker && <span className={`ck-status ${quoted ? 'sg' : 'sam'}`}>{quoted ? 'Quoted' : 'Pending pricing'}</span>}</div>
       <p>{selectionLabel(detail.orderSelections, 'CUSTOMIZATION')}{detail.order.requiredByDate ? ` | Required by ${detail.order.requiredByDate}` : ''}</p>
-      <p className="ck-product-muted">{customization !== 'CUSTOMIZED' ? 'No design approval required' : designApproved ? 'Design approval completed' : 'Design approval pending'}</p>
+      {!onTracker && <p className="ck-product-muted">{customization !== 'CUSTOMIZED' ? 'No design approval required' : designApproved ? 'Design approval completed' : 'Design approval pending'}</p>}
       <div className="ck-product-table-scroll"><table className="ck-product-order-lines"><thead><tr>
         {paged ? <><th scope="col">Size</th><th scope="col">Ruling</th></> : lineGroups.map((group) => <th scope="col" key={group.code}>{group.label}</th>)}
         <th scope="col">{paged ? 'Books' : 'Quantity'}</th>{paged && <th scope="col">Printed pages</th>}{(canQuote || quoted) && <><th scope="col">Unit price (Rs.)</th><th scope="col">Line total</th></>}</tr></thead><tbody>
@@ -82,12 +97,12 @@ export function ProductOrderDetail({ orderId, onBack, onChanged }: { orderId: st
           void mutate(() => api.put(`/supply/orders/${orderId}/quote`, { version: detail.version, lines: detail.lines.map((line) => ({ id: line.id, unitPricePaise: Math.round(Number(prices[line.id]) * 100) })), gstPaise: Math.round(Number(gst) * 100) }), 'Quote saved.');
         }}><Save size={16} />Save quote</button>}
       </div>}
-      <div className="ck-product-assets">{(['DESIGN', 'PRE_DELIVERY_PHOTO'] as AssetKind[]).filter((kind) => currentAssets.some((asset) => asset.assetKind === kind) || detail.formDefinition.rules.some((rule) => rule.active !== false && rule.ruleType === 'REQUIRE_ASSET' && rule.params.assetKind === kind && detail.lines.some((line) => matches(rule.matchOptions, { ...selectionCodes(line.optionSelections), ...selectionCodes(detail.orderSelections) })))).map((kind) => <OrderAssetField assetKind={kind} key={kind} label={kind === 'DESIGN' ? 'Design artwork' : 'Pre-delivery photo'} requirement={kind === 'DESIGN' ? 'Approved artwork stays with this order' : 'Required before delivery'} orderId={orderId} asset={currentAssets.find((asset) => asset.assetKind === kind)} disabled={busy} onFile={can('order:update') && !['DELIVERED', 'FULFILLED', 'CANCELLED'].includes(status) && (kind !== 'DESIGN' || waitingDesign) ? (file) => upload(kind, file) : undefined} />)}</div>
+      <div className="ck-product-assets">{assetKinds.filter((kind) => currentAssets.some((asset) => asset.assetKind === kind) || detail.formDefinition.rules.some((rule) => rule.active !== false && rule.ruleType === 'REQUIRE_ASSET' && rule.params.assetKind === kind && detail.lines.some((line) => matches(rule.matchOptions, { ...selectionCodes(line.optionSelections), ...selectionCodes(detail.orderSelections) })))).map((kind) => <OrderAssetField assetKind={kind} key={kind} label={kind === 'DESIGN' ? 'Design artwork' : 'Pre-delivery photo'} requirement={kind === 'DESIGN' ? 'Approved artwork stays with this order' : 'Required before delivery'} orderId={orderId} asset={currentAssets.find((asset) => asset.assetKind === kind)} disabled={busy} onFile={can('order:update') && !['DELIVERED', 'FULFILLED', 'CANCELLED'].includes(status) && (kind !== 'DESIGN' || waitingDesign) ? (file) => upload(kind, file) : undefined} />)}</div>
       {detail.order.notes && <p>{detail.order.notes}</p>}
       <div className="ck-product-actions">
         {canOperate && waitingDesign && can('order:update') && <button className="ck-btn ck-btn-ghost" disabled={busy || !design} onClick={() => void mutate(() => api.post(`/catalog/orders/${orderId}/design-approved`, { assetId: design?.id }), 'Design approved.')}><Check size={16} />Approve design</button>}
         {superadmin && can('order:approve') && readyForApproval && <><span className="ck-product-muted">{quoted ? 'Pricing complete' : 'Quote required before approval'}{customization === 'CUSTOMIZED' ? designApproved ? ' | Design approval completed' : ' | Design approval required' : ''}</span><button className="ck-btn ck-btn-g" disabled={busy || !quoted || !designApproved} onClick={() => void mutate(() => api.post(`/catalog/orders/${orderId}/superadmin-approve`), 'Order approved.')}><Check size={16} />Approve order</button></>}
-        {canOperate && (can('order:fulfill') || can('order:update')) && ['APPROVED', 'CUSTOKING_APPROVED'].includes(status) && <>{missingDeliveryAsset && <span className="ck-product-muted">Pre-delivery photo required</span>}<button className="ck-btn ck-btn-g" disabled={busy || missingDeliveryAsset} onClick={() => void mutate(() => catalogClient.markDelivered({ id: orderId }), 'Order marked delivered.')}><Truck size={16} />Mark delivered</button></>}
+        {!onTracker && canOperate && (can('order:fulfill') || can('order:update')) && ['APPROVED', 'CUSTOKING_APPROVED'].includes(status) && <>{missingDeliveryAsset && <span className="ck-product-muted">Pre-delivery photo required</span>}<button className="ck-btn ck-btn-g" disabled={busy || missingDeliveryAsset} onClick={() => void mutate(() => catalogClient.markDelivered({ id: orderId }), 'Order marked delivered.')}><Truck size={16} />Mark delivered</button></>}
       </div>
     </>)}
   </div></div>;

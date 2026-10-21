@@ -78,7 +78,7 @@ export type PanelKey =
   | 'home' | 'students' | 'fees' | 'feestructure' | 'attendance' | 'timetable'
   | 'addstudent' | 'bulkimport' | 'photoimport' | 'studentexport' | 'staff' | 'catalog' | 'orders' | 'planning' | 'classsetup'
   | 'ff-dashboard' | 'ff-new' | 'ff-approvals' | 'ff-orders'
-  | 'sa-all-orders' | 'sa-new-order' | 'sa-invoices'
+  | 'sa-all-orders' | 'sa-new-order' | 'sa-invoices' | 'nb-work' | 'sa-nb-admin'
   | 'sa-schools' | 'sa-erp' | 'sa-revenue' | 'sa-catalog'
   | 'za-overview' | 'za-schools';
 
@@ -150,6 +150,7 @@ export const OPERATIONS_NAV_SECTIONS: WorkspaceNavSection[] = [
     items: [
       { key: 'catalog', label: 'Supply Details', icon: '⊞', module: 'SUPPLY_OS' },
       { key: 'orders',  label: 'School Orders',  icon: '📦', module: 'SUPPLY_OS' },
+      { key: 'nb-work', label: 'Notebook orders', icon: '📓', module: 'SUPPLY_OS' },
       { key: 'ff-dashboard', label: 'Urgent Pipeline', icon: '📋', module: 'SUPPLY_OS' },
       { key: 'ff-new',       label: 'Urgent request',  icon: '➕', module: 'SUPPLY_OS' },
       { key: 'ff-orders',    label: 'Urgent orders',   icon: '📦', module: 'SUPPLY_OS' },
@@ -228,6 +229,8 @@ export const SUPERADMIN_NAV_SECTIONS: Array<{
       { key: 'studentexport', label: 'Student data export', icon: '' },
       { key: 'orders', label: 'Order approvals', icon: '📦' },
       { key: 'sa-all-orders', label: 'All orders', icon: '📋' },
+      { key: 'nb-work', label: 'Notebook orders', icon: '📓' },
+      { key: 'sa-nb-admin', label: 'Notebook set-up', icon: '⚙️' },
       { key: 'sa-new-order', label: 'New order request', icon: '✏️' },
       { key: 'sa-invoices', label: 'Invoices', icon: '🧾' },
     ],
@@ -277,6 +280,8 @@ export const PANEL_TITLES: Record<PanelKey, string> = {
   'ff-approvals': 'Urgent Procurement - Pending Approvals',
   'ff-orders': 'Urgent Procurement - Placed Orders',
   'sa-all-orders': 'All orders',
+  'nb-work': 'Notebook orders',
+  'sa-nb-admin': 'Notebook set-up',
   'sa-new-order': 'New order request',
   'sa-invoices': 'Invoices',
   'sa-schools': 'School accounts',

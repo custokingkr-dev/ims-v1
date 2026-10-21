@@ -111,6 +111,7 @@ jobs:
           scripts.tests.runtime_secret_matrix_test
           scripts.tests.migration_release_trigger_test
           scripts.tests.service_authorization_machine_proof_test
+          scripts.tests.tracker_status_codes_test
           scripts.tests.principal_carrier_release_order_test
           scripts.tests.direct_release_profile_test
           scripts.tests.full_release_routing_test

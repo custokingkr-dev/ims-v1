@@ -170,12 +170,13 @@ public class IdentityAuthService {
     }
 
     private LoginResult issueSession(AppUserEntity user, String familyId) {
-        AuthenticatedUserSnapshot snapshot = snapshot(user);
         // Derive the operator school set from the user's active OPERATIONS assignments, not the
         // display-only legacy `role` column. operatorSchoolIds returns [] for non-operators.
         List<Long> opsSchools = rbacRead.operatorSchoolIds(user.getId());
-        List<String> permissions = loginPermissions(user, opsSchools);
-        String accessToken = jwtService.generateAccessToken(snapshot, permissions, opsSchools);
+        List<String> opsScopes = rbacRead.operatorScopeKeys(user.getId());
+        AuthenticatedUserSnapshot snapshot = snapshot(user, dropsSchoolContext(user, opsSchools, opsScopes));
+        List<String> permissions = loginPermissions(user, opsSchools, opsScopes);
+        String accessToken = jwtService.generateAccessToken(snapshot, permissions, opsSchools, opsScopes);
         String refreshToken = jwtService.generateRefreshToken(snapshot);
         AuthSessionEntity session = new AuthSessionEntity();
         session.setId(UUID.randomUUID().toString());
@@ -196,7 +197,9 @@ public class IdentityAuthService {
         // Resolve current assignments on every introspection so removed school access cannot
         // survive until an enriched JWT expires.
         List<Long> operatorSchools = rbacRead.operatorSchoolIds(user.getId());
-        List<String> permissions = loginPermissions(user, operatorSchools);
+        List<String> operatorScopes = rbacRead.operatorScopeKeys(user.getId());
+        List<String> permissions = loginPermissions(user, operatorSchools, operatorScopes);
+        boolean noSchool = dropsSchoolContext(user, operatorSchools, operatorScopes);
         AuthSessionEntity session = sessions.findByAccessTokenHash(tokenDigest(accessToken)).orElse(null);
         OffsetDateTime stepUp = null;
         if (jdbc != null && session != null) {
@@ -213,20 +216,28 @@ public class IdentityAuthService {
                 user.getFullName(),
                 user.getEmail(),
                 user.getRole(),
-                user.getBranchId(),
-                user.getBranchName(),
+                noSchool ? null : user.getBranchId(),
+                noSchool ? null : user.getBranchName(),
                 user.getZoneId(),
                 user.getZoneName(),
                 roles,
                 permissions,
-                operatorSchools, session == null ? null : session.getId(), stepUp);
+                operatorSchools, operatorScopes, session == null ? null : session.getId(), stepUp);
     }
+
+    /**
+     * Everything an operator who holds item scopes is granted for them (owner decision D2): the notebook tracker and the
+     * catalogue order it works on, and nothing else at that school.
+     */
+    private static final List<String> ITEM_OPERATOR_PERMISSIONS =
+            List.of("workspace:access", "notebook-tracker:read", "notebook-tracker:act", "order:read", "order:update");
 
     /**
      * Resolves the permission codes granted to a user at login: effective permissions scoped to
      * the user's active school/zone (never a cross-school union — see RbacReadRepository#
-     * effectivePermissions), unioned with the OPERATIONS role's codes whenever the user has any
-     * active operator assignment.
+     * effectivePermissions, which ignores item-specific assignments), unioned with the OPERATIONS
+     * role's codes whenever the user has a school-wide operator assignment, and with the fixed
+     * {@link #ITEM_OPERATOR_PERMISSIONS} whenever they hold an item-specific one.
      *
      * <p>The operator union is a deliberate mitigation: {@code syncOperatorSchools} can move an
      * operator onto a school set that no longer includes their stale {@code app_users.branch_id}.
@@ -235,22 +246,35 @@ public class IdentityAuthService {
      * school-level scope is enforced separately via {@code ops_schools}, so unioning them in here
      * is safe and keeps operators from losing all access.
      */
-    private List<String> loginPermissions(AppUserEntity user, List<Long> operatorSchools) {
+    private List<String> loginPermissions(AppUserEntity user, List<Long> operatorSchools, List<String> operatorScopes) {
         var codes = new TreeSet<>(rbacRead.effectivePermissions(user.getId(), user.getBranchId(), user.getZoneId()));
         if (!operatorSchools.isEmpty()) {
             codes.addAll(rbacRead.permissionCodesForRole("OPERATIONS"));
         }
+        if (!operatorScopes.isEmpty()) {
+            codes.addAll(ITEM_OPERATOR_PERMISSIONS);
+        }
         return new ArrayList<>(codes);
     }
 
-    private AuthenticatedUserSnapshot snapshot(AppUserEntity user) {
+    /**
+     * True when the user's {@code branch_id} must not become their school context (introspection {@code branchId}, the
+     * JWT {@code sid}): they hold item scopes and the branch is not one of their school-wide operator schools. Row-level
+     * security admits every row of the request's school, so a branch kept here would open that whole school to an
+     * operator scoped to one catalogue item. Users without item scopes are deliberately unaffected.
+     */
+    private static boolean dropsSchoolContext(AppUserEntity user, List<Long> operatorSchools, List<String> operatorScopes) {
+        return !operatorScopes.isEmpty() && user.getBranchId() != null && !operatorSchools.contains(user.getBranchId());
+    }
+
+    private AuthenticatedUserSnapshot snapshot(AppUserEntity user, boolean noSchool) {
         return new AuthenticatedUserSnapshot(
                 user.getId(),
                 user.getFullName(),
                 user.getEmail(),
                 user.getRole(),
-                user.getBranchId(),
-                user.getBranchName(),
+                noSchool ? null : user.getBranchId(),
+                noSchool ? null : user.getBranchName(),
                 user.getZoneId(),
                 user.getZoneName());
     }
@@ -288,11 +312,22 @@ public class IdentityAuthService {
             String zoneName,
             List<String> roles,
             List<String> permissions,
-            List<Long> operatorSchools, String sessionId, OffsetDateTime stepUpExpiresAt) {
+            List<Long> operatorSchools, List<String> operatorScopes, String sessionId, OffsetDateTime stepUpExpiresAt) {
         public AuthResponse(String accessToken, Long userId, String fullName, String email, String role,
                 Long branchId, String branchName, Long zoneId, String zoneName,
                 List<String> roles, List<String> permissions, List<Long> operatorSchools) {
-            this(accessToken,userId,fullName,email,role,branchId,branchName,zoneId,zoneName,roles,permissions,operatorSchools,null,null);
+            this(accessToken,userId,fullName,email,role,branchId,branchName,zoneId,zoneName,roles,permissions,operatorSchools,List.of(),null,null);
+        }
+
+        public AuthResponse(String accessToken, Long userId, String fullName, String email, String role,
+                Long branchId, String branchName, Long zoneId, String zoneName,
+                List<String> roles, List<String> permissions, List<Long> operatorSchools,
+                String sessionId, OffsetDateTime stepUpExpiresAt) {
+            this(accessToken,userId,fullName,email,role,branchId,branchName,zoneId,zoneName,roles,permissions,operatorSchools,List.of(),sessionId,stepUpExpiresAt);
+        }
+
+        public AuthResponse {
+            operatorScopes = operatorScopes == null ? List.of() : List.copyOf(operatorScopes);
         }
     }
 

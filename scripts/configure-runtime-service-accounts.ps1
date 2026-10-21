@@ -132,7 +132,10 @@ $projectRoles = [ordered]@{
 # Caller -> private Cloud Run targets. Each binding is service-scoped.
 $invokerMatrix = [ordered]@{
   "identity-service" = @("school-core-service")
-  "operations-service" = @("school-core-service")
+  # Notebook tracker: tracker creation and draft access on operations, operator lookup on identity.
+  "school-core-service" = @("operations-service", "identity-service")
+  # Notebook tracker: operator eligibility on identity.
+  "operations-service" = @("school-core-service", "identity-service")
   "platform-service" = @("school-core-service", "operations-service")
   "api-gateway" = @(
     "identity-service",

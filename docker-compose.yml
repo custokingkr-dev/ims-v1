@@ -85,6 +85,8 @@ services:
       ATTENDANCE_READ_TOKEN: local-dev-attendance-token
       FEE_READ_TOKEN: local-dev-fee-token
       CATALOG_READ_TOKEN: local-dev-catalog-token
+      CATALOG_TRACKER_BASE_URL: http://operations-service:8080
+      CATALOG_OPERATOR_DIRECTORY_BASE_URL: http://identity-service:8080
     ports:
       - "8084:8080"
     depends_on:
@@ -118,6 +120,7 @@ services:
       OPERATIONS_TENANT_SCHOOL_BASE_URL: http://school-core-service:8080
       OPERATIONS_TENANT_SCHOOL_TOKEN: local-dev-tenant-school-token
       OPERATIONS_TENANT_SCHOOL_CLOUD_RUN_AUTH: never
+      OPERATIONS_IDENTITY_BASE_URL: http://identity-service:8080
       WORKFLOW_READ_TOKEN: local-dev-workflow-token
       FIREFIGHTING_READ_TOKEN: local-dev-firefighting-token
     ports:

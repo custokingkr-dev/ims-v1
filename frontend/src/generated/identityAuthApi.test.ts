@@ -17,6 +17,7 @@ const principal: AuthResponse = {
   roles: ['SCHOOL_ADMIN'],
   permissions: ['student:read'],
   operatorSchools: [],
+  operatorScopes: [],
 };
 
 describe('generated identity authentication client', () => {

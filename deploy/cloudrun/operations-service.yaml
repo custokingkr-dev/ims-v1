@@ -68,6 +68,8 @@ spec:
               value: https://custoking-operations-service-dev-1087017280590.asia-south2.run.app # from-param: ${service_oidc_audiences}
             - name: OUTBOX_RELAY_CALLER_SERVICE_ACCOUNTS
               value: ims-async-scheduler-dev@custoking-dev.iam.gserviceaccount.com # from-param: ${outbox_relay_caller_service_accounts}
+            - name: NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS
+              value: ims-school-core-dev@custoking-dev.iam.gserviceaccount.com # from-param: ims-school-core-${env}@${project_id}.iam.gserviceaccount.com
             - name: OPERATIONS_MERGED
               value: "true"
             - name: OPERATIONS_DB_SCHEMA
@@ -82,6 +84,12 @@ spec:
             - name: OPERATIONS_TENANT_SCHOOL_BASE_URL
               value: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${school_core_url}
             - name: OPERATIONS_TENANT_SCHOOL_CLOUD_RUN_AUTH
+              value: auto
+            # Notebook tracker: operator eligibility on identity's internal route (run.invoker granted by
+            # scripts/configure-runtime-service-accounts.ps1).
+            - name: OPERATIONS_IDENTITY_BASE_URL
+              value: https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${identity_url}
+            - name: OPERATIONS_IDENTITY_CLOUD_RUN_AUTH
               value: auto
             - name: GCP_PROJECT
               value: custoking # from-param: ${project_id}
