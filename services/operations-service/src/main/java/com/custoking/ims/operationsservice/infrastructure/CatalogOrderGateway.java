@@ -18,10 +18,14 @@ public interface CatalogOrderGateway {
     void pushStatus(String orderId, String status, long trackerVersion);
 
     /**
-     * The catalogue refuses every tracker status for this order because it is closed: school-core answers 409 for a
-     * cancelled (or draft) order. Retrying cannot change that, so the status is dropped rather than retried.
+     * The catalogue will never show a tracker status for this order: school-core answers 409 for a cancelled (or draft)
+     * order and 404 for one that no longer exists (a data cleanup deleted it, say). Retrying cannot change either, so the
+     * status is dropped rather than retried into a dead letter. {@link #httpStatus()} tells the two apart in the log.
      */
     class OrderClosedException extends IllegalStateException {
-        public OrderClosedException(String message, Throwable cause) { super(message, cause); }
+        private final int httpStatus;
+        public OrderClosedException(String message, Throwable cause) { this(message, 409, cause); }
+        public OrderClosedException(String message, int httpStatus, Throwable cause) { super(message, cause); this.httpStatus = httpStatus; }
+        public int httpStatus() { return httpStatus; }
     }
 }

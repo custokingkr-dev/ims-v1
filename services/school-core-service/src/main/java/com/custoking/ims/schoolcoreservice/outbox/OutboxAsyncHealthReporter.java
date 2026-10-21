@@ -65,7 +65,8 @@ public class OutboxAsyncHealthReporter {
                 .single();
         for (QueueBacklog backlog : backlogs) {
             // One queue that cannot be counted must not silence the outbox figures, which the alerts read every minute. Its
-            // own figures drop out of the totals, so the error-level alerting is told instead.
+            // own figures drop out of the totals until it recovers; an ERROR log with event=outbox_backlog_count_failed is the only
+            // sign (no alert reads it), so the deploy runbook gives the query to find it.
             try {
                 total = total.plus(backlog.backlog());
             } catch (RuntimeException ex) {

@@ -43,6 +43,7 @@ public class TrackerStatusOutbox implements QueueBacklog {
     private static final Logger LOG = LoggerFactory.getLogger(TrackerStatusOutbox.class);
     /** About two days of retries at the backoff (2, 4, 8, 16, 32 minutes, then hourly). */
     public static final int MAX_ATTEMPTS = 48;
+    static final String DROPPED_EVENT = "tracker_status_dropped";
     static final String DEAD_LETTERED_EVENT = "tracker_status_dead_lettered";
 
     private final JdbcClient jdbc;
@@ -181,7 +182,7 @@ public class TrackerStatusOutbox implements QueueBacklog {
         try {
             catalog.pushStatus(claim.orderId(), claim.status(), claim.trackerVersion());
         } catch (CatalogOrderGateway.OrderClosedException closed) {
-            return dropped(claim, closed.getMessage());
+            return dropped(claim, closed);
         } catch (RuntimeException failure) {
             // The client's failures carry fixed messages; anything else is recorded by type only.
             return failed(claim, failure instanceof IllegalStateException ? failure.getMessage() : failure.getClass().getSimpleName());
@@ -191,12 +192,13 @@ public class TrackerStatusOutbox implements QueueBacklog {
     }
 
     /**
-     * The catalogue will never show a status for this order (it is cancelled, say): the row is done rather than retried
-     * for two days into a dead letter. A newer status queued meanwhile is kept; it meets the same answer on its own turn.
+     * The catalogue will never show a status for this order (it is cancelled, or no longer exists): the row is done rather
+     * than retried for two days into a dead letter that would latch the alert. A newer status queued meanwhile is kept; it
+     * meets the same answer on its own turn.
      */
-    private boolean dropped(Claim claim, String reason) {
-        LOG.warn("Status {} of order {} dropped: the catalogue refuses it because the order is closed ({})",
-                claim.status(), claim.orderId(), reason);
+    private boolean dropped(Claim claim, CatalogOrderGateway.OrderClosedException closed) {
+        LOG.warn("Status {} of order {} dropped: the catalogue can never show it {} {} {} ({})", claim.status(), claim.orderId(),
+                kv("event", DROPPED_EVENT), kv("orderId", claim.orderId()), kv("httpStatus", closed.httpStatus()), closed.getMessage());
         deleteSent(claim);
         return false;
     }

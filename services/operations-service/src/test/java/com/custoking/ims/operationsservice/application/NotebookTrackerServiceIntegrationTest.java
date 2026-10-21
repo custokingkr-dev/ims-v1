@@ -117,6 +117,8 @@ class NotebookTrackerServiceIntegrationTest {
     };
     /** The catalogue answers that the order is closed (school-core's 409 for a cancelled order). */
     static volatile boolean catalogClosed = false;
+    /** The catalogue answers that the order does not exist (school-core's 404, e.g. after a data cleanup). */
+    static volatile boolean catalogGone = false;
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -158,6 +160,7 @@ class NotebookTrackerServiceIntegrationTest {
                 if (during != null) during.run();
                 if (catalogDown) throw new IllegalStateException("catalogue is down");
                 if (catalogClosed) throw new OrderClosedException("the order catalogue answered HTTP 409", null);
+                if (catalogGone) throw new OrderClosedException("the order catalogue answered HTTP 404", 404, null);
                 PUSHED.add(orderId + ":" + status);
                 PUSHED_VERSIONS.add(trackerVersion);
             }
@@ -187,6 +190,7 @@ class NotebookTrackerServiceIntegrationTest {
         ELIGIBLE_FOR_10.clear();
         catalogDown = false;
         catalogClosed = false;
+        catalogGone = false;
         STAFF.clear();
         directoryDown = false;
         NAME_CALLS.clear();
@@ -1521,6 +1525,27 @@ class NotebookTrackerServiceIntegrationTest {
         due(order);
         assertEquals(0, statuses.drain(10));
         assertTrue(queued(order).isEmpty());
+    }
+
+    /** School-core's 404 (the order was deleted) can never be delivered either: the row is dropped, with a structured log line, not dead-lettered. */
+    @Test
+    void aDeletedOrdersStatusIsDroppedNotDeadLettered() {
+        String order = create(false, 10L, OP_A);
+        catalogGone = true;
+        ListAppender<ILoggingEvent> logs = capture(TrackerStatusOutbox.class);
+        try {
+            as(() -> asOperator(OP_A, 10L), () -> service.completeStep(order, 1, step(service.view(order), 1).version()));
+        } finally {
+            release(TrackerStatusOutbox.class, logs);
+        }
+        assertTrue(queued(order).isEmpty(), "dropped, neither retried nor dead-lettered");
+        assertTrue(PUSHED.isEmpty());
+        List<ILoggingEvent> dropped = logs.list.stream().filter(event -> event.getLevel() == Level.WARN).toList();
+        assertEquals(1, dropped.size(), logs.list.toString());
+        JsonNode logged = json(dropped.get(0));
+        assertEquals("tracker_status_dropped", logged.path("event").asString());
+        assertEquals(order, logged.path("orderId").asString());
+        assertEquals(404, logged.path("httpStatus").asInt());
     }
 
     @Test

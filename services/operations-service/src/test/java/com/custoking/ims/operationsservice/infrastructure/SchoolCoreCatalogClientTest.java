@@ -85,11 +85,20 @@ class SchoolCoreCatalogClientTest {
         var closed = clientFor(409, "{\"message\":\"A cancelled order has no tracker status\"}");
         var refused = assertThrows(CatalogOrderGateway.OrderClosedException.class, () -> closed.pushStatus("CK-1", "PRINTING_PRESS", 7));
         assertEquals("the order catalogue answered HTTP 409", refused.getMessage());
-        for (int status : new int[]{400, 403, 404, 500, 503}) {
+        for (int status : new int[]{400, 403, 500, 503}) {
             stop();
             var client = clientFor(status, "{}");
             var failure = assertThrows(IllegalStateException.class, () -> client.pushStatus("CK-1", "PRINTING_PRESS", 7));
             assertFalse(failure instanceof CatalogOrderGateway.OrderClosedException, "status " + status);
         }
+    }
+
+    /** School-core's 404 "Order not found" (the order was deleted) is as undeliverable as a 409, and is told apart by its status. */
+    @Test
+    void aMissingOrderIsDroppedLikeAClosedOne() throws Exception {
+        var missing = clientFor(404, "{\"message\":\"Order not found\"}");
+        var refused = assertThrows(CatalogOrderGateway.OrderClosedException.class, () -> missing.pushStatus("CK-1", "PRINTING_PRESS", 7));
+        assertEquals("the order catalogue answered HTTP 404", refused.getMessage());
+        assertEquals(404, refused.httpStatus());
     }
 }
