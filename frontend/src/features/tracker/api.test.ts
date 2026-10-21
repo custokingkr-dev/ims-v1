@@ -48,10 +48,11 @@ describe('tracker wire contract', () => {
     expect(api.post).toHaveBeenLastCalledWith('/workflows/notebook-orders/CK-1/follow-ups', { percentComplete: 40, nextFollowUpOn: null, contactPhone: null });
   });
 
-  it('asks for the worklist with only the filters given, and treats a non-list as empty', async () => {
+  it('asks for the worklist with only the filters given, and refuses a non-list as not understood', async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { not: 'a list' } });
-    expect(await trackerApi.worklist({ scope: 'mine' })).toEqual([]);
+    await expect(trackerApi.worklist({ scope: 'mine' })).rejects.toThrow('The response was not understood.');
     expect(api.get).toHaveBeenLastCalledWith('/workflows/notebook-orders', { params: { scope: 'mine', schoolId: undefined, includeFinished: undefined, limit: undefined } });
+    vi.mocked(api.get).mockResolvedValue({ data: [] });
     await trackerApi.worklist({ scope: 'all', schoolId: 4, includeFinished: true });
     expect(api.get).toHaveBeenLastCalledWith('/workflows/notebook-orders', { params: { scope: 'all', schoolId: 4, includeFinished: true, limit: undefined } });
   });
@@ -77,8 +78,13 @@ describe('tracker wire contract', () => {
     vi.mocked(api.get).mockResolvedValue({ data: [{ id: 1, assetKind: 'DESIGN_DRAFT' }, { id: 2, assetKind: 'DESIGN_DRAFT', supersededAt: 'x' }, { id: 3, assetKind: 'DESIGN' }] });
     expect((await trackerApi.draftImages('CK 1')).map((d) => d.id)).toEqual([1]);
     expect(api.get).toHaveBeenLastCalledWith('/catalog/orders/CK%201/assets');
+    vi.mocked(api.get).mockResolvedValue({ data: { lines: [] } });
     await trackerApi.summary('CK-1');
     expect(api.get).toHaveBeenLastCalledWith('/catalog/orders/CK-1/tracker-summary');
+    vi.mocked(api.get).mockResolvedValue({ data: {} });
+    await expect(trackerApi.summary('CK-1')).rejects.toThrow('The response was not understood.');
+    vi.mocked(api.get).mockResolvedValue({ data: {} });
+    await expect(trackerApi.draftImages('CK-1')).rejects.toThrow('The response was not understood.');
     await trackerApi.startTracker('CK-1');
     expect(api.post).toHaveBeenLastCalledWith('/catalog/orders/CK-1/tracker/ensure');
     const file = new File(['x'], 'v1.png', { type: 'image/png' });
@@ -111,12 +117,12 @@ describe('tracker wire contract', () => {
     expect(api.get).toHaveBeenLastCalledWith('/rbac/operators', { params: { schoolId: undefined, catalogCategory: undefined } });
   });
 
-  it('lists schools for the superadmin pickers and tolerates a malformed answer', async () => {
+  it('lists schools for the superadmin pickers and refuses a malformed answer', async () => {
     vi.mocked(api.get).mockResolvedValue({ data: [{ id: 4, name: 'S' }] });
     expect(await trackerApi.schools()).toEqual([{ id: 4, name: 'S' }]);
     expect(api.get).toHaveBeenLastCalledWith('/sa/schools');
     vi.mocked(api.get).mockResolvedValue({ data: 'nope' });
-    expect(await trackerApi.schools()).toEqual([]);
+    await expect(trackerApi.schools()).rejects.toThrow('The response was not understood.');
   });
 
   it('offers only active catalogue items as operator scopes, and refuses an unreadable catalogue', async () => {
@@ -128,12 +134,12 @@ describe('tracker wire contract', () => {
     await expect(trackerApi.categories()).rejects.toThrow();
   });
 
-  it('lists operators for the picker and tolerates a malformed directory', async () => {
+  it('lists operators for the picker and refuses a malformed directory', async () => {
     vi.mocked(api.get).mockResolvedValue({ data: [{ id: 5, fullName: 'Op', email: 'o@x.test' }, { id: 0 }] });
     expect(await trackerApi.operatorUsers()).toEqual([{ userId: 5, fullName: 'Op', email: 'o@x.test' }]);
     expect(api.get).toHaveBeenLastCalledWith('/users', { params: { role: 'OPERATIONS', branchId: undefined, zoneId: undefined, active: true, limit: 500 } });
     vi.mocked(api.get).mockResolvedValue({ data: 'nope' });
-    expect(await trackerApi.operatorUsers()).toEqual([]);
+    await expect(trackerApi.operatorUsers()).rejects.toThrow('The response was not understood.');
   });
 
   it('normalises missing parts of a tracker and refuses a response that is not one', async () => {

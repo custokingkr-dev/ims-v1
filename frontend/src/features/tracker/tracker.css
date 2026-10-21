@@ -1,4 +1,4 @@
-.ck-trk { min-width: 0; color: var(--ink); font-size: var(--ck-text-base); display: grid; gap: var(--ck-space-4); }
+.ck-trk { min-width: 0; color: var(--ink); font-size: var(--ck-text-base); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ck-space-4); }
 .ck-trk h2, .ck-trk h3, .ck-trk h4 { margin: 0; font-family: var(--ck-font-body); letter-spacing: 0; }
 .ck-trk h2 { font-size: var(--ck-text-lg); }
 .ck-trk h3 { font-size: var(--ck-text-base); margin-bottom: var(--ck-space-3); }
@@ -75,10 +75,13 @@
 
 .ck-trk-work-list { display: grid; gap: var(--ck-space-4); }
 /* Set-up sections (an assignments list, then each form) stand apart; inside one, fields and buttons keep their own spacing. */
-.ck-trk-setup { display: grid; gap: var(--ck-space-6); }
+.ck-trk-setup { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ck-space-6); }
 .ck-trk-setup > * { min-width: 0; }
 
 @media (max-width: 900px) {
   .ck-trk-grid { grid-template-columns: minmax(0, 1fr); }
   .ck-trk .ck-product-fields, .ck-trk-facts, .ck-trk-cards { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* The screen-reader-only "Actions" header is absolutely positioned: without a positioned wrapper it escapes the scroll box and widens the page. */
+.ck-trk .ck-table-wrap { position: relative; }

@@ -37,6 +37,19 @@ export function parseTracker(data: unknown): TrackerView {
   };
 }
 
+/** A list response must be an array; anything else is a response the screen does not understand, never an empty list or a crash. */
+export const NOT_UNDERSTOOD = 'The response was not understood.';
+export function parseList<T>(value: unknown): T[] {
+  if (!Array.isArray(value)) throw new Error(NOT_UNDERSTOOD);
+  return value as T[];
+}
+
+/** An order summary is read for its lines, so a summary without a list of lines is a bad response. */
+export function parseSummary(value: unknown): OrderSummary {
+  if (!isRecord(value) || !Array.isArray(value.lines)) throw new Error(NOT_UNDERSTOOD);
+  return value as unknown as OrderSummary;
+}
+
 const view = async (request: Promise<unknown>) => parseTracker(await request);
 
 export const TRACKER_UNAVAILABLE = 'The notebook order tracker is not available right now. Try again in a moment.';
@@ -75,15 +88,14 @@ export const trackerApi = {
   addInternalNote: (orderId: string, body: string) => view(client.addNotebookInternalNote({ orderId }, { body })),
 
   worklist: async (params: { scope: 'mine' | 'all'; schoolId?: number; includeFinished?: boolean }): Promise<WorklistItem[]> => {
-    const rows = await client.listNotebookOrders(params);
-    return Array.isArray(rows) ? rows : [];
+    return parseList<WorklistItem>(await client.listNotebookOrders(params));
   },
-  designers: (): Promise<DesignerRow[]> => client.listNotebookDesigners(),
+  designers: async (): Promise<DesignerRow[]> => parseList<DesignerRow>(await client.listNotebookDesigners()),
   createDesigner: (name: string, phone: string): Promise<DesignerRow> => client.createNotebookDesigner({ name, phone, active: null }),
   // The server wants the whole designer back: name and phone are required on every update.
   updateDesigner: (id: number, body: { name: string; phone: string; active: boolean }): Promise<DesignerRow> =>
     client.updateNotebookDesigner({ id }, body),
-  timeSlots: (schoolId: number): Promise<SlaRow[]> => client.listNotebookTimeSlots({ schoolId }),
+  timeSlots: async (schoolId: number): Promise<SlaRow[]> => parseList<SlaRow>(await client.listNotebookTimeSlots({ schoolId })),
   setTimeSlot: (schoolId: number, step: number, value: number, unit: string) =>
     client.setNotebookTimeSlot({ schoolId, step }, { value, unit: unit as 'HOURS' | 'WORKING_DAYS' }),
   clearTimeSlot: (schoolId: number, step: number) => client.clearNotebookTimeSlot({ schoolId, step }),
@@ -91,19 +103,19 @@ export const trackerApi = {
   // Design drafts live with the order in school-core; the tracker only decides who may change them.
   draftImages: async (orderId: string): Promise<DraftImage[]> => {
     const assets = await catalog.listOrderAssets({ id: orderId });
-    return (Array.isArray(assets) ? assets : []).filter((a) => a.assetKind === 'DESIGN_DRAFT' && !a.supersededAt);
+    return parseList<Awaited<ReturnType<typeof catalog.listOrderAssets>>[number]>(assets).filter((a) => a.assetKind === 'DESIGN_DRAFT' && !a.supersededAt);
   },
   uploadDraft: async (orderId: string, file: File) => { await catalog.uploadOrderAsset({ id: orderId }, { assetKind: 'DESIGN_DRAFT', file }); },
   deleteDraft: (orderId: string, assetId: number) => catalog.deleteOrderAsset({ id: orderId, assetId }),
   draftBlob: (orderId: string, assetId: number) => catalog.getOrderAssetContent({ id: orderId, assetId }),
 
   // The order itself lives in school-core: its summary, and starting a tracker whose creation failed at placement.
-  summary: (orderId: string): Promise<OrderSummary> => catalog.getNotebookTrackerSummary({ id: orderId }),
+  summary: async (orderId: string): Promise<OrderSummary> => parseSummary(await catalog.getNotebookTrackerSummary({ id: orderId })),
   startTracker: (orderId: string) => catalog.ensureNotebookTracker({ id: orderId }),
 
   operatorUsers: async (): Promise<OperatorUser[]> => {
     const users = await operatorAdmin.listUsers({ role: 'OPERATIONS', active: true, limit: 500 });
-    return (Array.isArray(users) ? users : []).filter((u) => u.id > 0).map((u) => ({ userId: u.id, fullName: u.fullName ?? '', email: u.email ?? '' }));
+    return parseList<Awaited<ReturnType<typeof operatorAdmin.listUsers>>[number]>(users).filter((u) => u.id > 0).map((u) => ({ userId: u.id, fullName: u.fullName ?? '', email: u.email ?? '' }));
   },
   // An operator may only be scoped to an item the catalogue has, so the choices come from the catalogue itself.
   categories: async (): Promise<Array<{ code: string; label: string }>> =>
@@ -112,9 +124,8 @@ export const trackerApi = {
   revokeAssignment: (userId: number, assignmentId: number) => operatorAdmin.revokeRoleAssignment({ userId, assignmentId }),
   createScopedOperator: (schoolId: number, body: { fullName: string; email: string; temporaryPassword: string }, catalogCategory: string) =>
     operatorAdmin.provisionSchoolUser({ schoolId, role: 'OPERATIONS' }, { ...body, catalogCategory }),
-  operators: (): Promise<OperatorRow[]> => operatorAdmin.listOperators(),
+  operators: async (): Promise<OperatorRow[]> => parseList<OperatorRow>(await operatorAdmin.listOperators()),
   schools: async (): Promise<Array<{ id: number; name: string }>> => {
-    const rows = await tenant.listSuperadminSchools();
-    return Array.isArray(rows) ? rows : [];
+    return parseList<Awaited<ReturnType<typeof tenant.listSuperadminSchools>>[number]>(await tenant.listSuperadminSchools());
   },
 };

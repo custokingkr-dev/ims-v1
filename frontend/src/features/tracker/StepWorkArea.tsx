@@ -140,11 +140,11 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
       )}
       {step.step === 1 && summaryError && <p className="ck-product-error" role="alert">{summaryError}</p>}
       {step.step === 1 && summary && (
-        <table className="ck-table" aria-label="Order lines"><thead><tr><th>Line</th><th>Size</th><th>Ruling</th><th className="ck-num">Books</th><th className="ck-num">Printed pages</th></tr></thead>
+        <div className="ck-table-wrap"><table className="ck-table" aria-label="Order lines"><thead><tr><th>Line</th><th>Size</th><th>Ruling</th><th className="ck-num">Books</th><th className="ck-num">Printed pages</th></tr></thead>
           <tbody>{summary.lines.map((line) => (
             <tr key={line.lineNo}><td>{line.lineNo}</td><td>{selectionLabel(line.selections, 'SIZE') || '—'}</td><td>{selectionLabel(line.selections, 'RULING') || '—'}</td>
               <td className="ck-num">{line.bookCount.toLocaleString('en-IN')}</td><td className="ck-num">{line.pageCount.toLocaleString('en-IN')}</td></tr>
-          ))}</tbody></table>
+          ))}</tbody></table></div>
       )}
 
       {step.step === 2 && design && (
