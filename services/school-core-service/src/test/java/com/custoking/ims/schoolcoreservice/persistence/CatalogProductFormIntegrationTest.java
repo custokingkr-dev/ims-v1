@@ -127,8 +127,9 @@ class CatalogProductFormIntegrationTest {
         // The upload itself stays, as the optional sample design.
         assertTrue(rules.stream().anyMatch(r -> "OFFER_ASSET".equals(r.get("ruleType"))
                 && "DESIGN".equals(map(r.get("params")).get("assetKind"))));
-        // The pre-delivery photo belongs to a later stage and is untouched.
-        assertTrue(rules.stream().anyMatch(r -> "REQUIRE_ASSET".equals(r.get("ruleType"))
+        // The pre-delivery photo was untouched by that decision; the notebook order tracker retired it
+        // later (V29), because the tracker records delivery itself.
+        assertTrue(rules.stream().noneMatch(r -> "REQUIRE_ASSET".equals(r.get("ruleType"))
                 && "PRE_DELIVERY_PHOTO".equals(map(r.get("params")).get("assetKind"))));
 
         // Which categories collect a note is asserted by the later decision's own test; here it is
@@ -249,7 +250,7 @@ class CatalogProductFormIntegrationTest {
     }
 
     @Test
-    void seedContainsAllConfirmedOptionsAndFourRules() {
+    void seedContainsAllConfirmedOptionsAndThreeRules() {
         var definition = repository.form("NOTEBOOKS", false);
         // Trophies extend the fourteen existing categories without changing notebook options.
         assertEquals(15, repository.categories(false).size());
@@ -260,9 +261,10 @@ class CatalogProductFormIntegrationTest {
         // King and Drawing book: both are listed with no agreed size in the prototype.
         assertEquals(2, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
         assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "FA_A4".equals(o.get("code"))).count());
-        // Three ordering rules, the pre-delivery photo, and the optional sample design. Artwork no
-        // longer blocks placement, so there is no REQUIRE_ASSET for the design.
-        assertEquals(4, maps(definition.get("rules")).size());
+        // The per-line book floor, page rounding and the optional sample design. Artwork no longer
+        // blocks placement, so there is no REQUIRE_ASSET for the design, and the notebook order
+        // tracker retired the pre-delivery photo (V29).
+        assertEquals(3, maps(definition.get("rules")).size());
         assertTrue(maps(definition.get("dependencies")).isEmpty());
     }
 

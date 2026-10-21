@@ -23,7 +23,7 @@ The tracker's service-to-service calls use internal routes guarded by Cloud Run 
   (`${identity_url}`), operations `OPERATIONS_IDENTITY_BASE_URL` (`${identity_url}`), each with `*_CLOUD_RUN_AUTH: auto`.
   `deploy/clouddeploy/targets-*.yaml` are unchanged. Because `deploy/cloudrun/*` changed, the dev release goes
   through Cloud Deploy rather than the fast direct path.
-- Migrations: identity `V11`–`V12`, operations `workflow/V8`–`V11`, school-core `catalog/V27`–`V28`. Each Java
+- Migrations: identity `V11`–`V12`, operations `workflow/V8`–`V11`, school-core `catalog/V27`–`V29`. Each Java
   service finishes its isolated migration job before its release is created ([release operator](release-operator.md)).
 - Ship identity, school-core and operations from one commit: school-core now requires the `trackerVersion` that
   operations sends. While the services roll out one after another, a placement can hit an operations revision that

@@ -225,6 +225,50 @@ class CatalogOrderFormIntegrationTest {
         assertThat(managed(plain.id())).isFalse();
     }
 
+    /**
+     * Spec v4: the school is no longer asked for a pre-delivery photo, so V29 retires the notebook rule (deactivated, not
+     * deleted). An order drafted before then carries the rule in its own form snapshot, and delivering it still needs the
+     * photo (D1): the delivery check reads the snapshot, not the live rule.
+     */
+    @Test
+    void theNotebookDeliveryPhotoRuleIsRetiredButAnOrderPlacedBeforeTheTrackerStillNeedsThePhoto() {
+        java.util.function.Predicate<Map<String, Object>> deliveryPhoto = rule -> "REQUIRE_ASSET".equals(rule.get("ruleType"))
+                && "PRE_DELIVERY_PHOTO".equals(asMap(rule.get("params")).get("assetKind"))
+                && "BEFORE_DELIVERY".equals(asMap(rule.get("params")).get("stage"));
+        assertThat(rulesOf(tx(() -> products.form("NOTEBOOKS", false)))).as("the NOTEBOOKS form definition").noneMatch(deliveryPhoto);
+        var retired = rulesOf(tx(() -> products.form("NOTEBOOKS", true))).stream().filter(deliveryPhoto).toList();
+        assertThat(retired).as("kept, inactive").singleElement().satisfies(rule -> assertThat(rule.get("active")).isEqualTo(false));
+        var drafted = create(true, 400, 600);
+        assertThat(rulesOf(tx(() -> forms.detail(drafted.id())).get("formDefinition"))).as("a new draft's snapshot").noneMatch(deliveryPhoto);
+
+        // An order drafted before V29: its snapshot holds the rule as it was then, active.
+        var legacy = create(true, 400, 600);
+        Map<String, Object> asItWas = new LinkedHashMap<>(retired.getFirst());
+        asItWas.put("active", true);
+        jdbc.sql("UPDATE catalog.catalog_orders SET form_snapshot = jsonb_set(form_snapshot, '{rules}', (form_snapshot -> 'rules') || jsonb_build_array(CAST(:rule AS jsonb))) WHERE id = :id")
+                .param("id", legacy.id()).param("rule", Json.write(asItWas)).update();
+        upload(legacy.id(), "DESIGN", 1);
+        placeBeforeTheTracker(legacy.id(), true);
+        superadmin();
+        tx(() -> orders.markDesignApproved(legacy.id()));
+        tx(() -> { forms.quote(legacy.id(), quote(legacy.id(), 120, 0)); return null; });
+        assertThat(tx(() -> orders.approveBySuperadmin(legacy.id())).status()).isEqualTo("APPROVED");
+        assertThatThrownBy(() -> tx(() -> orders.markDelivered(legacy.id(), 99L))).isInstanceOf(ProductFormValidationException.class)
+                .hasMessage("Upload a pre-delivery photo before marking this order delivered");
+        upload(legacy.id(), "PRE_DELIVERY_PHOTO", 3);
+        assertThat(tx(() -> orders.markDelivered(legacy.id(), 99L)).status()).isEqualTo("DELIVERED");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> rulesOf(Object definition) {
+        return (List<Map<String, Object>>) asMap(definition).get("rules");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> asMap(Object value) {
+        return value instanceof Map<?, ?> ? (Map<String, Object>) value : Json.readMap(String.valueOf(value));
+    }
+
     @Test
     void aDraftSavedBeforeTheTrackerIsPlacedOntoTheTracker() {
         var created = create(true, 400, 600);

@@ -117,12 +117,15 @@ public class CatalogReadRepository {
         TenantContext ctx = TenantContext.get();
         if (ctx.isOperations() && !ctx.scopedSchools().isEmpty()) {
             // An operator scoped to a catalogue item reads exactly that item at its school: row-level security admits the
-            // school, and the item is checked here once the order is read. School-wide operators are unaffected.
+            // school, and the item is checked here once the order is read. Owner decision D2: through an item scope alone,
+            // only the item's orders on the tracker; an order placed before it, or not placed yet, is not found. School-wide
+            // operators are unaffected.
             java.util.Set<Long> admitted = new java.util.LinkedHashSet<>(ctx.operatorSchools());
             admitted.addAll(ctx.scopedSchools());
             jdbc.sql("SELECT set_config('app.operator_schools', :csv, true)")
                     .param("csv", String.join(",", admitted.stream().map(String::valueOf).toList())).query(String.class).single();
-            return orderQuery(id).filter(row -> ctx.operatesItem(row.schoolId(), row.category()));
+            return orderQuery(id).filter(row -> ctx.operatesItem(row.schoolId(), row.category())
+                    && (ctx.operatorSchools().contains(row.schoolId()) || Boolean.TRUE.equals(row.trackerManaged())));
         }
         allowCrossSchoolReadForOperations();
         return orderQuery(id);
@@ -662,8 +665,15 @@ public class CatalogReadRepository {
                 .optional();
     }
 
+    /**
+     * The order a write here acts on, or has just written. An operator writes only at a school they are assigned
+     * school-wide: an item scope admits a school to row-level security for that item's tracker orders alone (owner
+     * decision D2), so through one, an order on the older, unstructured form is not found.
+     */
     private CatalogOrderRow requiredOrder(String id) {
-        return orderQuery(id).orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        TenantContext ctx = TenantContext.get();
+        return orderQuery(id).filter(row -> !ctx.isOperations() || ctx.operatorSchools().contains(row.schoolId()))
+                .orElseThrow(() -> new IllegalArgumentException("Order not found"));
     }
 
     /**

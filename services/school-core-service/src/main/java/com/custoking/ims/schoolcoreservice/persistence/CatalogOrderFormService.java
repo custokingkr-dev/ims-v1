@@ -392,6 +392,8 @@ public class CatalogOrderFormService {
         if (!draft) refuseItemOnlyOperator(order);
         requireV2(order);
         if (!Set.of("DESIGN", "PRE_DELIVERY_PHOTO", "PRINT_REFERENCE", DesignDraftRules.KIND).contains(kind)) throw bad("Select a valid attachment kind");
+        // Spec v4: the tracker records delivery itself; an order placed before the tracker still takes its photo (D1).
+        if ("PRE_DELIVERY_PHOTO".equals(kind) && trackerManaged(order)) throw bad("Notebook orders on the tracker record delivery in the tracker");
         if (draft) requireDraftEligible(order);
         requireAssetEditable(order, kind);
         var validated = storage.validate(bytes, filename, kind, maxUploadBytes(string(order.get("category")), kind));
@@ -707,8 +709,23 @@ public class CatalogOrderFormService {
                 .param("id", id).query().listOfRows().stream().findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
         long schoolId = number(order.get("school_id"));
         TenantScope.requireCatalogOrderReadScope(schoolId, string(order.get("category")));
+        hideOffTrackerOrderFromItemOnlyOperator(order);
         requireModule(schoolId);
         return order;
+    }
+
+    /**
+     * Owner decision D2: an operator who reaches the order's school only through an item scope works that item's orders in
+     * the tracker and nothing else. An order placed before the tracker (D1), or one not placed yet, never reaches the tracker,
+     * so for them it does not exist: "not found", like an order out of scope, because order ids are sequential and a refusal
+     * would confirm one. Every user's read and write of an order here starts with {@link #load}, so this one check covers
+     * them all; the tracker's own machine calls do not come through here.
+     */
+    private static void hideOffTrackerOrderFromItemOnlyOperator(Map<String, Object> order) {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isOperations() && !ctx.operatorSchools().contains(number(order.get("school_id"))) && !trackerManaged(order)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
+        }
     }
 
     private void requireModule(Long schoolId) {
@@ -788,9 +805,10 @@ public class CatalogOrderFormService {
 
     /**
      * Owner decision D2: an operator who reaches this order's school only through an item scope (no school-wide assignment
-     * there) works the order in the notebook order tracker and nothing else. What the tracker needs stays open to them:
-     * reading the order, its form and attachments, the tracker summary, starting a pending tracker, and design drafts on a
-     * tracker order (which the tracker itself gates). Every other write, the old order flow's, is refused here.
+     * there) works the order in the notebook order tracker and nothing else. What the tracker needs stays open to them on a
+     * tracker order: reading the order, its form and attachments, the tracker summary, starting a pending tracker, and design
+     * drafts (which the tracker itself gates). Every other write, the old order flow's, is refused here. Any other order is
+     * not found for them at all ({@link #hideOffTrackerOrderFromItemOnlyOperator}).
      */
     private static void refuseItemOnlyOperator(Map<String, Object> order) {
         TenantContext ctx = TenantContext.get();

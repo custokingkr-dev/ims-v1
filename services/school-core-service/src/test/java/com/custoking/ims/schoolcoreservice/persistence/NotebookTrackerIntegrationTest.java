@@ -630,6 +630,8 @@ class NotebookTrackerIntegrationTest {
         var notebookAtOne = placedNotebook(true);
         school(2);
         var notebookAtTwo = tx(() -> orders.createOrder(Map.of("schoolId", 2, "category", "NOTEBOOKS", "orderData", data(true, 400, 600)))).id();
+        // Placed, so it is on the tracker: an item-only operator finds nothing off it (H1), which is not what this checks.
+        tx(() -> orders.placeOrder(notebookAtTwo, 7L));
         var trophyData = Map.of("orderSelections", Map.of(), "lines", List.of(
                 Map.of("selections", Map.of("VARIANT", "T_WM001_B"), "bookCount", 3, "pageCount", 99)));
         school(1);
@@ -807,6 +809,7 @@ class NotebookTrackerIntegrationTest {
      * Owner decision D2: an operator who reaches a school only through an item scope may work that item's orders in the
      * tracker and nothing else, so every write of the old order flow is refused: editing a draft order, the school's
      * artwork, print references and delivery photo, and design approval or delivery of an order placed before the tracker.
+     * An order that is not on the tracker is not found at all, as for its reads; one on the tracker is refused outright.
      */
     @Test
     void anItemOnlyOperatorCannotUseTheOldOrderFlow() {
@@ -826,13 +829,17 @@ class NotebookTrackerIntegrationTest {
                 () -> tx(() -> { forms.updateDraft(draftOrder, Map.of("version", draftVersion, "orderData", data(true, 500, 500))); return null; }),
                 () -> upload(legacy, "DESIGN", 21),
                 () -> upload(legacy, "PRINT_REFERENCE", 22),
-                () -> upload(tracked, "PRINT_REFERENCE", 23),
-                () -> upload(tracked, "PRE_DELIVERY_PHOTO", 24),
                 () -> tx(() -> { forms.removeAsset(legacy, reference); return null; }),
                 () -> tx(() -> { forms.removeAsset(legacy, artwork); return null; }),
                 () -> tx(() -> orders.markDesignApproved(legacy)),
                 () -> tx(() -> orders.updateOrderStatus(legacy, "DESIGN_APPROVED_PROCESSING")),
                 () -> tx(() -> orders.markDelivered(legacyApproved, 9L)))) {
+            assertThatThrownBy(write::run).isInstanceOfSatisfying(ResponseStatusException.class,
+                    ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        }
+        for (Runnable write : List.<Runnable>of(
+                () -> upload(tracked, "PRINT_REFERENCE", 23),
+                () -> upload(tracked, "PRE_DELIVERY_PHOTO", 24))) {
             assertThatThrownBy(write::run).isInstanceOfSatisfying(ResponseStatusException.class,
                     ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
         }
@@ -843,23 +850,30 @@ class NotebookTrackerIntegrationTest {
         assertThat(currentAssetIds(tracked)).isEmpty();
     }
 
-    /** ...and keeps exactly the tracker's paths: reading the order, its summary, starting its tracker and its design drafts. */
+    /**
+     * ...and keeps exactly the tracker's paths: reading a tracker order, its attachments and summary, starting its tracker
+     * and its design drafts. An order placed before the tracker is not one of them.
+     */
     @Test
     void anItemOnlyOperatorKeepsTheTrackerPathsAndOtherOperatorsKeepTheirs() {
         var tracked = placedNotebook(true);
         var legacy = placedBeforeTheTracker(true);
         school(1);
         long artwork = id(upload(legacy, "DESIGN", 11));
+        long trackedArtwork = id(upload(tracked, "DESIGN", 12));
 
         operator(9L, Set.of(), Set.of("1:NOTEBOOKS"));
         assertThat(tx(() -> forms.detail(tracked))).containsEntry("formVersion", 2);
-        assertThat(tx(() -> forms.detail(legacy))).containsEntry("formVersion", 2);
-        assertThat(tx(() -> forms.content(legacy, artwork)).bytes()).as("the school's own artwork is part of reading the order").isNotEmpty();
+        assertThat(tx(() -> forms.content(tracked, trackedArtwork)).bytes()).as("the school's own artwork is part of reading the order").isNotEmpty();
+        assertThatThrownBy(() -> tx(() -> forms.detail(legacy))).as("an order placed before the tracker is not found")
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        assertThatThrownBy(() -> tx(() -> forms.content(legacy, artwork))).as("nor is its artwork")
+                .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
         assertThat(tx(() -> forms.trackerSummary(tracked))).containsEntry("orderId", tracked);
         tx(() -> { forms.ensureTracker(tracked); return null; });
         assertThat(tx(() -> forms.trackerPending(tracked))).isFalse();
         long drafted = id(draft(tracked, 5));
-        assertThat(tx(() -> forms.assets(tracked))).extracting(a -> a.get("assetKind")).containsExactly("DESIGN_DRAFT");
+        assertThat(tx(() -> forms.assets(tracked))).extracting(a -> a.get("assetKind")).containsExactly("DESIGN", "DESIGN_DRAFT");
         assertThat(tx(() -> forms.content(tracked, drafted)).bytes()).isNotEmpty();
         tx(() -> { forms.removeAsset(tracked, drafted); return null; });
         assertThat(currentDrafts(tracked)).isZero();
@@ -869,6 +883,101 @@ class NotebookTrackerIntegrationTest {
         operator(8L, Set.of(1L), Set.of());
         upload(legacy, "PRINT_REFERENCE", 31);
         assertThat(tx(() -> orders.markDesignApproved(legacy)).status()).isEqualTo("DESIGN_APPROVED_PROCESSING");
+    }
+
+    /**
+     * D2 re-review: an item-only operator works the item's orders in the tracker, and an order placed before the tracker (D1)
+     * or a notebook order not yet placed never reaches it. Order ids are sequential, so every read path answers "not found"
+     * for those orders rather than letting the ids be walked for lines, notes, artwork and the school's contact details.
+     */
+    @Test
+    void anItemOnlyOperatorFindsNoOrderThatIsNotOnTheTracker() {
+        var tracked = placedNotebook(true);
+        var legacy = placedBeforeTheTracker(true);
+        var draftOrder = notebook(true);
+        school(1);
+        long legacyArtwork = id(upload(legacy, "DESIGN", 11));
+        long draftArtwork = id(upload(draftOrder, "DESIGN", 12));
+
+        operator(9L, Set.of(), Set.of("1:NOTEBOOKS"));
+        for (var offTracker : Map.of(legacy, legacyArtwork, draftOrder, draftArtwork).entrySet()) {
+            String order = offTracker.getKey();
+            long asset = offTracker.getValue();
+            Map<String, Runnable> reads = new java.util.LinkedHashMap<>();
+            reads.put("GET /form", () -> tx(() -> forms.detail(order)));
+            reads.put("current assets", () -> tx(() -> forms.assets(order)));
+            reads.put("GET /assets", () -> tx(() -> forms.assetHistory(order)));
+            reads.put("GET /assets/{id}/content", () -> tx(() -> forms.content(order, asset)));
+            reads.put("GET /tracker-summary", () -> tx(() -> forms.trackerSummary(order)));
+            reads.put("tracker pending", () -> tx(() -> forms.trackerPending(order)));
+            reads.put("POST /tracker/ensure", () -> tx(() -> { forms.ensureTracker(order); return null; }));
+            reads.forEach((path, read) -> assertThatThrownBy(read::run).as(order + " " + path)
+                    .isInstanceOfSatisfying(ResponseStatusException.class, ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND)));
+            assertThat(tx(() -> orders.order(order))).as(order + " GET /orders/{id} and the order half of /form").isEmpty();
+        }
+        assertThat(tx(() -> orders.order(tracked))).as("a tracker order stays readable").isPresent();
+        assertThat(queued(legacy) + queued(draftOrder)).isZero();
+
+        // Everyone else reads an order placed before the tracker as before.
+        operator(8L, Set.of(1L), Set.of());
+        assertThat(tx(() -> forms.detail(legacy))).as("school-wide operator").containsEntry("formVersion", 2);
+        assertThat(tx(() -> orders.order(legacy))).isPresent();
+        assertThat(tx(() -> forms.content(legacy, legacyArtwork)).bytes()).isNotEmpty();
+        assertThat(tx(() -> forms.trackerSummary(legacy))).containsEntry("orderId", legacy);
+        operator(8L, Set.of(1L), Set.of("2:NOTEBOOKS"));
+        assertThat(tx(() -> orders.order(legacy))).as("school-wide here, item-scoped elsewhere").isPresent();
+        superadmin();
+        assertThat(tx(() -> forms.detail(legacy))).as("superadmin").containsEntry("formVersion", 2);
+        assertThat(tx(() -> orders.order(legacy))).isPresent();
+        school(1);
+        assertThat(tx(() -> forms.detail(legacy))).as("the school's admin").containsEntry("formVersion", 2);
+        assertThat(tx(() -> orders.order(draftOrder))).isPresent();
+        assertThat(tx(() -> forms.content(draftOrder, draftArtwork)).bytes()).isNotEmpty();
+    }
+
+    /** Spec v4: a tracker order records delivery in the tracker, so the school's old delivery photo is refused there only. */
+    @Test
+    void aTrackerOrderTakesNoDeliveryPhotoWhileAnOrderPlacedBeforeTheTrackerStillDoes() {
+        var tracked = placedNotebook(true);
+        var legacy = placedBeforeTheTracker(true);
+        for (Runnable caller : List.<Runnable>of(() -> school(1), NotebookTrackerIntegrationTest::superadmin, () -> operator(8L, Set.of(1L), Set.of()))) {
+            caller.run();
+            assertThatThrownBy(() -> upload(tracked, "PRE_DELIVERY_PHOTO", 5)).isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+                assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                assertThat(ex.getReason()).isEqualTo("Notebook orders on the tracker record delivery in the tracker");
+            });
+        }
+        assertThat(currentAssetIds(tracked)).isEmpty();
+        school(1);
+        assertThat(upload(legacy, "PRE_DELIVERY_PHOTO", 6)).containsEntry("assetKind", "PRE_DELIVERY_PHOTO");
+    }
+
+    /**
+     * D2 for an operator who is school-wide at one school and item-scoped at another: the module guard admits them, and the
+     * item scope widens row-level security to the second school, so the old flow's writes on an order in the older,
+     * unstructured form there (any category) must find nothing. Their own school is unaffected.
+     */
+    @Test
+    void anOperatorScopedToAnItemAtASchoolCannotMoveThatSchoolsUnstructuredOrders() {
+        for (String[] order : new String[][]{{"CK-V1-DESIGN", "DESIGN_APPROVAL", "PENDING", "NOT_SUBMITTED"}, {"CK-V1-DRAFT", "DRAFT", "NOT_REQUIRED", "NOT_SUBMITTED"}}) {
+            jdbc.sql("""
+                    INSERT INTO catalog.catalog_orders (id, school_id, category, order_data, subtotal, gst, total_amount, status,
+                        design_status, superadmin_approval_status, created_at, form_version)
+                    VALUES (:id, 1, 'UNIFORMS', '{}', 0, 0, 0, :status, :design, :approval, now(), 1)
+                    """).param("id", order[0]).param("status", order[1]).param("design", order[2]).param("approval", order[3]).update();
+        }
+
+        operator(9L, Set.of(2L), Set.of("1:NOTEBOOKS"));
+        for (Runnable write : List.<Runnable>of(
+                () -> tx(() -> orders.markDesignApproved("CK-V1-DESIGN")),
+                () -> tx(() -> orders.placeOrder("CK-V1-DRAFT", 9L)))) {
+            assertThatThrownBy(write::run).isInstanceOf(IllegalArgumentException.class).hasMessage("Order not found");
+        }
+        assertThat(status("CK-V1-DESIGN")).isEqualTo("DESIGN_APPROVAL");
+        assertThat(status("CK-V1-DRAFT")).isEqualTo("DRAFT");
+
+        operator(8L, Set.of(1L), Set.of());
+        assertThat(tx(() -> orders.markDesignApproved("CK-V1-DESIGN")).status()).as("a school-wide operator there").isEqualTo("DESIGN_APPROVED_PROCESSING");
     }
 
     // ---- helpers ---------------------------------------------------------------------------------------------------------------
