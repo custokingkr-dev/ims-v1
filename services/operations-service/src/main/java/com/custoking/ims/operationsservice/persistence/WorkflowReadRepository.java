@@ -60,8 +60,15 @@ public class WorkflowReadRepository {
                 .list();
     }
 
+    /**
+     * The generic reads never find a notebook order tracker, for any caller: its progress, people and notes belong to the
+     * tracker API, which admits only superadmin and the order's operators (spec v4 acceptance criterion 1). School admins
+     * hold {@code workflow:read} for their school's ordinary workflows, so excluding trackers here is what keeps them out.
+     */
+    private static final String NOT_A_TRACKER = " AND UPPER(entity_type) <> '" + NOTEBOOK_TRACKER_ENTITY + "'";
+
     public List<WorkflowInstanceRow> instances(Long schoolId, String status, String entityType, int limit) {
-        StringBuilder sql = new StringBuilder(instanceSelect()).append(" WHERE 1=1");
+        StringBuilder sql = new StringBuilder(instanceSelect()).append(" WHERE 1=1").append(NOT_A_TRACKER);
         if (schoolId != null) sql.append(" AND school_id = :schoolId");
         if (status != null && !status.isBlank()) sql.append(" AND status = :status");
         if (entityType != null && !entityType.isBlank()) sql.append(" AND entity_type = :entityType");
@@ -78,20 +85,23 @@ public class WorkflowReadRepository {
         return instances(schoolId, "PENDING", null, limit);
     }
 
+    /** Empty for a notebook order tracker, as for an id that does not exist. */
     public Optional<WorkflowInstanceRow> instance(Long id) {
-        return jdbc.sql(instanceSelect() + " WHERE id = :id")
+        return jdbc.sql(instanceSelect() + " WHERE id = :id" + NOT_A_TRACKER)
                 .param("id", id)
                 .query(WorkflowInstanceRow.class)
                 .optional();
     }
 
+    /** Empty for a notebook order tracker, as for an id that does not exist. */
     public List<WorkflowActionRow> actions(Long instanceId) {
         return jdbc.sql("""
                 SELECT id, instance_id, step_order, action, actor_id, actor_email, notes, acted_at
                 FROM %s
                 WHERE instance_id = :instanceId
+                  AND NOT EXISTS (SELECT 1 FROM %s i WHERE i.id = :instanceId AND UPPER(i.entity_type) = '%s')
                 ORDER BY acted_at ASC, id ASC
-                """.formatted(actionsTable)).param("instanceId", instanceId)
+                """.formatted(actionsTable, instancesTable, NOTEBOOK_TRACKER_ENTITY)).param("instanceId", instanceId)
                 .query(WorkflowActionRow.class)
                 .list();
     }

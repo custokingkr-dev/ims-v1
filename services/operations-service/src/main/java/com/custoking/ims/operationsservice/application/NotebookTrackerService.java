@@ -240,8 +240,11 @@ public class NotebookTrackerService {
         });
     }
 
-    /** Superadmin sign-off for the quality gate (step 8) and the executive consignment sign-off (step 12). */
-    public TrackerView signOff(String orderId, int stepNumber) {
+    /**
+     * Superadmin sign-off for the quality gate (step 8) and the executive consignment sign-off (step 12). It approves the
+     * data superadmin saw, so it carries the step version their screen loaded: anything saved since is a conflict.
+     */
+    public TrackerView signOff(String orderId, int stepNumber, long expectedVersion) {
         return mutate(orderId, (actor, t, progress, rows) -> {
             TrackerStep step = stepOnPath(progress, stepNumber);
             if (step != TrackerStep.PRE_PRINT_QUALITY_GATE && step != TrackerStep.DELIVERY_INVOICING) {
@@ -249,7 +252,8 @@ public class NotebookTrackerService {
             }
             requireSuperadmin(actor, "Only superadmin can sign off");
             requireEditable(progress.canEditDetails(actor.role(), step), progress, step, actor);
-            repo.mergeStepData(t.instanceId(), step.number(), Map.of(StepData.SIGN_OFF_KEY, StepData.signOff(actor.userId(), now().toInstant())), actor.userId());
+            requireSaved(repo.mergeStepData(t.instanceId(), step.number(),
+                    Map.of(StepData.SIGN_OFF_KEY, StepData.signOff(actor.userId(), now().toInstant())), actor.userId(), expectedVersion));
             repo.recordAction(t.instanceId(), t.schoolId(), step.number(), "STEP_SIGNED_OFF", null);
         });
     }

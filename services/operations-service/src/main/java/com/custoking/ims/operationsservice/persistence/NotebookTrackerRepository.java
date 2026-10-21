@@ -288,11 +288,12 @@ public class NotebookTrackerRepository {
                 .param("version", expectedVersion).update();
     }
 
-    /** Server-side change to a step's saved data (sign-off); it does not require the client's version. */
-    public void mergeStepData(long instanceId, int stepOrder, Map<String, Object> additions, long userId) {
-        jdbc.sql("UPDATE " + instanceSteps + " SET data = data || CAST(:data AS jsonb), data_saved_at = now(), data_saved_by = :user, version = version + 1 "
-                        + "WHERE instance_id = :id AND step_order = :step")
-                .param("id", instanceId).param("step", stepOrder).param("data", writeJson(additions)).param("user", userId).update();
+    /** Adds keys to a step's saved data (a sign-off) only while the step is at the version the caller loaded; 0 rows if not. */
+    public int mergeStepData(long instanceId, int stepOrder, Map<String, Object> additions, long userId, long expectedVersion) {
+        return jdbc.sql("UPDATE " + instanceSteps + " SET data = data || CAST(:data AS jsonb), data_saved_at = now(), data_saved_by = :user, version = version + 1 "
+                        + "WHERE instance_id = :id AND step_order = :step AND version = :version")
+                .param("id", instanceId).param("step", stepOrder).param("data", writeJson(additions)).param("user", userId)
+                .param("version", expectedVersion).update();
     }
 
     /** Removes the sign-off from this step and every later one; the rest of their saved data is kept. */

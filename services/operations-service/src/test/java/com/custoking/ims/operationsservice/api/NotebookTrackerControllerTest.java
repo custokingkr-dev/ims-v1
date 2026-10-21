@@ -88,4 +88,16 @@ class NotebookTrackerControllerTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("expectedVersion is required"));
         verifyNoInteractions(service);
     }
+
+    /** A sign-off approves the data superadmin's screen loaded, so it carries that step version like a save does. */
+    @Test void aSignOffCarriesTheStepVersionItApproves() throws Exception {
+        mvc.perform(post("/api/v1/workflows/notebook-orders/CK-1/steps/8/sign-off")
+                .header("X-Workflow-Service-Token", "workflow-token").contentType("application/json").content("{}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("expectedVersion is required"));
+        verifyNoInteractions(service);
+        mvc.perform(post("/api/v1/workflows/notebook-orders/CK-1/steps/8/sign-off")
+                .header("X-Workflow-Service-Token", "workflow-token").contentType("application/json").content("{\"expectedVersion\":4}"))
+                .andExpect(status().isOk());
+        org.mockito.Mockito.verify(service).signOff("CK-1", 8, 4L);
+    }
 }

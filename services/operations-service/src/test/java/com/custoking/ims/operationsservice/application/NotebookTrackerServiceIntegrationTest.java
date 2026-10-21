@@ -213,7 +213,7 @@ class NotebookTrackerServiceIntegrationTest {
             switch (n) {
                 case 2 -> service.sendDesign(order);
                 case 3 -> service.approveDesign(order, 501, "Looks good");
-                case 8, 12 -> service.signOff(order, n);
+                case 8, 12 -> service.signOff(order, n, step(service.view(order), n).version());
                 case 11 -> {
                     TrackerView.Step s = step(service.view(order), 11);
                     service.saveDraft(order, 11, Map.of("producedCount", 1000, "acceptedCount", 1000, "dispatchCount", 1000), s.version());
@@ -622,12 +622,12 @@ class NotebookTrackerServiceIntegrationTest {
         TrackerView atEight = service.view(order);
         assertEquals(8, atEight.progress().currentStep());
         assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 8, step(atEight, 8).version())));
-        assertEquals(403, http(() -> service.signOff(order, 8)).status());
+        assertEquals(403, http(() -> service.signOff(order, 8, step(atEight, 8).version())).status());
 
         asSuper();
-        TrackerView signed = service.signOff(order, 8);
+        TrackerView signed = service.signOff(order, 8, step(atEight, 8).version());
         assertNotNull(step(signed, 8).data().get("signOff"));
-        assertEquals(400, http(() -> service.signOff(order, 7)).status(), "only steps 8 and 12 have a sign-off");
+        assertEquals(400, http(() -> service.signOff(order, 7, step(signed, 7).version())).status(), "only steps 8 and 12 have a sign-off");
         TrackerView passed = service.completeStep(order, 8, step(signed, 8).version());
         assertEquals(9, passed.progress().currentStep());
 
@@ -638,7 +638,7 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals(12, atTwelve.progress().currentStep());
         assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 12, step(atTwelve, 12).version())));
         asSuper();
-        TrackerView signed12 = service.signOff(order, 12);
+        TrackerView signed12 = service.signOff(order, 12, step(atTwelve, 12).version());
         TrackerView finished = service.completeStep(order, 12, step(signed12, 12).version());
         assertTrue(finished.progress().finished());
         assertEquals("COMPLETED", finished.instanceStatus());
@@ -652,7 +652,7 @@ class NotebookTrackerServiceIntegrationTest {
         asSuper();
         TrackerView drafted = service.saveDraft(order, 8, Map.of("sampleLink", "https://example.test/sample", "checks", List.of(0, 2)),
                 step(service.view(order), 8).version());
-        TrackerView signed = service.signOff(order, 8);
+        TrackerView signed = service.signOff(order, 8, step(drafted, 8).version());
 
         // The form sends every value again; the same values, in any order and as whole numbers of any width, are not a change.
         TrackerView same = service.saveDraft(order, 8, Map.of("checks", List.of(2L, 0L), "sampleLink", " https://example.test/sample "),
@@ -664,7 +664,7 @@ class NotebookTrackerServiceIntegrationTest {
                 step(same, 8).version());
         assertNull(step(changed, 8).data().get("signOff"), "changed data needs a new sign-off");
         assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 8, step(changed, 8).version())));
-        TrackerView resigned = service.signOff(order, 8);
+        TrackerView resigned = service.signOff(order, 8, step(changed, 8).version());
         assertEquals(9, service.completeStep(order, 8, step(resigned, 8).version()).progress().currentStep());
     }
 
@@ -683,7 +683,7 @@ class NotebookTrackerServiceIntegrationTest {
                 "a step reverted by the reopen is signed off again");
 
         // Reopening a signed step itself takes its own sign-off back too.
-        TrackerView signed = service.signOff(order, 8);
+        TrackerView signed = service.signOff(order, 8, step(atEight, 8).version());
         service.completeStep(order, 8, step(signed, 8).version());
         TrackerView eightReopened = service.reopenStep(order, 8);
         assertEquals("ACTIVE", step(eightReopened, 8).status());
@@ -1289,5 +1289,58 @@ class NotebookTrackerServiceIntegrationTest {
         assertThrows(IllegalArgumentException.class, () -> generic.createOrGetInstance(
                 Map.of("entityType", "NOTEBOOK_ORDER", "entityId", "ORD-X", "schoolId", 10L, "definitionId", "NOTEBOOK_ORDER_TRACKER")));
         assertEquals("IN_PROGRESS", service.view(order).instanceStatus(), "the tracker is untouched");
+    }
+
+    /**
+     * Product spec acceptance criterion 1: school admins do not see the tracker. They genuinely hold {@code workflow:read}
+     * for their school's ordinary workflows, so the generic reads must not find a tracker, its history or its notes either.
+     */
+    @Test
+    void theGenericWorkflowReadsNeverFindATracker() {
+        String order = "ORD-GEN-" + ORDERS.incrementAndGet();
+        asNobody();
+        long trackerId = service.create(new CreateTracker(order, 10, true, 1000,
+                OffsetDateTime.parse("2026-10-19T09:30:00+05:30"), "Asia/Kolkata", 77L, OP_A)).instanceId();
+        as(() -> asOperator(OP_A, 10L), () -> service.addInternalNote(order, "Vendor called back"));
+        // An ordinary supply-order workflow at the same school, which the school admin does see.
+        long ordinary = owner.sql("INSERT INTO workflow.workflow_instances (definition_id, entity_type, entity_id, school_id, status) "
+                        + "VALUES ('SUPPLY_ORDER_DEFAULT', 'SUPPLY_ORDER', :entity, 10, 'PENDING') RETURNING id")
+                .param("entity", "SO-" + order).query(Long.class).single();
+        owner.sql("INSERT INTO workflow.workflow_actions (instance_id, step_order, action, school_id) VALUES (:id, 0, 'SUBMIT', 10)")
+                .param("id", ordinary).update();
+        assertTrue(owner.sql("SELECT count(*) FROM workflow.workflow_actions WHERE instance_id = :id").param("id", trackerId)
+                .query(Long.class).single() > 0, "the tracker has a history to hide");
+        WorkflowReadRepository generic = new WorkflowReadRepository(JdbcClient.create(dataSource), "workflow");
+
+        Runnable schoolAdmin = () -> TenantContext.set(new TenantContext(5L, "admin@x", "ADMIN", 10L, null, SCHOOL_ADMIN_WORKFLOW));
+        Runnable superadmin = NotebookTrackerServiceIntegrationTest::asSuper;
+        for (Runnable login : List.of(schoolAdmin, superadmin)) {
+            List<Long> listed = as(login, () -> generic.instances(10L, null, null, 500)).stream()
+                    .map(WorkflowReadRepository.WorkflowInstanceRow::id).toList();
+            assertTrue(listed.contains(ordinary), "the school's ordinary workflows are still listed");
+            assertFalse(listed.contains(trackerId), "but never a tracker");
+            assertTrue(as(login, () -> generic.instances(10L, null, "NOTEBOOK_ORDER", 500)).isEmpty(), "not even when asked for by type");
+            assertTrue(as(login, () -> generic.instance(trackerId)).isEmpty(), "a tracker is not found by id");
+            assertTrue(as(login, () -> generic.instance(ordinary)).isPresent());
+            assertTrue(as(login, () -> generic.actions(trackerId)).isEmpty(), "nor is its history");
+            assertFalse(as(login, () -> generic.actions(ordinary)).isEmpty());
+        }
+    }
+
+    /** A sign-off approves the data superadmin saw (spec §3.4): data saved after their screen loaded is refused, like a stale draft save. */
+    @Test
+    void aSignOffIsRefusedWhenTheStepChangedSinceItWasLoaded() {
+        String order = create(false, 10L, OP_A);
+        advance(order, 7);
+        long loaded = step(as(() -> asSuper(), () -> service.view(order)), 8).version();
+        as(() -> asOperator(OP_A, 10L), () -> service.saveDraft(order, 8, Map.of("sampleLink", "https://example.test/late"), loaded));
+
+        asSuper();
+        assertEquals(409, http(() -> service.signOff(order, 8, loaded)).status());
+        assertNull(step(service.view(order), 8).data().get("signOff"), "nothing was signed off");
+
+        TrackerView signed = service.signOff(order, 8, step(service.view(order), 8).version());
+        assertNotNull(step(signed, 8).data().get("signOff"));
+        assertEquals("https://example.test/late", step(signed, 8).data().get("sampleLink"), "the data seen is the data signed");
     }
 }

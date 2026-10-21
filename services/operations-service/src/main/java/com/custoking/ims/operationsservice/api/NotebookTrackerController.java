@@ -112,11 +112,12 @@ public class NotebookTrackerController {
         return tracker.reopenStep(orderId, step);
     }
 
+    /** The body carries the step version superadmin's screen loaded: a sign-off approves the data seen, nothing saved since. */
     @PostMapping("/{orderId}/steps/{step}/sign-off")
     public TrackerView signOff(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
-                               @PathVariable String orderId, @PathVariable int step) {
+                               @PathVariable String orderId, @PathVariable int step, @RequestBody VersionRequest request) {
         requireToken(token, "workflow:write");
-        return tracker.signOff(orderId, step);
+        return tracker.signOff(orderId, step, version(request.expectedVersion()));
     }
 
     @PutMapping("/{orderId}/steps/{step}/assignee")
