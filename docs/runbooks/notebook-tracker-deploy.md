@@ -2,7 +2,8 @@
 
 Scope: `custoking-dev`, Cloud Run in `asia-south2`. Every cloud command passes `--project=custoking-dev`; the
 operator's default project may be production. Production is out of scope: `catalog_product_form_enabled` stays
-`"false"` there, so no prod order reaches the tracker.
+`"false"` there, so no prod order reaches the tracker. Before that flag is ever flipped in production, prod needs the
+same three invoker bindings, applied with the production flags (see [Production](#production)).
 
 The tracker's service-to-service calls use internal routes guarded by Cloud Run IAM plus each service's
 `MachineCallerFilter` allow-list ([review-fix design §3.1](../superpowers/specs/2026-10-20-notebook-tracker-review-fixes-design.md)):
@@ -28,7 +29,29 @@ The tracker's service-to-service calls use internal routes guarded by Cloud Run 
   operations sends. While the services roll out one after another, a placement can hit an operations revision that
   does not have the internal route yet; that order stays "tracker pending" and the creation queue retries it.
 
-Nothing in CI grants the invoker roles. Apply them separately, before or right after the release.
+Nothing in CI grants the invoker roles. Apply them separately, **before** the release (below): from the moment the new
+revisions serve, every placement calls operations and identity, and without the bindings Cloud Run refuses those calls.
+
+## Before the release: check the relay schedulers
+
+Tracker creation (school-core) and status delivery (operations) are retried only by the existing relay trigger, which
+Cloud Scheduler calls every minute. Confirm both jobs exist and are enabled (read-only):
+
+```powershell
+gcloud scheduler jobs list --project custoking-dev --location asia-south1
+```
+
+The list must show `ims-school-core-service-async-relay-dev` and `ims-operations-service-async-relay-dev`, each on
+`* * * * *` and `ENABLED` (verified for dev on 2026-10-21). If either is missing or paused, recreate it with
+`scripts/configure-async-relay-scheduler.ps1`, limited to those two services: dry run first, then apply.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& .\scripts\configure-async-relay-scheduler.ps1 -ProjectId custoking-dev -Environment dev -Service school-core-service,operations-service"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& .\scripts\configure-async-relay-scheduler.ps1 -ProjectId custoking-dev -Environment dev -Service school-core-service,operations-service -Apply"
+```
+
+Once the release serves, a 2xx relay response also carries the tracker's drain counts: `trackersCreated` from
+school-core and `trackerStatusesDelivered` from operations.
 
 ## Grant the invoker roles
 
@@ -97,6 +120,10 @@ same deterministic `https://custoking-<service>-dev-<project number>.<region>.ru
 ## Post-deploy probe
 
 If dev sign-in fails, the dev database may have been stopped by the cost controller; probe while it is running.
+
+Users who were signed in before the release must sign out and back in, or reload the page, before "Notebook orders"
+appears: the permissions their browser holds were issued before identity `V12` added the tracker's permission codes.
+This only affects what the menu shows; every server check reads the current permissions.
 Use a synthetic order at a test school whose notebook ordering uses the structured form (the `NOTEBOOKS` category
 needs `form_enabled`; see [catalog order forms](../product/catalog-order-forms-expansion.md)).
 
@@ -128,6 +155,24 @@ The probe passes only when all three hold. Record the order ID and the timestamp
   the grants first, then the callee's `*_CALLER_SERVICE_ACCOUNTS` value.
 - **A 404 on an internal route:** the callee revision predates this release; it resolves once every service has
   rolled out.
+- **A tracker exists but nobody is assigned:** its creation could not reach identity to find the school's operator, so
+  it was created unassigned rather than held back. It stays that way; superadmin opens the order and uses
+  "Assign order" in the tracker's side panel.
+
+## Production
+
+Production is not part of this rollout. Before `catalog_product_form_enabled` is set to `"true"` in `custoking-prod`,
+apply the same three invoker bindings there with the script's production flags, after the dry run shows an empty
+`preflight`:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-runtime-service-accounts.ps1 -ProjectId custoking-prod -Environment prod
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\configure-runtime-service-accounts.ps1 -ProjectId custoking-prod -Environment prod -Apply -AllowProduction -RuntimeDatabaseRolesPrepared
+```
+
+Pass `-RuntimeDatabaseRolesPrepared` only once the five services' runtime database roles and secrets are prepared and
+verified in prod; the script refuses `-Apply` in prod without it. Check the prod relay schedulers the same way as above,
+with `custoking-prod` and the `-prod` job names (the scheduler script needs `-Environment prod -AllowProduction`).
 
 ## Rollback
 
