@@ -801,7 +801,86 @@ class NotebookTrackerIntegrationTest {
         assertThat(blank.get("schoolContactPhone")).isNull();
     }
 
+    // ---- an item-scoped operator works the tracker only (owner decision D2) ----------------------------------------------------
+
+    /**
+     * Owner decision D2: an operator who reaches a school only through an item scope may work that item's orders in the
+     * tracker and nothing else, so every write of the old order flow is refused: editing a draft order, the school's
+     * artwork, print references and delivery photo, and design approval or delivery of an order placed before the tracker.
+     */
+    @Test
+    void anItemOnlyOperatorCannotUseTheOldOrderFlow() {
+        var tracked = placedNotebook(true);
+        var legacy = placedBeforeTheTracker(true);
+        var legacyApproved = placedBeforeTheTracker(false);
+        jdbc.sql("UPDATE catalog.catalog_orders SET status = 'APPROVED', superadmin_approval_status = 'APPROVED' WHERE id = :id")
+                .param("id", legacyApproved).update();
+        var draftOrder = notebook(true);
+        school(1);
+        long artwork = id(upload(legacy, "DESIGN", 11));
+        long reference = id(upload(legacy, "PRINT_REFERENCE", 12));
+        long draftVersion = orderVersion(draftOrder);
+
+        operator(9L, Set.of(), Set.of("1:NOTEBOOKS"));
+        for (Runnable write : List.<Runnable>of(
+                () -> tx(() -> { forms.updateDraft(draftOrder, Map.of("version", draftVersion, "orderData", data(true, 500, 500))); return null; }),
+                () -> upload(legacy, "DESIGN", 21),
+                () -> upload(legacy, "PRINT_REFERENCE", 22),
+                () -> upload(tracked, "PRINT_REFERENCE", 23),
+                () -> upload(tracked, "PRE_DELIVERY_PHOTO", 24),
+                () -> tx(() -> { forms.removeAsset(legacy, reference); return null; }),
+                () -> tx(() -> { forms.removeAsset(legacy, artwork); return null; }),
+                () -> tx(() -> orders.markDesignApproved(legacy)),
+                () -> tx(() -> orders.updateOrderStatus(legacy, "DESIGN_APPROVED_PROCESSING")),
+                () -> tx(() -> orders.markDelivered(legacyApproved, 9L)))) {
+            assertThatThrownBy(write::run).isInstanceOfSatisfying(ResponseStatusException.class,
+                    ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        }
+        assertThat(orderVersion(draftOrder)).as("the draft order is untouched").isEqualTo(draftVersion);
+        assertThat(status(legacy)).isEqualTo("DESIGN_APPROVAL");
+        assertThat(status(legacyApproved)).isEqualTo("APPROVED");
+        assertThat(currentAssetIds(legacy)).containsExactlyInAnyOrder(artwork, reference);
+        assertThat(currentAssetIds(tracked)).isEmpty();
+    }
+
+    /** ...and keeps exactly the tracker's paths: reading the order, its summary, starting its tracker and its design drafts. */
+    @Test
+    void anItemOnlyOperatorKeepsTheTrackerPathsAndOtherOperatorsKeepTheirs() {
+        var tracked = placedNotebook(true);
+        var legacy = placedBeforeTheTracker(true);
+        school(1);
+        long artwork = id(upload(legacy, "DESIGN", 11));
+
+        operator(9L, Set.of(), Set.of("1:NOTEBOOKS"));
+        assertThat(tx(() -> forms.detail(tracked))).containsEntry("formVersion", 2);
+        assertThat(tx(() -> forms.detail(legacy))).containsEntry("formVersion", 2);
+        assertThat(tx(() -> forms.content(legacy, artwork)).bytes()).as("the school's own artwork is part of reading the order").isNotEmpty();
+        assertThat(tx(() -> forms.trackerSummary(tracked))).containsEntry("orderId", tracked);
+        tx(() -> { forms.ensureTracker(tracked); return null; });
+        assertThat(tx(() -> forms.trackerPending(tracked))).isFalse();
+        long drafted = id(draft(tracked, 5));
+        assertThat(tx(() -> forms.assets(tracked))).extracting(a -> a.get("assetKind")).containsExactly("DESIGN_DRAFT");
+        assertThat(tx(() -> forms.content(tracked, drafted)).bytes()).isNotEmpty();
+        tx(() -> { forms.removeAsset(tracked, drafted); return null; });
+        assertThat(currentDrafts(tracked)).isZero();
+        assertThat(TRACKER.accessChecks).isNotEmpty().allMatch(check -> check.equals(tracked + ":9:OPERATIONS"));
+
+        // A school-wide operator at the school keeps the old flow for an order placed before the tracker (D1, D2).
+        operator(8L, Set.of(1L), Set.of());
+        upload(legacy, "PRINT_REFERENCE", 31);
+        assertThat(tx(() -> orders.markDesignApproved(legacy)).status()).isEqualTo("DESIGN_APPROVED_PROCESSING");
+    }
+
     // ---- helpers ---------------------------------------------------------------------------------------------------------------
+
+    private long orderVersion(String order) {
+        return jdbc.sql("SELECT version FROM catalog.catalog_orders WHERE id = :id").param("id", order).query(Long.class).single();
+    }
+
+    private List<Long> currentAssetIds(String order) {
+        return jdbc.sql("SELECT id FROM catalog.catalog_order_assets WHERE order_id = :id AND superseded_at IS NULL ORDER BY id")
+                .param("id", order).query(Long.class).list();
+    }
 
     private String notebook(boolean custom) {
         school(1);

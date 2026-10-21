@@ -153,6 +153,7 @@ public class CatalogOrderFormService {
     public void updateDraft(String id, Map<String, Object> request) {
         TenantScope.requirePermissionIfAuthenticated("order:update");
         Map<String, Object> order = load(id, true);
+        refuseItemOnlyOperator(order);
         requireV2(order);
         requireVersion(order, request.get("version"));
         requireStatus(order, "DRAFT");
@@ -179,6 +180,7 @@ public class CatalogOrderFormService {
     @Transactional
     public void transition(String id, String action, Long actorId) {
         Map<String, Object> order = load(id, true);
+        refuseItemOnlyOperator(order);
         requireV2(order);
         boolean custom = customized(map(order.get("order_selections")));
         if (trackerManaged(order)) {
@@ -250,6 +252,7 @@ public class CatalogOrderFormService {
     public void updateStatus(String id, String status) {
         String normalized = string(status).trim().toUpperCase(Locale.ROOT);
         Map<String, Object> order = load(id, true);
+        refuseItemOnlyOperator(order);
         if (trackerManaged(order)) throw bad("This notebook order follows the notebook order tracker; its status changes there");
         String action = switch (normalized) {
             case "DESIGN_APPROVAL" -> "PLACE";
@@ -386,6 +389,7 @@ public class CatalogOrderFormService {
         boolean draft = DesignDraftRules.KIND.equals(kind);
         if (draft) requireDraftAccess(load(id, false));
         Map<String, Object> order = load(id, true);
+        if (!draft) refuseItemOnlyOperator(order);
         requireV2(order);
         if (!Set.of("DESIGN", "PRE_DELIVERY_PHOTO", "PRINT_REFERENCE", DesignDraftRules.KIND).contains(kind)) throw bad("Select a valid attachment kind");
         if (draft) requireDraftEligible(order);
@@ -433,6 +437,7 @@ public class CatalogOrderFormService {
         TenantScope.requirePermissionIfAuthenticated("order:update");
         Map<String, Object> unlocked = load(id, false);
         boolean draft = DesignDraftRules.KIND.equals(string(asset(id, assetId).get("asset_kind")));
+        if (!draft) refuseItemOnlyOperator(unlocked);
         if (draft) requireDraftAccess(unlocked);
         Map<String, Object> order = load(id, true);
         requireV2(order);
@@ -779,6 +784,19 @@ public class CatalogOrderFormService {
 
     private static boolean isNotebook(Map<String, Object> order) {
         return NOTEBOOKS.equals(string(order.get("category")));
+    }
+
+    /**
+     * Owner decision D2: an operator who reaches this order's school only through an item scope (no school-wide assignment
+     * there) works the order in the notebook order tracker and nothing else. What the tracker needs stays open to them:
+     * reading the order, its form and attachments, the tracker summary, starting a pending tracker, and design drafts on a
+     * tracker order (which the tracker itself gates). Every other write, the old order flow's, is refused here.
+     */
+    private static void refuseItemOnlyOperator(Map<String, Object> order) {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isOperations() && !ctx.operatorSchools().contains(number(order.get("school_id")))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "An item-specific operator works this order in the notebook order tracker only");
+        }
     }
 
     /** Set at placement since the tracker exists; a notebook order without it was placed before and keeps the old flow. */
