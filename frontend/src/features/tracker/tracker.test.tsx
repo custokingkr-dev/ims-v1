@@ -362,6 +362,31 @@ describe('NotebookTracker', () => {
     expect(within(notes).getByText(/User 99 ·/)).toBeInTheDocument();
   });
 
+  it('shows the author name the server sends, and falls back only when it is null', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    vi.mocked(trackerApi.operators).mockResolvedValue([operator(12, 'Op Twelve')]);
+    const at = '2026-10-19T05:00:00Z';
+    render(<NotebookTracker orderId="CK-1" onBack={vi.fn()} initial={tracker({ internalNotes: [
+      { id: 1, authorUserId: 55, authorName: 'Asha Rao', body: 'Named by server', createdAt: at },
+      { id: 2, authorUserId: 12, authorName: 'Server Twelve', body: 'Beats the list', createdAt: at },
+      { id: 3, authorUserId: 99, authorName: null, body: 'No name', createdAt: at },
+    ] })} />);
+    const notes = screen.getByRole('list', { name: 'Internal notes' });
+    expect(within(notes).getByText(/Asha Rao ·/)).toBeInTheDocument();
+    expect(within(notes).getByText(/Server Twelve ·/)).toBeInTheDocument();
+    expect(within(notes).getByText(/User 99 ·/)).toBeInTheDocument();
+  });
+
+  it('shows the assignee name the server sends in the assignment and the step', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    vi.mocked(trackerApi.operators).mockResolvedValue([]);
+    const named = tracker({ steps: tracker().steps.map((s) => ({ ...s, assigneeUserId: 77, assigneeName: 'Meera Nair' })) });
+    render(<NotebookTracker orderId="CK-1" initial={named} onBack={vi.fn()} />);
+    const assignment = screen.getByRole('region', { name: 'Assignment' });
+    expect(within(assignment).getByText('Assigned to Meera Nair.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Assigned to')).toHaveDisplayValue('Meera Nair');
+  });
+
   it('notes below its name that Board Procurement is still to be decided, and still completes it', () => {
     render(<NotebookTracker orderId="CK-1" initial={onStep(6)} onBack={vi.fn()} />);
     const area = screen.getByRole('region', { name: 'Board Procurement work area' });

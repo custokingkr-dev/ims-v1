@@ -283,3 +283,18 @@ it('opens an order on the tracker as a tracker order, and any other placed form 
   fireEvent.click(within((await screen.findByText('ORD-8')).closest('tr')!).getByRole('button', { name: 'View' }));
   expect(await screen.findByText('order ORD-8 on tracker: false')).toBeInTheDocument();
 });
+
+it('shows a tracker-managed order in the all-orders list as a dash and its current step, and leaves other rows alone', async () => {
+  const order = (id: string, over = {}) => ({ id, schoolId: 7, schoolName: 'School Seven', category: 'NOTEBOOKS', status: 'ORDER_DETAILS', formVersion: 2, totalAmount: 250000, ...over });
+  vi.mocked(catalogClient.getOrderPage).mockResolvedValue({ content: [order('CK-7', { trackerManaged: true }), order('ORD-8', { status: 'PROCESSING' })], page: 0, size: 200, totalElements: 2, totalPages: 1 });
+  vi.mocked(catalogClient.getOrderSummary).mockResolvedValue({ totalOrders: 2, pendingApproval: 0, approved: 0, rejected: 0, gmv: 0, activeOrders: 2, termSpend: 0, activeServices: 0, deliveredCount: 0 });
+  render(<SaAllOrdersPanel onNewOrder={vi.fn()} />);
+  const tracked = within((await screen.findByText('CK-7')).closest('tr')!);
+  expect(tracked.getByText('Current step')).toBeInTheDocument();
+  expect(tracked.getByText(/order details/i)).toBeInTheDocument();
+  expect(tracked.getAllByText('—').some((cell) => cell.className === 'ck-num')).toBe(true);
+  expect(tracked.queryByText(/₹/)).not.toBeInTheDocument();
+  const legacy = within(screen.getByText('ORD-8').closest('tr')!);
+  expect(legacy.queryByText('Current step')).not.toBeInTheDocument();
+  expect(legacy.getByText(/₹2,?500/)).toBeInTheDocument();
+});

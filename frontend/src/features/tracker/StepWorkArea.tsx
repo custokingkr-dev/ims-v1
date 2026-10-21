@@ -263,13 +263,13 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
       {superadmin && step.status !== 'COMPLETED' && (
         <label className="field">Assigned to
           <select value={step.assigneeUserId ?? ''} disabled={busy} onChange={(e) => e.target.value && void act(() => trackerApi.assignStep(tracker.orderId, step.step, Number(e.target.value)), 'Step reassigned.')}>
-            <option value="">{worker ? worker.fullName : 'Unassigned'}</option>
+            <option value="">{step.assigneeName ?? worker?.fullName ?? (step.assigneeUserId != null ? `User ${step.assigneeUserId}` : 'Unassigned')}</option>
             {operators.filter((o) => o.userId !== step.assigneeUserId).map((o) => <option key={o.userId} value={o.userId}>{o.fullName}</option>)}
           </select>
         </label>
       )}
       {!superadmin && step.assigneeUserId != null && userId != null && step.assigneeUserId !== userId && (
-        <p className="ck-product-muted">This step is assigned to {worker?.fullName ?? 'another operator'}.</p>
+        <p className="ck-product-muted">This step is assigned to {step.assigneeName ?? worker?.fullName ?? 'another operator'}.</p>
       )}
     </div>
   );

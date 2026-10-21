@@ -67,7 +67,10 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
 
   const evaluation = useMemo(() => evaluateProductForm(definition.rules, input), [definition.rules, input]);
   const customized = input.orderSelections.CUSTOMIZATION === 'CUSTOMIZED';
+  // The tracker runs a notebook order's delivery, so a notebook form never asks the school for a before-delivery asset,
+  // whatever a draft saved before that change still carries in its snapshot (the server refuses the upload too).
   const assetRules = definition.rules.filter((r) => r.active !== false && r.ruleType === 'REQUIRE_ASSET'
+    && !(definition.category.code === 'NOTEBOOKS' && r.params.stage === 'BEFORE_DELIVERY')
     && input.lines.some((line) => matches(r.matchOptions, { ...line.selections, ...input.orderSelections })));
   // Every prototype also offers an optional upload, and bill books and fliers take several print
   // references. An offer is dropped when the same kind is already required, so a customised

@@ -142,6 +142,18 @@ describe('ProductFormBuilder, 2026-09-25 product decisions', () => {
   });
 });
 
+describe('ProductFormBuilder notebook photo rule', () => {
+  it('shows no before-delivery asset requirement on a notebook form, even if an old draft snapshot carries the rule', () => {
+    expect(notebookDefinition.rules.some((r) => r.ruleType === 'REQUIRE_ASSET' && r.params.stage === 'BEFORE_DELIVERY')).toBe(true);
+    render(<ProductFormBuilder definition={notebookDefinition} schoolId={7} preview />);
+    fireEvent.change(screen.getByLabelText('Size'), { target: { value: 'LONG' } });
+    fireEvent.change(screen.getByLabelText('Quantity for Single rule'), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to order' }));
+    expect(screen.queryByText('Pre-delivery photo')).not.toBeInTheDocument();
+    expect(screen.queryByText('Required before delivery')).not.toBeInTheDocument();
+  });
+});
+
 describe('ProductFormBuilder', () => {
   it('renders typed entries with their unit and no page column for a non-paged category', () => {
     render(<ProductFormBuilder categoryCode="FLEX" definition={flexDefinition} preview />);

@@ -27,8 +27,10 @@ function OrderAssignment({ tracker, operators, operatorsError, onTracker }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const open = tracker.steps.filter((s) => s.status !== 'COMPLETED');
+  // The server names each assignee; the operator list and then the bare id only stand in when it sends no name.
   const assignees = [...new Set(open.map((s) => s.assigneeUserId).filter((id): id is number => id != null))];
-  const name = (id: number) => operators.find((o) => o.userId === id)?.fullName ?? `User ${id}`;
+  const name = (id: number) => open.find((s) => s.assigneeUserId === id && s.assigneeName)?.assigneeName
+    ?? operators.find((o) => o.userId === id)?.fullName ?? `User ${id}`;
   const assign = async () => {
     setBusy(true); setError('');
     try { onTracker(await trackerApi.assignOrder(tracker.orderId, Number(userId))); setUserId(''); }
@@ -121,7 +123,8 @@ export function NotebookTracker({ orderId, initial, onBack, onChanged }: { order
   const { progress } = tracker;
   const sizes = summary ? sizeSummary(summary.lines) : [];
   // Notes carry only the author's id: name the ones this screen knows, and say plainly when it does not.
-  const author = (id: number) => (id === user?.userId ? 'You' : operators.find((o) => o.userId === id)?.fullName ?? `User ${id}`);
+  const author = (note: { authorUserId: number; authorName: string | null }) => (note.authorUserId === user?.userId ? 'You'
+    : note.authorName ?? operators.find((o) => o.userId === note.authorUserId)?.fullName ?? `User ${note.authorUserId}`);
   const addNote = async () => {
     setNoteError('');
     try { accept(await trackerApi.addInternalNote(tracker.orderId, noteText)); setNoteText(''); } catch (e) { setNoteError(trackerError(e)); }
@@ -201,7 +204,7 @@ export function NotebookTracker({ orderId, initial, onBack, onChanged }: { order
             <ul className="ck-trk-notes" aria-label="Internal notes">
               {tracker.internalNotes.length === 0 && <li className="ck-product-muted">No notes yet.</li>}
               {tracker.internalNotes.map((n) => (
-                <li key={n.id}>{n.body}<small>{author(n.authorUserId)} · {new Date(n.createdAt).toLocaleString('en-IN', { timeZone: tracker.timeZone, dateStyle: 'medium', timeStyle: 'short' })}</small></li>
+                <li key={n.id}>{n.body}<small>{author(n)} · {new Date(n.createdAt).toLocaleString('en-IN', { timeZone: tracker.timeZone, dateStyle: 'medium', timeStyle: 'short' })}</small></li>
               ))}
             </ul>
             <label className="field">Add a note <span className="ck-product-muted">{wordCount(noteText)}/100 words</span>

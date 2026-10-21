@@ -2,6 +2,7 @@ import Paginator from '../../../components/Paginator';
 import { useState } from 'react';
 import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 import { ModuleShell, Stat } from '../ui';
+import { TrackerStep } from './TrackerStep';
 import { formatMoney, prettyOrderStatus, orderItemsSummary } from '../utils';
 
 // Supply order status → stage index mapping.
@@ -58,19 +59,6 @@ function OrderWorkflowBanner({ status }: { status: string }) {
           </div>
         );
       })}
-    </div>
-  );
-}
-
-/**
- * Spec v4: a notebook order on the tracker no longer goes through pricing, approval or delivery, so the school sees the
- * step it is at (its status), not the old five stages.
- */
-function TrackerStep({ status }: { status: string }) {
-  return (
-    <div>
-      <div className="ts">Current step</div>
-      <div className="tb">{prettyOrderStatus(status)}</div>
     </div>
   );
 }
