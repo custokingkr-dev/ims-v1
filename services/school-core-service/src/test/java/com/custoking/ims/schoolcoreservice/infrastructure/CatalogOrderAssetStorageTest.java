@@ -91,23 +91,56 @@ class CatalogOrderAssetStorageTest {
                 }));
     }
 
+    /**
+     * A truncated image answers 400. The JDK's JPEG reader decodes a truncated JPEG without an exception and only reports
+     * "premature end" or "missing EOI" as warnings, so those count as damage too, for baseline and progressive JPEGs alike.
+     */
     @Test
     void truncatedImageIs400() throws Exception {
         var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
-        var png = new ByteArrayOutputStream();
-        BufferedImage image = new BufferedImage(64, 64, BufferedImage.TYPE_INT_RGB);
-        for (int x = 0; x < 64; x++) for (int y = 0; y < 64; y++) image.setRGB(x, y, x * 4099 + y * 131);
-        ImageIO.write(image, "png", png);
-        byte[] whole = png.toByteArray();
+        var picture = TestImages.picture(128);
+        byte[] png = TestImages.png(picture);
+        byte[] baseline = TestImages.jpeg(picture, false);
+        byte[] progressive = TestImages.jpeg(picture, true);
+        var truncated = new java.util.LinkedHashMap<String, byte[]>();
         // Cut inside the image data. (A PNG missing only its trailing checksum and end chunk still decodes in full, and is not damaged.)
-        for (int keep : new int[]{40, whole.length / 2, whole.length - 200}) {
-            byte[] truncated = java.util.Arrays.copyOf(whole, keep);
-            assertThatThrownBy(() -> storage.validate(truncated, "photo.png", "DESIGN"), "kept " + keep + " bytes")
-                    .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
-                        assertThat(refused.getStatusCode().value()).isEqualTo(400);
-                        assertThat(refused.getReason()).isEqualTo(DAMAGED);
-                    });
+        for (int keep : new int[]{40, png.length / 2, png.length - 200}) truncated.put("png kept " + keep, java.util.Arrays.copyOf(png, keep));
+        for (int keep : new int[]{baseline.length / 2, baseline.length - 200, baseline.length - 2}) {
+            truncated.put("baseline jpeg kept " + keep, java.util.Arrays.copyOf(baseline, keep));
         }
+        for (int keep : new int[]{progressive.length / 2, progressive.length - 2}) {
+            truncated.put("progressive jpeg kept " + keep, java.util.Arrays.copyOf(progressive, keep));
+        }
+        truncated.forEach((name, bytes) -> assertThatThrownBy(() -> storage.validate(bytes, "photo", "DESIGN"), name)
+                .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                    assertThat(refused.getStatusCode().value()).isEqualTo(400);
+                    assertThat(refused.getReason()).isEqualTo(DAMAGED);
+                }));
+    }
+
+    /** Whole files still pass: baseline and progressive JPEGs, a CMYK JPEG, and a JPEG whose bad colour profile the reader ignores. */
+    @Test
+    void validJpegsAreAccepted() {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        var picture = TestImages.picture(128);
+        var valid = new java.util.LinkedHashMap<String, byte[]>();
+        valid.put("baseline", TestImages.jpeg(picture, false));
+        valid.put("progressive", TestImages.jpeg(picture, true));
+        valid.put("cmyk", TestImages.cmykJpeg());
+        valid.put("invalid colour profile", TestImages.withInvalidColourProfile(TestImages.jpeg(picture, false)));
+        valid.forEach((name, bytes) -> assertThat(storage.validate(bytes, "photo.jpg", "DESIGN").contentType()).as(name).isEqualTo("image/jpeg"));
+    }
+
+    /** A valid image the decoder has no colour model for is not "damaged": the user is told what to change. */
+    @Test
+    void aValidImageInAnUnsupportedColourFormatIsToldSo() {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        assertThatThrownBy(() -> storage.validate(TestImages.twoComponentJpeg(), "photo.jpg", "DESIGN"))
+                .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                    assertThat(refused.getStatusCode().value()).isEqualTo(400);
+                    assertThat(refused.getReason()).isEqualTo(
+                            "This image's colour format isn't supported. Save it as an RGB PNG, JPEG or WEBP and upload again.");
+                });
     }
 
     @Test

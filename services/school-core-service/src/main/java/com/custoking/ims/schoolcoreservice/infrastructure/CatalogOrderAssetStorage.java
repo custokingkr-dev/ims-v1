@@ -21,7 +21,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Private immutable order documents; authorization is checked before storage access. */
 @Component
@@ -146,6 +148,16 @@ public class CatalogOrderAssetStorage {
      * Our own refusals, and the busy-processing 429, keep their status and message.
      */
     static final String DAMAGED_FILE = "This file is damaged or is not a valid PDF or image.";
+    /** A whole image whose colour layout the decoder has no image type for (a two-channel JPEG, say): not damaged. */
+    static final String UNSUPPORTED_COLOUR_FORMAT =
+            "This image's colour format isn't supported. Save it as an RGB PNG, JPEG or WEBP and upload again.";
+    /**
+     * Decoder warnings about metadata the reader ignores; the pixels are intact. Every other warning means the picture
+     * itself is damaged: the JDK's JPEG reader decodes a truncated or corrupt JPEG without an exception, returns it partly
+     * grey and only warns ("Truncated File - Missing EOI marker", "Corrupt JPEG data: premature end of data segment").
+     */
+    private static final List<String> HARMLESS_WARNINGS = List.of(
+            "Embedded color profile is invalid", "JFIF markers not allowed in JFIF JPEG thumbnail");
 
     private void validateImage(byte[] bytes) {
         try (var budget = MediaWorkBudget.acquire();
@@ -153,11 +165,17 @@ public class CatalogOrderAssetStorage {
             var readers = ImageIO.getImageReaders(input);
             if (!readers.hasNext()) throw bad(DAMAGED_FILE);
             ImageReader reader = readers.next();
+            // Only recorded: the JPEG reader calls this from its native decoder, which must not be thrown through.
+            AtomicBoolean damaged = new AtomicBoolean();
+            reader.addIIOReadWarningListener((source, warning) -> {
+                if (warning == null || HARMLESS_WARNINGS.stream().noneMatch(warning::startsWith)) damaged.set(true);
+            });
             try {
                 reader.setInput(input, true, true);
                 long pixels = (long) reader.getWidth(0) * reader.getHeight(0);
                 if (pixels <= 0 || pixels > 40_000_000L) throw bad("Image dimensions exceed the 40 megapixel limit");
-                if (reader.read(0) == null) throw bad(DAMAGED_FILE);
+                if (!reader.getImageTypes(0).hasNext()) throw bad(UNSUPPORTED_COLOUR_FORMAT);
+                if (reader.read(0) == null || damaged.get()) throw bad(DAMAGED_FILE);
             } finally { reader.dispose(); }
         } catch (ResponseStatusException refused) {
             throw refused;

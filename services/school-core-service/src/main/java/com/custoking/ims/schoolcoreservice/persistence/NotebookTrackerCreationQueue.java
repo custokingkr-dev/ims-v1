@@ -33,7 +33,8 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
  *
  * <p><b>Retries.</b> A failed attempt keeps the doubling backoff, capped at an hour, that its claim set. After
  * {@link #MAX_ATTEMPTS} the row is dead-lettered: drains skip it, an ERROR log says so, and the outbox health report counts
- * it ({@link #backlog}). Starting the tracker by hand ({@link #enqueue}) revives it.
+ * it ({@link #backlog}). Starting the tracker by hand ({@link #enqueue}) revives it. A row whose order closes is dropped,
+ * by the tracker's own status push ({@link #done}) or by the next claim, and is never counted.
  *
  * <p><b>Tenant safety.</b> Draining has no user, so a claim enables the RLS bypass transaction-locally only to pick one
  * due row across schools, turns it off again and scopes the rest of that transaction to the row's school (the pattern of
@@ -49,6 +50,8 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
     /** Identity's definitive answers that leave the order without an operator; superadmin assigns it in the tracker. */
     private static final Set<String> NO_SINGLE_OPERATOR = Set.of("NONE", "AMBIGUOUS");
     private static final Set<String> ONE_OPERATOR = Set.of("ITEM_SPECIFIC", "SCHOOL_WIDE");
+    /** An order in one of these statuses gets no tracker: its row, pending or given up on, has nothing left to do. */
+    static final Set<String> CLOSED_ORDER_STATUSES = Set.of("CANCELLED", "DELIVERED", "COMPLETED");
 
     private final JdbcClient jdbc;
     private final TrackerGateway tracker;
@@ -116,8 +119,17 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
     }
 
     /**
+     * In the caller's transaction, which has the order in scope: the order's tracker exists (it has just pushed a status),
+     * so its creation row, pending or given up on, is done. Returns whether there was one.
+     */
+    public boolean done(String orderId) {
+        return jdbc.sql("DELETE FROM catalog.notebook_tracker_creation_queue WHERE order_id = :order").param("order", orderId).update() > 0;
+    }
+
+    /**
      * Rows still being retried, rows given up on, and the age of the oldest row still being retried, across every school.
-     * Added into the outbox health report so the outbox alerts cover this queue.
+     * Added into the outbox health report so the outbox alerts cover this queue. A row whose order has closed is not
+     * counted: nothing can be done for it, and ensure refuses a closed order, so it would keep the alert firing forever.
      */
     @Override
     public Backlog backlog() {
@@ -125,11 +137,14 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
             // Counts only, for the health log; the bypass ends with this transaction.
             jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
             return jdbc.sql("""
-                    SELECT count(*) FILTER (WHERE dead_lettered_at IS NULL) AS pending,
-                           count(*) FILTER (WHERE dead_lettered_at IS NOT NULL) AS dead_letter,
-                           COALESCE(EXTRACT(EPOCH FROM now() - min(created_at) FILTER (WHERE dead_lettered_at IS NULL))::bigint, 0) AS oldest_age
-                    FROM catalog.notebook_tracker_creation_queue
-                    """).query((rs, n) -> new Backlog(rs.getLong("pending"), rs.getLong("dead_letter"), rs.getLong("oldest_age"))).single();
+                    SELECT count(*) FILTER (WHERE q.dead_lettered_at IS NULL) AS pending,
+                           count(*) FILTER (WHERE q.dead_lettered_at IS NOT NULL) AS dead_letter,
+                           COALESCE(EXTRACT(EPOCH FROM now() - min(q.created_at) FILTER (WHERE q.dead_lettered_at IS NULL))::bigint, 0) AS oldest_age
+                    FROM catalog.notebook_tracker_creation_queue q
+                    JOIN catalog.catalog_orders co ON co.id = q.order_id AND co.school_id = q.school_id
+                    WHERE co.status NOT IN (:closed)
+                    """).param("closed", List.copyOf(CLOSED_ORDER_STATUSES))
+                    .query((rs, n) -> new Backlog(rs.getLong("pending"), rs.getLong("dead_letter"), rs.getLong("oldest_age"))).single();
         });
     }
 
@@ -165,6 +180,14 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
             long school = due.get().schoolId();
             claimed.add(order);
             scopeTo(school);
+            String orderStatus = jdbc.sql("SELECT status FROM catalog.catalog_orders WHERE id = :order AND school_id = :school")
+                    .param("order", order).param("school", school).query(String.class).optional().orElse(null);
+            if (orderStatus != null && CLOSED_ORDER_STATUSES.contains(orderStatus)) {
+                // A closed order gets no tracker: its row is done, not retried.
+                jdbc.sql("DELETE FROM catalog.notebook_tracker_creation_queue WHERE order_id = :order AND school_id = :school")
+                        .param("order", order).param("school", school).update();
+                return Optional.of(new Claim(order, school, 0, null, true));
+            }
             // The exponent is capped too: 2^1024 overflows float8, and a row failing that long must still be claimable.
             int attempts = jdbc.sql("""
                     UPDATE catalog.notebook_tracker_creation_queue SET attempts = attempts + 1,
@@ -181,7 +204,7 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
                     """).param("order", order).param("school", school).query((rs, n) -> new TrackerGateway.NewTracker(order, school,
                     rs.getBoolean("customised"), rs.getInt("ordered"), rs.getObject("placed_at", OffsetDateTime.class),
                     rs.getString("time_zone"), rs.getObject("placed_by", Long.class), null, rs.getString("name"))).optional().orElse(null);
-            return Optional.of(new Claim(order, school, attempts, facts));
+            return Optional.of(new Claim(order, school, attempts, facts, false));
         });
         return result == null ? Optional.empty() : result;
     }
@@ -192,6 +215,10 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
      * or of several, creates the tracker unassigned and superadmin assigns it.
      */
     private boolean create(Claim claim) {
+        if (claim.closed()) {
+            LOG.info("Order {} closed before its tracker was created; its creation row is dropped", claim.orderId());
+            return false;
+        }
         TrackerGateway.NewTracker facts = claim.tracker();
         if (facts == null || facts.placedAt() == null) return failed(claim, "The order's placement facts could not be read");
         OperatorResolver.Resolution picked;
@@ -200,9 +227,11 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
         } catch (RuntimeException unavailable) {
             return failed(claim, reason(unavailable));
         }
+        // Set.of rejects contains(null), so a missing outcome is checked first: it is no answer, and the order stays queued.
+        String outcome = picked == null ? null : picked.outcome();
         Long assignee;
-        if (picked != null && ONE_OPERATOR.contains(picked.outcome()) && picked.userId() != null) assignee = picked.userId();
-        else if (picked != null && NO_SINGLE_OPERATOR.contains(picked.outcome())) assignee = null;
+        if (outcome != null && ONE_OPERATOR.contains(outcome) && picked.userId() != null) assignee = picked.userId();
+        else if (outcome != null && NO_SINGLE_OPERATOR.contains(outcome)) assignee = null;
         else return failed(claim, "operator directory gave no usable answer");
         try {
             tracker.create(new TrackerGateway.NewTracker(facts.orderId(), facts.schoolId(), facts.customised(), facts.orderedCount(),
@@ -258,6 +287,9 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
 
     private record Due(String orderId, long schoolId) { }
 
-    /** {@code tracker} holds the order's facts without an assignee; null when they could not be read. */
-    private record Claim(String orderId, long schoolId, int attempts, TrackerGateway.NewTracker tracker) { }
+    /**
+     * {@code tracker} holds the order's facts without an assignee; null when they could not be read. {@code closed}: the
+     * order had closed, and the claim dropped its row instead.
+     */
+    private record Claim(String orderId, long schoolId, int attempts, TrackerGateway.NewTracker tracker, boolean closed) { }
 }

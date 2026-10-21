@@ -520,7 +520,7 @@ public class CatalogOrderFormService {
             requireV2(order);
             if (!trackerManaged(order)) throw bad("Only a placed notebook order on the tracker has one; this order follows order approval");
             String status = string(order.get("status"));
-            if (Set.of("CANCELLED", "DELIVERED", "COMPLETED").contains(status)) {
+            if (NotebookTrackerCreationQueue.CLOSED_ORDER_STATUSES.contains(status)) {
                 throw bad("A " + status.toLowerCase(Locale.ROOT) + " order gets no tracker");
             }
             if (trackers != null) trackers.enqueue(id, number(order.get("school_id")));
@@ -625,6 +625,12 @@ public class CatalogOrderFormService {
         String current = string(order.get("status"));
         if ("DRAFT".equals(current) || "CANCELLED".equals(current)) throw new ResponseStatusException(HttpStatus.CONFLICT, "A " + current.toLowerCase(Locale.ROOT) + " order has no tracker status");
         if (!trackerManaged(order)) throw bad("This notebook order was placed before the tracker and follows order approval");
+        // A push, even a late one, proves the tracker exists: a creation still queued for it (pending, or given up on) is done.
+        if (trackers != null) trackers.done(id);
+        if (Boolean.TRUE.equals(map(order.get("attributes")).get("trackerPending"))) {
+            jdbc.sql("UPDATE catalog.catalog_orders SET attributes = attributes || jsonb_build_object('trackerPending', false) WHERE id = :id")
+                    .param("id", id).update();
+        }
         if (map(order.get("attributes")).get("trackerStatusVersion") instanceof Number applied && trackerVersion <= applied.longValue()) return;
         boolean changed = !next.equals(current);
         // A newer version that repeats the shown status still records its version, so an older push cannot follow it.

@@ -299,7 +299,12 @@ class CatalogOrderFormIntegrationTest {
         var png = new ByteArrayOutputStream();
         ImageIO.write(new BufferedImage(32, 32, BufferedImage.TYPE_INT_RGB), "png", png);
         var truncated = java.util.Arrays.copyOf(png.toByteArray(), png.size() / 2);
-        for (var file : Map.of("design.pdf", pageless, "design.png", truncated).entrySet()) {
+        var picture = com.custoking.ims.schoolcoreservice.infrastructure.TestImages.picture(128);
+        var baseline = com.custoking.ims.schoolcoreservice.infrastructure.TestImages.jpeg(picture, false);
+        var progressive = com.custoking.ims.schoolcoreservice.infrastructure.TestImages.jpeg(picture, true);
+        for (var file : Map.of("design.pdf", pageless, "design.png", truncated,
+                "baseline.jpg", java.util.Arrays.copyOf(baseline, baseline.length / 2),
+                "progressive.jpg", java.util.Arrays.copyOf(progressive, progressive.length / 2)).entrySet()) {
             assertThatThrownBy(() -> tx(() -> forms.upload(created.id(), "DESIGN", file.getValue(), file.getKey())), file.getKey())
                     .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
                         assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);

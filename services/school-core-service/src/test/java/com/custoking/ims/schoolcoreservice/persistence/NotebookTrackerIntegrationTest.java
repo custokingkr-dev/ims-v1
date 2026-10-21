@@ -237,14 +237,17 @@ class NotebookTrackerIntegrationTest {
         assertThat(TRACKER.created).singleElement().satisfies(created -> assertThat(created.assigneeUserId()).as("the retry finds the operator").isEqualTo(42L));
         assertThat(queued(order)).isZero();
 
-        // An answer that cannot be read is no answer either.
-        TRACKER.reset();
-        OPERATORS.outcome = "SOMETHING_NEW";
-        OPERATORS.userId = null;
-        var unreadable = notebook(false);
-        place(unreadable);
-        assertThat(TRACKER.createCalls()).isZero();
-        assertThat(queued(unreadable)).isEqualTo(1);
+        // An answer that cannot be read, or has no outcome at all, is no answer either; its reason is kept so it can dead-letter.
+        for (String unreadable : java.util.Arrays.asList("SOMETHING_NEW", null)) {
+            TRACKER.reset();
+            OPERATORS.outcome = unreadable;
+            OPERATORS.userId = null;
+            var waiting = notebook(false);
+            place(waiting);
+            assertThat(TRACKER.createCalls()).as(String.valueOf(unreadable)).isZero();
+            assertThat(queued(waiting)).isEqualTo(1);
+            assertThat(lastError(waiting)).as(String.valueOf(unreadable)).isEqualTo("operator directory gave no usable answer");
+        }
 
         for (String definitive : List.of("NONE", "AMBIGUOUS")) {
             TRACKER.reset();
@@ -316,6 +319,47 @@ class NotebookTrackerIntegrationTest {
         assertThat(TRACKER.created).singleElement().satisfies(created -> assertThat(created.assigneeUserId()).isEqualTo(42L));
         assertThat(queued(order)).isZero();
         assertThat(pending(order)).isFalse();
+    }
+
+    /**
+     * A row whose order is closed has nothing left to create: the tracker's own COMPLETED push clears it (the push proves the
+     * tracker exists), a drain clears a due one, and a closed order's row never counts toward the outbox alerts, even one
+     * that was given up on (ensure refuses closed orders, so nothing else could clear it).
+     */
+    @Test
+    void aClosedOrdersCreationRowIsClearedAndNotCounted() {
+        TRACKER.failCreate = true;
+        var completed = notebook(false);
+        place(completed);
+        var cancelled = notebook(false);
+        place(cancelled);
+        var delivered = notebook(false);
+        place(delivered);
+        var open = notebook(false);
+        place(open);
+        for (String order : List.of(completed, delivered, open)) {
+            jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 48, dead_lettered_at = now() WHERE order_id = :id").param("id", order).update();
+        }
+        TenantContext.clear();
+        assertThat(queue.backlog().pendingCount()).isEqualTo(1);
+        assertThat(queue.backlog().deadLetterCount()).isEqualTo(3);
+
+        tx(() -> { forms.applyTrackerStatus(completed, "COMPLETED", 9L); return null; });
+        assertThat(queued(completed)).as("the tracker exists, so its creation is done").isZero();
+        assertThat(pending(completed)).isFalse();
+
+        // No flow cancels or delivers a tracker order, but a data fix can.
+        jdbc.sql("UPDATE catalog.catalog_orders SET status = 'CANCELLED' WHERE id = :id").param("id", cancelled).update();
+        jdbc.sql("UPDATE catalog.catalog_orders SET status = 'DELIVERED' WHERE id = :id").param("id", delivered).update();
+        assertThat(queue.backlog().pendingCount()).as("the cancelled order's row is not pending work").isZero();
+        assertThat(queue.backlog().deadLetterCount()).as("only the open order's row").isEqualTo(1);
+
+        int calls = TRACKER.createCalls();
+        due(cancelled);
+        assertThat(queue.drain(5)).isZero();
+        assertThat(queued(cancelled)).as("cleared by the drain, not attempted").isZero();
+        assertThat(TRACKER.createCalls()).isEqualTo(calls);
+        assertThat(queued(open)).isEqualTo(1);
     }
 
     /** The queue's backlog is added into the outbox health figures, so the outbox pending, age and dead-letter alerts cover it. */
