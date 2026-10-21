@@ -54,6 +54,9 @@
 .ck-trk-filter { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--ck-space-3); }
 .ck-trk-filter > legend { float: left; padding: 0; margin-right: var(--ck-space-1); font-size: var(--ck-text-sm); font-weight: 600; }
 .ck-trk .ck-trk-slot-value { width: 5.5rem; }
+/* A time slot row: value, unit and Save on one line inside the table cell, wrapping only when the cell is too narrow. */
+.ck-trk-slot-edit { display: flex; flex-wrap: wrap; gap: var(--ck-space-2); align-items: center; }
+.ck-trk .ck-trk-slot-unit { width: auto; }
 .ck-trk-checks { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--ck-space-2); }
 .ck-trk-notes { list-style: none; padding: 0; margin: 0 0 var(--ck-space-3); display: grid; gap: var(--ck-space-2); }
 .ck-trk-notes small { display: block; color: var(--ink3); }

@@ -6,11 +6,12 @@ import { formatMoney, prettyOrderStatus, orderItemsSummary } from '../utils';
 
 // Supply order status → stage index mapping.
 // DESIGN_APPROVAL / DESIGN_APPROVED_PROCESSING are mid-review sub-states.
+// A notebook order on the tracker never passes through these stages; its row shows its tracker step instead
+// (TrackerStep below). The step codes stay mapped for any row that arrives without its trackerManaged flag.
 const ORDER_STAGES = [
   { label: 'Draft',       statuses: ['DRAFT'] },
   { label: 'Submitted',   statuses: ['SUBMITTED', 'AWAITING_APPROVAL'] },
   { label: 'Approval',    statuses: ['DESIGN_APPROVAL', 'DESIGN_APPROVED_PROCESSING', 'APPROVED'] },
-  // A notebook order's status is its tracker step; every step is processing, and the finished tracker is delivered.
   { label: 'Processing',  statuses: ['PROCESSING', 'ORDER_DETAILS', 'DESIGNING_ACTIVITY', 'HEAD_APPROVAL', 'CDR_CONVERSION', 'PRODUCTION_PLANNING', 'BOARD_PROCUREMENT', 'PRINTING_PRESS', 'PRE_PRINT_QUALITY_GATE', 'FACTORY_HANDOVER', 'PRODUCTION_FOLLOW_UP', 'VALIDATION_COUNT', 'DELIVERY_INVOICING'] },
   { label: 'Delivered',   statuses: ['DELIVERED', 'FULFILLED', 'COMPLETED'] },
 ] as const;
@@ -57,6 +58,19 @@ function OrderWorkflowBanner({ status }: { status: string }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * Spec v4: a notebook order on the tracker no longer goes through pricing, approval or delivery, so the school sees the
+ * step it is at (its status), not the old five stages.
+ */
+function TrackerStep({ status }: { status: string }) {
+  return (
+    <div>
+      <div className="ts">Current step</div>
+      <div className="tb">{prettyOrderStatus(status)}</div>
     </div>
   );
 }
@@ -138,14 +152,16 @@ export function AdminOrdersPanel({
                 </tr>
               ) : orders.map((row: any, i: number) => {
                 const status = String(row.status).toUpperCase();
+                // A notebook order on the tracker is not priced for the school; one placed before it keeps its quote (D1).
+                const onTracker = row.trackerManaged === true;
                 return (
                   <tr key={i}>
                     <td><div className="tb">{row.id || row.code}</div><div className="ts">{row.description || row.title || row.category}</div></td>
                     <td>{row.category}</td>
                     <td>{orderItemsSummary(row.orderData) || row.items || '—'}</td>
-                    <td className="col-money">{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? row.amount ?? 0) / 100)}`}</td>
+                    <td className="col-money">{onTracker ? '—' : row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? row.amount ?? 0) / 100)}`}</td>
                     <td style={{ minWidth: 200 }}>
-                      <OrderWorkflowBanner status={status} />
+                      {onTracker ? <TrackerStep status={row.status} /> : <OrderWorkflowBanner status={status} />}
                     </td>
                     <td>
                       <span className={`ck-status ${orderStatusClass(status)}`}>{prettyOrderStatus(row.status)}</span>

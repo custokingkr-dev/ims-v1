@@ -6,6 +6,11 @@ import { NotebookWorklistPanel } from './NotebookWorklistPanel';
 import { SaAllOrdersPanel } from './SaAllOrdersPanel';
 import { catalogClient } from '../../../services/catalogApi';
 
+// The test run loads no stylesheets, so the layout rule a time slot row relies on is read from its source.
+const { readFileSync } = await vi.importActual<{ readFileSync: (path: string, encoding: string) => string }>('node:fs');
+const { cwd } = await vi.importActual<{ cwd: () => string }>('node:process');
+const trackerCss = readFileSync(`${cwd()}/src/features/tracker/tracker.css`, 'utf8');
+
 const auth = vi.hoisted(() => ({ user: { role: 'OPERATIONS', userId: 42 } }));
 vi.mock('../../../contexts/AuthContext', () => ({ useAuth: () => auth }));
 vi.mock('../../../features/tracker/NotebookTracker', () => ({ NotebookTracker: ({ orderId }: { orderId: string }) => <div>tracker for {orderId}</div> }));
@@ -222,6 +227,33 @@ it('saves a school time slot and returns an overridden one to the default', asyn
   await waitFor(() => expect(trackerApi.setTimeSlot).toHaveBeenCalledWith(7, 1, 6, 'HOURS'));
   fireEvent.click(screen.getByRole('button', { name: 'Use default' }));
   await waitFor(() => expect(trackerApi.clearTimeSlot).toHaveBeenCalledWith(7, 2));
+});
+
+it("keeps a time slot's value, unit and Save on one line, with every control still labelled", async () => {
+  vi.mocked(trackerApi.operators).mockResolvedValue([]);
+  vi.mocked(trackerApi.timeSlots).mockResolvedValue([
+    { step: 1, title: 'Order Details', sla: { value: 4, unit: 'HOURS', source: 'DEFAULT' } },
+    { step: 2, title: 'Designing Activity', sla: { value: 3, unit: 'WORKING_DAYS', source: 'SCHOOL' } },
+  ]);
+  render(<NotebookAdminPanel />);
+  fireEvent.click(screen.getByRole('tab', { name: 'Time slots' }));
+  fireEvent.change(await screen.findByLabelText('School'), { target: { value: '7' } });
+  for (const step of [1, 2]) {
+    const value = await screen.findByLabelText(`Value for step ${step}`);
+    const unit = screen.getByLabelText(`Unit for step ${step}`);
+    const save = within(value.closest('tr')!).getByRole('button', { name: 'Save' });
+    // One wrapping line inside the cell: the cell stays a table cell, and the select no longer takes the full width.
+    const line = value.parentElement!;
+    expect(line.tagName).toBe('DIV');
+    expect(line).toHaveClass('ck-trk-slot-edit');
+    expect(unit.parentElement).toBe(line);
+    expect(save.parentElement).toBe(line);
+    expect(unit).toHaveClass('ck-trk-slot-unit');
+  }
+  expect(within(screen.getByLabelText('Value for step 2').closest('tr')!).getByRole('button', { name: 'Use default' })).toBeInTheDocument();
+  expect(document.querySelectorAll('td.ck-trk-actions')).toHaveLength(0);
+  expect(trackerCss).toMatch(/\.ck-trk-slot-edit\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;/);
+  expect(trackerCss).toMatch(/\.ck-trk \.ck-trk-slot-unit\s*\{[^}]*width:\s*auto;/);
 });
 
 it('adds a designer and toggles one inactive', async () => {

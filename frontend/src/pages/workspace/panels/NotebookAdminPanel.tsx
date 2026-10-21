@@ -200,15 +200,18 @@ function TimeSlotsTab({ schools }: { schools: SchoolOption[] }) {
                 <td>{r.step}. {r.title}</td>
                 <td>{r.sla ? slaLabel({ sla: r.sla } as never) : 'No timer'}</td>
                 <td>{r.sla?.source === 'SCHOOL' ? 'School override' : r.sla ? 'Default' : '—'}</td>
-                <td className="ck-trk-actions">
-                  <input className="ck-trk-slot-value" aria-label={`Value for step ${r.step}`} inputMode="numeric" value={draft.value} onChange={(e) => setEdit({ ...edit, [r.step]: { ...draft, value: e.target.value } })} />
-                  <select aria-label={`Unit for step ${r.step}`} value={draft.unit} onChange={(e) => setEdit({ ...edit, [r.step]: { ...draft, unit: e.target.value } })}>
-                    <option value="HOURS">hours</option><option value="WORKING_DAYS">working days</option>
-                  </select>
+                <td>
+                  {/* Value, unit and Save share one line, wrapping only when the cell is too narrow. */}
+                  <div className="ck-trk-slot-edit">
+                    <input className="ck-trk-slot-value" aria-label={`Value for step ${r.step}`} inputMode="numeric" value={draft.value} onChange={(e) => setEdit({ ...edit, [r.step]: { ...draft, value: e.target.value } })} />
+                    <select className="ck-trk-slot-unit" aria-label={`Unit for step ${r.step}`} value={draft.unit} onChange={(e) => setEdit({ ...edit, [r.step]: { ...draft, unit: e.target.value } })}>
+                      <option value="HOURS">hours</option><option value="WORKING_DAYS">working days</option>
+                    </select>
+                    <button type="button" className="ck-btn ck-btn-g" disabled={!/^\d+$/.test(draft.value) || Number(draft.value) < 1}
+                      onClick={() => void run(async () => { await trackerApi.setTimeSlot(Number(schoolId), r.step, Number(draft.value), draft.unit); await slots.reload(); }, `Step ${r.step} time slot saved.`)}>Save</button>
+                  </div>
                 </td>
-                <td className="ck-trk-actions">
-                  <button type="button" className="ck-btn ck-btn-g" disabled={!/^\d+$/.test(draft.value) || Number(draft.value) < 1}
-                    onClick={() => void run(async () => { await trackerApi.setTimeSlot(Number(schoolId), r.step, Number(draft.value), draft.unit); await slots.reload(); }, `Step ${r.step} time slot saved.`)}>Save</button>
+                <td>
                   {r.sla?.source === 'SCHOOL' && <button type="button" className="ck-btn ck-btn-ghost" onClick={() => void run(async () => { await trackerApi.clearTimeSlot(Number(schoolId), r.step); await slots.reload(); }, `Step ${r.step} back to default.`)}>Use default</button>}
                 </td>
               </tr>
