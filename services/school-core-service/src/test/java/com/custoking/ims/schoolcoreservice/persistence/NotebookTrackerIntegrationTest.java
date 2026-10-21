@@ -377,6 +377,7 @@ class NotebookTrackerIntegrationTest {
         long outboxDead = jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events WHERE dead_lettered_at IS NOT NULL").query(Long.class).single();
         TenantContext.clear();
 
+        assertThat(queue.queueName()).as("named in the health log if it cannot be counted").isEqualTo("notebook_tracker_creation_queue");
         var reporter = new OutboxAsyncHealthReporter(jdbc, "tenant_school");
         reporter.configureBacklogs(List.of(queue));
         var logs = capture(OutboxAsyncHealthReporter.class);

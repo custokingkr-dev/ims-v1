@@ -1,15 +1,22 @@
 package com.custoking.ims.schoolcoreservice.outbox;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import net.logstash.logback.encoder.LogstashEncoder;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -191,6 +198,51 @@ class OutboxRelayTest {
         assertThat(state.get("pendingCount")).isEqualTo((Long) outboxOnly.get("pendingCount") + 2);
         assertThat(state.get("deadLetterCount")).isEqualTo((Long) outboxOnly.get("deadLetterCount") + 1);
         assertThat(state.get("oldestPendingAgeSeconds")).isEqualTo(86_400L);
+    }
+
+    /**
+     * A queue that cannot be counted drops out of the totals silently, so it is reported at ERROR with JSON fields the
+     * error-level alerting reads: the event, the queue's name and the error. The outbox figures are still logged.
+     */
+    @Test
+    void aBacklogThatCannotBeCountedIsReportedAsAnErrorEvent() throws Exception {
+        var reporter = new OutboxAsyncHealthReporter(jdbc, "tenant_school");
+        reporter.configureBacklogs(List.of(new QueueBacklog() {
+            @Override public Backlog backlog() { throw new IllegalStateException("queue unavailable"); }
+            @Override public String queueName() { return "broken_queue"; }
+        }));
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        var logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(OutboxAsyncHealthReporter.class);
+        logger.addAppender(appender);
+        try {
+            reporter.report();
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        var errors = appender.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
+        assertThat(errors).as(appender.list.toString()).hasSize(1);
+        JsonNode logged = json(errors.get(0));
+        assertThat(logged.path("event").asString()).isEqualTo("outbox_backlog_count_failed");
+        assertThat(logged.path("queue").asString()).isEqualTo("broken_queue");
+        assertThat(logged.path("error").asString()).isEqualTo("queue unavailable");
+        assertThat(appender.list).anySatisfy(event -> {
+            assertThat(event.getLevel()).isEqualTo(Level.INFO);
+            assertThat(json(event).path("health").path("outbox").has("pendingCount")).isTrue();
+        });
+    }
+
+    /** The event as the JSON encoder writes it to Cloud Logging, whose log metrics read these fields. */
+    private static JsonNode json(ILoggingEvent event) {
+        var encoder = new LogstashEncoder();
+        encoder.setContext((ch.qos.logback.classic.LoggerContext) LoggerFactory.getILoggerFactory());
+        encoder.start();
+        try {
+            return new ObjectMapper().readTree(new String(encoder.encode(event), java.nio.charset.StandardCharsets.UTF_8));
+        } finally {
+            encoder.stop();
+        }
     }
 
     private long insertOutboxEvent(String aggregateId, String aggregateType, long schoolId) throws Exception {

@@ -148,6 +148,11 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
         });
     }
 
+    @Override
+    public String queueName() {
+        return "notebook_tracker_creation_queue";
+    }
+
     /** A transaction (or an after-commit hook of one) still holds a pooled connection on this thread. */
     private static boolean holdsAConnection() {
         return TransactionSynchronizationManager.isActualTransactionActive() || TransactionSynchronizationManager.isSynchronizationActive();
