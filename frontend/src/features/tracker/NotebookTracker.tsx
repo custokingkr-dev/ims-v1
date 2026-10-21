@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, Lock, CheckCircle2, Circle, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { errorMessage } from '../catalog/api';
 import { StepWorkArea } from './StepWorkArea';
-import { trackerApi } from './api';
+import { trackerApi, trackerError } from './api';
 import { TBD_STEPS, formatDay, sizeSummary, slaLabel, stepState, wordCount } from './steps';
 import type { DesignerRow, OrderSummary, TrackerStep, TrackerView } from './types';
 import '../catalog/product-form.css';
@@ -33,7 +32,7 @@ function OrderAssignment({ tracker, operators, operatorsError, onTracker }: {
   const assign = async () => {
     setBusy(true); setError('');
     try { onTracker(await trackerApi.assignOrder(tracker.orderId, Number(userId))); setUserId(''); }
-    catch (e) { setError(errorMessage(e, 'Unable to assign the order.')); } finally { setBusy(false); }
+    catch (e) { setError(trackerError(e, 'Unable to assign the order.')); } finally { setBusy(false); }
   };
   if (open.length === 0) return null;
   return (
@@ -82,7 +81,7 @@ export function NotebookTracker({ orderId, initial, onBack, onChanged }: { order
     if (!initial) {
       setError('');
       trackerApi.get(orderId).then((next) => { if (active) { setTracker(next); setSelected(next.progress.currentStep ?? next.steps[0]?.step ?? null); } })
-        .catch((e: unknown) => { if (active) setError(errorMessage(e, 'Unable to load this order.')); });
+        .catch((e: unknown) => { if (active) setError(trackerError(e, 'Unable to load this order.')); });
     }
     return () => { active = false; };
   }, [orderId, initial, attempt]);
@@ -90,7 +89,7 @@ export function NotebookTracker({ orderId, initial, onBack, onChanged }: { order
   useEffect(() => {
     let active = true;
     trackerApi.summary(orderId).then((next) => { if (active) { setSummary(next); setSummaryError(''); } })
-      .catch((e: unknown) => { if (active) setSummaryError(errorMessage(e, 'Unable to load the order details.')); });
+      .catch((e: unknown) => { if (active) setSummaryError(trackerError(e, 'Unable to load the order details.')); });
     return () => { active = false; };
   }, [orderId]);
 
@@ -102,7 +101,7 @@ export function NotebookTracker({ orderId, initial, onBack, onChanged }: { order
         if (!active) return;
         const eligible = rows.filter((r) => r.schoolId === tracker.schoolId && (r.catalogCategory === null || r.catalogCategory === 'NOTEBOOKS'));
         setOperators([...new Map(eligible.map((r) => [r.userId, { userId: r.userId, fullName: r.fullName }])).values()]); setOperatorsError('');
-      }).catch((e: unknown) => { if (active) setOperatorsError(errorMessage(e, 'The operator list could not be loaded, so the order cannot be assigned now.')); });
+      }).catch((e: unknown) => { if (active) setOperatorsError(trackerError(e, 'The operator list could not be loaded, so the order cannot be assigned now.')); });
     }
     return () => { active = false; };
   }, [superadmin, tracker?.schoolId]);
@@ -125,7 +124,7 @@ export function NotebookTracker({ orderId, initial, onBack, onChanged }: { order
   const author = (id: number) => (id === user?.userId ? 'You' : operators.find((o) => o.userId === id)?.fullName ?? `User ${id}`);
   const addNote = async () => {
     setNoteError('');
-    try { accept(await trackerApi.addInternalNote(tracker.orderId, noteText)); setNoteText(''); } catch (e) { setNoteError(errorMessage(e)); }
+    try { accept(await trackerApi.addInternalNote(tracker.orderId, noteText)); setNoteText(''); } catch (e) { setNoteError(trackerError(e)); }
   };
 
   return (
@@ -176,7 +175,7 @@ export function NotebookTracker({ orderId, initial, onBack, onChanged }: { order
             <>
               <h3>{step.step}. {step.title}</h3>
               {TBD_STEPS.has(step.step) && (
-                <p className="ck-trk-tbd"><strong>TBD</strong> This step keeps the prototype's fields until it is finalised. Drafts save and the step completes as usual.</p>
+                <p className="ck-trk-tbd"><strong>TBD</strong> — board procurement details are still being finalised. Fill in what you know; the step can be completed as usual.</p>
               )}
               {step.status === 'LOCKED'
                 ? <p className="ck-product-muted">This step unlocks when the previous step is completed.</p>
@@ -194,7 +193,7 @@ export function NotebookTracker({ orderId, initial, onBack, onChanged }: { order
             <p>School: {summary ? ([summary.schoolContactEmail, summary.schoolContactPhone].filter(Boolean).join(' · ') || 'no contact given at onboarding') : '—'}</p>
           </section>
           {summary?.schoolNotes && <section><h4>School feedback</h4><p>{summary.schoolNotes}</p></section>}
-          {tracker.design.comment && tracker.design.state === 'CHANGES_REQUESTED' && (
+          {tracker.design?.comment && tracker.design.state === 'CHANGES_REQUESTED' && (
             <section><h4>Changes requested</h4><p>{tracker.design.comment}</p></section>
           )}
           <section>

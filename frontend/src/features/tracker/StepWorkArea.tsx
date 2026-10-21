@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Check, RotateCcw, Save, ShieldCheck } from 'lucide-react';
-import { errorMessage } from '../catalog/api';
 import { selectionLabel } from '../catalog/types';
 import { DraftImages } from './DraftImages';
-import { trackerApi } from './api';
+import { trackerApi, trackerError } from './api';
 import { QC_ITEMS, SIGN_OFF_STEPS, STEP_FIELDS, countsMismatch, formatDay, isSignedOff, wordCount, type FieldSpec } from './steps';
 import type { DesignerRow, OrderSummary, TrackerContact, TrackerDesigner, TrackerStep, TrackerView } from './types';
 import '../catalog/product-form.css';
@@ -112,14 +111,18 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
 
   const act = async (operation: () => Promise<TrackerView>, done: string) => {
     setBusy(true); setError(''); setMessage('');
-    try { onTracker(await operation()); setMessage(done); } catch (e) { setError(errorMessage(e)); } finally { setBusy(false); }
+    try { onTracker(await operation()); setMessage(done); } catch (e) { setError(trackerError(e)); } finally { setBusy(false); }
   };
 
   const editable = step.can.canEditDetails;
   const noteWords = wordCount(note);
   const signedOff = isSignedOff(step);
   const mismatch = step.step === 11 && countsMismatch(tracker.orderedCount, toPayload(specs, form, null));
+  // A wholesale order has no design approval (null); only the customised design steps 2 and 3 read it.
   const design = tracker.design;
+  // Head approval completes only once a design is approved; the server checks it too, so say why before it is refused.
+  const awaitingApproval = step.step === 3 && design?.state !== 'APPROVED';
+  const completeHint = useId();
   const worker = useMemo(() => operators.find((o) => o.userId === step.assigneeUserId), [operators, step.assigneeUserId]);
   const saveVendor = (name: string, phone: string) => void act(() => trackerApi.setVendor(tracker.orderId, name, phone), 'Vendor saved.');
 
@@ -144,7 +147,7 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
           ))}</tbody></table>
       )}
 
-      {step.step === 2 && (
+      {step.step === 2 && design && (
         <>
           <div className="ck-trk-cards">
             <VendorCard heading="Vendor" nameLabel="Name" contactLabel="Phone" vendor={tracker.vendor} editable={superadmin} busy={busy} onSave={saveVendor} />
@@ -160,7 +163,7 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
         </>
       )}
 
-      {step.step === 3 && (
+      {step.step === 3 && design && (
         <>
           <p>Design status: <strong>{(design.state ?? 'NOT_SENT').replace(/_/g, ' ').toLowerCase()}</strong>{design.comment ? ` — ${design.comment}` : ''}</p>
           <DraftImages orderId={tracker.orderId} canManage={false} selectedId={selectedDraft ?? design.approvedDraftRef} onSelect={setSelectedDraft} />
@@ -245,12 +248,14 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
             onClick={() => void act(() => trackerApi.saveStageNote(tracker.orderId, step.step, note, step.version), 'Stage note saved.')}>Save stage note</button>
         )}
         {superadmin && SIGN_OFF_STEPS.has(step.step) && step.status === 'ACTIVE' && !signedOff && (
-          <button type="button" className="ck-btn ck-btn-ghost" disabled={busy} onClick={() => void act(() => trackerApi.signOff(tracker.orderId, step.step), 'Signed off.')}><ShieldCheck size={15} aria-hidden="true" /> Sign off</button>
+          <button type="button" className="ck-btn ck-btn-ghost" disabled={busy} onClick={() => void act(() => trackerApi.signOff(tracker.orderId, step.step, step.version), 'Signed off.')}><ShieldCheck size={15} aria-hidden="true" /> Sign off</button>
         )}
         {SIGN_OFF_STEPS.has(step.step) && signedOff && <span className="ck-product-muted">Signed off</span>}
         {step.can.canComplete && (
-          <button type="button" className="ck-btn ck-btn-g" disabled={busy} onClick={() => void act(() => trackerApi.complete(tracker.orderId, step.step, step.version), 'Step completed.')}><Check size={15} aria-hidden="true" /> Complete step</button>
+          <button type="button" className="ck-btn ck-btn-g" disabled={busy || awaitingApproval} aria-describedby={awaitingApproval ? completeHint : undefined}
+            onClick={() => void act(() => trackerApi.complete(tracker.orderId, step.step, step.version), 'Step completed.')}><Check size={15} aria-hidden="true" /> Complete step</button>
         )}
+        {step.can.canComplete && awaitingApproval && <span id={completeHint} className="ck-product-muted">Approve a design first</span>}
         {step.can.canReopen && (
           <button type="button" className="ck-btn ck-btn-ghost" disabled={busy} onClick={() => void act(() => trackerApi.reopen(tracker.orderId, step.step), 'Step reopened.')}><RotateCcw size={15} aria-hidden="true" /> Reopen step</button>
         )}

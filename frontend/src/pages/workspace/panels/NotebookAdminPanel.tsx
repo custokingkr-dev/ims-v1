@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Modal } from '../../../components/Modal';
-import { errorMessage } from '../../../features/catalog/api';
-import { trackerApi, type OperatorRow } from '../../../features/tracker/api';
+import { trackerApi, trackerError, type OperatorRow } from '../../../features/tracker/api';
 import { slaLabel } from '../../../features/tracker/steps';
 import '../../../features/catalog/product-form.css';
 import '../../../features/tracker/tracker.css';
@@ -14,7 +13,7 @@ function useAction() {
   const [notice, setNotice] = useState('');
   const run = async (operation: () => Promise<unknown>, done: string) => {
     setError(''); setNotice('');
-    try { await operation(); setNotice(done); return true; } catch (e) { setError(errorMessage(e)); return false; }
+    try { await operation(); setNotice(done); return true; } catch (e) { setError(trackerError(e)); return false; }
   };
   return { error, notice, run };
 }
@@ -30,7 +29,7 @@ function useList<T>(load: () => Promise<T[]>, failure: string) {
   const reload = useCallback(async () => {
     const request = ++latest.current;
     try { const next = await load(); if (request === latest.current) { setRows(next); setError(''); } }
-    catch (e) { if (request === latest.current) setError(errorMessage(e, failure)); }
+    catch (e) { if (request === latest.current) setError(trackerError(e, failure)); }
   }, [load, failure]);
   useEffect(() => { setRows(null); setError(''); void reload(); }, [reload]);
   return { rows, error, reload };
@@ -67,65 +66,71 @@ function OperatorsTab({ schools }: { schools: SchoolOption[] }) {
     setRevokeBusy(false); setRevoking(null);
   };
   return (
-    <section>
-      <h3>Operator assignments</h3>
-      <p className="ck-product-muted">A school-wide operator handles every order of the school; an item-specific one only the item named here.</p>
-      {operators.error ? <LoadFailure message={operators.error} onRetry={() => void operators.reload()} /> : (
-        <div className="ck-table-wrap"><table className="ck-table">
-          <thead><tr><th>Operator</th><th>School</th><th>Scope</th><th><span className="ck-sr-only">Actions</span></th></tr></thead>
-          <tbody>{operators.rows === null ? <tr><td colSpan={4} className="ck-product-muted">Loading operator assignments…</td></tr>
-            : operators.rows.length === 0 ? <tr><td colSpan={4} className="ck-product-muted">No operator assignments.</td></tr>
-              : operators.rows.map((r) => (
-                <tr key={r.assignmentId}><td>{r.fullName}<div className="ck-product-muted">{r.email}</div></td><td>{name(r.schoolId)}</td>
-                  <td>{scope(r)}</td>
-                  <td><button type="button" className="ck-btn ck-btn-ghost" aria-label={`Revoke ${r.fullName} at ${name(r.schoolId)}`} onClick={() => setRevoking(r)}>Revoke</button></td></tr>
-              ))}</tbody>
-        </table></div>
-      )}
-      {users.error && <LoadFailure message={users.error} onRetry={() => void users.reload()} />}
-      {categories.error && <LoadFailure message={categories.error} onRetry={() => void categories.reload()} />}
-      <h4>Scope an operator to one catalogue item at a school</h4>
-      <div className="ck-product-fields">
-        <label className="field">Operator
-          <select value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
-            <option value="">Select operator…</option>{(users.rows ?? []).map((u) => <option key={u.userId} value={u.userId}>{u.fullName || u.email}{u.fullName && u.email ? ` · ${u.email}` : ''}</option>)}
-          </select>
-        </label>
-        <label className="field">School to scope
-          <select value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}>
-            <option value="">Select school…</option>{schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </label>
-        <label className="field">Catalogue item
-          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-            <option value="">Select item…</option>{categoryOptions}
-          </select>
-        </label>
+    <section className="ck-trk-setup">
+      <div>
+        <h3>Operator assignments</h3>
+        <p className="ck-product-muted">A school-wide operator handles every order of the school; an item-specific one only the item named here.</p>
+        {operators.error ? <LoadFailure message={operators.error} onRetry={() => void operators.reload()} /> : (
+          <div className="ck-table-wrap"><table className="ck-table">
+            <thead><tr><th>Operator</th><th>School</th><th>Scope</th><th><span className="ck-sr-only">Actions</span></th></tr></thead>
+            <tbody>{operators.rows === null ? <tr><td colSpan={4} className="ck-product-muted">Loading operator assignments…</td></tr>
+              : operators.rows.length === 0 ? <tr><td colSpan={4} className="ck-product-muted">No operator assignments.</td></tr>
+                : operators.rows.map((r) => (
+                  <tr key={r.assignmentId}><td>{r.fullName}<div className="ck-product-muted">{r.email}</div></td><td>{name(r.schoolId)}</td>
+                    <td>{scope(r)}</td>
+                    <td><button type="button" className="ck-btn ck-btn-ghost" aria-label={`Revoke ${r.fullName} at ${name(r.schoolId)}`} onClick={() => setRevoking(r)}>Revoke</button></td></tr>
+                ))}</tbody>
+          </table></div>
+        )}
+        {users.error && <LoadFailure message={users.error} onRetry={() => void users.reload()} />}
+        {categories.error && <LoadFailure message={categories.error} onRetry={() => void categories.reload()} />}
       </div>
-      <button type="button" className="ck-btn ck-btn-g" disabled={!form.userId || !form.schoolId || !form.category}
-        onClick={() => void run(async () => { await trackerApi.scopeOperator(Number(form.userId), Number(form.schoolId), form.category); await operators.reload(); }, 'Operator scoped.')}>Assign scope</button>
-      <h4>Create a new item-specific operator</h4>
-      <div className="ck-product-fields">
-        <label className="field">School
-          <select aria-label="School for new operator" value={created.schoolId} onChange={(e) => setCreated({ ...created, schoolId: e.target.value })}>
-            <option value="">Select school…</option>{schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </label>
-        <label className="field">Catalogue item for new operator
-          <select value={created.category} onChange={(e) => setCreated({ ...created, category: e.target.value })}>
-            <option value="">Select item…</option>{categoryOptions}
-          </select>
-        </label>
-        <label className="field">Full name<input value={created.fullName} onChange={(e) => setCreated({ ...created, fullName: e.target.value })} /></label>
-        <label className="field">Email<input type="email" value={created.email} onChange={(e) => setCreated({ ...created, email: e.target.value })} /></label>
-        <label className="field">Temporary password<input type="password" autoComplete="new-password" value={created.temporaryPassword} onChange={(e) => setCreated({ ...created, temporaryPassword: e.target.value })} /></label>
+      <div>
+        <h4>Scope an operator to one catalogue item at a school</h4>
+        <div className="ck-product-fields">
+          <label className="field">Operator
+            <select value={form.userId} onChange={(e) => setForm({ ...form, userId: e.target.value })}>
+              <option value="">Select operator…</option>{(users.rows ?? []).map((u) => <option key={u.userId} value={u.userId}>{u.fullName || u.email}{u.fullName && u.email ? ` · ${u.email}` : ''}</option>)}
+            </select>
+          </label>
+          <label className="field">School to scope
+            <select value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}>
+              <option value="">Select school…</option>{schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+          <label className="field">Catalogue item
+            <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+              <option value="">Select item…</option>{categoryOptions}
+            </select>
+          </label>
+        </div>
+        <button type="button" className="ck-btn ck-btn-g" disabled={!form.userId || !form.schoolId || !form.category}
+          onClick={() => void run(async () => { await trackerApi.scopeOperator(Number(form.userId), Number(form.schoolId), form.category); await operators.reload(); }, 'Operator scoped.')}>Assign scope</button>
       </div>
-      <button type="button" className="ck-btn ck-btn-g" disabled={!created.schoolId || !created.category || !created.fullName.trim() || !created.email.trim() || !created.temporaryPassword}
-        onClick={() => void run(async () => {
-          await trackerApi.createScopedOperator(Number(created.schoolId), { fullName: created.fullName.trim(), email: created.email.trim(), temporaryPassword: created.temporaryPassword }, created.category);
-          setCreated({ schoolId: '', category: '', fullName: '', email: '', temporaryPassword: '' });
-          await operators.reload(); await users.reload();
-        }, 'Operator created for that item at that school.')}>Create operator</button>
+      <div>
+        <h4>Create a new item-specific operator</h4>
+        <div className="ck-product-fields">
+          <label className="field">School
+            <select aria-label="School for new operator" value={created.schoolId} onChange={(e) => setCreated({ ...created, schoolId: e.target.value })}>
+              <option value="">Select school…</option>{schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+          <label className="field">Catalogue item for new operator
+            <select value={created.category} onChange={(e) => setCreated({ ...created, category: e.target.value })}>
+              <option value="">Select item…</option>{categoryOptions}
+            </select>
+          </label>
+          <label className="field">Full name<input value={created.fullName} onChange={(e) => setCreated({ ...created, fullName: e.target.value })} /></label>
+          <label className="field">Email<input type="email" value={created.email} onChange={(e) => setCreated({ ...created, email: e.target.value })} /></label>
+          <label className="field">Temporary password<input type="password" autoComplete="new-password" value={created.temporaryPassword} onChange={(e) => setCreated({ ...created, temporaryPassword: e.target.value })} /></label>
+        </div>
+        <button type="button" className="ck-btn ck-btn-g" disabled={!created.schoolId || !created.category || !created.fullName.trim() || !created.email.trim() || !created.temporaryPassword}
+          onClick={() => void run(async () => {
+            await trackerApi.createScopedOperator(Number(created.schoolId), { fullName: created.fullName.trim(), email: created.email.trim(), temporaryPassword: created.temporaryPassword }, created.category);
+            setCreated({ schoolId: '', category: '', fullName: '', email: '', temporaryPassword: '' });
+            await operators.reload(); await users.reload();
+          }, 'Operator created for that item at that school.')}>Create operator</button>
+      </div>
       <Messages error={error} notice={notice} />
       {revoking && (
         <Modal title="Revoke operator assignment" disabled={revokeBusy} onClose={() => setRevoking(null)} footer={<>

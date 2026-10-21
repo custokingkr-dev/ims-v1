@@ -6,7 +6,8 @@ import { NotebookWorklistPanel } from './NotebookWorklistPanel';
 import { SaAllOrdersPanel } from './SaAllOrdersPanel';
 import { catalogClient } from '../../../services/catalogApi';
 
-vi.mock('../../../contexts/AuthContext', () => ({ useAuth: () => ({ user: { role: 'OPERATIONS', userId: 42 } }) }));
+const auth = vi.hoisted(() => ({ user: { role: 'OPERATIONS', userId: 42 } }));
+vi.mock('../../../contexts/AuthContext', () => ({ useAuth: () => auth }));
 vi.mock('../../../features/tracker/NotebookTracker', () => ({ NotebookTracker: ({ orderId }: { orderId: string }) => <div>tracker for {orderId}</div> }));
 vi.mock('../../../features/tracker/OrderDetailEntry', () => ({ OrderDetailEntry: ({ orderId, trackerManaged }: { orderId: string; trackerManaged: boolean }) => <div>order {orderId} on tracker: {String(trackerManaged)}</div> }));
 vi.mock('../../../features/catalog/useCategoryLabel', () => ({ useCategoryLabel: () => (code?: string | null) => String(code ?? '') }));
@@ -16,9 +17,10 @@ vi.mock('../../../features/tracker/api', async (importOriginal) => {
   return { ...actual, trackerApi: { worklist: vi.fn(), operators: vi.fn(), operatorUsers: vi.fn(), createScopedOperator: vi.fn(), scopeOperator: vi.fn(), revokeAssignment: vi.fn(), schools: vi.fn(), categories: vi.fn(), designers: vi.fn(), createDesigner: vi.fn(), updateDesigner: vi.fn(), timeSlots: vi.fn(), setTimeSlot: vi.fn(), clearTimeSlot: vi.fn() } };
 });
 
+const UNAVAILABLE = 'The notebook order tracker is not available right now. Try again in a moment.';
 const row = (orderId: string, over = {}) => ({ orderId, schoolId: 7, schoolName: 'School Seven', customised: true, orderedCount: 2500, placedAt: '2026-10-19T04:00:00Z',
   timeZone: 'Asia/Kolkata', status: 'PRINTING_PRESS', currentStep: 7, currentTitle: 'Printing Press', assigneeUserId: 42, dueAt: '2026-10-19T09:00:00Z', overdue: false, completed: 6, total: 12, ...over });
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(trackerApi.categories).mockResolvedValue([{ code: 'NOTEBOOKS', label: 'Notebooks' }, { code: 'TROPHIES', label: 'Trophies' }]); vi.mocked(trackerApi.operatorUsers).mockResolvedValue([{ userId: 12, fullName: 'Op Twelve', email: 'op12@x.test' }]); vi.mocked(trackerApi.schools).mockResolvedValue([{ id: 7, name: 'School Seven' }]); });
+beforeEach(() => { vi.clearAllMocks(); auth.user = { role: 'OPERATIONS', userId: 42 }; vi.mocked(trackerApi.categories).mockResolvedValue([{ code: 'NOTEBOOKS', label: 'Notebooks' }, { code: 'TROPHIES', label: 'Trophies' }]); vi.mocked(trackerApi.operatorUsers).mockResolvedValue([{ userId: 12, fullName: 'Op Twelve', email: 'op12@x.test' }]); vi.mocked(trackerApi.schools).mockResolvedValue([{ id: 7, name: 'School Seven' }]); });
 afterEach(cleanup);
 
 it('lists my notebook orders soonest first, flags overdue ones and opens the tracker', async () => {
@@ -65,9 +67,31 @@ it('asks for every order or finished ones when the filters change, and explains 
 });
 
 it('shows the server reason when the worklist cannot load', async () => {
-  vi.mocked(trackerApi.worklist).mockRejectedValue({ response: { data: { message: 'Operations access required' } } });
+  vi.mocked(trackerApi.worklist).mockRejectedValue({ response: { status: 403, data: { message: 'Operations access required' } } });
   render(<NotebookWorklistPanel />);
   expect(await screen.findByRole('alert')).toHaveTextContent('Operations access required');
+});
+
+it('says plainly that the tracker is not available when the service is down, and loads again on Refresh', async () => {
+  vi.mocked(trackerApi.worklist).mockRejectedValueOnce({ response: { status: 502, data: { message: 'Gateway upstream error' } } }).mockResolvedValue([row('CK-1')]);
+  render(<NotebookWorklistPanel />);
+  expect(await screen.findByRole('alert')).toHaveTextContent(UNAVAILABLE);
+  expect(screen.queryByText(/Gateway upstream error/)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+  expect(await screen.findByText('CK-1')).toBeInTheDocument();
+});
+
+it("opens superadmin's worklist on every order, since superadmin is never the one assigned", async () => {
+  auth.user = { role: 'SUPERADMIN', userId: 1 };
+  vi.mocked(trackerApi.worklist).mockResolvedValue([row('CK-1', { assigneeUserId: 42 })]);
+  render(<NotebookWorklistPanel />);
+  expect(await screen.findByText('CK-1')).toBeInTheDocument();
+  expect(trackerApi.worklist).toHaveBeenCalledWith({ scope: 'all', includeFinished: false });
+  expect(trackerApi.worklist).not.toHaveBeenCalledWith(expect.objectContaining({ scope: 'mine' }));
+  const group = screen.getByRole('group', { name: 'Show orders' });
+  expect(within(group).getByRole('radio', { name: 'All' })).toBeChecked();
+  fireEvent.click(within(group).getByRole('radio', { name: 'Assigned to me' }));
+  await waitFor(() => expect(trackerApi.worklist).toHaveBeenLastCalledWith({ scope: 'mine', includeFinished: false }));
 });
 
 it('scopes an operator to notebooks at a chosen school and revokes an assignment', async () => {
@@ -122,6 +146,16 @@ it('reports set-up lists that cannot load instead of showing them as empty', asy
   fireEvent.change(await screen.findByLabelText('School'), { target: { value: '7' } });
   expect(await screen.findByText('Time slots are unavailable')).toHaveAttribute('role', 'alert');
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
+});
+
+it('says plainly that the tracker is not available when a set-up list fails on the server, and retries it', async () => {
+  vi.mocked(trackerApi.operators).mockRejectedValueOnce({ response: { status: 503, data: { message: 'Upstream connect error' } } })
+    .mockResolvedValue([{ assignmentId: 9, userId: 3, fullName: 'Op Three', email: 'op3@x.test', schoolId: 7, catalogCategory: null }]);
+  render(<NotebookAdminPanel />);
+  expect(await screen.findByText(UNAVAILABLE)).toHaveAttribute('role', 'alert');
+  expect(screen.queryByText(/Upstream connect error/)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /Retry/ }));
+  expect(await screen.findByText('Op Three')).toBeInTheDocument();
 });
 
 it('reports a school list that cannot load', async () => {

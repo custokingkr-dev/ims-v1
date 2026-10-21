@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
-import { errorMessage } from '../../../features/catalog/api';
 import { NotebookTracker } from '../../../features/tracker/NotebookTracker';
-import { trackerApi } from '../../../features/tracker/api';
+import { trackerApi, trackerError } from '../../../features/tracker/api';
 import type { WorklistItem } from '../../../features/tracker/types';
 import { getDisplayStatus } from '../../../shared/display/status';
 import '../../../features/catalog/product-form.css';
 import '../../../features/tracker/tracker.css';
 
-/** Notebook orders waiting on the signed-in operator (or, with "All", every order they may see), soonest deadline first. */
+/**
+ * Notebook orders waiting on the signed-in operator (or, with "All", every order they may see), soonest deadline first.
+ * Superadmin is never the one a step is assigned to, so their list opens on "All".
+ */
 export function NotebookWorklistPanel() {
   const { user } = useAuth();
-  const [scope, setScope] = useState<'mine' | 'all'>('mine');
+  // Until the user picks one, the view follows the role: derived, not stored, so it is right even if the user loads late.
+  const [chosen, setScope] = useState<'mine' | 'all' | null>(null);
+  const scope = chosen ?? (user?.role === 'SUPERADMIN' ? 'all' : 'mine');
   const [finished, setFinished] = useState(false);
   const [rows, setRows] = useState<WorklistItem[] | null>(null);
   const [error, setError] = useState('');
@@ -21,7 +25,7 @@ export function NotebookWorklistPanel() {
   const load = useCallback(async () => {
     setError('');
     try { setRows(await trackerApi.worklist({ scope, includeFinished: finished })); }
-    catch (e) { setRows(null); setError(errorMessage(e, 'Unable to load notebook orders.')); }
+    catch (e) { setRows(null); setError(trackerError(e, 'Unable to load notebook orders.')); }
   }, [scope, finished]);
   useEffect(() => { void load(); }, [load]);
 

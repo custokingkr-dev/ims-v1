@@ -46,7 +46,8 @@
 .ck-trk-facts dd { margin: 0; font-weight: 600; }
 .ck-trk-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ck-space-4); }
 .ck-trk-card { border: 1px solid var(--border); border-radius: var(--ck-radius-xs); padding: var(--ck-space-3); display: grid; gap: var(--ck-space-3); min-width: 0; }
-.ck-trk-card .ck-product-fields { margin: 0; }
+/* A card sits in half the work area: its edit fields stack full width so names and phone numbers are not cut short. */
+.ck-trk-card .ck-product-fields { margin: 0; grid-template-columns: minmax(0, 1fr); }
 .ck-trk-tbd { margin: 0 0 var(--ck-space-3); padding: var(--ck-space-2) var(--ck-space-3); border-radius: var(--ck-radius-xs); background: var(--am1); color: var(--am); font-size: var(--ck-text-sm); }
 .ck-trk-tbd strong { margin-right: var(--ck-space-2); }
 .ck-trk-legend { padding: 0; margin-bottom: var(--ck-space-2); font-size: var(--ck-text-sm); font-weight: 600; }
@@ -70,6 +71,9 @@
 .ck-trk-preview img { width: 100%; max-height: 320px; object-fit: contain; background: var(--bg); border: 1px solid var(--border); border-radius: var(--ck-radius-xs); }
 
 .ck-trk-work-list { display: grid; gap: var(--ck-space-4); }
+/* Set-up sections (an assignments list, then each form) stand apart; inside one, fields and buttons keep their own spacing. */
+.ck-trk-setup { display: grid; gap: var(--ck-space-6); }
+.ck-trk-setup > * { min-width: 0; }
 
 @media (max-width: 900px) {
   .ck-trk-grid { grid-template-columns: minmax(0, 1fr); }

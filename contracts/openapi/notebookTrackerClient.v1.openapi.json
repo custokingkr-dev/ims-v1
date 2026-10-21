@@ -401,6 +401,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerVersionRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful response",
@@ -1737,7 +1747,14 @@
             ]
           },
           "design": {
-            "$ref": "#/components/schemas/TrackerDesign"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TrackerDesign"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "steps": {
             "type": "array",

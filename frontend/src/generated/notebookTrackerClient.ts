@@ -24,7 +24,7 @@ export type TrackerNote = { "id": number; "authorUserId": number; "body": string
 
 export type TrackerFollowUp = { "id": number; "percentComplete": number; "nextFollowUpOn": string | null; "contactPhone": string | null; "createdBy": number; "createdAt": string; };
 
-export type TrackerView = { "orderId": string; "schoolId": number; "customised": boolean; "orderedCount": number; "placedAt": string; "timeZone": string; "schoolName": string | null; "instanceStatus": string; "progress": TrackerProgress; "vendor": (TrackerContact | null); "designer": (TrackerDesigner | null); "design": TrackerDesign; "steps": Array<TrackerStep>; "internalNotes": Array<TrackerNote>; "followUps": Array<TrackerFollowUp>; "version": number; };
+export type TrackerView = { "orderId": string; "schoolId": number; "customised": boolean; "orderedCount": number; "placedAt": string; "timeZone": string; "schoolName": string | null; "instanceStatus": string; "progress": TrackerProgress; "vendor": (TrackerContact | null); "designer": (TrackerDesigner | null); "design": (TrackerDesign | null); "steps": Array<TrackerStep>; "internalNotes": Array<TrackerNote>; "followUps": Array<TrackerFollowUp>; "version": number; };
 
 export type TrackerDesignerRow = { "id": number; "name": string; "phone": string | null; "active": boolean; };
 
@@ -61,7 +61,7 @@ export interface NotebookTrackerClient {
   saveNotebookStageNote(parameters: { orderId: string; step: number; }, request: TrackerNoteRequest): Promise<TrackerView>;
   completeNotebookStep(parameters: { orderId: string; step: number; }, request: TrackerVersionRequest): Promise<TrackerView>;
   reopenNotebookStep(parameters: { orderId: string; step: number; }): Promise<TrackerView>;
-  signOffNotebookStep(parameters: { orderId: string; step: number; }): Promise<TrackerView>;
+  signOffNotebookStep(parameters: { orderId: string; step: number; }, request: TrackerVersionRequest): Promise<TrackerView>;
   assignNotebookStep(parameters: { orderId: string; step: number; }, request: TrackerAssigneeRequest): Promise<TrackerView>;
   assignNotebookOrder(parameters: { orderId: string; }, request: TrackerAssigneeRequest): Promise<TrackerView>;
   addNotebookFollowUp(parameters: { orderId: string; }, request: TrackerFollowUpRequest): Promise<TrackerView>;
@@ -105,8 +105,8 @@ export function createNotebookTrackerClient(http: AxiosInstance): NotebookTracke
       const response = await http.post<TrackerView>(`/workflows/notebook-orders/${encodeURIComponent(String(parameters.orderId))}/steps/${encodeURIComponent(String(parameters.step))}/reopen`);
       return response.data;
     },
-    async signOffNotebookStep(parameters: { orderId: string; step: number; }) {
-      const response = await http.post<TrackerView>(`/workflows/notebook-orders/${encodeURIComponent(String(parameters.orderId))}/steps/${encodeURIComponent(String(parameters.step))}/sign-off`);
+    async signOffNotebookStep(parameters: { orderId: string; step: number; }, request: TrackerVersionRequest) {
+      const response = await http.post<TrackerView>(`/workflows/notebook-orders/${encodeURIComponent(String(parameters.orderId))}/steps/${encodeURIComponent(String(parameters.step))}/sign-off`, request);
       return response.data;
     },
     async assignNotebookStep(parameters: { orderId: string; step: number; }, request: TrackerAssigneeRequest) {

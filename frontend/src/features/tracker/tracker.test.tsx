@@ -37,7 +37,8 @@ function tracker(over: Partial<TrackerView> = {}): TrackerView {
   return {
     orderId: 'CK-1', schoolId: 7, customised: false, orderedCount: 1000, placedAt: '2026-10-19T04:00:00Z', timeZone: 'Asia/Kolkata', schoolName: 'School Seven',
     instanceStatus: 'IN_PROGRESS', progress: { completed: 1, total: 3, currentStep: 5, currentTitle: 'Production Planning', finished: false },
-    vendor: null, designer: null, design: { state: null, comment: null, at: null, by: null, approvedDraftRef: null, canManageImages: false },
+    // A wholesale order, as the server sends it: no design approval at all.
+    vendor: null, designer: null, design: null,
     steps: [
       step(1, 'Order Details', { status: 'COMPLETED', completedAt: '2026-10-19T05:00:00Z', can: can({ canReopen: true }) }),
       step(5, 'Production Planning', { status: 'ACTIVE', dueAt: '2026-10-19T09:00:00Z', can: can({ canEditDetails: true, canEditStageNote: true, canComplete: true }) }),
@@ -52,6 +53,8 @@ const summary = (over: Partial<OrderSummary> = {}): OrderSummary => ({
   schoolNotes: 'Please use green', orderedCount: 1000, trackerPending: false, schoolContactEmail: 'office@seven.test', schoolContactPhone: '+91 98765 43210',
   lines: [{ lineNo: 1, selections: { SIZE: { code: 'LONG', label: 'Long' }, RULING: { code: 'SINGLE_RULE', label: 'Single rule' } }, bookCount: 400, pageCount: 198 }], ...over,
 });
+
+const UNAVAILABLE = 'The notebook order tracker is not available right now. Try again in a moment.';
 
 const TITLES: Record<number, string> = {
   1: 'Order Details', 2: 'Designing Activity', 3: 'Head Approval', 4: 'CDR Conversion', 5: 'Production Planning', 6: 'Board Procurement',
@@ -94,6 +97,45 @@ describe('tracker rules', () => {
     expect(() => parseTracker({ orderId: 'CK-1' })).toThrow();
     expect(() => parseTracker(null)).toThrow();
     expect(parseTracker({ ...tracker(), internalNotes: undefined }).internalNotes).toEqual([]);
+  });
+  it('accepts a wholesale order with no design, designer or vendor, but not a design, designer or vendor it cannot read', () => {
+    expect(parseTracker({ ...tracker(), design: null, designer: null, vendor: null }).design).toBeNull();
+    for (const bad of [{ design: 'APPROVED' }, { design: [] }, { designer: 'Priya' }, { vendor: 42 }]) {
+      expect(() => parseTracker({ ...tracker(), ...bad })).toThrow('The tracker response was not understood.');
+    }
+  });
+});
+
+/** A wholesale tracker exactly as operations serialises it (verified against the local stack): design, designer and vendor are null. */
+const WHOLESALE_WIRE = {
+  orderId: 'CK-1002', schoolId: 7, customised: false, orderedCount: 1000, placedAt: '2026-10-19T04:00:00Z', timeZone: 'Asia/Kolkata', schoolName: 'School Seven',
+  instanceStatus: 'IN_PROGRESS', progress: { completed: 0, total: 9, currentStep: 1, currentTitle: 'Order Details', finished: false },
+  vendor: null, designer: null, design: null,
+  steps: [1, 5, 6, 7, 8, 9, 10, 11, 12].map((n, i) => ({
+    step: n, title: TITLES[n], customisedOnly: false, status: i === 0 ? 'ACTIVE' : 'LOCKED', assigneeUserId: 42, startedAt: i === 0 ? '2026-10-19T04:00:00Z' : null,
+    dueAt: null, overdue: false, sla: null, completedAt: null, completedBy: null, data: {}, stageNote: null, version: 0,
+    can: { canEditDetails: i === 0, canEditStageNote: i === 0, canComplete: i === 0, canReopen: false },
+  })),
+  internalNotes: [], followUps: [], version: 1,
+};
+
+describe('a wholesale order from the server', () => {
+  it('opens on the tracker with its nine steps and no design, designer or vendor', async () => {
+    vi.mocked(trackerApi.get).mockImplementation(async () => parseTracker(JSON.parse(JSON.stringify(WHOLESALE_WIRE))));
+    render(<NotebookTracker orderId="CK-1002" onBack={vi.fn()} />);
+    expect(await screen.findByText(/Step 1 · Order Details/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: 'Order progress' })).getAllByRole('listitem')).toHaveLength(9);
+    expect(screen.getByText(/0 of 9 done/)).toBeInTheDocument();
+    expect(screen.getByText('Designer: —')).toBeInTheDocument();
+    expect(screen.getByText('Vendor: —')).toBeInTheDocument();
+    expect(screen.queryByText('Changes requested')).not.toBeInTheDocument();
+  });
+  it('opens from the order screen too', async () => {
+    vi.mocked(trackerApi.get).mockImplementation(async () => parseTracker(JSON.parse(JSON.stringify(WHOLESALE_WIRE))));
+    render(<OrderDetailEntry orderId="CK-1002" trackerManaged onBack={vi.fn()} />);
+    expect(await screen.findByText(/Step 1 · Order Details/)).toBeInTheDocument();
+    expect(within(screen.getByRole('navigation', { name: 'Stages' })).getAllByRole('button')).toHaveLength(9);
   });
 });
 
@@ -226,7 +268,7 @@ describe('NotebookTracker', () => {
     vi.mocked(trackerApi.signOff).mockResolvedValue(tracker({ steps: [step(12, 'Delivery & Invoicing', { status: 'ACTIVE', data: { signOff: { by: 1, at: 'x' } } })] }));
     render(<NotebookTracker orderId="CK-1" initial={t} onBack={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: /Sign off/ }));
-    await waitFor(() => expect(trackerApi.signOff).toHaveBeenCalledWith('CK-1', 12));
+    await waitFor(() => expect(trackerApi.signOff).toHaveBeenCalledWith('CK-1', 12, 3));
     expect(await screen.findByText('Signed off', { selector: 'span' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Sign off/ })).not.toBeInTheDocument();
   });
@@ -247,6 +289,25 @@ describe('NotebookTracker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText(/Step 5 · Production Planning/)).toBeInTheDocument();
     expect(trackerApi.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('says plainly that the tracker is not available when the network fails, and still offers Retry', async () => {
+    vi.mocked(trackerApi.get).mockRejectedValueOnce({ isAxiosError: true, request: {}, message: 'Network Error' }).mockResolvedValue(tracker());
+    render(<NotebookTracker orderId="CK-1" onBack={vi.fn()} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent(UNAVAILABLE);
+    expect(screen.queryByText('Network Error')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(await screen.findByText(/Step 5 · Production Planning/)).toBeInTheDocument();
+  });
+
+  it('says plainly that a save failed because the service is down, but keeps a refusal the server explained', async () => {
+    vi.mocked(trackerApi.saveDraft).mockRejectedValueOnce({ response: { status: 502, data: { message: 'Gateway upstream error' } } })
+      .mockRejectedValueOnce({ response: { status: 409, data: { message: 'This step changed since you loaded it; reload and try again' } } });
+    render(<NotebookTracker orderId="CK-1" initial={tracker()} onBack={vi.fn()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(UNAVAILABLE);
+    fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
+    expect(await screen.findByText('This step changed since you loaded it; reload and try again')).toHaveAttribute('role', 'alert');
   });
 
   it('runs a wholesale order through nine steps, without the design steps', () => {
@@ -304,7 +365,9 @@ describe('NotebookTracker', () => {
   it('notes below its name that Board Procurement is still to be decided, and still completes it', () => {
     render(<NotebookTracker orderId="CK-1" initial={onStep(6)} onBack={vi.fn()} />);
     const area = screen.getByRole('region', { name: 'Board Procurement work area' });
-    expect(within(area).getByText(/TBD/)).toBeInTheDocument();
+    const note = within(area).getByText(/TBD/).closest('p');
+    expect(note).toHaveTextContent('TBD — board procurement details are still being finalised. Fill in what you know; the step can be completed as usual.');
+    expect(note).not.toHaveTextContent(/prototype/i);
     expect(within(area).getByRole('button', { name: /Complete step/ })).toBeEnabled();
   });
 
@@ -392,6 +455,20 @@ describe('design and vendor steps', () => {
     expect(trackerApi.draftBlob).not.toHaveBeenCalledWith('CK-1', 3);
   });
 
+  it('keeps Complete step on head approval disabled, and says why, until a design is approved', () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    const atThree = (state: 'SENT' | 'APPROVED') => onStep(3, {}, { customised: true,
+      design: { state, comment: null, at: null, by: null, approvedDraftRef: state === 'APPROVED' ? 2 : null, canManageImages: false } });
+    const { unmount } = render(<NotebookTracker orderId="CK-1" initial={atThree('SENT')} onBack={vi.fn()} />);
+    const complete = screen.getByRole('button', { name: /Complete step/ });
+    expect(complete).toBeDisabled();
+    expect(complete).toHaveAccessibleDescription('Approve a design first');
+    unmount();
+    render(<NotebookTracker orderId="CK-1" initial={atThree('APPROVED')} onBack={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /Complete step/ })).toBeEnabled();
+    expect(screen.queryByText('Approve a design first')).not.toBeInTheDocument();
+  });
+
   it('lets superadmin choose one draft on head approval and approve it', async () => {
     auth.user = { role: 'SUPERADMIN', userId: 1 };
     vi.mocked(trackerApi.draftImages).mockResolvedValue([draft(1, 'v1.png'), draft(2, 'v2.png')]);
@@ -422,10 +499,11 @@ describe('OrderDetailEntry', () => {
     expect(trackerApi.get).not.toHaveBeenCalled();
     expect(trackerApi.summary).not.toHaveBeenCalled();
   });
-  it('says why the tracker could not load and offers Retry, never falling back to the old order screen', async () => {
-    vi.mocked(trackerApi.get).mockRejectedValueOnce({ response: { status: 503, data: { message: 'Tracker service unavailable' } } }).mockResolvedValue(tracker());
+  it('says plainly that the tracker is not available and offers Retry, never falling back to the old order screen', async () => {
+    vi.mocked(trackerApi.get).mockRejectedValueOnce({ response: { status: 502, data: { message: 'Gateway upstream error' } } }).mockResolvedValue(tracker());
     render(<OrderDetailEntry orderId="CK-1" trackerManaged onBack={vi.fn()} />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Tracker service unavailable');
+    expect(await screen.findByRole('alert')).toHaveTextContent(UNAVAILABLE);
+    expect(screen.queryByText(/Gateway upstream error/)).not.toBeInTheDocument();
     expect(screen.queryByText('ordinary order detail')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     expect(await screen.findByText(/Step 5 · Production Planning/)).toBeInTheDocument();

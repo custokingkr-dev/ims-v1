@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { FileText, Trash2, Upload } from 'lucide-react';
-import { errorMessage } from '../catalog/api';
-import { trackerApi } from './api';
+import { trackerApi, trackerError } from './api';
 import type { DraftImage } from './types';
 import '../catalog/product-form.css';
 
@@ -100,11 +99,11 @@ export function DraftImages({ orderId, canManage, preview = false, selectedId, o
     next.sort((a, b) => a.uploadedAt.localeCompare(b.uploadedAt) || a.id - b.id);
     setImages(next);
   }, [orderId]);
-  useEffect(() => { load().catch((e: unknown) => setError(errorMessage(e, 'Unable to load the design drafts.'))); }, [load]);
+  useEffect(() => { load().catch((e: unknown) => setError(trackerError(e, 'Unable to load the design drafts.'))); }, [load]);
 
   const run = async (operation: () => Promise<void>) => {
     setBusy(true); setError('');
-    try { await operation(); await load(); } catch (e) { setError(errorMessage(e)); } finally { setBusy(false); }
+    try { await operation(); await load(); } catch (e) { setError(trackerError(e)); } finally { setBusy(false); }
   };
   const upload = (file?: File) => { if (file) void run(() => trackerApi.uploadDraft(orderId, file)); if (input.current) input.current.value = ''; };
 

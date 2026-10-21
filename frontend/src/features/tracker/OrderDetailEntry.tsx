@@ -3,8 +3,7 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ProductOrderDetail } from '../catalog/ProductOrderDetail';
 import { NotebookTracker } from './NotebookTracker';
-import { trackerApi } from './api';
-import { errorMessage } from '../catalog/api';
+import { trackerApi, trackerError } from './api';
 import type { TrackerView } from './types';
 import '../catalog/product-form.css';
 import './tracker.css';
@@ -17,7 +16,7 @@ type EntryState =
   | { kind: 'error'; message: string };
 
 const httpStatus = (error: unknown) => (error as { response?: { status?: number } })?.response?.status;
-const failure = (error: unknown): EntryState => ({ kind: 'error', message: errorMessage(error, 'The tracker for this order could not be loaded.') });
+const failure = (error: unknown): EntryState => ({ kind: 'error', message: trackerError(error, 'The tracker for this order could not be loaded.') });
 
 /**
  * The order screen for staff. A notebook order placed on the tracker (`trackerManaged`) opens as the tracker; every other
@@ -60,7 +59,7 @@ export function OrderDetailEntry({ orderId, trackerManaged, onBack, onChanged }:
       const result = await trackerApi.startTracker(orderId);
       if (result.trackerPending) setStartError('The tracker service could not be reached. Try again shortly.');
       else setAttempt((n) => n + 1);
-    } catch (e) { setStartError(errorMessage(e, 'Unable to start the tracker.')); } finally { setStarting(false); }
+    } catch (e) { setStartError(trackerError(e, 'Unable to start the tracker.')); } finally { setStarting(false); }
   };
 
   if (!onTracker) {

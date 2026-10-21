@@ -58,6 +58,26 @@ it.each(['DESIGN_APPROVAL', 'PROCESSING', 'APPROVED'])('offers no quote, approva
   expect(screen.queryByText(/Design approval (pending|completed)/)).not.toBeInTheDocument();
   expect(screen.queryByLabelText('Unit price for line 1')).not.toBeInTheDocument();
 });
+// Spec v4: notebook orders on the tracker leave the delivery flow; their delivery proof is tracker step 12.
+it.each(['ORDER_DETAILS', 'DELIVERY_INVOICING'])('asks the school for no pre-delivery photo on a %s notebook order the tracker runs', async (status) => {
+  auth.role = 'ADMIN';
+  vi.mocked(api.get).mockResolvedValue({ data: onTracker(status) });
+  const { container } = render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByRole('row', { name: 'Order line 1' })).toBeInTheDocument();
+  expect(screen.queryByText('Pre-delivery photo')).not.toBeInTheDocument();
+  expect(screen.queryByText('Required before delivery')).not.toBeInTheDocument();
+  expect(screen.queryByText('Pre-delivery photo required')).not.toBeInTheDocument();
+  expect(container.querySelector('input[type="file"]')).toBeNull();
+});
+// Owner decision D1: a customised notebook order placed before the tracker still needs its photo before delivery.
+it('keeps the pre-delivery photo requirement and its upload for a notebook order placed before the tracker', async () => {
+  auth.role = 'ADMIN';
+  vi.mocked(api.get).mockResolvedValue({ data: { ...savedNotebook('APPROVED'), order: { ...savedNotebook('APPROVED').order, trackerManaged: false } } });
+  const { container } = render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByText('Pre-delivery photo')).toBeInTheDocument();
+  expect(screen.getByText('Required before delivery')).toBeInTheDocument();
+  expect(container.querySelector('input[type="file"]')).not.toBeNull();
+});
 // The host may have opened this screen from a stale list row; the loaded order is what says whether the tracker runs it.
 it('tells its host when the loaded order turns out to be on the tracker, and stays quiet for any other order', async () => {
   const onTrackerManaged = vi.fn();

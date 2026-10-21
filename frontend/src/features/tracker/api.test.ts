@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '../../services/api';
-import { parseTracker, trackerApi } from './api';
+import { TRACKER_UNAVAILABLE, parseTracker, trackerApi, trackerError } from './api';
 
 vi.mock('../../services/api', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() } }));
 
@@ -23,8 +23,8 @@ describe('tracker wire contract', () => {
     expect(api.post).toHaveBeenLastCalledWith('/workflows/notebook-orders/CK%201%2Fx/steps/5/complete', { expectedVersion: 3 });
     await trackerApi.reopen('CK 1/x', 5);
     expect(last(api.post)[0]).toBe('/workflows/notebook-orders/CK%201%2Fx/steps/5/reopen');
-    await trackerApi.signOff('CK 1/x', 8);
-    expect(last(api.post)[0]).toBe('/workflows/notebook-orders/CK%201%2Fx/steps/8/sign-off');
+    await trackerApi.signOff('CK 1/x', 8, 6);
+    expect(api.post).toHaveBeenLastCalledWith('/workflows/notebook-orders/CK%201%2Fx/steps/8/sign-off', { expectedVersion: 6 });
   });
 
   it('sends assignment, design, vendor, designer and note requests as the server records expect them', async () => {
@@ -142,5 +142,19 @@ describe('tracker wire contract', () => {
     expect(parsed.internalNotes).toEqual([]);
     expect(parsed.followUps).toEqual([]);
     expect(() => parseTracker({ orderId: 'x', steps: 'no' })).toThrow();
+  });
+});
+
+describe('what a failed tracker call tells the user', () => {
+  it('says plainly that the tracker is unavailable for a failing service or network, and keeps a reason the server gave', () => {
+    expect(trackerError({ response: { status: 502, data: { message: 'Gateway upstream error' } } })).toBe(TRACKER_UNAVAILABLE);
+    expect(trackerError({ response: { status: 500 } })).toBe(TRACKER_UNAVAILABLE);
+    expect(trackerError({ isAxiosError: true, request: {}, message: 'Network Error' })).toBe(TRACKER_UNAVAILABLE);
+    expect(trackerError({ isAxiosError: true, request: {}, code: 'ECONNABORTED', message: 'timeout of 30000ms exceeded' })).toBe(TRACKER_UNAVAILABLE);
+    expect(trackerError({ response: { status: 409, data: { message: 'This step changed since you loaded it; reload and try again' } } }))
+      .toBe('This step changed since you loaded it; reload and try again');
+    expect(trackerError({ response: { status: 403, data: { message: 'Only superadmin can sign off' } } })).toBe('Only superadmin can sign off');
+    expect(trackerError(new Error('The tracker response was not understood.'))).toBe('The tracker response was not understood.');
+    expect(trackerError({ response: { status: 404 } }, 'Unable to load this order.')).toBe('Unable to load this order.');
   });
 });

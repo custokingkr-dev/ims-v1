@@ -1,5 +1,5 @@
 import api from '../../services/api';
-import { parseProductCategories } from '../catalog/api';
+import { errorMessage, parseProductCategories } from '../catalog/api';
 import { createNotebookTrackerClient } from '../../generated/notebookTrackerClient';
 import { createCatalogClient } from '../../generated/catalogClient';
 import { createOperatorAdminClient } from '../../generated/operatorAdminClient';
@@ -14,13 +14,23 @@ const operatorAdmin = createOperatorAdminClient(api);
 const tenant = createTenantSchoolClient(api);
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
-/** A tracker response is trusted only when it has the parts the screen reads; anything else is a bad response, not a blank screen. */
+/** Absent (null) or an object the screen can read; anything else is a response the screen does not understand. */
+const nullOrRecord = (v: unknown) => v == null || isRecord(v);
+
+/**
+ * A tracker response is trusted only when it has the parts the screen reads; anything else is a bad response, not a blank
+ * screen. A wholesale order has no design approval, and an order may have no designer or vendor yet: those are null.
+ */
 export function parseTracker(data: unknown): TrackerView {
-  if (!isRecord(data) || typeof data.orderId !== 'string' || !Array.isArray(data.steps) || !isRecord(data.progress) || !isRecord(data.design)) {
+  if (!isRecord(data) || typeof data.orderId !== 'string' || !Array.isArray(data.steps) || !isRecord(data.progress)
+    || !nullOrRecord(data.design) || !nullOrRecord(data.designer) || !nullOrRecord(data.vendor)) {
     throw new Error('The tracker response was not understood.');
   }
   return {
     ...(data as unknown as TrackerView),
+    design: (data.design ?? null) as TrackerView['design'],
+    designer: (data.designer ?? null) as TrackerView['designer'],
+    vendor: (data.vendor ?? null) as TrackerView['vendor'],
     steps: (data.steps as unknown[]).filter(isRecord).map((s) => ({ ...s, data: isRecord(s.data) ? s.data : {} }) as unknown as TrackerView['steps'][number]),
     internalNotes: Array.isArray(data.internalNotes) ? data.internalNotes as TrackerView['internalNotes'] : [],
     followUps: Array.isArray(data.followUps) ? data.followUps as TrackerView['followUps'] : [],
@@ -28,6 +38,20 @@ export function parseTracker(data: unknown): TrackerView {
 }
 
 const view = async (request: Promise<unknown>) => parseTracker(await request);
+
+export const TRACKER_UNAVAILABLE = 'The notebook order tracker is not available right now. Try again in a moment.';
+
+/**
+ * What to tell the user when a tracker call fails. A refusal the server explained (a 4xx) keeps its own words; a failing
+ * service or network (a 5xx, or no response at all) is said plainly instead of passing on text such as "Gateway upstream
+ * error". Anything else, such as a response the screen could not read, keeps its own message.
+ */
+export function trackerError(error: unknown, fallback?: string): string {
+  const failure = error as { response?: { status?: unknown }; isAxiosError?: unknown; request?: unknown } | null | undefined;
+  const status = failure?.response?.status;
+  const unavailable = typeof status === 'number' ? status >= 500 : !failure?.response && (failure?.isAxiosError === true || failure?.request != null);
+  return unavailable ? TRACKER_UNAVAILABLE : errorMessage(error, fallback);
+}
 
 export const trackerApi = {
   get: (orderId: string) => view(client.getNotebookTracker({ orderId })),
@@ -37,7 +61,8 @@ export const trackerApi = {
     view(client.saveNotebookStageNote({ orderId, step }, { note, expectedVersion })),
   complete: (orderId: string, step: number, expectedVersion: number) => view(client.completeNotebookStep({ orderId, step }, { expectedVersion })),
   reopen: (orderId: string, step: number) => view(client.reopenNotebookStep({ orderId, step })),
-  signOff: (orderId: string, step: number) => view(client.signOffNotebookStep({ orderId, step })),
+  // A sign-off approves the data the screen loaded, so it carries that step version; the server refuses it if the step changed since.
+  signOff: (orderId: string, step: number, expectedVersion: number) => view(client.signOffNotebookStep({ orderId, step }, { expectedVersion })),
   assignStep: (orderId: string, step: number, userId: number) => view(client.assignNotebookStep({ orderId, step }, { userId })),
   assignOrder: (orderId: string, userId: number) => view(client.assignNotebookOrder({ orderId }, { userId })),
   addFollowUp: (orderId: string, body: { percentComplete: number; nextFollowUpOn?: string; contactPhone?: string }) =>
