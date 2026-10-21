@@ -1,8 +1,12 @@
 package com.custoking.ims.operationsservice.application;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.custoking.ims.operationsservice.infrastructure.StaffDirectory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Clock;
@@ -79,13 +83,46 @@ class StaffNamesTest {
     }
 
     @Test
-    void identityDownLeavesNamesUnknownAndIsAskedAgainNextTime() {
+    void afterAFailureIdentityIsLeftAloneForAMinute() {
         staff.put(7L, "Asha Operator");
         down = true;
-        assertEquals(Map.of(), names.lookup(List.of(7L)));
-        down = false;
-        assertEquals(Map.of(7L, "Asha Operator"), names.lookup(List.of(7L)), "a failure is not cached");
+        ListAppender<ILoggingEvent> logs = capture();
+        try {
+            assertEquals(Map.of(), names.lookup(List.of(7L)));
+            down = false;
+            clock.advance(Duration.ofSeconds(30));
+            assertEquals(Map.of(), names.lookup(List.of(7L)), "not asked again within the minute");
+            assertEquals(Map.of(), names.lookup(List.of(8L)), "not for another id either");
+            assertEquals(1, calls.size());
+            clock.advance(Duration.ofSeconds(31));
+            assertEquals(Map.of(7L, "Asha Operator"), names.lookup(List.of(7L)), "the failure itself is not cached");
+            assertEquals(2, calls.size());
+        } finally {
+            release(logs);
+        }
+        assertEquals(1, logs.list.stream().filter(event -> event.getLevel() == Level.WARN).count(),
+                "one warning for the outage, not one per lookup: " + logs.list);
+    }
+
+    @Test
+    void anExpiredNameIsServedWhileItsRefreshFails() {
+        staff.put(7L, "Asha Operator");
+        names.lookup(List.of(7L));
+        clock.advance(Duration.ofMinutes(11));
+        down = true;
+        assertEquals(Map.of(7L, "Asha Operator"), names.lookup(List.of(7L, 8L)), "the expired name rather than none; 8 was never known");
+        assertEquals(2, calls.size(), "the refresh was tried");
+        clock.advance(Duration.ofSeconds(30));
+        assertEquals(Map.of(7L, "Asha Operator"), names.lookup(List.of(7L)), "and served through the back-off");
         assertEquals(2, calls.size());
+
+        down = false;
+        staff.put(7L, "Asha Renamed");
+        clock.advance(Duration.ofSeconds(31));
+        assertEquals(Map.of(7L, "Asha Renamed"), names.lookup(List.of(7L)), "replaced once a refresh succeeds");
+        staff.remove(7L);
+        clock.advance(Duration.ofMinutes(11));
+        assertEquals(Map.of(), names.lookup(List.of(7L)), "a user identity no longer calls staff loses the name");
     }
 
     @Test
@@ -112,6 +149,14 @@ class StaffNamesTest {
         assertEquals(Map.of(7L, "Asha Operator"), inside, "a cached name is still served; the unknown one stays unknown");
         assertTrue(calls.isEmpty(), "identity is not asked from inside a transaction");
         assertEquals(Map.of(7L, "Asha Operator", 8L, "Ravi Operator"), names.lookup(List.of(7L, 8L)), "and is asked once outside it");
+
+        clock.advance(Duration.ofMinutes(11));
+        calls.clear();
+        TransactionSynchronizationManager.initSynchronization();
+        Map<Long, String> expiredInside = names.lookup(List.of(7L));
+        TransactionSynchronizationManager.clearSynchronization();
+        assertEquals(Map.of(7L, "Asha Operator"), expiredInside, "an expired name is served rather than refreshed inside it");
+        assertTrue(calls.isEmpty());
     }
 
     @Test
@@ -119,6 +164,17 @@ class StaffNamesTest {
         assertEquals(Map.of(), names.lookup(List.of()));
         assertEquals(Map.of(), names.lookup(java.util.Arrays.asList((Long) null)));
         assertTrue(calls.isEmpty());
+    }
+
+    private static ListAppender<ILoggingEvent> capture() {
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        ((ch.qos.logback.classic.Logger) LoggerFactory.getLogger(StaffNames.class)).addAppender(appender);
+        return appender;
+    }
+
+    private static void release(ListAppender<ILoggingEvent> appender) {
+        ((ch.qos.logback.classic.Logger) LoggerFactory.getLogger(StaffNames.class)).detachAppender(appender);
     }
 
     /** A clock the test moves by hand. */

@@ -16,6 +16,7 @@ import static net.logstash.logback.argument.StructuredArguments.kv;
 @Component
 public class OutboxAsyncHealthReporter {
     private static final Logger log = LoggerFactory.getLogger(OutboxAsyncHealthReporter.class);
+    static final String BACKLOG_COUNT_FAILED_EVENT = "outbox_backlog_count_failed";
     private final JdbcClient jdbc;
     private final String table;
     private List<QueueBacklog> backlogs = List.of();
@@ -63,11 +64,13 @@ public class OutboxAsyncHealthReporter {
                 .query((rs, row) -> new QueueBacklog.Backlog(rs.getLong("pending"), rs.getLong("dead_letter"), rs.getLong("oldest_age")))
                 .single();
         for (QueueBacklog backlog : backlogs) {
-            // One queue that cannot be counted must not silence the outbox figures, which the alerts read every minute.
+            // One queue that cannot be counted must not silence the outbox figures, which the alerts read every minute. Its
+            // own figures drop out of the totals, so the error-level alerting is told instead.
             try {
                 total = total.plus(backlog.backlog());
             } catch (RuntimeException ex) {
-                log.warn("outbox.async.health.backlog_failed source={} error={}", backlog.getClass().getSimpleName(), ex.getMessage());
+                log.error("outbox.async.health.backlog_failed {} {} {}", kv("event", BACKLOG_COUNT_FAILED_EVENT),
+                        kv("queue", backlog.queueName()), kv("error", String.valueOf(ex.getMessage())));
             }
         }
         return Map.of(

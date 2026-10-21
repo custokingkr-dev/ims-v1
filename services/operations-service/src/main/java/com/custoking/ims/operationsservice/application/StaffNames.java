@@ -27,21 +27,30 @@ import java.util.Set;
  *
  * <p><b>Never in a transaction.</b> Identity is asked only with no transaction open on the calling thread, so no pooled
  * connection or tracker row lock is held while it answers (the pattern of {@code TrackerStatusOutbox.attempt}). Asked
- * from inside one, the lookup serves what is cached and leaves the rest unknown.
+ * from inside one, the lookup serves what is cached, expired names included, and leaves the rest unknown.
  *
- * <p><b>Optional.</b> Names are a convenience: when identity cannot be asked they stay null, the tracker still answers,
- * and the failure is not cached, so the next view asks again.
+ * <p><b>Optional.</b> Names are a convenience: when identity cannot be asked the tracker still answers. A name already
+ * known is kept past its ten minutes and served until a refresh succeeds; a name never known stays null. After a
+ * failure identity is left alone for {@link #BACKOFF}, so a lasting outage or misconfiguration costs one call and one
+ * warning a minute, not one per view.
  */
 @Component
 public class StaffNames {
     private static final Logger LOG = LoggerFactory.getLogger(StaffNames.class);
     static final Duration TTL = Duration.ofMinutes(10);
     static final int MAX_ENTRIES = 1_000;
+    /** How long identity is left alone after a names call failed. */
+    static final Duration BACKOFF = Duration.ofSeconds(60);
 
     private final StaffDirectory directory;
     private final Clock clock;
-    /** Insertion-ordered and re-inserted on refresh, so the eldest entry is always the first to expire. Guarded by itself. */
+    /**
+     * Insertion-ordered and re-inserted on refresh, so the eldest entry is the least recently refreshed. An expired entry
+     * stays (bounded by {@link #MAX_ENTRIES}) as the fallback for a failed refresh. Guarded by itself.
+     */
     private final LinkedHashMap<Long, Known> cache = new LinkedHashMap<>();
+    /** Identity is not asked before this instant: the back-off after a failed call. Guarded by {@link #cache}. */
+    private Instant askAgainAt = Instant.MIN;
 
     /** {@code name} is null for an id identity left out. */
     private record Known(String name, Instant expiresAt) { }
@@ -60,23 +69,39 @@ public class StaffNames {
         return ids.isEmpty() ? view : view.withStaffNames(lookup(ids));
     }
 
-    /** The known names of these users. Identity is asked, in batches of at most 200, only about ids not cached. */
+    /**
+     * The known names of these users. Identity is asked, in batches of at most 200, only about ids whose cached answer is
+     * missing or older than {@link #TTL}; whenever it is not asked, or cannot answer, an expired name is served instead.
+     */
     public Map<Long, String> lookup(Collection<Long> userIds) {
         Map<Long, String> found = new HashMap<>();
         if (userIds == null || userIds.isEmpty()) return found;
         List<Long> missing = new ArrayList<>();
+        Map<Long, String> expired = new HashMap<>();
+        boolean backingOff;
         synchronized (cache) {
             Instant now = clock.instant();
             for (Long id : new LinkedHashSet<>(userIds)) {
                 if (id == null) continue;
                 Known known = cache.get(id);
-                if (known == null || !now.isBefore(known.expiresAt())) missing.add(id);
-                else if (known.name() != null) found.put(id, known.name());
+                if (known != null && now.isBefore(known.expiresAt())) {
+                    if (known.name() != null) found.put(id, known.name());
+                    continue;
+                }
+                missing.add(id);
+                if (known != null && known.name() != null) expired.put(id, known.name());
             }
+            backingOff = now.isBefore(askAgainAt);
         }
         if (missing.isEmpty()) return found;
         if (TransactionSynchronizationManager.isActualTransactionActive() || TransactionSynchronizationManager.isSynchronizationActive()) {
-            LOG.warn("Names of {} staff left unknown: identity is never asked while a transaction holds a connection", missing.size());
+            LOG.warn("Names of {} staff not refreshed: identity is never asked while a transaction holds a connection", missing.size());
+            found.putAll(expired);
+            return found;
+        }
+        if (backingOff) {
+            // Identity failed less than a minute ago; it was warned about then.
+            found.putAll(expired);
             return found;
         }
         for (int from = 0; from < missing.size(); from += StaffDirectory.MAX_IDS) {
@@ -85,8 +110,14 @@ public class StaffNames {
             try {
                 answered = directory.fullNames(batch);
             } catch (RuntimeException unavailable) {
-                // Not cached: the next view asks again. The other batches would meet the same outage.
-                LOG.warn("Staff names left unknown: {}", unavailable.toString());
+                // The other batches would meet the same outage: back off, and keep serving the names already known.
+                synchronized (cache) {
+                    askAgainAt = clock.instant().plus(BACKOFF);
+                }
+                LOG.warn("Staff names not refreshed; identity is left alone for {} s: {}", BACKOFF.toSeconds(), unavailable.toString());
+                for (Long id : missing.subList(from, missing.size())) {
+                    if (expired.containsKey(id)) found.put(id, expired.get(id));
+                }
                 return found;
             }
             synchronized (cache) {
@@ -103,13 +134,14 @@ public class StaffNames {
         return found;
     }
 
-    /** Drops expired entries, then the eldest until the cache is within its bound. Called holding the cache's lock. */
+    /**
+     * Drops the least recently refreshed entries until the cache is within its bound. Expired entries are kept otherwise:
+     * they are the fallback when a refresh fails. Called holding the cache's lock.
+     */
     private void evict() {
-        Instant now = clock.instant();
         Iterator<Known> eldest = cache.values().iterator();
-        while (eldest.hasNext()) {
-            Known known = eldest.next();
-            if (cache.size() <= MAX_ENTRIES && now.isBefore(known.expiresAt())) break;
+        while (cache.size() > MAX_ENTRIES && eldest.hasNext()) {
+            eldest.next();
             eldest.remove();
         }
     }

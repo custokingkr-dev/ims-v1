@@ -16,4 +16,9 @@ public interface QueueBacklog {
     }
 
     Backlog backlog();
+
+    /** The queue's name in the health log when it cannot be counted; a proxied bean's class name would not say. */
+    default String queueName() {
+        return getClass().getSimpleName();
+    }
 }

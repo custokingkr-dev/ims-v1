@@ -15,6 +15,10 @@ test('workflow canonical decision contract requires the reviewed version and mat
   assert.equal(contract.components.schemas.WorkflowDecisionRequest.properties.expectedVersion.minimum, 0);
   assert.equal(contract.components.schemas.WorkflowDecisionRequest.properties.notes.maxLength, 1000);
   assert.equal(Object.keys(contract.paths).length, 3);
+  // A decision on an unknown instance, or on a notebook order tracker (which the generic API never touches), is a 404.
+  for (const decision of ['approve', 'reject']) {
+    assert.ok(contract.paths[`/api/v1/workflows/instances/{id}/${decision}`].post.responses['404'], `${decision} documents 404`);
+  }
 });
 
 test('billing payment compatibility binding remains exact without broadening canonical generation', () => {

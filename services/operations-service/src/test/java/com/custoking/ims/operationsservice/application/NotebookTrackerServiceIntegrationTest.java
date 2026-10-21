@@ -13,6 +13,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.custoking.ims.operationsservice.outbox.OutboxAsyncHealthReporter;
+import com.custoking.ims.operationsservice.outbox.QueueBacklog;
 import com.zaxxer.hikari.HikariDataSource;
 import net.logstash.logback.encoder.LogstashEncoder;
 import org.slf4j.LoggerFactory;
@@ -1554,15 +1555,25 @@ class NotebookTrackerServiceIntegrationTest {
         long age = outbox.path("oldestPendingAgeSeconds").asLong();
         assertTrue(age >= 7200 && age < 7300, "the oldest pending status has waited since it was first queued, not since it was last tried: " + age);
 
-        // A backlog that cannot be counted is skipped with a warning; the outbox figures are still reported.
-        reporter.configureBacklogs(List.of(() -> { throw new IllegalStateException("cannot count"); }, statuses));
+        // A backlog that cannot be counted is skipped, and the error-level alerting is told which queue dropped out; the
+        // outbox figures are still reported.
+        assertEquals("workflow_tracker_status_outbox", statuses.queueName());
+        reporter.configureBacklogs(List.of(new QueueBacklog() {
+            @Override public Backlog backlog() { throw new IllegalStateException("cannot count"); }
+            @Override public String queueName() { return "broken_queue"; }
+        }, statuses));
         ListAppender<ILoggingEvent> again = capture(OutboxAsyncHealthReporter.class);
         try {
             reporter.report();
         } finally {
             release(OutboxAsyncHealthReporter.class, again);
         }
-        assertTrue(again.list.stream().anyMatch(event -> event.getLevel() == Level.WARN && event.getFormattedMessage().contains("cannot count")), again.list.toString());
+        List<ILoggingEvent> failures = again.list.stream().filter(event -> event.getLevel() == Level.ERROR).toList();
+        assertEquals(1, failures.size(), again.list.toString());
+        JsonNode failed = json(failures.get(0));
+        assertEquals("outbox_backlog_count_failed", failed.path("event").asString());
+        assertEquals("broken_queue", failed.path("queue").asString());
+        assertEquals("cannot count", failed.path("error").asString());
         JsonNode still = again.list.stream().filter(event -> event.getLevel() == Level.INFO).map(NotebookTrackerServiceIntegrationTest::json)
                 .findFirst().orElseThrow().path("health").path("outbox");
         assertEquals(outboxPending + 1, still.path("pendingCount").asLong());
@@ -1608,10 +1619,12 @@ class NotebookTrackerServiceIntegrationTest {
         assertNull(noted.internalNotes().get(0).authorName());
         assertEquals("Vendor called back", noted.internalNotes().get(0).body(), "the change and its answer still go through");
         assertNull(step(as(() -> asOperator(OP_A, 10L), () -> named.view(order)), 1).assigneeName());
+        assertEquals(1, NAME_CALLS.size(), "identity is left alone for a minute after it failed");
 
         directoryDown = false;
+        now = now.plusSeconds(61);
         TrackerView view = as(() -> asOperator(OP_A, 10L), () -> named.view(order));
-        assertEquals("Asha Operator", step(view, 1).assigneeName(), "an outage is not remembered");
+        assertEquals("Asha Operator", step(view, 1).assigneeName(), "asked again once the minute has passed");
         assertEquals("Asha Operator", view.internalNotes().get(0).authorName());
     }
 

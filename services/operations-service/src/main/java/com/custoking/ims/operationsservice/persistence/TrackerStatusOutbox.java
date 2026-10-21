@@ -134,6 +134,11 @@ public class TrackerStatusOutbox implements QueueBacklog {
         });
     }
 
+    @Override
+    public String queueName() {
+        return "workflow_tracker_status_outbox";
+    }
+
     /**
      * Claims one due row (this order's, or any) that has not been given up on, in a short transaction of its own. Moving
      * the next attempt out by the backoff at claim time doubles as the lease: a concurrent drain skips the row while its
