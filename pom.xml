@@ -29,7 +29,7 @@
         <java.version>25</java.version>
         <maven.minimum.version>3.9.0</maven.minimum.version>
         <google-cloud-libraries-bom.version>26.89.0</google-cloud-libraries-bom.version>
-        <grpc.version>1.84.0</grpc.version>
+        <grpc.version>1.85.1</grpc.version>
         <postgresql.version>42.7.12</postgresql.version>
         <jackson-2-bom.version>2.22.3</jackson-2-bom.version>
         <jackson-bom.version>3.1.7</jackson-bom.version>
