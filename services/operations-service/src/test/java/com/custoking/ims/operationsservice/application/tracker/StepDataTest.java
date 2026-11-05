@@ -76,6 +76,8 @@ class StepDataTest {
         assertEquals(26L, snapshot.get("workbookTotalQuantity"));
         rejected(TrackerStep.PRODUCTION_PLANNING, Map.of("workbookValidRows", 1001));
         rejected(TrackerStep.PRODUCTION_PLANNING, Map.of("workbookFileName", "x".repeat(256)));
+        rejected(TrackerStep.PRODUCTION_PLANNING, Map.of("workbookTotalQuantity", 100_000_001L));
+        rejected(TrackerStep.PRODUCTION_PLANNING, Map.of("workbookFa", -1));
     }
 
     @Test

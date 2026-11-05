@@ -91,6 +91,18 @@ class NotebookTrackerEndpointsTest {
         org.mockito.Mockito.verifyNoMoreInteractions(forms);
     }
 
+    @Test void workbookPreviewRequiresOrderUpdatePermissionBeforeLookingUpTheOrder() throws Exception {
+        TenantContext.set(new TenantContext(2L, "admin@other-school", "ADMIN", 20L, null, Set.of(), Set.of()));
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart(
+                                "/api/v1/catalog/orders/CK-1/workbook-preview")
+                        .file(new org.springframework.mock.web.MockMultipartFile("file", "order.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", new byte[]{1}))
+                        .header("X-Catalog-Service-Token", "test-token"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(forms);
+    }
+
     @Test void aRefusedRequestCarriesItsReasonToTheScreenAsAMessage() throws Exception {
         MockMvc withAdvice = MockMvcBuilders.standaloneSetup(new CatalogOrderFormController(forms, mock(CatalogReadRepository.class), "test-token"))
                 .setControllerAdvice(new CatalogOrderFormExceptionHandler()).build();

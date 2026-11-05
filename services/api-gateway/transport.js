@@ -3,6 +3,7 @@
 const { once } = require('node:events');
 const { context: otelContext } = require('@opentelemetry/api');
 const { applyDeprecationHeaders } = require('./api-contract');
+const NOTEBOOK_WORKBOOK_MAX_BODY_BYTES = 11 * 1024 * 1024;
 
 function boundedMilliseconds(value, fallback) {
   const number = Number(value);
@@ -47,7 +48,7 @@ function createProxyTransport({ upstreams, tokenHeaders, serviceTokens, CLOUD_RU
       compatibility,
       ...(report ? { maxBodyBytes: 32768 } : {}),
       ...(designDraftUpload ? { maxBodyBytes: 27 * 1024 * 1024 } : {}),
-      ...(notebookWorkbookUpload ? { maxBodyBytes: 11 * 1024 * 1024 } : {}),
+      ...(notebookWorkbookUpload ? { maxBodyBytes: NOTEBOOK_WORKBOOK_MAX_BODY_BYTES } : {}),
     });
   }
 
