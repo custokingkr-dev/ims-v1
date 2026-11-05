@@ -1,14 +1,13 @@
 package com.custoking.ims.operationsservice.application.tracker;
 
 import java.time.DayOfWeek;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 /**
- * A step's time slot. Days are working days (Monday-Friday, holidays not excluded); hour-based slots count
- * continuously but the clock pauses over Saturday and Sunday. Weekends are judged in the supplied zone.
+ * A step's time slot. Hour-based slots count continuously; working-day slots count Monday-Friday
+ * (holidays are not excluded) in the supplied zone.
  */
 public record Sla(long value, Unit unit) {
 
@@ -24,8 +23,8 @@ public record Sla(long value, Unit unit) {
 
     /** The instant by which a step that started at {@code start} should be completed. */
     public Instant deadline(Instant start, ZoneId zone) {
-        ZonedDateTime cursor = skipWeekend(start.atZone(zone));
-        return (unit == Unit.HOURS ? addHours(cursor, value) : addWorkingDays(cursor, value)).toInstant();
+        ZonedDateTime cursor = start.atZone(zone);
+        return (unit == Unit.HOURS ? cursor.plusHours(value) : addWorkingDays(skipWeekend(cursor), value)).toInstant();
     }
 
     /** A step is overdue only while it is still open and past its deadline; a finished step is never overdue. */
@@ -42,19 +41,6 @@ public record Sla(long value, Unit unit) {
         ZonedDateTime cursor = time;
         while (weekend(cursor)) cursor = cursor.toLocalDate().plusDays(1).atStartOfDay(cursor.getZone());
         return cursor;
-    }
-
-    private static ZonedDateTime addHours(ZonedDateTime start, long hours) {
-        Duration remaining = Duration.ofHours(hours);
-        ZonedDateTime cursor = start;
-        while (true) {
-            cursor = skipWeekend(cursor);
-            ZonedDateTime midnight = cursor.toLocalDate().plusDays(1).atStartOfDay(cursor.getZone());
-            Duration available = Duration.between(cursor, midnight);
-            if (remaining.compareTo(available) <= 0) return cursor.plus(remaining);
-            remaining = remaining.minus(available);
-            cursor = midnight;
-        }
     }
 
     /** Adds weekdays while keeping the time of day: Friday 15:00 plus one working day is Monday 15:00. */

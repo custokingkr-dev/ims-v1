@@ -673,45 +673,42 @@ class NotebookTrackerIntegrationTest {
     // ---- design drafts -----------------------------------------------------------------------------------------------------
 
     @Test
-    void draftsAreCappedAtSixAndOnlyCurrentOnesCount() {
+    void draftsHaveNoCountCapAndOnlyCurrentOnesCount() {
         var order = placedNotebook(true);
         operator(8L, Set.of(1L), Set.of());
         List<Long> ids = new ArrayList<>();
-        for (int color = 1; color <= 6; color++) ids.add(id(draft(order, color)));
+        for (int color = 1; color <= 7; color++) ids.add(id(draft(order, color)));
 
-        assertThatThrownBy(() -> draft(order, 7)).isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
-            assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-            assertThat(ex.getReason()).isEqualTo("No more images allowed. Contact IT.");
-        });
-        assertThat(currentDrafts(order)).isEqualTo(6);
+        assertThat(currentDrafts(order)).isEqualTo(7);
 
         assertThat(id(draft(order, 3))).as("the same file again is not a new draft").isEqualTo(ids.get(2));
 
         forms.removeAsset(order, ids.get(0));
-        assertThat(currentDrafts(order)).isEqualTo(5);
-        draft(order, 7);
         assertThat(currentDrafts(order)).isEqualTo(6);
+        draft(order, 8);
+        assertThat(currentDrafts(order)).isEqualTo(7);
         assertThat(TRACKER.accessChecks).allMatch(check -> check.startsWith(order + ":8:OPERATIONS"));
     }
 
     @Test
-    void anEmailIntentIsRecordedEachTimeTheDraftsRiseAboveFourAndNeverBefore() {
+    void anEmailIntentIsRecordedEachTimeTheDraftsReachFourAndNeverBefore() {
         var order = placedNotebook(true);
         operator(8L, Set.of(1L), Set.of());
         List<Long> ids = new ArrayList<>();
-        for (int color = 1; color <= 4; color++) ids.add(id(draft(order, color)));
+        for (int color = 1; color <= 3; color++) ids.add(id(draft(order, color)));
         assertThat(intents(order)).isEmpty();
 
+        ids.add(id(draft(order, 4)));
+        assertThat(intents(order)).containsExactly("4:NOT_SENT:ACTIVE_SUPERADMINS");
         ids.add(id(draft(order, 5)));
-        assertThat(intents(order)).containsExactly("5:NOT_SENT:ACTIVE_SUPERADMINS");
-        ids.add(id(draft(order, 6)));
-        assertThat(intents(order)).as("the sixth draft adds nothing").hasSize(1);
+        assertThat(intents(order)).as("the fifth draft does not repeat the review intent").hasSize(1);
 
         forms.removeAsset(order, ids.get(0));
         forms.removeAsset(order, ids.get(1));
-        assertThat(currentDrafts(order)).isEqualTo(4);
+        assertThat(currentDrafts(order)).isEqualTo(3);
         draft(order, 8);
-        assertThat(intents(order)).as("back above four after dropping to four").containsExactly("5:NOT_SENT:ACTIVE_SUPERADMINS", "5:NOT_SENT:ACTIVE_SUPERADMINS");
+        assertThat(intents(order)).as("reaching four again creates a fresh review intent")
+                .containsExactly("4:NOT_SENT:ACTIVE_SUPERADMINS", "4:NOT_SENT:ACTIVE_SUPERADMINS");
     }
 
     @Test

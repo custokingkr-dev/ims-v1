@@ -367,6 +367,57 @@
         }
       }
     },
+    "/api/v1/catalog/orders/{id}/workbook-preview": {
+      "post": {
+        "operationId": "previewNotebookOrderWorkbook",
+        "summary": "Preview notebook quantities in an order-specific Excel workbook",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "x-ims-controller": "CatalogOrderFormController",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/NotebookWorkbookUpload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Workbook totals preview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotebookWorkbookPreview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid workbook or mismatched order ID"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
     "/api/v1/catalog/orders/{id}/tracker/ensure": {
       "post": {
         "operationId": "ensureNotebookTracker",
@@ -1125,6 +1176,40 @@
           "assetKind",
           "file"
         ]
+      },
+      "NotebookWorkbookUpload": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary"
+          }
+        },
+        "required": [
+          "file"
+        ]
+      },
+      "NotebookWorkbookPreview": {
+        "type": "object",
+        "properties": {
+          "orderId": { "type": "string" },
+          "fileName": { "type": "string" },
+          "sheetName": { "type": "string" },
+          "workbookOrderId": { "type": ["string", "null"] },
+          "total": { "type": "integer" },
+          "king": { "type": "integer" },
+          "longBooks": { "type": "integer" },
+          "jumboKing": { "type": "integer" },
+          "jumboLong": { "type": "integer" },
+          "fa": { "type": "integer" },
+          "validRows": { "type": "integer" }
+        },
+        "required": [
+          "orderId", "fileName", "sheetName", "workbookOrderId", "total", "king", "longBooks",
+          "jumboKing", "jumboLong", "fa", "validRows"
+        ],
+        "additionalProperties": false
       },
       "ProductCategory": {
         "type": "object",

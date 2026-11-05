@@ -4,7 +4,6 @@ import { trackerApi, trackerError } from './api';
 import type { DraftImage } from './types';
 import '../catalog/product-form.css';
 
-export const MAX_DRAFTS = 6;
 const ACCEPT = 'image/png,image/jpeg,image/webp,application/pdf';
 const RASTER_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
@@ -80,9 +79,7 @@ function Picture({ draft, url, alt }: { draft: DraftImage; url: string | null | 
 }
 
 /**
- * Up to six current design drafts. With `preview`, the newest image is shown large (PDFs are never the preview); with
- * `onSelect`, the drafts become one choice of the version to approve. A seventh upload is refused by the server with its
- * own message, which is shown as written.
+ * Current design drafts. Four or more uploads flag the order for review; `preview` shows the latest image when available.
  */
 export function DraftImages({ orderId, canManage, preview = false, selectedId, onSelect }: {
   orderId: string; canManage: boolean; preview?: boolean; selectedId?: number | null; onSelect?: (id: number) => void;
@@ -138,7 +135,7 @@ export function DraftImages({ orderId, canManage, preview = false, selectedId, o
   return (
     <section className="ck-trk-drafts" aria-label="Design drafts">
       <div className="ck-trk-row">
-        <h4>Design drafts <span className="ck-product-muted">{images ? `${images.length} of ${MAX_DRAFTS}` : ''}</span></h4>
+        <h4>Design drafts <span className="ck-product-muted">{images ? `${images.length} uploaded` : ''}</span></h4>
         {canManage && (
           <>
             <input ref={input} type="file" accept={ACCEPT} hidden aria-label="Upload design draft" onChange={(e) => upload(e.target.files?.[0])} />
@@ -147,6 +144,7 @@ export function DraftImages({ orderId, canManage, preview = false, selectedId, o
         )}
       </div>
       {error && <p className="ck-product-error" role="alert">{error}</p>}
+      {images && images.length >= 4 && <p className="ck-trk-tbd" role="status"><strong>Review needed</strong> — {images.length} design versions have been uploaded.</p>}
       {images === null && !error && <p className="ck-product-muted">Loading drafts…</p>}
       {images?.length === 0 && <p className="ck-product-muted">No drafts uploaded yet.</p>}
       {preview && images && images.length > 0 && (

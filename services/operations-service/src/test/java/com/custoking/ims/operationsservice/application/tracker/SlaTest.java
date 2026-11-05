@@ -23,14 +23,13 @@ class SlaTest {
     }
 
     @Test
-    void hoursThatCrossAWeekendPauseOverSaturdayAndSunday() {
-        // Friday 22:00 uses 2h before midnight, the clock pauses, and 2h remain on Monday from 00:00.
-        assertEquals(at(2026, 10, 26, 2, 0), Sla.hours(4).deadline(at(2026, 10, 23, 22, 0), ZONE));
+    void elapsedHoursContinueAcrossAWeekend() {
+        assertEquals(at(2026, 10, 24, 2, 0), Sla.hours(4).deadline(at(2026, 10, 23, 22, 0), ZONE));
     }
 
     @Test
-    void hoursStartedOnAWeekendStartOnMondayMorning() {
-        assertEquals(at(2026, 10, 26, 4, 0), Sla.hours(4).deadline(at(2026, 10, 24, 15, 0), ZONE));
+    void elapsedHoursStartedOnAWeekendContinueImmediately() {
+        assertEquals(at(2026, 10, 24, 19, 0), Sla.hours(4).deadline(at(2026, 10, 24, 15, 0), ZONE));
     }
 
     @Test
@@ -55,14 +54,13 @@ class SlaTest {
     }
 
     @Test
-    void defaultsMatchThePrototypeAndStepsEightAndTenHaveNone() {
-        assertEquals(Sla.hours(4), TrackerStep.ORDER_DETAILS.defaultSla().orElseThrow());
-        assertEquals(Sla.workingDays(2), TrackerStep.DESIGNING_ACTIVITY.defaultSla().orElseThrow());
-        assertEquals(Sla.workingDays(1), TrackerStep.HEAD_APPROVAL.defaultSla().orElseThrow());
-        assertEquals(Sla.workingDays(1), TrackerStep.BOARD_PROCUREMENT.defaultSla().orElseThrow());
-        assertEquals(Sla.workingDays(1), TrackerStep.DELIVERY_INVOICING.defaultSla().orElseThrow());
-        assertTrue(TrackerStep.PRE_PRINT_QUALITY_GATE.defaultSla().isEmpty());
-        assertTrue(TrackerStep.PRODUCTION_FOLLOW_UP.defaultSla().isEmpty());
+    void defaultsMatchTheClientWorkflow() {
+        assertEquals(java.util.List.of(2L, 72L, 2L, 2L, 24L, 6L, 24L, 50L, 4L, 72L, 2L, 4L),
+                java.util.Arrays.stream(TrackerStep.values()).map(step -> step.defaultSla().orElseThrow().value()).toList());
+        assertEquals("CDR Conversion", TrackerStep.ofNumber(3).orElseThrow().title());
+        assertEquals("Head Approval", TrackerStep.ofNumber(4).orElseThrow().title());
+        assertEquals("Pre-Print Quality Check", TrackerStep.ofNumber(7).orElseThrow().title());
+        assertEquals("Printing Press", TrackerStep.ofNumber(8).orElseThrow().title());
     }
 
     @Test

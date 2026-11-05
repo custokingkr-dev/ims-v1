@@ -251,8 +251,8 @@ class NotebookTrackerServiceIntegrationTest {
             int n = view.progress().currentStep();
             switch (n) {
                 case 2 -> service.sendDesign(order);
-                case 3 -> service.approveDesign(order, 501, "Looks good");
-                case 8, 12 -> service.signOff(order, n, step(service.view(order), n).version());
+                case 4 -> service.approveDesign(order, 501, "Looks good");
+                case 7, 12 -> service.signOff(order, n, step(service.view(order), n).version());
                 case 11 -> {
                     TrackerView.Step s = step(service.view(order), 11);
                     service.saveDraft(order, 11, Map.of("producedCount", 1000, "acceptedCount", 1000, "dispatchCount", 1000), s.version());
@@ -293,8 +293,8 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals(1, view.progress().currentStep());
         assertEquals("ACTIVE", step(view, 1).status());
         for (int n = 2; n <= 12; n++) assertEquals("LOCKED", step(view, n).status(), "step " + n);
-        // Step 1 default is 4 hours from placement on a Monday: due 13:30 Kolkata.
-        assertEquals(OffsetDateTime.parse("2026-10-19T13:30:00+05:30").toInstant(), step(view, 1).dueAt().toInstant());
+        // Step 1 default is 2 elapsed hours from placement: due 11:30 Kolkata.
+        assertEquals(OffsetDateTime.parse("2026-10-19T11:30:00+05:30").toInstant(), step(view, 1).dueAt().toInstant());
         assertEquals(OP_A, step(view, 1).assigneeUserId());
     }
 
@@ -367,14 +367,17 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals("SENT", sent.design().state());
         assertEquals(3, service.completeStep(order, 2, step(sent, 2).version()).progress().currentStep());
 
+        TrackerView atThree = service.view(order);
+        TrackerView cdr = service.saveDraft(order, 3, Map.of("cdrFilename", "cover.cdr"), step(atThree, 3).version());
+        service.completeStep(order, 3, step(cdr, 3).version());
         asSuper();
         TrackerView approved = service.approveDesign(order, 501, null);
-        service.completeStep(order, 3, step(approved, 3).version());
+        service.completeStep(order, 4, step(approved, 4).version());
 
         asOperator(OP_A, 10L);
-        TrackerView atFour = service.view(order);
-        TrackerView saved = service.saveDraft(order, 4, Map.of("cdrFilename", "cover.cdr"), step(atFour, 4).version());
-        assertEquals("cover.cdr", step(saved, 4).data().get("cdrFilename"));
+        TrackerView atFive = service.view(order);
+        TrackerView saved = service.saveDraft(order, 5, Map.of("paperGsm", "70"), step(atFive, 5).version());
+        assertEquals("70", step(saved, 5).data().get("paperGsm"));
     }
 
     @Test
@@ -414,8 +417,8 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals("COMPLETED", step(after, 1).status());
         assertEquals("ACTIVE", step(after, 2).status());
         assertEquals(2, after.progress().currentStep());
-        // Step 2 default is two working days from 10:30 Monday: Wednesday 10:30 Kolkata.
-        assertEquals(OffsetDateTime.parse("2026-10-21T10:30:00+05:30").toInstant(), step(after, 2).dueAt().toInstant());
+        // Step 2 uses 72 elapsed hours from 10:30 Monday: Thursday 10:30 Kolkata.
+        assertEquals(OffsetDateTime.parse("2026-10-22T10:30:00+05:30").toInstant(), step(after, 2).dueAt().toInstant());
         // The operator is now locked out of the completed step.
         long v = step(after, 1).version();
         assertEquals(403, http(() -> as(() -> asOperator(OP_A, 10L), () -> service.saveDraft(order, 1, Map.of(), v))).status());
@@ -490,27 +493,28 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals(3, atThree.progress().currentStep());
         assertFalse(atThree.design().canManageImages());
         assertEquals(403, http(() -> service.approveDesign(order, 501, null)).status());
-        assertEquals("SUPERADMIN_ONLY", codeOf(() -> service.completeStep(order, 3, step(atThree, 3).version())));
-        assertFalse(step(atThree, 3).can().canComplete());
+        TrackerView atFour = service.completeStep(order, 3, step(atThree, 3).version());
+        assertEquals("SUPERADMIN_ONLY", codeOf(() -> service.completeStep(order, 4, step(atFour, 4).version())));
+        assertFalse(step(atFour, 4).can().canComplete());
 
         asSuper();
-        assertEquals("DESIGN_NOT_APPROVED", codeOf(() -> service.completeStep(order, 3, step(atThree, 3).version())));
+        assertEquals("DESIGN_NOT_APPROVED", codeOf(() -> service.completeStep(order, 4, step(atFour, 4).version())));
         TrackerView approved = service.approveDesign(order, 501, "Approved with thanks");
         assertEquals("APPROVED", approved.design().state());
         assertEquals(501L, approved.design().approvedDraftRef());
         assertEquals("Approved with thanks", approved.design().comment());
-        TrackerView atFour = service.completeStep(order, 3, step(approved, 3).version());
-        assertEquals(4, atFour.progress().currentStep());
+        TrackerView atFive = service.completeStep(order, 4, step(approved, 4).version());
+        assertEquals(5, atFive.progress().currentStep());
     }
 
     @Test
     void requestChangesLetsTheOperatorManageImagesAndResendWhileSuperadminCanStillApprove() {
         String order = create(true, 10L, OP_A);
-        advance(order, 2);
+        advance(order, 3);
         asSuper();
         TrackerView changes = service.requestChanges(order, "Make the logo bigger");
         assertEquals("CHANGES_REQUESTED", changes.design().state());
-        assertEquals(3, changes.progress().currentStep());
+        assertEquals(4, changes.progress().currentStep());
         assertEquals("COMPLETED", step(changes, 2).status());
 
         asOperator(OP_A, 10L);
@@ -523,7 +527,7 @@ class NotebookTrackerServiceIntegrationTest {
 
         // Superadmin could equally have approved the existing design while the request was pending.
         String second = create(true, 10L, OP_A);
-        advance(second, 2);
+        advance(second, 3);
         asSuper();
         service.requestChanges(second, null);
         assertEquals("APPROVED", service.approveDesign(second, 777, null).design().state());
@@ -533,7 +537,7 @@ class NotebookTrackerServiceIntegrationTest {
     void designDecisionsNeedTheApprovalStepToBeActiveAndADesignToHaveBeenSent() {
         String order = create(true, 10L, OP_A);
         asSuper();
-        assertEquals(409, http(() -> service.approveDesign(order, 1, null)).status(), "step 3 is not active yet");
+        assertEquals(409, http(() -> service.approveDesign(order, 1, null)).status(), "Head Approval is not active yet");
         advance(order, 1);
         asSuper();
         assertEquals(409, http(() -> service.requestChanges(order, null)).status());
@@ -569,7 +573,7 @@ class NotebookTrackerServiceIntegrationTest {
     @Test
     void reopenDesigningResetsApproval() {
         String order = create(true, 10L, OP_A);
-        advance(order, 3); // sent, draft 501 approved with a comment, step 4 active
+        advance(order, 4); // sent, CDR converted, draft 501 approved with a comment, step 5 active
         asSuper();
         TrackerView reopened = service.reopenStep(order, 2);
         assertEquals(2, reopened.progress().currentStep());
@@ -582,15 +586,16 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals("DESIGN_NOT_SENT", codeOf(() -> service.completeStep(order, 2, step(reopened, 2).version())));
         service.sendDesign(order);
         TrackerView atThree = service.completeStep(order, 2, step(service.view(order), 2).version());
+        TrackerView cdr = service.completeStep(order, 3, step(atThree, 3).version());
         asSuper();
-        assertEquals("DESIGN_NOT_APPROVED", codeOf(() -> service.completeStep(order, 3, step(atThree, 3).version())),
-                "step 3 cannot complete until the design is approved again");
+        assertEquals("DESIGN_NOT_APPROVED", codeOf(() -> service.completeStep(order, 4, step(cdr, 4).version())),
+                "Head Approval cannot complete until the design is approved again");
         TrackerView approved = service.approveDesign(order, 777, null);
-        assertEquals(4, service.completeStep(order, 3, step(approved, 3).version()).progress().currentStep());
+        assertEquals(5, service.completeStep(order, 4, step(approved, 4).version()).progress().currentStep());
 
         // Reopening step 1 reverts step 2 as well, so it takes the same rule.
         String fromStart = create(true, 10L, OP_A);
-        advance(fromStart, 3);
+        advance(fromStart, 4);
         asSuper();
         TrackerView restarted = service.reopenStep(fromStart, 1);
         assertEquals("NOT_SENT", restarted.design().state());
@@ -600,22 +605,22 @@ class NotebookTrackerServiceIntegrationTest {
     @Test
     void reopenHeadApprovalRequiresReapproval() {
         String order = create(true, 10L, OP_A);
-        advance(order, 4);
+        advance(order, 5);
         asSuper();
         // A step after the design steps leaves the approval alone.
-        TrackerView atFour = service.reopenStep(order, 4);
-        assertEquals("APPROVED", atFour.design().state());
-        assertEquals(501L, atFour.design().approvedDraftRef());
+        TrackerView afterHeadApproval = service.reopenStep(order, 5);
+        assertEquals("APPROVED", afterHeadApproval.design().state());
+        assertEquals(501L, afterHeadApproval.design().approvedDraftRef());
 
-        TrackerView reopened = service.reopenStep(order, 3);
-        assertEquals(3, reopened.progress().currentStep());
+        TrackerView reopened = service.reopenStep(order, 4);
+        assertEquals(4, reopened.progress().currentStep());
         assertEquals("SENT", reopened.design().state(), "the sent design waits for a decision again");
         assertNull(reopened.design().approvedDraftRef());
-        assertEquals("DESIGN_NOT_APPROVED", codeOf(() -> service.completeStep(order, 3, step(reopened, 3).version())));
+        assertEquals("DESIGN_NOT_APPROVED", codeOf(() -> service.completeStep(order, 4, step(reopened, 4).version())));
 
         TrackerView approved = service.approveDesign(order, 777, "Second draft is better");
         assertEquals(777L, approved.design().approvedDraftRef());
-        assertEquals(4, service.completeStep(order, 3, step(approved, 3).version()).progress().currentStep());
+        assertEquals(5, service.completeStep(order, 4, step(approved, 4).version()).progress().currentStep());
     }
 
     @Test
@@ -657,21 +662,21 @@ class NotebookTrackerServiceIntegrationTest {
     @Test
     void qualityGateAndDeliveryEachNeedTheirOwnSuperadminSignOff() {
         String order = create(false, 10L, OP_A);
-        advance(order, 7);
+        advance(order, 6);
         asOperator(OP_A, 10L);
-        TrackerView atEight = service.view(order);
-        assertEquals(8, atEight.progress().currentStep());
-        assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 8, step(atEight, 8).version())));
-        assertEquals(403, http(() -> service.signOff(order, 8, step(atEight, 8).version())).status());
+        TrackerView atSeven = service.view(order);
+        assertEquals(7, atSeven.progress().currentStep());
+        assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 7, step(atSeven, 7).version())));
+        assertEquals(403, http(() -> service.signOff(order, 7, step(atSeven, 7).version())).status());
 
         asSuper();
-        TrackerView signed = service.signOff(order, 8, step(atEight, 8).version());
-        assertNotNull(step(signed, 8).data().get("signOff"));
-        assertEquals(400, http(() -> service.signOff(order, 7, step(signed, 7).version())).status(), "only steps 8 and 12 have a sign-off");
-        TrackerView passed = service.completeStep(order, 8, step(signed, 8).version());
-        assertEquals(9, passed.progress().currentStep());
+        TrackerView signed = service.signOff(order, 7, step(atSeven, 7).version());
+        assertNotNull(step(signed, 7).data().get("signOff"));
+        assertEquals(400, http(() -> service.signOff(order, 8, step(signed, 8).version())).status(), "only steps 7 and 12 have a sign-off");
+        TrackerView passed = service.completeStep(order, 7, step(signed, 7).version());
+        assertEquals(8, passed.progress().currentStep());
 
-        // The step-8 sign-off must not satisfy step 12.
+        // The pre-print sign-off must not satisfy step 12.
         advance(order, 11);
         asOperator(OP_A, 10L);
         TrackerView atTwelve = service.view(order);
@@ -688,46 +693,46 @@ class NotebookTrackerServiceIntegrationTest {
     @Test
     void editingSignedStepClearsSignOff() {
         String order = create(false, 10L, OP_A);
-        advance(order, 7);
+        advance(order, 6);
         asSuper();
-        TrackerView drafted = service.saveDraft(order, 8, Map.of("sampleLink", "https://example.test/sample", "checks", List.of(0, 2)),
-                step(service.view(order), 8).version());
-        TrackerView signed = service.signOff(order, 8, step(drafted, 8).version());
+        TrackerView drafted = service.saveDraft(order, 7, Map.of("sampleLink", "https://example.test/sample", "checks", List.of(0, 2)),
+                step(service.view(order), 7).version());
+        TrackerView signed = service.signOff(order, 7, step(drafted, 7).version());
 
         // The form sends every value again; the same values, in any order and as whole numbers of any width, are not a change.
-        TrackerView same = service.saveDraft(order, 8, Map.of("checks", List.of(2L, 0L), "sampleLink", " https://example.test/sample "),
-                step(signed, 8).version());
-        assertNotNull(step(same, 8).data().get("signOff"), "an unchanged save keeps the sign-off");
-        assertEquals(step(drafted, 8).data().get("sampleLink"), step(same, 8).data().get("sampleLink"));
+        TrackerView same = service.saveDraft(order, 7, Map.of("checks", List.of(2L, 0L), "sampleLink", " https://example.test/sample "),
+                step(signed, 7).version());
+        assertNotNull(step(same, 7).data().get("signOff"), "an unchanged save keeps the sign-off");
+        assertEquals(step(drafted, 7).data().get("sampleLink"), step(same, 7).data().get("sampleLink"));
 
-        TrackerView changed = service.saveDraft(order, 8, Map.of("sampleLink", "https://example.test/other", "checks", List.of(0, 2)),
-                step(same, 8).version());
-        assertNull(step(changed, 8).data().get("signOff"), "changed data needs a new sign-off");
-        assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 8, step(changed, 8).version())));
-        TrackerView resigned = service.signOff(order, 8, step(changed, 8).version());
-        assertEquals(9, service.completeStep(order, 8, step(resigned, 8).version()).progress().currentStep());
+        TrackerView changed = service.saveDraft(order, 7, Map.of("sampleLink", "https://example.test/other", "checks", List.of(0, 2)),
+                step(same, 7).version());
+        assertNull(step(changed, 7).data().get("signOff"), "changed data needs a new sign-off");
+        assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 7, step(changed, 7).version())));
+        TrackerView resigned = service.signOff(order, 7, step(changed, 7).version());
+        assertEquals(8, service.completeStep(order, 7, step(resigned, 7).version()).progress().currentStep());
     }
 
     @Test
     void reopenClearsLaterSignOffs() {
         String order = create(false, 10L, OP_A);
-        advance(order, 12); // steps 8 and 12 signed off, every step completed
+        advance(order, 12); // steps 7 and 12 signed off, every step completed
         asSuper();
-        TrackerView reopened = service.reopenStep(order, 7);
-        assertNull(step(reopened, 8).data().get("signOff"));
+        TrackerView reopened = service.reopenStep(order, 6);
+        assertNull(step(reopened, 7).data().get("signOff"));
         assertNull(step(reopened, 12).data().get("signOff"));
         assertEquals(1000L, ((Number) step(reopened, 11).data().get("producedCount")).longValue(), "the rest of the later data is kept");
 
-        TrackerView atEight = service.completeStep(order, 7, step(reopened, 7).version());
-        assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 8, step(atEight, 8).version())),
+        TrackerView atSeven = service.completeStep(order, 6, step(reopened, 6).version());
+        assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 7, step(atSeven, 7).version())),
                 "a step reverted by the reopen is signed off again");
 
         // Reopening a signed step itself takes its own sign-off back too.
-        TrackerView signed = service.signOff(order, 8, step(atEight, 8).version());
-        service.completeStep(order, 8, step(signed, 8).version());
-        TrackerView eightReopened = service.reopenStep(order, 8);
-        assertEquals("ACTIVE", step(eightReopened, 8).status());
-        assertNull(step(eightReopened, 8).data().get("signOff"));
+        TrackerView signed = service.signOff(order, 7, step(atSeven, 7).version());
+        service.completeStep(order, 7, step(signed, 7).version());
+        TrackerView sevenReopened = service.reopenStep(order, 7);
+        assertEquals("ACTIVE", step(sevenReopened, 7).status());
+        assertNull(step(sevenReopened, 7).data().get("signOff"));
     }
 
     @Test
@@ -768,11 +773,18 @@ class NotebookTrackerServiceIntegrationTest {
         String order = create(true, 10L, OP_A);
         asOperator(OP_A, 10L);
         assertEquals(403, http(() -> service.setVendor(order, "Acme Print", "+910000000000")).status());
+        assertEquals(403, http(() -> service.setVendorSelections(order, Map.of("board", List.of("board_shree")))).status());
 
         asSuper();
         long designer = service.createDesigner("Priya Singh", "+911234567890").id();
         assertEquals(400, http(() -> service.setVendor(order, " ", "1")).status());
         service.setVendor(order, "Acme Print", "+910000000000");
+        assertEquals(400, http(() -> service.setVendorSelections(order, Map.of("unknown", List.of("board_shree")))).status());
+        assertEquals(400, http(() -> service.setVendorSelections(order, Map.of("board", List.of("offset_metro")))).status());
+        TrackerView selections = service.setVendorSelections(order, Map.of(
+                "board", List.of("board_shree", "board_prime"),
+                "offset", List.of("offset_metro")));
+        assertEquals(Map.of("board", List.of("board_prime", "board_shree"), "offset", List.of("offset_metro")), selections.vendorSelections());
         TrackerView view = service.setDesigner(order, designer);
         assertEquals("Acme Print", view.vendor().name());
         assertEquals("Priya Singh", view.designer().name());
@@ -823,7 +835,7 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals(12, slots.size());
         assertEquals("SCHOOL", slots.get(0).sla().source());
         assertEquals("DEFAULT", slots.get(1).sla().source());
-        assertNull(slots.get(7).sla(), "step 8 has no default timer");
+        assertEquals(50, slots.get(7).sla().value(), "step 8 is Printing Press");
 
         service.clearTimeSlot(30, 1);
         assertEquals("DEFAULT", service.timeSlots(30).get(0).sla().source());
@@ -942,11 +954,12 @@ class NotebookTrackerServiceIntegrationTest {
 
         DRAFT_IDS.add(501L);
         service.sendDesign(order);
-        TrackerView atThree = service.completeStep(order, 2, step(service.view(order), 2).version());
+        service.completeStep(order, 2, step(service.view(order), 2).version());
+        TrackerView atFour = service.completeStep(order, 3, step(service.view(order), 3).version());
         asSuper();
         assertEquals(400, http(() -> service.approveDesign(order, 999, null)).status(), "999 is not a current draft");
         assertEquals(501L, service.approveDesign(order, 501, null).design().approvedDraftRef());
-        assertEquals(3, atThree.progress().currentStep());
+        assertEquals(4, atFour.progress().currentStep());
     }
 
     @Test
@@ -956,6 +969,7 @@ class NotebookTrackerServiceIntegrationTest {
         asOperator(OP_A, 10L);
         service.sendDesign(order);
         service.completeStep(order, 2, step(service.view(order), 2).version());
+        service.completeStep(order, 3, step(service.view(order), 3).version());
         asSuper();
         service.approveDesign(order, 501, null);
         assertEquals(List.of(false, false), DRAFT_FETCH_IN_TRANSACTION,
@@ -989,6 +1003,7 @@ class NotebookTrackerServiceIntegrationTest {
 
         asOperator(OP_A, 10L);
         service.completeStep(order, 2, step(service.view(order), 2).version());
+        service.completeStep(order, 3, step(service.view(order), 3).version());
         // Superadmin reopens step 2 while an approval waits for the catalogue: Head Approval is no longer the active step.
         asSuper();
         meanwhileSuperadmin(() -> service.reopenStep(order, 2));
@@ -1193,6 +1208,7 @@ class NotebookTrackerServiceIntegrationTest {
         asSuper();
         service.sendDesign(order);
         service.completeStep(order, 2, step(service.view(order), 2).version());
+        service.completeStep(order, 3, step(service.view(order), 3).version());
         assertFalse(service.designImageAccess(order, OP_A, "OPERATIONS").allowed(), "completed, so the operator is locked out");
         assertTrue(service.designImageAccess(order, SUPER, "SUPERADMIN").allowed(), "superadmin can still re-edit");
 
@@ -1392,17 +1408,17 @@ class NotebookTrackerServiceIntegrationTest {
     @Test
     void aSignOffIsRefusedWhenTheStepChangedSinceItWasLoaded() {
         String order = create(false, 10L, OP_A);
-        advance(order, 7);
-        long loaded = step(as(() -> asSuper(), () -> service.view(order)), 8).version();
-        as(() -> asOperator(OP_A, 10L), () -> service.saveDraft(order, 8, Map.of("sampleLink", "https://example.test/late"), loaded));
+        advance(order, 6);
+        long loaded = step(as(() -> asSuper(), () -> service.view(order)), 7).version();
+        as(() -> asOperator(OP_A, 10L), () -> service.saveDraft(order, 7, Map.of("sampleLink", "https://example.test/late"), loaded));
 
         asSuper();
-        assertEquals(409, http(() -> service.signOff(order, 8, loaded)).status());
-        assertNull(step(service.view(order), 8).data().get("signOff"), "nothing was signed off");
+        assertEquals(409, http(() -> service.signOff(order, 7, loaded)).status());
+        assertNull(step(service.view(order), 7).data().get("signOff"), "nothing was signed off");
 
-        TrackerView signed = service.signOff(order, 8, step(service.view(order), 8).version());
-        assertNotNull(step(signed, 8).data().get("signOff"));
-        assertEquals("https://example.test/late", step(signed, 8).data().get("sampleLink"), "the data seen is the data signed");
+        TrackerView signed = service.signOff(order, 7, step(service.view(order), 7).version());
+        assertNotNull(step(signed, 7).data().get("signOff"));
+        assertEquals("https://example.test/late", step(signed, 7).data().get("sampleLink"), "the data seen is the data signed");
     }
 
     // ---- status outbox: dead letter, revival, closed orders and health (review follow-ups) ------------------------------

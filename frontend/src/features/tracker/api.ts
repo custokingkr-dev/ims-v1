@@ -5,6 +5,7 @@ import { createCatalogClient } from '../../generated/catalogClient';
 import { createOperatorAdminClient } from '../../generated/operatorAdminClient';
 import { createTenantSchoolClient } from '../../generated/tenantSchoolClient';
 import type { DesignerRow, DraftImage, OperatorRow, OperatorUser, OrderSummary, SlaRow, TrackerView, WorklistItem } from './types';
+import type { NotebookWorkbookPreview } from '../../generated/catalogClient';
 
 export type { OperatorRow };
 
@@ -23,7 +24,7 @@ const nullOrRecord = (v: unknown) => v == null || isRecord(v);
  */
 export function parseTracker(data: unknown): TrackerView {
   if (!isRecord(data) || typeof data.orderId !== 'string' || !Array.isArray(data.steps) || !isRecord(data.progress)
-    || !nullOrRecord(data.design) || !nullOrRecord(data.designer) || !nullOrRecord(data.vendor)) {
+    || !nullOrRecord(data.design) || !nullOrRecord(data.designer) || !nullOrRecord(data.vendor) || !isRecord(data.vendorSelections)) {
     throw new Error('The tracker response was not understood.');
   }
   return {
@@ -84,6 +85,8 @@ export const trackerApi = {
   approveDesign: (orderId: string, draftRef: number, comment?: string) => view(client.approveNotebookDesign({ orderId }, { draftRef, comment: comment ?? null })),
   requestChanges: (orderId: string, comment?: string) => view(client.requestNotebookDesignChanges({ orderId }, { comment: comment ?? null })),
   setVendor: (orderId: string, name: string, phone: string) => view(client.setNotebookVendor({ orderId }, { name, phone })),
+  setVendorSelections: (orderId: string, selections: Record<string, string[]>) =>
+    view(client.setNotebookVendorSelections({ orderId }, { selections })),
   setDesigner: (orderId: string, designerId: number) => view(client.setNotebookDesigner({ orderId }, { designerId })),
   addInternalNote: (orderId: string, body: string) => view(client.addNotebookInternalNote({ orderId }, { body })),
 
@@ -106,6 +109,8 @@ export const trackerApi = {
     return parseList<Awaited<ReturnType<typeof catalog.listOrderAssets>>[number]>(assets).filter((a) => a.assetKind === 'DESIGN_DRAFT' && !a.supersededAt);
   },
   uploadDraft: async (orderId: string, file: File) => { await catalog.uploadOrderAsset({ id: orderId }, { assetKind: 'DESIGN_DRAFT', file }); },
+  previewWorkbook: (orderId: string, file: File): Promise<NotebookWorkbookPreview> =>
+    catalog.previewNotebookOrderWorkbook({ id: orderId }, { file }),
   deleteDraft: (orderId: string, assetId: number) => catalog.deleteOrderAsset({ id: orderId, assetId }),
   draftBlob: (orderId: string, assetId: number) => catalog.getOrderAssetContent({ id: orderId, assetId }),
 

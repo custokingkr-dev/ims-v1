@@ -23,8 +23,8 @@ spring:
     enabled: false
   servlet:
     multipart:
-      max-file-size: ${STUDENT_PHOTO_MAX_FILE_SIZE:10MB}
-      max-request-size: ${STUDENT_PHOTO_MAX_REQUEST_SIZE:11MB}
+      max-file-size: ${CATALOG_ORDER_ASSET_MAX_FILE_SIZE:25MB}
+      max-request-size: ${CATALOG_ORDER_ASSET_MAX_REQUEST_SIZE:27MB}
 
 flyway:
   url: ${FLYWAY_URL:${spring.datasource.url}}

@@ -62,6 +62,7 @@ public class NotebookTrackerRepository {
 
     public record TrackerRow(long instanceId, long schoolId, String orderId, boolean customised, int orderedCount,
                              OffsetDateTime placedAt, String timeZone, String schoolName, String vendorName, String vendorPhone,
+                             Map<String, List<String>> vendorSelections,
                              Long designerId, String designState, String designStateNote, OffsetDateTime designStateAt,
                              Long designStateBy, Long approvedDraftRef, long version, String instanceStatus) { }
 
@@ -146,7 +147,8 @@ public class NotebookTrackerRepository {
 
     private String trackerSelect() {
         return "SELECT t.instance_id, t.school_id, t.order_id, t.customised, t.ordered_count, t.placed_at, t.time_zone, t.school_name, "
-                + "t.vendor_name, t.vendor_phone, t.designer_id, t.design_state, t.design_state_note, t.design_state_at, "
+                + "t.vendor_name, t.vendor_phone, t.vendor_selections::text AS vendor_selections, "
+                + "t.designer_id, t.design_state, t.design_state_note, t.design_state_at, "
                 + "t.design_state_by, t.approved_draft_ref, t.version, i.status AS instance_status "
                 + "FROM " + trackers + " t JOIN " + instances + " i ON i.id = t.instance_id AND i.school_id = t.school_id";
     }
@@ -155,9 +157,22 @@ public class NotebookTrackerRepository {
         return new TrackerRow(rs.getLong("instance_id"), rs.getLong("school_id"), rs.getString("order_id"),
                 rs.getBoolean("customised"), rs.getInt("ordered_count"), rs.getObject("placed_at", OffsetDateTime.class),
                 rs.getString("time_zone"), rs.getString("school_name"), rs.getString("vendor_name"), rs.getString("vendor_phone"),
+                vendorSelections(rs.getString("vendor_selections")),
                 rs.getObject("designer_id", Long.class), rs.getString("design_state"), rs.getString("design_state_note"),
                 rs.getObject("design_state_at", OffsetDateTime.class), rs.getObject("design_state_by", Long.class),
                 rs.getObject("approved_draft_ref", Long.class), rs.getLong("version"), rs.getString("instance_status"));
+    }
+
+    private Map<String, List<String>> vendorSelections(String jsonText) {
+        if (jsonText == null || jsonText.isBlank()) return Map.of();
+        try {
+            Map<String, List<String>> selections = json.readValue(jsonText, new TypeReference<>() { });
+            Map<String, List<String>> copy = new LinkedHashMap<>();
+            selections.forEach((category, ids) -> copy.put(category, List.copyOf(ids)));
+            return Map.copyOf(copy);
+        } catch (tools.jackson.core.JacksonException e) {
+            throw new IllegalStateException("Stored notebook vendor selections are invalid JSON", e);
+        }
     }
 
     public long insertInstance(long schoolId, String orderId, int currentStep, Long initiatedBy) {
@@ -199,6 +214,16 @@ public class NotebookTrackerRepository {
     public void setVendor(long instanceId, String name, String phone) {
         jdbc.sql("UPDATE " + trackers + " SET vendor_name = :name, vendor_phone = :phone, version = version + 1 WHERE instance_id = :id")
                 .param("id", instanceId).param("name", name).param("phone", phone).update();
+    }
+
+    public void setVendorSelections(long instanceId, Map<String, List<String>> selections) {
+        try {
+            String serialized = json.writeValueAsString(selections);
+            jdbc.sql("UPDATE " + trackers + " SET vendor_selections = CAST(:selections AS jsonb), version = version + 1 WHERE instance_id = :id")
+                    .param("id", instanceId).param("selections", serialized).update();
+        } catch (tools.jackson.core.JacksonException e) {
+            throw new IllegalStateException("Could not serialize notebook vendor selections", e);
+        }
     }
 
     public void setDesigner(long instanceId, Long designerId) {

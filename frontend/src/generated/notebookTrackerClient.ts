@@ -24,7 +24,7 @@ export type TrackerNote = { "id": number; "authorUserId": number; "authorName": 
 
 export type TrackerFollowUp = { "id": number; "percentComplete": number; "nextFollowUpOn": string | null; "contactPhone": string | null; "createdBy": number; "createdAt": string; };
 
-export type TrackerView = { "orderId": string; "schoolId": number; "customised": boolean; "orderedCount": number; "placedAt": string; "timeZone": string; "schoolName": string | null; "instanceStatus": string; "progress": TrackerProgress; "vendor": (TrackerContact | null); "designer": (TrackerDesigner | null); "design": (TrackerDesign | null); "steps": Array<TrackerStep>; "internalNotes": Array<TrackerNote>; "followUps": Array<TrackerFollowUp>; "version": number; };
+export type TrackerView = { "orderId": string; "schoolId": number; "customised": boolean; "orderedCount": number; "placedAt": string; "timeZone": string; "schoolName": string | null; "instanceStatus": string; "progress": TrackerProgress; "vendor": (TrackerContact | null); "vendorSelections": { [key: string]: Array<string>; }; "designer": (TrackerDesigner | null); "design": (TrackerDesign | null); "steps": Array<TrackerStep>; "internalNotes": Array<TrackerNote>; "followUps": Array<TrackerFollowUp>; "version": number; };
 
 export type TrackerDesignerRow = { "id": number; "name": string; "phone": string | null; "active": boolean; };
 
@@ -41,6 +41,8 @@ export type TrackerApproveRequest = { "draftRef": number; "comment": string | nu
 export type TrackerCommentRequest = { "comment": string | null; };
 
 export type TrackerVendorRequest = { "name": string; "phone": string | null; };
+
+export type TrackerVendorSelectionsRequest = { "selections": { [key: string]: Array<string>; }; };
 
 export type TrackerDesignerChoice = { "designerId": number; };
 
@@ -69,6 +71,7 @@ export interface NotebookTrackerClient {
   approveNotebookDesign(parameters: { orderId: string; }, request: TrackerApproveRequest): Promise<TrackerView>;
   requestNotebookDesignChanges(parameters: { orderId: string; }, request: TrackerCommentRequest): Promise<TrackerView>;
   setNotebookVendor(parameters: { orderId: string; }, request: TrackerVendorRequest): Promise<TrackerView>;
+  setNotebookVendorSelections(parameters: { orderId: string; }, request: TrackerVendorSelectionsRequest): Promise<TrackerView>;
   setNotebookDesigner(parameters: { orderId: string; }, request: TrackerDesignerChoice): Promise<TrackerView>;
   addNotebookInternalNote(parameters: { orderId: string; }, request: TrackerBodyRequest): Promise<TrackerView>;
   listNotebookDesigners(): Promise<Array<TrackerDesignerRow>>;
@@ -135,6 +138,10 @@ export function createNotebookTrackerClient(http: AxiosInstance): NotebookTracke
     },
     async setNotebookVendor(parameters: { orderId: string; }, request: TrackerVendorRequest) {
       const response = await http.put<TrackerView>(`/workflows/notebook-orders/${encodeURIComponent(String(parameters.orderId))}/vendor`, request);
+      return response.data;
+    },
+    async setNotebookVendorSelections(parameters: { orderId: string; }, request: TrackerVendorSelectionsRequest) {
+      const response = await http.put<TrackerView>(`/workflows/notebook-orders/${encodeURIComponent(String(parameters.orderId))}/vendor-selections`, request);
       return response.data;
     },
     async setNotebookDesigner(parameters: { orderId: string; }, request: TrackerDesignerChoice) {

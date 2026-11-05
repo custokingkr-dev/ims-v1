@@ -1,10 +1,11 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Check, RotateCcw, Save, ShieldCheck } from 'lucide-react';
+import { Check, FileSpreadsheet, RotateCcw, Save, ShieldCheck } from 'lucide-react';
 import { selectionLabel } from '../catalog/types';
 import { DraftImages } from './DraftImages';
 import { trackerApi, trackerError } from './api';
-import { QC_ITEMS, SIGN_OFF_STEPS, STEP_FIELDS, countsMismatch, formatDay, isSignedOff, wordCount, type FieldSpec } from './steps';
+import { PRINTING_CHECK_ITEMS, PRODUCTION_FOLLOW_UP_ITEMS, QC_ITEMS, SIGN_OFF_STEPS, STEP_FIELDS, VENDOR_CATEGORY_LABELS, VENDOR_DIRECTORY, countsMismatch, formatDay, isSignedOff, titleCardQuantities, titleCardQuantitiesFromCounts, vendorCategoriesForStep, wordCount, type FieldSpec, type VendorCategory } from './steps';
 import type { DesignerRow, OrderSummary, TrackerContact, TrackerDesigner, TrackerStep, TrackerView } from './types';
+import type { NotebookWorkbookPreview } from '../../generated/catalogClient';
 import '../catalog/product-form.css';
 
 type Role = 'SUPERADMIN' | 'OPERATIONS' | string;
@@ -13,14 +14,14 @@ const NOTE_WORDS = 100;
 function toForm(step: TrackerStep, specs: FieldSpec[]): Record<string, string> {
   return Object.fromEntries(specs.map((spec) => [spec.key, step.data[spec.key] == null ? '' : String(step.data[spec.key])]));
 }
-function toPayload(specs: FieldSpec[], form: Record<string, string>, checks: number[] | null): Record<string, unknown> {
+function toPayload(specs: FieldSpec[], form: Record<string, string>, checks: number[] | null, checkField = 'checks'): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   for (const spec of specs) {
     const raw = (form[spec.key] ?? '').trim();
     if (!raw) continue;
     payload[spec.key] = spec.kind === 'whole' || spec.kind === 'number' ? Number(raw) : raw;
   }
-  if (checks) payload.checks = checks;
+  if (checks) payload[checkField] = checks;
   return payload;
 }
 
@@ -87,27 +88,55 @@ function DesignerCard({ designer, designers, editable, busy, onChoose }: {
   );
 }
 
+function SelectedVendorGroups({ step, selections }: { step: number; selections: Record<string, string[]> }) {
+  const categories = vendorCategoriesForStep(step).filter((category) => step === 5 || (selections[category]?.length ?? 0) > 0);
+  if (!categories.length && step !== 7) return null;
+  return (
+    <section className="ck-trk-card" aria-label="Selected vendors">
+      <h4>Selected vendors</h4>
+      {step === 7 && <p><strong>Internal Approval Group</strong></p>}
+      {categories.map((category) => {
+        const selected = VENDOR_DIRECTORY[category].filter((vendor) => selections[category]?.includes(vendor.id));
+        return (
+          <div key={category}>
+            <h5>{VENDOR_CATEGORY_LABELS[category]}</h5>
+            {selected.length ? <ul>{selected.map((vendor) => <li key={vendor.id}>{vendor.name}</li>)}</ul>
+              : <p className="ck-product-muted">No {VENDOR_CATEGORY_LABELS[category].toLowerCase()} selected for this order.</p>}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 export function StepWorkArea({ tracker, step, role, userId, designers, operators, summary = null, summaryError = '', onTracker }: {
   tracker: TrackerView; step: TrackerStep; role: Role; userId?: number; summary?: OrderSummary | null; summaryError?: string;
   designers: DesignerRow[]; operators: Array<{ userId: number; fullName: string }>; onTracker: (next: TrackerView) => void;
 }) {
   const specs = STEP_FIELDS[step.step] ?? [];
+  const checkField = step.step === 8 ? 'pressChecks' : step.step === 10 ? 'productionChecks' : 'checks';
   const superadmin = role === 'SUPERADMIN';
   const [form, setForm] = useState(() => toForm(step, specs));
-  const [checks, setChecks] = useState<number[]>(() => (Array.isArray(step.data.checks) ? step.data.checks as number[] : []));
+  const [checks, setChecks] = useState<number[]>(() => (Array.isArray(step.data[checkField]) ? step.data[checkField] as number[] : []));
   const [note, setNote] = useState(step.stageNote ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [selectedDraft, setSelectedDraft] = useState<number | null>(null);
   const [comment, setComment] = useState('');
+  const [workbookFile, setWorkbookFile] = useState<File | null>(null);
+  const [workbookPreview, setWorkbookPreview] = useState<NotebookWorkbookPreview | null>(null);
   const [followUp, setFollowUp] = useState({ percentComplete: '', nextFollowUpOn: '', contactPhone: '' });
+  const [vendorSelections, setVendorSelections] = useState<Record<string, string[]>>(() => tracker.vendorSelections);
 
   // A fresh server copy (another save, a reopen) replaces whatever was typed against the old one.
   useEffect(() => {
-    setForm(toForm(step, specs)); setChecks(Array.isArray(step.data.checks) ? step.data.checks as number[] : []); setNote(step.stageNote ?? '');
+    setForm(toForm(step, specs)); setChecks(Array.isArray(step.data[checkField]) ? step.data[checkField] as number[] : []); setNote(step.stageNote ?? '');
+    setVendorSelections(tracker.vendorSelections);
+    setWorkbookFile(null);
+    setWorkbookPreview(null);
     setError(''); setMessage('');
-  }, [step.step, step.version]);
+  }, [step.step, step.version, checkField, tracker.orderId, tracker.version]);
 
   const act = async (operation: () => Promise<TrackerView>, done: string) => {
     setBusy(true); setError(''); setMessage('');
@@ -121,10 +150,49 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
   // A wholesale order has no design approval (null); only the customised design steps 2 and 3 read it.
   const design = tracker.design;
   // Head approval completes only once a design is approved; the server checks it too, so say why before it is refused.
-  const awaitingApproval = step.step === 3 && design?.state !== 'APPROVED';
+  const awaitingApproval = step.step === 4 && design?.state !== 'APPROVED';
   const completeHint = useId();
   const worker = useMemo(() => operators.find((o) => o.userId === step.assigneeUserId), [operators, step.assigneeUserId]);
   const saveVendor = (name: string, phone: string) => void act(() => trackerApi.setVendor(tracker.orderId, name, phone), 'Vendor saved.');
+  const saveVendorSelections = () => void act(
+    () => trackerApi.setVendorSelections(tracker.orderId, vendorSelections),
+    'Vendor selections saved.',
+  );
+  const previewWorkbook = async () => {
+    if (!workbookFile) return;
+    setBusy(true); setError(''); setMessage('');
+    try {
+      setWorkbookPreview(await trackerApi.previewWorkbook(tracker.orderId, workbookFile));
+      setMessage('Workbook preview ready. No order data has been changed.');
+    } catch (e) {
+      setError(trackerError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const saveWorkbookTotals = () => {
+    if (!workbookPreview) return;
+    const snapshot = {
+      ...toPayload(specs, form, null),
+      workbookFileName: workbookPreview.fileName,
+      workbookSheetName: workbookPreview.sheetName,
+      workbookOrderId: workbookPreview.workbookOrderId ?? '',
+      workbookImportedAt: new Date().toISOString(),
+      workbookTotalQuantity: workbookPreview.total,
+      workbookKing: workbookPreview.king,
+      workbookJumboKing: workbookPreview.jumboKing,
+      workbookLong: workbookPreview.longBooks,
+      workbookJumboLong: workbookPreview.jumboLong,
+      workbookFa: workbookPreview.fa,
+      workbookValidRows: workbookPreview.validRows,
+    };
+    void act(() => trackerApi.saveDraft(tracker.orderId, step.step, snapshot, step.version), 'Workbook totals saved to planning.');
+  };
+  const toggleVendor = (category: VendorCategory, id: string, checked: boolean) => setVendorSelections((current) => {
+    const existing = current[category] ?? [];
+    const next = checked ? [...existing, id] : existing.filter((selected) => selected !== id);
+    return { ...current, [category]: next };
+  });
 
   return (
     <div className="ck-trk-work">
@@ -146,6 +214,92 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
               <td className="ck-num">{line.bookCount.toLocaleString('en-IN')}</td><td className="ck-num">{line.pageCount.toLocaleString('en-IN')}</td></tr>
           ))}</tbody></table></div>
       )}
+      {step.step === 5 && summary && (
+        <section className="ck-trk-card" aria-label="Title-card sheet quantities">
+          <h4>Title-card sheet quantities</h4>
+          <p className="ck-product-muted">Calculated from the saved notebook order quantities.</p>
+          <dl className="ck-trk-facts">
+            {Object.entries(titleCardQuantities(summary.lines)).map(([category, quantity]) => (
+              <div key={category}><dt>{category === 'king' ? 'King + Jumbo King' : category === 'jumboLong' ? 'Jumbo Long' : category.toUpperCase()}</dt>
+                <dd>{quantity.toLocaleString('en-IN')} sheets</dd></div>
+            ))}
+          </dl>
+        </section>
+      )}
+      {step.step === 5 && (
+        <section className="ck-trk-card" aria-label="Notebook workbook planning">
+          <h4><FileSpreadsheet size={16} aria-hidden="true" /> Workbook planning</h4>
+          <p className="ck-product-muted">Preview an .xlsx order workbook, then explicitly save its totals to planning. Catalogue order lines are never changed.</p>
+          {editable && (
+            <div className="ck-trk-actions">
+              <label className="field">Order workbook (.xlsx)
+                <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  disabled={busy} onChange={(event) => {
+                    setWorkbookFile(event.target.files?.[0] ?? null);
+                    setWorkbookPreview(null);
+                    setError('');
+                    setMessage('');
+                  }} />
+              </label>
+              <button type="button" className="ck-btn ck-btn-ghost" disabled={busy || !workbookFile} onClick={() => void previewWorkbook()}>
+                Preview workbook
+              </button>
+            </div>
+          )}
+          {workbookPreview && (
+            <div className="ck-trk-workbook-preview" aria-live="polite">
+              <p><strong>Preview only:</strong> {workbookPreview.fileName} · {workbookPreview.sheetName}
+                {workbookPreview.workbookOrderId ? ` · Workbook order ${workbookPreview.workbookOrderId}` : ''}</p>
+              <dl className="ck-trk-facts">
+                <div><dt>Total books</dt><dd>{workbookPreview.total.toLocaleString('en-IN')}</dd></div>
+                <div><dt>King</dt><dd>{workbookPreview.king.toLocaleString('en-IN')}</dd></div>
+                <div><dt>Jumbo King</dt><dd>{workbookPreview.jumboKing.toLocaleString('en-IN')}</dd></div>
+                <div><dt>Long</dt><dd>{workbookPreview.longBooks.toLocaleString('en-IN')}</dd></div>
+                <div><dt>Jumbo Long</dt><dd>{workbookPreview.jumboLong.toLocaleString('en-IN')}</dd></div>
+                <div><dt>FA</dt><dd>{workbookPreview.fa.toLocaleString('en-IN')}</dd></div>
+              </dl>
+              <p className="ck-product-muted">Calculated title-card sheets: {Object.entries(titleCardQuantitiesFromCounts({
+                king: workbookPreview.king, jumboKing: workbookPreview.jumboKing, long: workbookPreview.longBooks,
+                jumboLong: workbookPreview.jumboLong, fa: workbookPreview.fa,
+              })).map(([category, quantity]) =>
+                `${category === 'king' ? 'King + Jumbo King' : category === 'jumboLong' ? 'Jumbo Long' : category.toUpperCase()}: ${quantity.toLocaleString('en-IN')}`).join(' · ')}</p>
+              {editable && <button type="button" className="ck-btn ck-btn-g" disabled={busy} onClick={saveWorkbookTotals}>
+                <Save size={15} aria-hidden="true" /> Save workbook totals
+              </button>}
+            </div>
+          )}
+          {typeof step.data.workbookTotalQuantity === 'number' && (
+            <div className="ck-trk-workbook-saved">
+              <h5>Saved planning snapshot</h5>
+              <p>{String(step.data.workbookFileName ?? 'Workbook')} · {String(step.data.workbookSheetName ?? 'Sheet')}
+                {step.data.workbookImportedAt ? ` · Saved ${new Date(String(step.data.workbookImportedAt)).toLocaleString('en-IN')}` : ''}</p>
+              <p>{Number(step.data.workbookTotalQuantity).toLocaleString('en-IN')} total books across {Number(step.data.workbookValidRows ?? 0).toLocaleString('en-IN')} rows.</p>
+            </div>
+          )}
+        </section>
+      )}
+      {step.step === 5 && (
+        <section className="ck-trk-card" aria-label="Select vendors for this order">
+          <h4>Select vendors for this order</h4>
+          <p className="ck-product-muted">Only selected vendors appear in their relevant downstream stages.</p>
+          <div className="ck-trk-cards">
+            {(Object.keys(VENDOR_DIRECTORY) as VendorCategory[]).map((category) => (
+              <fieldset key={category} className="ck-product-fieldset">
+                <legend>{VENDOR_CATEGORY_LABELS[category]}</legend>
+                {VENDOR_DIRECTORY[category].map((vendor) => (
+                  <label key={vendor.id} className="ck-trk-vendor-option">
+                    <input type="checkbox" checked={vendorSelections[category]?.includes(vendor.id) ?? false}
+                      disabled={!superadmin || busy}
+                      onChange={(event) => toggleVendor(category, vendor.id, event.target.checked)} />
+                    {vendor.name}
+                  </label>
+                ))}
+              </fieldset>
+            ))}
+          </div>
+          {superadmin && <button type="button" className="ck-btn ck-btn-ghost" disabled={busy} onClick={saveVendorSelections}>Save vendor selections</button>}
+        </section>
+      )}
 
       {step.step === 2 && design && (
         <>
@@ -163,7 +317,7 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
         </>
       )}
 
-      {step.step === 3 && design && (
+      {step.step === 4 && design && (
         <>
           <p>Design status: <strong>{(design.state ?? 'NOT_SENT').replace(/_/g, ' ').toLowerCase()}</strong>{design.comment ? ` — ${design.comment}` : ''}</p>
           <DraftImages orderId={tracker.orderId} canManage={false} selectedId={selectedDraft ?? design.approvedDraftRef} onSelect={setSelectedDraft} />
@@ -183,7 +337,7 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
         </>
       )}
 
-      {step.step === 8 && (
+      {step.step === 7 && (
         <fieldset className="ck-product-fieldset">
           <legend>Pre-print checklist <span className="ck-product-muted">(optional)</span></legend>
           <ul className="ck-trk-checks">
@@ -194,13 +348,34 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
           </ul>
         </fieldset>
       )}
+      {step.step === 8 && (
+        <fieldset className="ck-product-fieldset">
+          <legend>Printing &amp; lamination checklist</legend>
+          <ul className="ck-trk-checks">
+            {PRINTING_CHECK_ITEMS.map((label, index) => (
+              <li key={label}><label><input type="checkbox" checked={checks.includes(index)} disabled={!editable}
+                onChange={(e) => setChecks(e.target.checked ? [...checks, index].sort((a, b) => a - b) : checks.filter((c) => c !== index))} /> {label}</label></li>
+            ))}
+          </ul>
+        </fieldset>
+      )}
 
-      {step.step === 7 && (
+      {step.step === 8 && (
         <VendorCard heading="Printing vendor" nameLabel="Printing vendor" contactLabel="Contact" vendor={tracker.vendor} editable={superadmin} busy={busy} onSave={saveVendor} />
       )}
+      {step.step >= 6 && <SelectedVendorGroups step={step.step} selections={tracker.vendorSelections} />}
 
       {step.step === 10 && (
         <>
+          <fieldset className="ck-product-fieldset">
+            <legend>Production follow-up checklist</legend>
+            <ul className="ck-trk-checks">
+              {PRODUCTION_FOLLOW_UP_ITEMS.map((label, index) => (
+                <li key={label}><label><input type="checkbox" checked={checks.includes(index)} disabled={!editable}
+                  onChange={(e) => setChecks(e.target.checked ? [...checks, index].sort((a, b) => a - b) : checks.filter((c) => c !== index))} /> {label}</label></li>
+              ))}
+            </ul>
+          </fieldset>
           <table className="ck-table"><thead><tr><th>Logged</th><th className="ck-num">Complete</th><th>Next follow-up</th><th>Contact</th></tr></thead>
             <tbody>{tracker.followUps.length === 0 ? <tr><td colSpan={4} className="ck-product-muted">No follow-ups logged.</td></tr>
               : tracker.followUps.map((entry) => (
@@ -239,9 +414,10 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
       {message && <p className="ck-product-muted" role="status">{message}</p>}
 
       <div className="ck-trk-actions">
-        {specs.length > 0 && editable && (
+        {(specs.length > 0 || step.step === 10) && editable && (
           <button type="button" className="ck-btn ck-btn-ghost" disabled={busy}
-            onClick={() => void act(() => trackerApi.saveDraft(tracker.orderId, step.step, toPayload(specs, form, step.step === 8 ? checks : null), step.version), 'Draft saved.')}><Save size={15} aria-hidden="true" /> Save draft</button>
+            onClick={() => void act(() => trackerApi.saveDraft(tracker.orderId, step.step,
+              toPayload(specs, form, [7, 8, 10].includes(step.step) ? checks : null, checkField), step.version), 'Draft saved.')}><Save size={15} aria-hidden="true" /> Save draft</button>
         )}
         {step.can.canEditStageNote && (
           <button type="button" className="ck-btn ck-btn-ghost" disabled={busy || noteWords > NOTE_WORDS}

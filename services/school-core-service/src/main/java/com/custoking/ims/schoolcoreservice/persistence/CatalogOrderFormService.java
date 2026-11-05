@@ -387,6 +387,7 @@ public class CatalogOrderFormService {
 
     /** The size cap a category allows for this kind, taken from its seeded asset rule. */
     private long maxUploadBytes(String category, String kind) {
+        if (DesignDraftRules.KIND.equals(kind)) return CatalogOrderAssetStorage.DESIGN_DRAFT_MAX_BYTES;
         if (category == null || category.isBlank()) return CatalogOrderAssetStorage.MAX_BYTES;
         return jdbc.sql("""
                         SELECT params ->> 'maxBytes' FROM catalog.product_form_rules
@@ -439,7 +440,6 @@ public class CatalogOrderFormService {
             if (kind.equals(current.get("assetKind")) && validated.checksumSha256().equals(current.get("checksumSha256"))) return current;
         }
         int draftsBefore = draft ? currentDrafts(id) : 0;
-        if (draft && !DesignDraftRules.hasRoom(draftsBefore)) throw new ResponseStatusException(HttpStatus.CONFLICT, DesignDraftRules.LIMIT_MESSAGE);
         String key = storage.store(number(order.get("school_id")), id, validated);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

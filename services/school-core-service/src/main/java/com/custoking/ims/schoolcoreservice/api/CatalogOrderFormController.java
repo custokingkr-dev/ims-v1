@@ -2,7 +2,9 @@ package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.CatalogOrderFormService;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository;
+import com.custoking.ims.schoolcoreservice.photoimport.NotebookOrderWorkbookParser;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -33,12 +35,20 @@ public class CatalogOrderFormController {
     private final CatalogOrderFormService forms;
     private final CatalogReadRepository orders;
     private final String token;
+    private final NotebookOrderWorkbookParser workbookParser;
 
+    @Autowired
     public CatalogOrderFormController(CatalogOrderFormService forms, CatalogReadRepository orders,
-                                      @Value("${catalog.read-token:}") String token) {
+                                      @Value("${catalog.read-token:}") String token,
+                                      NotebookOrderWorkbookParser workbookParser) {
         this.forms = forms;
         this.orders = orders;
         this.token = token == null ? "" : token.trim();
+        this.workbookParser = workbookParser;
+    }
+
+    public CatalogOrderFormController(CatalogOrderFormService forms, CatalogReadRepository orders, String token) {
+        this(forms, orders, token, new NotebookOrderWorkbookParser());
     }
 
     @GetMapping("/{id}/form")
@@ -85,6 +95,22 @@ public class CatalogOrderFormController {
         return forms.trackerSummary(id);
     }
 
+    @PostMapping(value = "/{id}/workbook-preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public NotebookOrderWorkbookParser.Preview previewNotebookWorkbook(
+            @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+            @PathVariable String id, @RequestParam MultipartFile file) throws IOException {
+        requireToken(token, "order:update");
+        forms.trackerSummary(id);
+        if (file.getSize() > NotebookOrderWorkbookParser.MAX_WORKBOOK_BYTES) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The workbook must be 10 MB or smaller");
+        }
+        try {
+            return workbookParser.parse(file.getBytes(), file.getOriginalFilename(), id);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
     @GetMapping("/{id}/assets")
     public List<Map<String, Object>> assets(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
                                            @PathVariable String id) {
@@ -97,8 +123,8 @@ public class CatalogOrderFormController {
                                       @PathVariable String id, @RequestParam String assetKind,
                                       @RequestParam MultipartFile file) throws IOException {
         requireToken(token, "order:update");
-        if (file.getSize() > com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorage.MAX_BYTES) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Upload a file of 5 MB or smaller");
+        if (file.getSize() > com.custoking.ims.schoolcoreservice.infrastructure.CatalogOrderAssetStorage.ABSOLUTE_MAX_BYTES) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Upload a file of 25 MB or smaller");
         }
         return forms.upload(id, assetKind, file.getBytes(), file.getOriginalFilename());
     }

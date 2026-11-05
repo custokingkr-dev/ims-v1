@@ -10,6 +10,7 @@ import com.custoking.ims.operationsservice.application.tracker.StepStatus;
 import com.custoking.ims.operationsservice.application.tracker.TrackerProgress;
 import com.custoking.ims.operationsservice.application.tracker.TrackerStep;
 import com.custoking.ims.operationsservice.application.tracker.TrackerView;
+import com.custoking.ims.operationsservice.application.tracker.VendorDirectory;
 import com.custoking.ims.operationsservice.infrastructure.CatalogOrderGateway;
 import com.custoking.ims.operationsservice.infrastructure.OperatorEligibility;
 import com.custoking.ims.operationsservice.persistence.NotebookTrackerRepository;
@@ -384,6 +385,27 @@ public class NotebookTrackerService {
             if (cleanName.isEmpty() || cleanName.length() > 200) throw bad("Vendor name is required (200 characters at most)");
             if (cleanPhone.isEmpty() || cleanPhone.length() > 32) throw bad("Vendor phone is required (32 characters at most)");
             repo.setVendor(t.instanceId(), cleanName, cleanPhone);
+        });
+    }
+
+    public TrackerView setVendorSelections(String orderId, Map<String, List<String>> selections) {
+        return mutate(orderId, (actor, t, progress, rows) -> {
+            requireSuperadmin(actor, "Only superadmin can select vendors for an order");
+            if (selections == null) throw bad("Vendor selections are required");
+            Map<String, List<String>> clean = new HashMap<>();
+            for (Map.Entry<String, List<String>> entry : selections.entrySet()) {
+                String category = entry.getKey();
+                if (!VendorDirectory.CATEGORIES.containsKey(category)) throw bad("Unknown vendor category: " + category);
+                List<String> ids = entry.getValue();
+                if (ids == null) throw bad("Vendor selections cannot be null for " + category);
+                Set<String> allowed = VendorDirectory.vendorIds(category);
+                if (ids.stream().anyMatch(id -> id == null || !allowed.contains(id))) {
+                    throw bad("A selected vendor does not belong to " + category);
+                }
+                if (ids.stream().distinct().count() != ids.size()) throw bad("Duplicate vendor selections are not allowed");
+                if (!ids.isEmpty()) clean.put(category, ids.stream().sorted().toList());
+            }
+            repo.setVendorSelections(t.instanceId(), Map.copyOf(clean));
         });
     }
 
@@ -763,7 +785,7 @@ public class NotebookTrackerService {
         return new TrackerView(t.orderId(), t.schoolId(), t.customised(), t.orderedCount(), t.placedAt(), t.timeZone(), t.schoolName(), t.instanceStatus(),
                 new TrackerView.Progress(progress.completedCount(), progress.total(), current.map(TrackerStep::number).orElse(null),
                         current.map(TrackerStep::title).orElse(null), progress.finished()),
-                vendor, designer, design, steps,
+                vendor, t.vendorSelections(), designer, design, steps,
                 repo.internalNotes(t.instanceId()).stream().map(n -> new TrackerView.Note(n.id(), n.authorUserId(), null, n.body(), n.createdAt())).toList(),
                 repo.followUps(t.instanceId()).stream().map(f -> new TrackerView.FollowUp(f.id(), f.percentComplete(), f.nextFollowUpOn(),
                         f.contactPhone(), f.createdBy(), f.createdAt())).toList(),

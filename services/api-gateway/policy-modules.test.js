@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const { createAuthentication } = require('./authentication');
 const { createQuotaControls } = require('./quota');
 const { createProxyTransport } = require('./transport');
+const { Readable } = require('node:stream');
 
 const quotaConfig = { MAX_BEARER_TOKEN_BYTES: 128, RATE_LIMIT_RPS: 1, RATE_LIMIT_BURST: 1, RATE_LIMIT_MAX_KEYS: 2, TRUSTED_PROXY_HOPS: 0 };
 const req = () => ({ headers: { authorization: 'Bearer fixture-token' }, socket: { remoteAddress: '127.0.0.1' }, method: 'GET', url: '/api/v1/students?schoolId=7' });
@@ -62,4 +63,34 @@ test('transport factory rejects spoofed identity and shares its configured servi
   assert.equal(response.statusCode, 204);
   assert.equal(responseHeaders.get('permissions-policy'), 'camera=()');
   assert.equal(responseHeaders.get('cache-control'), 'public, max-age=31536000, immutable');
+});
+
+test('workbook preview has a bounded upload allowance above the default gateway body cap', async () => {
+  const received = [];
+  const transport = createProxyTransport({ upstreams: { schoolCore: new URL('https://school-core.example') },
+    tokenHeaders: { schoolCore: 'X-Catalog-Service-Token' }, serviceTokens: { schoolCore: 'fixture-token' },
+    CLOUD_RUN_AUTH: 'never', MAX_BODY_BYTES: 1024, PROXY_TIMEOUT_MS: 1000, EXPORT_TIMEOUT_MS: 3000, AUTH_TIMEOUT_MS: 2000,
+    activeSpanContext: () => null, formatTraceparent: () => '', sendJson: () => {},
+    fetchFn: async (_target, init) => {
+      let bytes = 0;
+      for await (const chunk of init.body) bytes += chunk.length;
+      received.push(bytes);
+      return new Response(null, { status: 204 });
+    },
+  });
+  const call = (size) => {
+    const request = Readable.from([Buffer.alloc(size)]);
+    request.method = 'POST';
+    request.url = '/api/v1/catalog/orders/CK-1/workbook-preview';
+    request.headers = { 'content-type': 'multipart/form-data; boundary=fixture', 'content-length': String(size) };
+    request.socket = { remoteAddress: '127.0.0.1' };
+    const response = { writableFinished: true, setHeader() {}, end() {} };
+    return transport.proxy(request, response, {
+      service: 'schoolCore', rewrite: path => path,
+    }, { pathname: request.url, search: '' }, 'workbook-upload', null);
+  };
+
+  await call(10 * 1024 * 1024 + 1024);
+  assert.equal(received[0], 10 * 1024 * 1024 + 1024);
+  await assert.rejects(call(11 * 1024 * 1024 + 1), transport.isPayloadTooLargeError);
 });

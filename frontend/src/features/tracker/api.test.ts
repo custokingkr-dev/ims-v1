@@ -6,7 +6,7 @@ vi.mock('../../services/api', () => ({ default: { get: vi.fn(), post: vi.fn(), p
 
 const last = (fn: unknown) => { const calls = vi.mocked(fn as typeof api.post).mock.calls; return calls[calls.length - 1] as unknown[]; };
 
-const view = { orderId: 'CK 1/x', steps: [{ step: 1, data: null }], progress: {}, design: {}, internalNotes: null, followUps: null };
+const view = { orderId: 'CK 1/x', steps: [{ step: 1, data: null }], progress: {}, design: {}, vendorSelections: {}, internalNotes: null, followUps: null };
 beforeEach(() => {
   vi.clearAllMocks();
   for (const method of ['get', 'post', 'put', 'delete'] as const) vi.mocked(api[method]).mockResolvedValue({ data: view });
@@ -40,6 +40,8 @@ describe('tracker wire contract', () => {
     expect(api.post).toHaveBeenLastCalledWith('/workflows/notebook-orders/CK-1/design/request-changes', { comment: null });
     await trackerApi.setVendor('CK-1', 'Vendor', '999');
     expect(api.put).toHaveBeenLastCalledWith('/workflows/notebook-orders/CK-1/vendor', { name: 'Vendor', phone: '999' });
+    await trackerApi.setVendorSelections('CK-1', { board: ['board_shree'] });
+    expect(api.put).toHaveBeenLastCalledWith('/workflows/notebook-orders/CK-1/vendor-selections', { selections: { board: ['board_shree'] } });
     await trackerApi.setDesigner('CK-1', 3);
     expect(api.put).toHaveBeenLastCalledWith('/workflows/notebook-orders/CK-1/designer', { designerId: 3 });
     await trackerApi.addInternalNote('CK-1', 'called');
@@ -93,6 +95,10 @@ describe('tracker wire contract', () => {
     const form = last(api.post)[1] as FormData;
     expect(form.get('assetKind')).toBe('DESIGN_DRAFT');
     expect((form.get('file') as File).name).toBe('v1.png');
+    const workbook = new File(['xlsx'], 'order.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    await trackerApi.previewWorkbook('CK 1', workbook);
+    expect(api.post).toHaveBeenLastCalledWith('/catalog/orders/CK%201/workbook-preview', expect.any(FormData));
+    expect((last(api.post)[1] as FormData).get('file')).toBe(workbook);
     vi.mocked(api.delete).mockResolvedValue({ data: undefined });
     await trackerApi.deleteDraft('CK-1', 9);
     expect(api.delete).toHaveBeenLastCalledWith('/catalog/orders/CK-1/assets/9');

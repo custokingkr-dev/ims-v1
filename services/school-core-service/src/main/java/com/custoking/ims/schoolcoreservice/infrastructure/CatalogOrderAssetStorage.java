@@ -30,7 +30,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class CatalogOrderAssetStorage {
     public static final long MAX_BYTES = 5L * 1024 * 1024;
     /** No seeded rule may raise the cap past what the assets table itself accepts. */
-    public static final long ABSOLUTE_MAX_BYTES = 10L * 1024 * 1024;
+    public static final long DESIGN_DRAFT_MAX_BYTES = 25L * 1024 * 1024;
+    public static final long ABSOLUTE_MAX_BYTES = DESIGN_DRAFT_MAX_BYTES;
     private final String bucket;
     private final boolean local;
     private final Path localDirectory;

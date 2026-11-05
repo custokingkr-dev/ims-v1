@@ -1,21 +1,19 @@
 package com.custoking.ims.schoolcoreservice.catalog.domain;
 
 /**
- * Limits on a notebook order's design drafts (spec v4, step 2): at most six current drafts, and a superadmin email
- * intent each time the count rises above four. Only current (not deleted) drafts are counted.
+ * Design draft review threshold. The client workflow has no hard draft-count limit and flags orders at four uploads.
  */
 public final class DesignDraftRules {
     public static final String KIND = "DESIGN_DRAFT";
-    public static final int MAX_DRAFTS = 6;
-    public static final int EMAIL_INTENT_ABOVE = 4;
-    public static final String LIMIT_MESSAGE = "No more images allowed. Contact IT.";
+    public static final int REVIEW_THRESHOLD = 4;
 
     private DesignDraftRules() { }
 
-    public static boolean hasRoom(int currentCount) { return currentCount < MAX_DRAFTS; }
+    /** True when the current uploaded count reaches the client's review threshold. */
+    public static boolean requiresReview(int currentCount) { return currentCount >= REVIEW_THRESHOLD; }
 
-    /** True when adding one draft takes the count from four or fewer to more than four. */
+    /** True when adding one draft takes the count from below the review threshold to the threshold or above. */
     public static boolean emailIntentDue(int countBefore, int countAfter) {
-        return countBefore <= EMAIL_INTENT_ABOVE && countAfter > EMAIL_INTENT_ABOVE;
+        return countBefore < REVIEW_THRESHOLD && countAfter >= REVIEW_THRESHOLD;
     }
 }

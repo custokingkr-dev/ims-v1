@@ -3,6 +3,7 @@ package com.custoking.ims.schoolcoreservice.api;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogOrderFormService;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Map;
 import java.util.Set;
+import java.io.ByteArrayOutputStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -58,6 +60,35 @@ class NotebookTrackerEndpointsTest {
         var calls = org.mockito.Mockito.inOrder(forms);
         calls.verify(forms).ensureTracker("CK-1");
         calls.verify(forms).trackerPending("CK-1");
+    }
+
+    @Test void workbookPreviewRequiresOrderAccessAndDoesNotMutateTheOrder() throws Exception {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+        when(forms.trackerSummary("CK-1")).thenReturn(Map.of("orderId", "CK-1"));
+        byte[] bytes;
+        try (var workbook = new XSSFWorkbook(); var output = new ByteArrayOutputStream()) {
+            var sheet = workbook.createSheet("Order");
+            sheet.createRow(0).createCell(0).setCellValue("Order ID");
+            sheet.getRow(0).createCell(1).setCellValue("CK-1");
+            sheet.createRow(1).createCell(0).setCellValue("Notebook Type");
+            sheet.getRow(1).createCell(1).setCellValue("Quantity");
+            sheet.createRow(2).createCell(0).setCellValue("King");
+            sheet.getRow(2).createCell(1).setCellValue(12);
+            workbook.write(output);
+            bytes = output.toByteArray();
+        }
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart(
+                                "/api/v1/catalog/orders/CK-1/workbook-preview")
+                        .file(new org.springframework.mock.web.MockMultipartFile("file", "order.xlsx",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", bytes))
+                        .header("X-Catalog-Service-Token", "test-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value("CK-1"))
+                .andExpect(jsonPath("$.total").value(12))
+                .andExpect(jsonPath("$.king").value(12));
+        org.mockito.Mockito.verify(forms).trackerSummary("CK-1");
+        org.mockito.Mockito.verifyNoMoreInteractions(forms);
     }
 
     @Test void aRefusedRequestCarriesItsReasonToTheScreenAsAMessage() throws Exception {

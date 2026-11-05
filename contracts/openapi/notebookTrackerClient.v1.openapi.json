@@ -804,6 +804,58 @@
         }
       }
     },
+    "/api/v1/workflows/notebook-orders/{orderId}/vendor-selections": {
+      "put": {
+        "operationId": "setNotebookVendorSelections",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrackerVendorSelectionsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackerView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          },
+          "409": {
+            "description": "A tracker rule or a stale version refused it; the code says which"
+          }
+        }
+      }
+    },
     "/api/v1/workflows/notebook-orders/{orderId}/designer": {
       "put": {
         "operationId": "setNotebookDesigner",
@@ -1703,6 +1755,7 @@
           "instanceStatus",
           "progress",
           "vendor",
+          "vendorSelections",
           "designer",
           "design",
           "steps",
@@ -1751,6 +1804,15 @@
                 "type": "null"
               }
             ]
+          },
+          "vendorSelections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           },
           "designer": {
             "oneOf": [
@@ -1989,6 +2051,29 @@
         "x-ims-java-record": {
           "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
           "name": "VendorRequest",
+          "requireAll": true
+        }
+      },
+      "TrackerVendorSelectionsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "selections"
+        ],
+        "properties": {
+          "selections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "VendorSelectionsRequest",
           "requireAll": true
         }
       },

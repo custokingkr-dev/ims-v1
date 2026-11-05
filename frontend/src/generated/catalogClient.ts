@@ -24,6 +24,10 @@ export type OrderAsset = { "id": number; "assetKind": string; "contentType": str
 
 export type OrderAssetUpload = { "assetKind": string; "file": Blob; };
 
+export type NotebookWorkbookUpload = { "file": Blob; };
+
+export type NotebookWorkbookPreview = { "orderId": string; "fileName": string; "sheetName": string; "workbookOrderId": string | null; "total": number; "king": number; "longBooks": number; "jumboKing": number; "jumboLong": number; "fa": number; "validRows": number; };
+
 export type ProductCategory = { "code": string; "label": string; "emoji": string; "description": string; "orderType": string; "formEnabled": boolean; "sortOrder": number; "active": boolean; [key: string]: unknown; };
 
 export interface CatalogClient {
@@ -34,6 +38,7 @@ export interface CatalogClient {
   reviewAnnualPlan(parameters?: { schoolId?: number; }): Promise<AnnualPlanReview>;
   confirmAnnualPlan(parameters: { schoolId?: number; }, request: { "fingerprint": string; [key: string]: unknown; }): Promise<AnnualPlanConfirmation>;
   getNotebookTrackerSummary(parameters: { id: string; }): Promise<NotebookTrackerSummary>;
+  previewNotebookOrderWorkbook(parameters: { id: string; }, request: NotebookWorkbookUpload): Promise<NotebookWorkbookPreview>;
   ensureNotebookTracker(parameters: { id: string; }): Promise<TrackerEnsureResult>;
   listOrderAssets(parameters: { id: string; }): Promise<Array<OrderAsset>>;
   uploadOrderAsset(parameters: { id: string; }, request: OrderAssetUpload): Promise<OrderAsset>;
@@ -70,6 +75,12 @@ export function createCatalogClient(http: AxiosInstance): CatalogClient {
     },
     async getNotebookTrackerSummary(parameters: { id: string; }) {
       const response = await http.get<NotebookTrackerSummary>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/tracker-summary`);
+      return response.data;
+    },
+    async previewNotebookOrderWorkbook(parameters: { id: string; }, request: NotebookWorkbookUpload) {
+      const form = new FormData();
+      form.append("file", request.file);
+      const response = await http.post<NotebookWorkbookPreview>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/workbook-preview`, form);
       return response.data;
     },
     async ensureNotebookTracker(parameters: { id: string; }) {

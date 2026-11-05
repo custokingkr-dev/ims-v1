@@ -213,9 +213,9 @@ it('creates a notebook-only operator at a school and refreshes the lists', async
 it('saves a school time slot and returns an overridden one to the default', async () => {
   vi.mocked(trackerApi.operators).mockResolvedValue([]);
   vi.mocked(trackerApi.timeSlots).mockResolvedValue([
-    { step: 1, title: 'Order Details', sla: { value: 4, unit: 'HOURS', source: 'DEFAULT' } },
+    { step: 1, title: 'Order Details', sla: { value: 2, unit: 'HOURS', source: 'DEFAULT' } },
     { step: 2, title: 'Designing Activity', sla: { value: 3, unit: 'WORKING_DAYS', source: 'SCHOOL' } },
-    { step: 8, title: 'Pre-Print Quality Gate', sla: null },
+    { step: 7, title: 'Pre-Print Quality Check', sla: null },
   ]);
   render(<NotebookAdminPanel />);
   fireEvent.click(screen.getByRole('tab', { name: 'Time slots' }));

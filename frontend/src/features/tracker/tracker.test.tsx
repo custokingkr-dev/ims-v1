@@ -4,7 +4,7 @@ import { NotebookTracker } from './NotebookTracker';
 import { OrderDetailEntry } from './OrderDetailEntry';
 import { DraftImages } from './DraftImages';
 import { parseTracker, trackerApi } from './api';
-import { countsMismatch, slaLabel, wordCount } from './steps';
+import { countsMismatch, slaLabel, titleCardQuantities, wordCount } from './steps';
 import type { OrderSummary, TrackerStep, TrackerView } from './types';
 
 const auth = vi.hoisted(() => ({ user: { role: 'OPERATIONS', userId: 42 } as { role: string; userId: number; fullName?: string } | null }));
@@ -14,8 +14,8 @@ vi.mock('./api', async (importOriginal) => {
   return { ...actual, trackerApi: {
     get: vi.fn(), saveDraft: vi.fn(), saveStageNote: vi.fn(), complete: vi.fn(), reopen: vi.fn(), signOff: vi.fn(), assignStep: vi.fn(),
     assignOrder: vi.fn(), designers: vi.fn(), operators: vi.fn(), addInternalNote: vi.fn(), draftImages: vi.fn(), uploadDraft: vi.fn(),
-    deleteDraft: vi.fn(), draftBlob: vi.fn(), sendDesign: vi.fn(), approveDesign: vi.fn(), requestChanges: vi.fn(), setVendor: vi.fn(),
-    setDesigner: vi.fn(), addFollowUp: vi.fn(), summary: vi.fn(), startTracker: vi.fn(),
+    deleteDraft: vi.fn(), draftBlob: vi.fn(), sendDesign: vi.fn(), approveDesign: vi.fn(), requestChanges: vi.fn(), setVendor: vi.fn(), setVendorSelections: vi.fn(),
+    setDesigner: vi.fn(), addFollowUp: vi.fn(), summary: vi.fn(), startTracker: vi.fn(), previewWorkbook: vi.fn(),
   } };
 });
 // The order detail reports, once it has loaded the order, when the server says the tracker runs it.
@@ -38,7 +38,7 @@ function tracker(over: Partial<TrackerView> = {}): TrackerView {
     orderId: 'CK-1', schoolId: 7, customised: false, orderedCount: 1000, placedAt: '2026-10-19T04:00:00Z', timeZone: 'Asia/Kolkata', schoolName: 'School Seven',
     instanceStatus: 'IN_PROGRESS', progress: { completed: 1, total: 3, currentStep: 5, currentTitle: 'Production Planning', finished: false },
     // A wholesale order, as the server sends it: no design approval at all.
-    vendor: null, designer: null, design: null,
+    vendor: null, vendorSelections: {}, designer: null, design: null,
     steps: [
       step(1, 'Order Details', { status: 'COMPLETED', completedAt: '2026-10-19T05:00:00Z', can: can({ canReopen: true }) }),
       step(5, 'Production Planning', { status: 'ACTIVE', dueAt: '2026-10-19T09:00:00Z', can: can({ canEditDetails: true, canEditStageNote: true, canComplete: true }) }),
@@ -57,8 +57,8 @@ const summary = (over: Partial<OrderSummary> = {}): OrderSummary => ({
 const UNAVAILABLE = 'The notebook order tracker is not available right now. Try again in a moment.';
 
 const TITLES: Record<number, string> = {
-  1: 'Order Details', 2: 'Designing Activity', 3: 'Head Approval', 4: 'CDR Conversion', 5: 'Production Planning', 6: 'Board Procurement',
-  7: 'Printing Press', 8: 'Pre-Print Quality Gate', 9: 'Factory Handover', 10: 'Production Follow-up', 11: 'Validation Count', 12: 'Delivery & Invoicing',
+  1: 'Order Details', 2: 'Designing Activity', 3: 'CDR Conversion', 4: 'Head Approval', 5: 'Production Planning', 6: 'Board Procurement',
+  7: 'Pre-Print Quality Check', 8: 'Printing Press', 9: 'Factory Handover', 10: 'Production Follow-up', 11: 'Validation Count', 12: 'Delivery & Invoicing',
 };
 /** A tracker whose only open step is the one given, with that step's work area in front. */
 const onStep = (n: number, over: Partial<TrackerStep> = {}, rest: Partial<TrackerView> = {}) => tracker({
@@ -93,6 +93,19 @@ describe('tracker rules', () => {
     expect(slaLabel(step(5, 'x', { sla: { value: 4, unit: 'HOURS', source: 'SCHOOL' } }))).toBe('4 hours');
     expect(slaLabel(step(8, 'x', { sla: null }))).toBe('No timer');
   });
+  it('calculates the client title-card sheet quantities from notebook categories', () => {
+    expect(titleCardQuantities([
+      { selections: { SIZE: { code: 'KING', label: 'King' } }, bookCount: 9 },
+      { selections: { SIZE: { code: 'JUMBO_KING', label: 'Jumbo King' } }, bookCount: 8 },
+      { selections: { SIZE: { code: 'LONG', label: 'Long' } }, bookCount: 8 },
+      { selections: { SIZE: { code: 'JUMBO_LONG', label: 'Jumbo Long' } }, bookCount: 5 },
+      { selections: { TYPE: { code: 'FA', label: 'Formative Assessment' } }, bookCount: 4 },
+    ])).toEqual({ king: 16, long: 14, jumboLong: 27, fa: 26 });
+    expect(titleCardQuantities([
+      { selections: { SIZE: 'King' }, bookCount: 0 },
+      { selections: { SIZE: 'unmapped' }, bookCount: 10 },
+    ])).toEqual({ king: 0, long: 0, jumboLong: 0, fa: 0 });
+  });
   it('refuses a response that is not a tracker instead of rendering a blank screen', () => {
     expect(() => parseTracker({ orderId: 'CK-1' })).toThrow();
     expect(() => parseTracker(null)).toThrow();
@@ -110,7 +123,7 @@ describe('tracker rules', () => {
 const WHOLESALE_WIRE = {
   orderId: 'CK-1002', schoolId: 7, customised: false, orderedCount: 1000, placedAt: '2026-10-19T04:00:00Z', timeZone: 'Asia/Kolkata', schoolName: 'School Seven',
   instanceStatus: 'IN_PROGRESS', progress: { completed: 0, total: 9, currentStep: 1, currentTitle: 'Order Details', finished: false },
-  vendor: null, designer: null, design: null,
+  vendor: null, vendorSelections: {}, designer: null, design: null,
   steps: [1, 5, 6, 7, 8, 9, 10, 11, 12].map((n, i) => ({
     step: n, title: TITLES[n], customisedOnly: false, status: i === 0 ? 'ACTIVE' : 'LOCKED', assigneeUserId: 42, startedAt: i === 0 ? '2026-10-19T04:00:00Z' : null,
     dueAt: null, overdue: false, sla: null, completedAt: null, completedBy: null, data: {}, stageNote: null, version: 0,
@@ -181,6 +194,27 @@ describe('NotebookTracker', () => {
     expect(screen.queryByLabelText('Assigned to')).not.toBeInTheDocument();
   });
 
+  it('previews a workbook and saves only its totals into planning data', async () => {
+    const preview = {
+      orderId: 'CK-1', fileName: 'order.xlsx', sheetName: 'Order', workbookOrderId: 'CK-1',
+      total: 26, king: 5, longBooks: 6, jumboKing: 3, jumboLong: 4, fa: 8, validRows: 5,
+    };
+    vi.mocked(trackerApi.previewWorkbook).mockResolvedValue(preview);
+    vi.mocked(trackerApi.saveDraft).mockResolvedValue(tracker());
+    render(<NotebookTracker orderId="CK-1" initial={tracker()} onBack={vi.fn()} />);
+    const file = new File(['xlsx'], 'order.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    fireEvent.change(screen.getByLabelText('Order workbook (.xlsx)'), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview workbook' }));
+    expect(await screen.findByText(/order\.xlsx · Order/)).toBeInTheDocument();
+    expect(trackerApi.previewWorkbook).toHaveBeenCalledWith('CK-1', file);
+    fireEvent.click(screen.getByRole('button', { name: /Save workbook totals/ }));
+    await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 5, {
+      workbookFileName: 'order.xlsx', workbookSheetName: 'Order', workbookOrderId: 'CK-1',
+      workbookImportedAt: expect.any(String), workbookTotalQuantity: 26, workbookKing: 5,
+      workbookJumboKing: 3, workbookLong: 6, workbookJumboLong: 4, workbookFa: 8, workbookValidRows: 5,
+    }, 3));
+  });
+
   it('lets superadmin reopen a completed step but never write its stage note', async () => {
     auth.user = { role: 'SUPERADMIN', userId: 1 };
     render(<NotebookTracker orderId="CK-1" initial={tracker()} onBack={vi.fn()} />);
@@ -249,13 +283,13 @@ describe('NotebookTracker', () => {
 
   it('shows the eight optional pre-print checks and sends the ticked positions', async () => {
     vi.mocked(trackerApi.saveDraft).mockResolvedValue(tracker());
-    const t = tracker({ progress: { completed: 0, total: 1, currentStep: 8, currentTitle: 'Pre-Print Quality Gate', finished: false },
-      steps: [step(8, 'Pre-Print Quality Gate', { status: 'ACTIVE', sla: null, can: can({ canEditDetails: true }) })] });
+    const t = tracker({ progress: { completed: 0, total: 1, currentStep: 7, currentTitle: 'Pre-Print Quality Check', finished: false },
+      steps: [step(7, 'Pre-Print Quality Check', { status: 'ACTIVE', sla: { value: 24, unit: 'HOURS', source: 'DEFAULT' }, can: can({ canEditDetails: true }) })] });
     render(<NotebookTracker orderId="CK-1" initial={t} onBack={vi.fn()} />);
     expect(screen.getAllByRole('checkbox')).toHaveLength(8);
     fireEvent.click(screen.getByLabelText(/Latest approved artwork/)); fireEvent.click(screen.getByLabelText(/School name, logo/));
     fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
-    await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 8, { checks: [0, 1] }, 3));
+    await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 7, { checks: [0, 1] }, 3));
   });
 
   it('offers sign-off to superadmin only, and only until it is given', async () => {
@@ -459,13 +493,35 @@ describe('design and vendor steps', () => {
   });
 
   it('shows the printing vendor and its contact on the printing press step', () => {
-    render(<NotebookTracker orderId="CK-1" initial={onStep(7, {}, { vendor })} onBack={vi.fn()} />);
+    render(<NotebookTracker orderId="CK-1" initial={onStep(8, {}, { vendor })} onBack={vi.fn()} />);
     const area = screen.getByRole('region', { name: 'Printing Press work area' });
     const card = within(area).getByRole('region', { name: 'Printing vendor' });
     expect(within(card).getByText('Sharma Press')).toBeInTheDocument();
     expect(within(card).getByText('Contact')).toBeInTheDocument();
     expect(within(card).getByText('+91 90000 11111')).toBeInTheDocument();
     for (const label of ['Press job reference', 'Quantity sent', 'Expected return']) expect(within(area).getByLabelText(label)).toBeInTheDocument();
+  });
+
+  it('saves per-order selections in production planning and filters vendors at printing stages', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    vi.mocked(trackerApi.setVendorSelections).mockResolvedValue(onStep(5, {}, {
+      vendorSelections: { board: ['board_shree'], offset: ['offset_metro'] },
+    }));
+    render(<NotebookTracker orderId="CK-1" initial={onStep(5)} onBack={vi.fn()} />);
+    const planning = screen.getByRole('region', { name: 'Production Planning work area' });
+    fireEvent.click(within(planning).getByLabelText('Shree Board Traders'));
+    fireEvent.click(within(planning).getByRole('button', { name: 'Save vendor selections' }));
+    await waitFor(() => expect(trackerApi.setVendorSelections).toHaveBeenCalledWith('CK-1', { board: ['board_shree'] }));
+
+    cleanup();
+    render(<NotebookTracker orderId="CK-1" initial={onStep(8, {}, {
+      vendorSelections: { offset: ['offset_metro'], lamination: ['lam_glosspro'], board: ['board_shree'] },
+    })} onBack={vi.fn()} />);
+    const press = screen.getByRole('region', { name: 'Printing Press work area' });
+    const selected = within(press).getByRole('region', { name: 'Selected vendors' });
+    expect(within(selected).getByText('Metro Offset Printers')).toBeInTheDocument();
+    expect(within(selected).getByText('GlossPro Laminations')).toBeInTheDocument();
+    expect(within(selected).queryByText('Shree Board Traders')).not.toBeInTheDocument();
   });
 
   it('previews the newest image on the design step and never downloads a PDF for a thumbnail', async () => {
@@ -482,7 +538,7 @@ describe('design and vendor steps', () => {
 
   it('keeps Complete step on head approval disabled, and says why, until a design is approved', () => {
     auth.user = { role: 'SUPERADMIN', userId: 1 };
-    const atThree = (state: 'SENT' | 'APPROVED') => onStep(3, {}, { customised: true,
+    const atThree = (state: 'SENT' | 'APPROVED') => onStep(4, {}, { customised: true,
       design: { state, comment: null, at: null, by: null, approvedDraftRef: state === 'APPROVED' ? 2 : null, canManageImages: false } });
     const { unmount } = render(<NotebookTracker orderId="CK-1" initial={atThree('SENT')} onBack={vi.fn()} />);
     const complete = screen.getByRole('button', { name: /Complete step/ });
@@ -499,7 +555,7 @@ describe('design and vendor steps', () => {
     vi.mocked(trackerApi.draftImages).mockResolvedValue([draft(1, 'v1.png'), draft(2, 'v2.png')]);
     vi.mocked(trackerApi.draftBlob).mockRejectedValue(new Error('no preview'));
     vi.mocked(trackerApi.approveDesign).mockResolvedValue(tracker());
-    render(<NotebookTracker orderId="CK-1" onBack={vi.fn()} initial={onStep(3, {}, { customised: true,
+    render(<NotebookTracker orderId="CK-1" onBack={vi.fn()} initial={onStep(4, {}, { customised: true,
       design: { state: 'SENT', comment: null, at: null, by: null, approvedDraftRef: null, canManageImages: false } })} />);
     const approve = screen.getByRole('button', { name: /Approve selected draft/ });
     expect(approve).toBeDisabled();
@@ -595,15 +651,20 @@ describe('OrderDetailEntry', () => {
 
 describe('DraftImages', () => {
   const image = (id: number, name: string) => draft(id, name);
-  it('lists the drafts with a count of the six allowed and shows the server message for a seventh', async () => {
-    vi.mocked(trackerApi.draftImages).mockResolvedValue([1, 2, 3, 4, 5, 6].map((i) => image(i, `v${i}.png`)));
+  it('allows more than six drafts and flags the order for review after four uploads', async () => {
+    const six = [1, 2, 3, 4, 5, 6].map((i) => image(i, `v${i}.png`));
+    const seven = [...six, image(7, 'v7.png')];
+    vi.mocked(trackerApi.draftImages).mockResolvedValueOnce(six).mockResolvedValue(seven);
     vi.mocked(trackerApi.draftBlob).mockRejectedValue(new Error('no preview'));
-    vi.mocked(trackerApi.uploadDraft).mockRejectedValue({ response: { data: { message: 'No more images allowed. Contact IT.' } } });
+    vi.mocked(trackerApi.uploadDraft).mockResolvedValue(undefined);
     render(<DraftImages orderId="CK-1" canManage />);
-    expect(await screen.findByText('6 of 6')).toBeInTheDocument();
+    expect(await screen.findByText('6 uploaded')).toBeInTheDocument();
+    expect(screen.getByText(/Review needed/)).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Upload design draft'), { target: { files: [new File(['x'], 'v7.png', { type: 'image/png' })] } });
-    expect(await screen.findByRole('alert')).toHaveTextContent('No more images allowed. Contact IT.');
-    expect(screen.getByText('Latest: v6.png')).toBeInTheDocument();
+    await waitFor(() => expect(trackerApi.uploadDraft).toHaveBeenCalledWith('CK-1', expect.any(File)));
+    expect(await screen.findByText('7 uploaded')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(await screen.findByText('Latest: v7.png')).toBeInTheDocument();
   });
   it('deletes a draft and reloads the list', async () => {
     vi.mocked(trackerApi.draftImages).mockResolvedValueOnce([image(1, 'a.png'), image(2, 'b.png')]).mockResolvedValue([image(2, 'b.png')]);
@@ -612,7 +673,7 @@ describe('DraftImages', () => {
     render(<DraftImages orderId="CK-1" canManage />);
     fireEvent.click(await screen.findByRole('button', { name: 'Delete a.png' }));
     await waitFor(() => expect(trackerApi.deleteDraft).toHaveBeenCalledWith('CK-1', 1));
-    expect(await screen.findByText('1 of 6')).toBeInTheDocument();
+    expect(await screen.findByText('1 uploaded')).toBeInTheDocument();
   });
   it('gives a viewer who cannot manage no upload or delete controls', async () => {
     vi.mocked(trackerApi.draftImages).mockResolvedValue([image(1, 'a.png')]);
@@ -640,7 +701,7 @@ describe('DraftImages', () => {
     render(<DraftImages orderId="CK-1" canManage />);
     expect(await screen.findByRole('img', { name: 'a.png' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Delete a.png' }));
-    expect(await screen.findByText('1 of 6')).toBeInTheDocument();
+    expect(await screen.findByText('1 uploaded')).toBeInTheDocument();
     expect(trackerApi.draftBlob).toHaveBeenCalledTimes(2);
     await waitFor(() => expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1));
   });

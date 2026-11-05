@@ -18,6 +18,69 @@ export const QC_ITEMS = [
   'Authorised quality reviewer releases bulk printing',
 ];
 
+export const PRINTING_CHECK_ITEMS = [
+  'Impressions verified for each approved design',
+  'Design sent for making plates',
+  'Design plates received',
+  'Printing schedule and expected completion recorded',
+  'Printing completed',
+  'Printed sheets received for lamination',
+  'Lamination scheduled',
+  'Lamination completed',
+];
+
+export const PRODUCTION_FOLLOW_UP_ITEMS = [
+  'Factory confirmed receipt of the title',
+  'Folding of title',
+  'Ruled paper received',
+  'Paper count completed',
+  'Paper filling',
+  'Pinning',
+  'Cutting',
+  'Packing',
+];
+
+export const VENDOR_DIRECTORY = {
+  board: [
+    { id: 'board_shree', name: 'Shree Board Traders' },
+    { id: 'board_national', name: 'National Boards Co.' },
+    { id: 'board_prime', name: 'Prime Board Suppliers' },
+  ],
+  lamination: [
+    { id: 'lam_glosspro', name: 'GlossPro Laminations' },
+    { id: 'lam_crystal', name: 'Crystal Lamination Works' },
+    { id: 'lam_brightfinish', name: 'BrightFinish Laminators' },
+  ],
+  binder: [
+    { id: 'binder_perfect', name: 'Perfect Bindery' },
+    { id: 'binder_classic', name: 'Classic Notebook Binding' },
+    { id: 'binder_metro', name: 'Metro Binding House' },
+  ],
+  offset: [
+    { id: 'offset_metro', name: 'Metro Offset Printers' },
+    { id: 'offset_precision', name: 'Precision Print House' },
+    { id: 'offset_cityline', name: 'Cityline Offset Works' },
+  ],
+} as const;
+
+export type VendorCategory = keyof typeof VENDOR_DIRECTORY;
+export const VENDOR_CATEGORY_LABELS: Record<VendorCategory, string> = {
+  board: 'Board suppliers',
+  lamination: 'Lamination vendors',
+  binder: 'Binders',
+  offset: 'Offset printers',
+};
+
+/** Client workflow visibility: planning selects; later stages see only vendors relevant to that stage. */
+export function vendorCategoriesForStep(step: number): VendorCategory[] {
+  if (step === 5) return ['board', 'lamination', 'binder', 'offset'];
+  if (step === 6) return ['board', 'offset'];
+  if (step === 7) return ['offset'];
+  if (step === 8) return ['offset', 'lamination'];
+  if (step >= 9 && step <= 12) return ['board', 'lamination', 'binder', 'offset'];
+  return [];
+}
+
 export const SCHOOL_VERIFICATION: Array<[string, string]> = [
   ['NOT_REQUIRED_OR_PENDING', 'Not required / pending'], ['VERIFIED', 'Verified'], ['CHANGES_REQUIRED', 'Changes required'],
 ];
@@ -27,14 +90,14 @@ export const INVOICE_STATUS: Array<[string, string]> = [
 
 /** Work-area fields per step; the names are the ones the server accepts, nothing else is sent. */
 export const STEP_FIELDS: Record<number, FieldSpec[]> = {
-  4: [f('cdrFilename', 'CDR file name'), f('cdrLink', 'CDR file link'), f('cdrNotes', 'CDR notes', 'textarea')],
+  3: [f('cdrFilename', 'CDR file name'), f('cdrLink', 'CDR file link'), f('cdrNotes', 'CDR notes', 'textarea')],
   5: [f('paperGsm', 'Paper GSM'), f('capacityConfirmed', 'Capacity confirmed'), f('productionStart', 'Production start', 'date'),
     f('targetCompletion', 'Target completion', 'date'), f('planningNotes', 'Planning notes', 'textarea')],
   6: [f('totalTitleUnits', 'Total title units', 'whole'), f('piecesPerBoard', 'Pieces per board', 'whole'), f('wastagePercent', 'Wastage %', 'number'),
     f('availableBoards', 'Available boards', 'whole'), f('procurementReference', 'Procurement reference')],
-  7: [f('jobReference', 'Press job reference'), f('quantitySent', 'Quantity sent', 'whole'), f('expectedReturnDate', 'Expected return', 'date')],
-  8: [f('sampleLink', 'Print sample evidence link'), f('schoolVerification', 'School verification', 'choice', { choices: SCHOOL_VERIFICATION }),
+  7: [f('sampleLink', 'Print sample evidence link'), f('schoolVerification', 'School verification', 'choice', { choices: SCHOOL_VERIFICATION }),
     f('qcComments', 'QC reviewer comments', 'textarea')],
+  8: [f('jobReference', 'Press job reference'), f('quantitySent', 'Quantity sent', 'whole'), f('expectedReturnDate', 'Expected return', 'date')],
   9: [f('factory', 'Making factory'), f('jobReference', 'Factory job reference'), f('titlesSent', 'Titles sent', 'whole'),
     f('titlesReceived', 'Titles received', 'whole'), f('factoryContact', 'Factory contact')],
   11: [f('producedCount', 'Produced', 'whole'), f('acceptedCount', 'Accepted', 'whole'), f('dispatchCount', 'Dispatch', 'whole'),
@@ -44,7 +107,7 @@ export const STEP_FIELDS: Record<number, FieldSpec[]> = {
 };
 
 /** Steps whose completion needs a superadmin sign-off (spec v4). */
-export const SIGN_OFF_STEPS = new Set([8, 12]);
+export const SIGN_OFF_STEPS = new Set([7, 12]);
 /** Steps the spec keeps as the prototype with a "TBD" note below the name: editable, saved as drafts, completed normally. */
 export const TBD_STEPS = new Set([6]);
 
@@ -62,6 +125,35 @@ export function formatDay(isoDay: string): string {
 }
 
 export interface SizeSummary { size: string; pages: number; books: number }
+
+export interface NotebookCategoryQuantities { king: number; long: number; jumboKing: number; jumboLong: number; fa: number }
+export interface TitleCardQuantities { king: number; long: number; jumboLong: number; fa: number }
+
+/** Match the client's notebook categories against the selected values on each saved catalogue line. */
+export function titleCardQuantities(lines: Array<{ selections: SelectionSnapshot; bookCount: number }>): TitleCardQuantities {
+  const books: NotebookCategoryQuantities = { king: 0, long: 0, jumboKing: 0, jumboLong: 0, fa: 0 };
+  for (const line of lines) {
+    const text = Object.values(line.selections).map((value) => typeof value === 'string'
+      ? value : `${value.code} ${value.label}`).join(' ').toUpperCase();
+    const qty = Math.max(0, line.bookCount);
+    if (/\bFA\b|FORMATIVE|ASSESSMENT/.test(text)) books.fa += qty;
+    else if (text.includes('JUMBO') && text.includes('LONG')) books.jumboLong += qty;
+    else if (text.includes('JUMBO') && text.includes('KING')) books.jumboKing += qty;
+    else if (/\bKING\b/.test(text)) books.king += qty;
+    else if (/\bLONG\b/.test(text)) books.long += qty;
+  }
+  return titleCardQuantitiesFromCounts(books);
+}
+
+export function titleCardQuantitiesFromCounts(books: NotebookCategoryQuantities): TitleCardQuantities {
+  const sheets = (count: number, perSheet: number, extra: number) => count > 0 ? Math.ceil(count / perSheet) + extra : 0;
+  return {
+    king: sheets(books.king + books.jumboKing, 8, 13),
+    long: sheets(books.long, 8, 13),
+    jumboLong: sheets(books.jumboLong, 4, 25),
+    fa: sheets(books.fa, 4, 25),
+  };
+}
 
 /** The order's lines by size and page count: the rulings of one size and length collapse into one entry (spec v4 header). */
 export function sizeSummary(lines: Array<{ selections: SelectionSnapshot; bookCount: number; pageCount: number }>): SizeSummary[] {

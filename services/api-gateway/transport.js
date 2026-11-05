@@ -34,12 +34,20 @@ function createProxyTransport({ upstreams, tokenHeaders, serviceTokens, CLOUD_RU
     const upstream = upstreams[matched.service];
     const target = buildUpstreamTarget(upstream, matched.rewrite(parsed.pathname), parsed.search);
     const report = parsed.pathname === '/api/v1/notifications/provider-reports/msg91/email';
+    const designDraftUpload = req.method === 'POST'
+      && /^\/api\/v1\/(?:supply|catalog)\/orders\/[^/]+\/assets$/.test(parsed.pathname)
+      && String(req.headers['content-type'] || '').toLowerCase().includes('multipart/form-data');
+    const notebookWorkbookUpload = req.method === 'POST'
+      && /^\/api\/v1\/catalog\/orders\/[^/]+\/workbook-preview$/.test(parsed.pathname)
+      && String(req.headers['content-type'] || '').toLowerCase().includes('multipart/form-data');
     if (report && Number(req.headers['content-length']) > 32768) {
       return sendJson(res, 413, { error: 'Provider report is too large' });
     }
     await proxyToUrl(req, res, target, requestId, matched.service, principal, {
       compatibility,
       ...(report ? { maxBodyBytes: 32768 } : {}),
+      ...(designDraftUpload ? { maxBodyBytes: 27 * 1024 * 1024 } : {}),
+      ...(notebookWorkbookUpload ? { maxBodyBytes: 11 * 1024 * 1024 } : {}),
     });
   }
 

@@ -41,17 +41,25 @@ public final class StepData {
         SCHEMAS.put(TrackerStep.ORDER_DETAILS, Map.of());
         SCHEMAS.put(TrackerStep.DESIGNING_ACTIVITY, Map.of());
         SCHEMAS.put(TrackerStep.HEAD_APPROVAL, Map.of());
-        SCHEMAS.put(TrackerStep.PRODUCTION_FOLLOW_UP, Map.of());
+        SCHEMAS.put(TrackerStep.PRODUCTION_FOLLOW_UP, fields(
+                "productionChecks", indexes(8)));
         SCHEMAS.put(TrackerStep.CDR_CONVERSION, fields(
                 "cdrFilename", text(200), "cdrLink", text(1000), "cdrNotes", text(1000)));
         SCHEMAS.put(TrackerStep.PRODUCTION_PLANNING, fields(
                 "paperGsm", text(50), "capacityConfirmed", text(50), "productionStart", date(),
-                "targetCompletion", date(), "planningNotes", text(1000)));
+                "targetCompletion", date(), "planningNotes", text(1000),
+                "workbookFileName", text(255), "workbookSheetName", text(100),
+                "workbookOrderId", text(255), "workbookImportedAt", text(40),
+                "workbookTotalQuantity", whole(100_000_000L), "workbookKing", whole(100_000_000L),
+                "workbookJumboKing", whole(100_000_000L), "workbookLong", whole(100_000_000L),
+                "workbookJumboLong", whole(100_000_000L), "workbookFa", whole(100_000_000L),
+                "workbookValidRows", whole(1000)));
         SCHEMAS.put(TrackerStep.BOARD_PROCUREMENT, fields(
                 "totalTitleUnits", whole(100_000_000L), "piecesPerBoard", whole(1_000_000L),
                 "wastagePercent", number(100), "availableBoards", whole(100_000_000L), "procurementReference", text(100)));
         SCHEMAS.put(TrackerStep.PRINTING_PRESS, fields(
-                "jobReference", text(100), "quantitySent", whole(100_000_000L), "expectedReturnDate", date()));
+                "jobReference", text(100), "quantitySent", whole(100_000_000L), "expectedReturnDate", date(),
+                "pressChecks", indexes(8)));
         SCHEMAS.put(TrackerStep.PRE_PRINT_QUALITY_GATE, fields(
                 "checks", indexes(8), "sampleLink", text(1000),
                 "schoolVerification", choice("NOT_REQUIRED_OR_PENDING", "VERIFIED", "CHANGES_REQUIRED"),

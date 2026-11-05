@@ -5,22 +5,22 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * The twelve steps of the notebook order tracker (spec v4). Steps 2-4 apply to customised notebooks only.
- * Default time slots are the prototype's values; steps 8 and 10 have none.
+ * The twelve steps of the notebook order tracker. Steps 2-4 apply to customised notebooks only.
+ * Default time slots and stage order follow the client workflow.
  */
 public enum TrackerStep {
-    ORDER_DETAILS(1, "Order Details", false, Sla.hours(4)),
-    DESIGNING_ACTIVITY(2, "Designing Activity", true, Sla.workingDays(2)),
-    HEAD_APPROVAL(3, "Head Approval", true, Sla.workingDays(1)),
-    CDR_CONVERSION(4, "CDR Conversion", true, Sla.hours(4)),
-    PRODUCTION_PLANNING(5, "Production Planning", false, Sla.hours(4)),
-    BOARD_PROCUREMENT(6, "Board Procurement", false, Sla.workingDays(1)),
-    PRINTING_PRESS(7, "Printing Press", false, Sla.hours(4)),
-    PRE_PRINT_QUALITY_GATE(8, "Pre-Print Quality Gate", false, null),
+    ORDER_DETAILS(1, "Order Details", false, Sla.hours(2)),
+    DESIGNING_ACTIVITY(2, "Designing Activity", true, Sla.hours(72)),
+    CDR_CONVERSION(3, "CDR Conversion", true, Sla.hours(2)),
+    HEAD_APPROVAL(4, "Head Approval", true, Sla.hours(2)),
+    PRODUCTION_PLANNING(5, "Production Planning", false, Sla.hours(24)),
+    BOARD_PROCUREMENT(6, "Board Procurement", false, Sla.hours(6)),
+    PRE_PRINT_QUALITY_GATE(7, "Pre-Print Quality Check", false, Sla.hours(24)),
+    PRINTING_PRESS(8, "Printing Press", false, Sla.hours(50)),
     FACTORY_HANDOVER(9, "Factory Handover", false, Sla.hours(4)),
-    PRODUCTION_FOLLOW_UP(10, "Production Follow-up", false, null),
-    VALIDATION_COUNT(11, "Validation Count", false, Sla.hours(4)),
-    DELIVERY_INVOICING(12, "Delivery & Invoicing", false, Sla.workingDays(1));
+    PRODUCTION_FOLLOW_UP(10, "Production Follow-up", false, Sla.hours(72)),
+    VALIDATION_COUNT(11, "Validation Count", false, Sla.hours(2)),
+    DELIVERY_INVOICING(12, "Delivery & Invoicing", false, Sla.hours(4));
 
     private final int number;
     private final String title;

@@ -53,6 +53,7 @@ public class NotebookTrackerController {
     public record ApproveRequest(Long draftRef, String comment) { }
     public record CommentRequest(String comment) { }
     public record VendorRequest(String name, String phone) { }
+    public record VendorSelectionsRequest(Map<String, List<String>> selections) { }
     public record DesignerChoice(Long designerId) { }
     public record BodyRequest(String body) { }
     public record AssigneeRequest(Long userId) { }
@@ -173,6 +174,13 @@ public class NotebookTrackerController {
                                  @PathVariable String orderId, @RequestBody VendorRequest request) {
         requireToken(token, "workflow:write");
         return tracker.setVendor(orderId, request.name(), request.phone());
+    }
+
+    @PutMapping("/{orderId}/vendor-selections")
+    public TrackerView setVendorSelections(@RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
+                                           @PathVariable String orderId, @RequestBody VendorSelectionsRequest request) {
+        requireToken(token, "workflow:write");
+        return tracker.setVendorSelections(orderId, request == null ? null : request.selections());
     }
 
     @PutMapping("/{orderId}/designer")

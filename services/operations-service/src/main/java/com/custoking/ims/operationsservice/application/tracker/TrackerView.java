@@ -17,6 +17,7 @@ public record TrackerView(
         String instanceStatus,
         Progress progress,
         Contact vendor,
+        Map<String, List<String>> vendorSelections,
         Designer designer,
         Design design,
         List<Step> steps,
@@ -32,7 +33,7 @@ public record TrackerView(
         List<Note> notes = internalNotes.stream().map(n -> new Note(n.id(), n.authorUserId(), names.get(n.authorUserId()), n.body(),
                 n.createdAt())).toList();
         return new TrackerView(orderId, schoolId, customised, orderedCount, placedAt, timeZone, schoolName, instanceStatus, progress,
-                vendor, designer, design, named, notes, followUps, version);
+                vendor, vendorSelections, designer, design, named, notes, followUps, version);
     }
 
     public record Progress(int completed, int total, Integer currentStep, String currentTitle, boolean finished) { }

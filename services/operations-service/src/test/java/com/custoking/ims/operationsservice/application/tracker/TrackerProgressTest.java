@@ -48,7 +48,7 @@ class TrackerProgressTest {
         TrackerProgress progress = TrackerProgress.start(true).complete(ORDER_DETAILS, OPERATOR, StepFacts.none());
         assertEquals(COMPLETED, progress.status(ORDER_DETAILS));
         assertEquals(ACTIVE, progress.status(DESIGNING_ACTIVITY));
-        assertEquals(LOCKED, progress.status(HEAD_APPROVAL));
+        assertEquals(LOCKED, progress.status(CDR_CONVERSION));
         assertEquals(1, progress.completedCount());
     }
 
@@ -64,14 +64,14 @@ class TrackerProgressTest {
 
     @Test
     void headApprovalIsSuperadminOnlyAndNeedsAnApprovedDesign() {
-        TrackerProgress atThree = completeThrough(TrackerProgress.start(true), DESIGNING_ACTIVITY);
+        TrackerProgress atThree = completeThrough(TrackerProgress.start(true), CDR_CONVERSION);
         assertEquals(HEAD_APPROVAL, atThree.current().orElseThrow());
         assertEquals("SUPERADMIN_ONLY", assertThrows(TrackerRuleViolation.class,
                 () -> atThree.complete(HEAD_APPROVAL, OPERATOR, READY)).code());
         StepFacts unapproved = new StepFacts(true, false, false, null, null);
         assertEquals("DESIGN_NOT_APPROVED", assertThrows(TrackerRuleViolation.class,
                 () -> atThree.complete(HEAD_APPROVAL, SUPERADMIN, unapproved)).code());
-        assertEquals(CDR_CONVERSION, atThree.complete(HEAD_APPROVAL, SUPERADMIN, READY).current().orElseThrow());
+        assertEquals(PRODUCTION_PLANNING, atThree.complete(HEAD_APPROVAL, SUPERADMIN, READY).current().orElseThrow());
     }
 
     @Test
@@ -79,7 +79,7 @@ class TrackerProgressTest {
         TrackerProgress atTwo = TrackerProgress.start(true).complete(ORDER_DETAILS, OPERATOR, StepFacts.none());
         assertEquals("DESIGN_NOT_SENT", assertThrows(TrackerRuleViolation.class,
                 () -> atTwo.complete(DESIGNING_ACTIVITY, OPERATOR, StepFacts.none())).code());
-        assertEquals(HEAD_APPROVAL, atTwo.complete(DESIGNING_ACTIVITY, OPERATOR,
+        assertEquals(CDR_CONVERSION, atTwo.complete(DESIGNING_ACTIVITY, OPERATOR,
                 new StepFacts(true, false, false, null, null)).current().orElseThrow());
     }
 
@@ -111,13 +111,13 @@ class TrackerProgressTest {
     @Test
     void reopeningIsSuperadminOnlyAndRevertsLaterStepsToNotCompleted() {
         TrackerProgress progress = completeThrough(TrackerProgress.start(true), PRINTING_PRESS);
-        assertEquals(7, progress.completedCount());
+        assertEquals(8, progress.completedCount());
         assertEquals("SUPERADMIN_ONLY", assertThrows(TrackerRuleViolation.class,
                 () -> progress.reopen(CDR_CONVERSION, OPERATOR)).code());
         TrackerProgress reopened = progress.reopen(CDR_CONVERSION, SUPERADMIN);
         assertEquals(ACTIVE, reopened.status(CDR_CONVERSION));
-        assertEquals(COMPLETED, reopened.status(HEAD_APPROVAL));
-        for (TrackerStep later : new TrackerStep[]{PRODUCTION_PLANNING, BOARD_PROCUREMENT, PRINTING_PRESS}) {
+        assertEquals(LOCKED, reopened.status(HEAD_APPROVAL));
+        for (TrackerStep later : new TrackerStep[]{HEAD_APPROVAL, PRODUCTION_PLANNING, BOARD_PROCUREMENT, PRE_PRINT_QUALITY_GATE, PRINTING_PRESS}) {
             assertEquals(LOCKED, reopened.status(later));
         }
         assertEquals("STEP_NOT_COMPLETED", assertThrows(TrackerRuleViolation.class,
@@ -136,7 +136,7 @@ class TrackerProgressTest {
 
     @Test
     void headApprovalDetailsBelongToSuperadminWhileActive() {
-        TrackerProgress atThree = completeThrough(TrackerProgress.start(true), DESIGNING_ACTIVITY);
+        TrackerProgress atThree = completeThrough(TrackerProgress.start(true), CDR_CONVERSION);
         assertTrue(atThree.canEditDetails(SUPERADMIN, HEAD_APPROVAL));
         assertFalse(atThree.canEditDetails(OPERATOR, HEAD_APPROVAL));
     }
@@ -155,7 +155,7 @@ class TrackerProgressTest {
 
     @Test
     void operatorWritesTheStageNoteOnSuperadminSteps() {
-        TrackerProgress atThree = completeThrough(TrackerProgress.start(true), DESIGNING_ACTIVITY);
+        TrackerProgress atThree = completeThrough(TrackerProgress.start(true), CDR_CONVERSION);
         assertTrue(atThree.canEditStageNote(OPERATOR, HEAD_APPROVAL));
     }
 

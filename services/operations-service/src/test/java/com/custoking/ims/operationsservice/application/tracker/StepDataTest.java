@@ -32,7 +32,7 @@ class StepDataTest {
     @Test
     void stepsWithNoWorkAreaDataAcceptNothing() {
         for (TrackerStep step : new TrackerStep[]{TrackerStep.ORDER_DETAILS, TrackerStep.DESIGNING_ACTIVITY,
-                TrackerStep.HEAD_APPROVAL, TrackerStep.PRODUCTION_FOLLOW_UP}) {
+                TrackerStep.HEAD_APPROVAL}) {
             assertTrue(StepData.fieldNames(step).isEmpty(), step.title());
             rejected(step, Map.of("anything", "x"));
         }
@@ -66,6 +66,19 @@ class StepDataTest {
     }
 
     @Test
+    void planningAcceptsBoundedWorkbookSnapshotTotals() {
+        Map<String, Object> snapshot = StepData.validate(TrackerStep.PRODUCTION_PLANNING, Map.ofEntries(
+                Map.entry("workbookFileName", "order.xlsx"), Map.entry("workbookSheetName", "Order"),
+                Map.entry("workbookOrderId", "CK-1"), Map.entry("workbookImportedAt", "2026-10-19T10:00:00Z"),
+                Map.entry("workbookTotalQuantity", 26), Map.entry("workbookKing", 5),
+                Map.entry("workbookJumboKing", 3), Map.entry("workbookLong", 6), Map.entry("workbookJumboLong", 4),
+                Map.entry("workbookFa", 8), Map.entry("workbookValidRows", 5)));
+        assertEquals(26L, snapshot.get("workbookTotalQuantity"));
+        rejected(TrackerStep.PRODUCTION_PLANNING, Map.of("workbookValidRows", 1001));
+        rejected(TrackerStep.PRODUCTION_PLANNING, Map.of("workbookFileName", "x".repeat(256)));
+    }
+
+    @Test
     void decimalsAreBoundedToZeroToOneHundred() {
         assertEquals(7.5, StepData.validate(TrackerStep.BOARD_PROCUREMENT, Map.of("wastagePercent", 7.5)).get("wastagePercent"));
         rejected(TrackerStep.BOARD_PROCUREMENT, Map.of("wastagePercent", 101));
@@ -89,6 +102,11 @@ class StepDataTest {
         rejected(TrackerStep.PRE_PRINT_QUALITY_GATE, Map.of("checks", List.of(8)));
         rejected(TrackerStep.PRE_PRINT_QUALITY_GATE, Map.of("checks", List.of(-1)));
         rejected(TrackerStep.PRE_PRINT_QUALITY_GATE, Map.of("checks", "0,1"));
+        assertEquals(List.of(1L, 3L), StepData.validate(TrackerStep.PRINTING_PRESS,
+                Map.of("pressChecks", List.of(3, 1))).get("pressChecks"));
+        assertEquals(List.of(0L, 7L), StepData.validate(TrackerStep.PRODUCTION_FOLLOW_UP,
+                Map.of("productionChecks", List.of(7, 0))).get("productionChecks"));
+        rejected(TrackerStep.PRINTING_PRESS, Map.of("pressChecks", List.of(8)));
     }
 
     @Test
