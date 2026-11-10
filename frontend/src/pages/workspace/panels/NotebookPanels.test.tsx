@@ -229,6 +229,13 @@ it('saves a school time slot and returns an overridden one to the default', asyn
   await waitFor(() => expect(trackerApi.clearTimeSlot).toHaveBeenCalledWith(7, 2));
 });
 
+it('explains that hour-based SLAs run continuously and weekends only affect working-day slots', async () => {
+  vi.mocked(trackerApi.operators).mockResolvedValue([]);
+  render(<NotebookAdminPanel />);
+  fireEvent.click(screen.getByRole('tab', { name: 'Time slots' }));
+  expect(screen.getByText('Hour slots use continuous elapsed time, including weekends. Working-day slots run Monday to Friday.')).toBeInTheDocument();
+});
+
 it("keeps a time slot's value, unit and Save on one line, with every control still labelled", async () => {
   vi.mocked(trackerApi.operators).mockResolvedValue([]);
   vi.mocked(trackerApi.timeSlots).mockResolvedValue([

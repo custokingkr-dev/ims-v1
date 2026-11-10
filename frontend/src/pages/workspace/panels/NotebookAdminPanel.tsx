@@ -182,7 +182,7 @@ function TimeSlotsTab({ schools }: { schools: SchoolOption[] }) {
   return (
     <section>
       <h3>Time slots per step</h3>
-      <p className="ck-product-muted">Working days are Monday to Friday; hour slots pause over the weekend. Steps 8 and 10 have no timer.</p>
+      <p className="ck-product-muted">Hour slots use continuous elapsed time, including weekends. Working-day slots run Monday to Friday.</p>
       <label className="field">School
         <select value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
           <option value="">Select school…</option>{schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
