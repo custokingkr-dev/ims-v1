@@ -109,6 +109,9 @@ class StepDataTest {
         assertEquals(List.of(0L, 7L), StepData.validate(TrackerStep.PRODUCTION_FOLLOW_UP,
                 Map.of("productionChecks", List.of(7, 0))).get("productionChecks"));
         rejected(TrackerStep.PRINTING_PRESS, Map.of("pressChecks", List.of(8)));
+        assertEquals(List.of(0L, 2L), StepData.validate(TrackerStep.PRODUCTION_PLANNING,
+                Map.of("planningChecks", List.of(2, 0, 0))).get("planningChecks"));
+        rejected(TrackerStep.PRODUCTION_PLANNING, Map.of("planningChecks", List.of(3)));
     }
 
     @Test

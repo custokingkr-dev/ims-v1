@@ -11,7 +11,7 @@ import static com.custoking.ims.operationsservice.application.tracker.TrackerSte
 import static org.junit.jupiter.api.Assertions.*;
 
 class TrackerProgressTest {
-    private static final StepFacts READY = new StepFacts(true, true, true, new Counts(1000, 1000, 1000, 1000), null);
+    private static final StepFacts READY = new StepFacts(true, true, true, true, new Counts(1000, 1000, 1000, 1000), null);
 
     /** Completes steps in order until {@code last} has been completed. */
     private static TrackerProgress completeThrough(TrackerProgress progress, TrackerStep last) {
@@ -68,7 +68,7 @@ class TrackerProgressTest {
         assertEquals(HEAD_APPROVAL, atThree.current().orElseThrow());
         assertEquals("SUPERADMIN_ONLY", assertThrows(TrackerRuleViolation.class,
                 () -> atThree.complete(HEAD_APPROVAL, OPERATOR, READY)).code());
-        StepFacts unapproved = new StepFacts(true, false, false, null, null);
+        StepFacts unapproved = new StepFacts(true, false, false, true, null, null);
         assertEquals("DESIGN_NOT_APPROVED", assertThrows(TrackerRuleViolation.class,
                 () -> atThree.complete(HEAD_APPROVAL, SUPERADMIN, unapproved)).code());
         assertEquals(PRODUCTION_PLANNING, atThree.complete(HEAD_APPROVAL, SUPERADMIN, READY).current().orElseThrow());
@@ -80,18 +80,28 @@ class TrackerProgressTest {
         assertEquals("DESIGN_NOT_SENT", assertThrows(TrackerRuleViolation.class,
                 () -> atTwo.complete(DESIGNING_ACTIVITY, OPERATOR, StepFacts.none())).code());
         assertEquals(CDR_CONVERSION, atTwo.complete(DESIGNING_ACTIVITY, OPERATOR,
-                new StepFacts(true, false, false, null, null)).current().orElseThrow());
+                new StepFacts(true, false, false, true, null, null)).current().orElseThrow());
     }
 
     @Test
     void qualityGateAndDeliveryNeedSuperadminSignOff() {
-        for (TrackerStep gated : new TrackerStep[]{PRE_PRINT_QUALITY_GATE, DELIVERY_INVOICING}) {
-            TrackerProgress at = completeThrough(TrackerProgress.start(true), TrackerStep.values()[gated.number() - 2]);
-            assertEquals(gated, at.current().orElseThrow());
-            assertEquals("SIGN_OFF_REQUIRED", assertThrows(TrackerRuleViolation.class,
-                    () -> at.complete(gated, OPERATOR, StepFacts.none())).code());
-            assertNotNull(at.complete(gated, OPERATOR, new StepFacts(true, true, true, new Counts(1, 1, 1, 1), null)));
-        }
+        TrackerProgress atQuality = completeThrough(TrackerProgress.start(true), BOARD_PROCUREMENT);
+        assertEquals(PRE_PRINT_QUALITY_GATE, atQuality.current().orElseThrow());
+        assertEquals("QC_CHECKS_INCOMPLETE", assertThrows(TrackerRuleViolation.class,
+                () -> atQuality.complete(PRE_PRINT_QUALITY_GATE, OPERATOR,
+                        new StepFacts(true, true, true, false, new Counts(1, 1, 1, 1), null))).code());
+        assertEquals("SIGN_OFF_REQUIRED", assertThrows(TrackerRuleViolation.class,
+                () -> atQuality.complete(PRE_PRINT_QUALITY_GATE, OPERATOR,
+                        new StepFacts(true, true, false, true, new Counts(1, 1, 1, 1), null))).code());
+        assertNotNull(atQuality.complete(PRE_PRINT_QUALITY_GATE, OPERATOR,
+                new StepFacts(true, true, true, true, new Counts(1, 1, 1, 1), null)));
+
+        TrackerProgress atDelivery = completeThrough(TrackerProgress.start(true), VALIDATION_COUNT);
+        assertEquals(DELIVERY_INVOICING, atDelivery.current().orElseThrow());
+        assertEquals("SIGN_OFF_REQUIRED", assertThrows(TrackerRuleViolation.class,
+                () -> atDelivery.complete(DELIVERY_INVOICING, OPERATOR, StepFacts.none())).code());
+        assertNotNull(atDelivery.complete(DELIVERY_INVOICING, OPERATOR,
+                new StepFacts(true, true, true, true, new Counts(1, 1, 1, 1), null)));
     }
 
     @Test
@@ -100,11 +110,11 @@ class TrackerProgressTest {
         assertEquals(VALIDATION_COUNT, at.current().orElseThrow());
         assertEquals("COUNTS_INCOMPLETE", assertThrows(TrackerRuleViolation.class,
                 () -> at.complete(VALIDATION_COUNT, OPERATOR,
-                        new StepFacts(true, true, true, new Counts(1000, null, 1000, 1000), null))).code());
-        StepFacts mismatch = new StepFacts(true, true, true, new Counts(1000, 990, 990, 980), null);
+                        new StepFacts(true, true, true, true, new Counts(1000, null, 1000, 1000), null))).code());
+        StepFacts mismatch = new StepFacts(true, true, true, true, new Counts(1000, 990, 990, 980), null);
         assertEquals("DISCREPANCY_NOTE_REQUIRED", assertThrows(TrackerRuleViolation.class,
                 () -> at.complete(VALIDATION_COUNT, OPERATOR, mismatch)).code());
-        StepFacts noted = new StepFacts(true, true, true, new Counts(1000, 990, 990, 980), "Ten books were damaged");
+        StepFacts noted = new StepFacts(true, true, true, true, new Counts(1000, 990, 990, 980), "Ten books were damaged");
         assertEquals(DELIVERY_INVOICING, at.complete(VALIDATION_COUNT, OPERATOR, noted).current().orElseThrow());
     }
 

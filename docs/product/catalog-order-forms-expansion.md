@@ -329,6 +329,16 @@ Still open: whether "sample image upload under every option" means one upload pe
 consistently, one per line in an order, or one per selectable option defined in the catalog. Not
 built pending that answer.
 
+## Bill Books client order-sheet fields
+
+The later client CSV adds page copies, separate color entries for the original and copy pages,
+numbering requirement/start/basis, a design-file link, and an expected completion date. Migration
+V33 adds the typed copy/color/numbering fields and optional order-level design link. Color fields
+remain free text to preserve values such as `BLACK/BLUE/MULTI COLOR`; numbering start and basis are
+optional because the sheet does not define conditional validation when numbering is not required.
+Expected completion date uses the existing shared `requiredByDate` control. This records the sheet's
+fields without treating its first sample row as a general import/update contract.
+
 ## Decisions taken by the product owner
 
 1. **The notebook quantity change reverses D-2, and that reversal is confirmed (2026-09-23).** The

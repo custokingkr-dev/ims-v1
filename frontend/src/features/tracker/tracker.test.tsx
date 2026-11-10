@@ -243,7 +243,7 @@ describe('NotebookTracker', () => {
     fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
     expect(await screen.findByRole('alert')).toHaveTextContent('paperGsm is limited to 50 characters');
     expect(screen.getByLabelText('Paper GSM')).toHaveValue('300');
-    expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 5, { paperGsm: '300' }, 3);
+    expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 5, { paperGsm: '300', planningChecks: [] }, 3);
   });
 
   it('sends numbers as numbers and leaves blank fields out of a draft', async () => {
@@ -281,15 +281,30 @@ describe('NotebookTracker', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('shows the eight optional pre-print checks and sends the ticked positions', async () => {
+  it('shows the eight required pre-print checks and sends the ticked positions', async () => {
     vi.mocked(trackerApi.saveDraft).mockResolvedValue(tracker());
     const t = tracker({ progress: { completed: 0, total: 1, currentStep: 7, currentTitle: 'Pre-Print Quality Check', finished: false },
       steps: [step(7, 'Pre-Print Quality Check', { status: 'ACTIVE', sla: { value: 24, unit: 'HOURS', source: 'DEFAULT' }, can: can({ canEditDetails: true }) })] });
     render(<NotebookTracker orderId="CK-1" initial={t} onBack={vi.fn()} />);
-    expect(screen.getAllByRole('checkbox')).toHaveLength(8);
+    const checklist = screen.getByRole('group', { name: /Pre-print checklist/ });
+    expect(within(checklist).getAllByRole('checkbox')).toHaveLength(8);
+    expect(within(checklist).getByText(/all checks required/)).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/Latest approved artwork/)); fireEvent.click(screen.getByLabelText(/School name, logo/));
     fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
     await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 7, { checks: [0, 1] }, 3));
+  });
+
+  it('saves the production-planning checklist separately from its text fields', async () => {
+    vi.mocked(trackerApi.saveDraft).mockResolvedValue(tracker());
+    const t = tracker({ progress: { completed: 0, total: 1, currentStep: 5, currentTitle: 'Production Planning', finished: false },
+      steps: [step(5, 'Production Planning', { status: 'ACTIVE', can: can({ canEditDetails: true }) })] });
+    render(<NotebookTracker orderId="CK-1" initial={t} onBack={vi.fn()} />);
+    const checklist = screen.getByRole('group', { name: 'Production planning checklist' });
+    expect(within(checklist).getAllByRole('checkbox')).toHaveLength(3);
+    fireEvent.click(within(checklist).getByLabelText(/Check board availability/));
+    fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
+    await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 5,
+      { planningChecks: [1] }, 3));
   });
 
   it('offers sign-off to superadmin only, and only until it is given', async () => {

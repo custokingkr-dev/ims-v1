@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '../../services/api';
 import { ProductFormBuilder } from './ProductFormBuilder';
-import { flexDefinition, notebookDefinition, reportCardDefinition, savedNotebook, tieDefinition } from './catalogTestFixtures';
+import { billBookDetailDefinition, flexDefinition, notebookDefinition, reportCardDefinition, savedNotebook, tieDefinition } from './catalogTestFixtures';
 vi.mock('../../services/api', () => ({ default: { post: vi.fn(), patch: vi.fn(), get: vi.fn() } }));
 vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
 beforeEach(() => { vi.clearAllMocks(); URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
@@ -63,6 +63,13 @@ describe('ProductFormBuilder in the prototype format', () => {
 });
 
 describe('ProductFormBuilder, 2026-09-25 product decisions', () => {
+  it('renders Bill Books typed copy, color and optional design-link fields', () => {
+    render(<ProductFormBuilder definition={billBookDetailDefinition} preview />);
+    expect(screen.getByLabelText('Page copies needed')).toHaveAttribute('type', 'number');
+    expect(screen.getByLabelText('Color of first page')).toHaveAttribute('type', 'text');
+    expect(screen.getByLabelText('Design file link (optional)')).toHaveAttribute('type', 'text');
+  });
+
   // A wholesale notebook run is printed from stock, so there is no artwork to attach. The upload
   // belongs to the customised choice only.
   it('offers the sample design for a customised notebook and not for a wholesale one', () => {

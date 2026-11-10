@@ -104,7 +104,11 @@ class CatalogProductFormIntegrationTest {
 
         var billBook = repository.form("BILLBOOKS", false);
         assertEquals(java.util.List.of("SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED"),
-                maps(billBook.get("groups")).stream().map(g -> String.valueOf(g.get("render"))).toList());
+                maps(billBook.get("groups")).subList(0, 5).stream().map(g -> String.valueOf(g.get("render"))).toList());
+        assertEquals("FIELD", group(billBook, "PAGE_COPIES").get("render"));
+        assertEquals("FIELD", group(billBook, "COLOR_FIRST_PAGE").get("render"));
+        assertEquals("SEGMENTED", group(billBook, "NUMBERING_REQUIRED").get("render"));
+        assertEquals("SELECT", group(billBook, "NUMBERING_BASED_ON").get("render"));
 
         // A typed group is a field wherever it appears.
         var flex = repository.form("FLEX", false);
@@ -294,14 +298,21 @@ class CatalogProductFormIntegrationTest {
 
         var billBook = repository.form("BILLBOOKS", false);
         assertTrue(Boolean.TRUE.equals(billBook.get("enabled")));
-        // Five option groups; the note lives on fliers alone since 2026-09-25.
-        assertEquals(5, maps(billBook.get("groups")).size());
+        // Existing choices and the additional client order-sheet fields use the same generic form path.
+        assertEquals(16, maps(billBook.get("groups")).size());
         assertEquals(List.of("A3", "A4", "A5"),
                 maps(group(billBook, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(List.of("50", "100", "200"),
                 maps(group(billBook, "PAGES").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(List.of("1", "2", "4", "8"),
                 maps(group(billBook, "SLIPS_PER_PAGE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals("INTEGER", group(billBook, "PAGE_COPIES").get("inputType"));
+        assertEquals("TEXT", group(billBook, "COLOR_SECOND_COPY_PAGE").get("inputType"));
+        assertEquals("ORDER", group(billBook, "DESIGN_FILE_LINK").get("scope"));
+        assertFalse(Boolean.TRUE.equals(group(billBook, "DESIGN_FILE_LINK").get("required")));
+        assertFalse(Boolean.TRUE.equals(group(billBook, "NUMBERING_START").get("required")));
+        assertEquals(List.of("No", "Yes"), maps(group(billBook, "NUMBERING_REQUIRED").get("options")).stream()
+                .map(o -> String.valueOf(o.get("label"))).toList());
         assertTrue(maps(billBook.get("rules")).stream().noneMatch(r -> String.valueOf(r.get("ruleType")).endsWith("_VALUE")
                 || "ROUND_TO_MULTIPLE".equals(r.get("ruleType"))), "the prototype states counts have no minimum or rounding");
 

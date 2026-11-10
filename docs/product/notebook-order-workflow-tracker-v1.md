@@ -224,7 +224,8 @@ must be confirmed; the sequential rule in R2 applies to all steps regardless.
 ### Step 5 — Production Planning — [Requested: "draft this stage in similar format"]
 
 - **[Prototype]** Fields used as the draft: paper / inner GSM, factory capacity confirmed, production
-  start date, target completion date, planning notes.
+  start date, target completion date, planning notes. The planning checklist also records: share order
+  with binder, check board availability, and check design status.
 - **[Open]** The prototype's default values ("70 GSM", "Pending") are sample values, not confirmed.
   The field list above is a draft for confirmation, not an approved design.
 

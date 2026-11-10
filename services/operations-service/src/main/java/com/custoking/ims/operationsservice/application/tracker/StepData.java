@@ -47,7 +47,7 @@ public final class StepData {
                 "cdrFilename", text(200), "cdrLink", text(1000), "cdrNotes", text(1000)));
         SCHEMAS.put(TrackerStep.PRODUCTION_PLANNING, fields(
                 "paperGsm", text(50), "capacityConfirmed", text(50), "productionStart", date(),
-                "targetCompletion", date(), "planningNotes", text(1000),
+                "targetCompletion", date(), "planningNotes", text(1000), "planningChecks", indexes(3),
                 "workbookFileName", text(255), "workbookSheetName", text(100),
                 "workbookOrderId", text(255), "workbookImportedAt", text(40),
                 "workbookTotalQuantity", whole(100_000_000L), "workbookKing", whole(100_000_000L),

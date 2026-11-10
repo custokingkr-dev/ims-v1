@@ -40,6 +40,12 @@ export const PRODUCTION_FOLLOW_UP_ITEMS = [
   'Packing',
 ];
 
+export const PRODUCTION_PLANNING_ITEMS = [
+  'Share order with binder',
+  'Check board availability',
+  'Check design status',
+];
+
 export const VENDOR_DIRECTORY = {
   board: [
     { id: 'board_shree', name: 'Shree Board Traders' },

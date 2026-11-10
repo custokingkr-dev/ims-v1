@@ -48,6 +48,17 @@ export const tieDefinition: FormDefinition = {
   ],
 };
 
+export const billBookDetailDefinition: FormDefinition = {
+  enabled: true, dependencies: [], rules: [],
+  category: { code: 'BILLBOOKS', label: 'Bill Books', emoji: '', description: 'Bill book order', orderType: 'Recurring', formEnabled: true, paged: false, active: true, sortOrder: 8 },
+  groups: [
+    { id: 41, categoryCode: 'BILLBOOKS', code: 'SIZE', label: 'Size', render: 'SEGMENTED', scope: 'LINE', level: 1, required: true, active: true, selectionType: 'SINGLE', options: options(41, [['A4', 'A4']]) },
+    { id: 42, categoryCode: 'BILLBOOKS', code: 'PAGE_COPIES', label: 'Page copies needed', render: 'FIELD', scope: 'LINE', level: 6, required: true, active: true, selectionType: 'SINGLE', inputType: 'INTEGER', unit: '', options: [] },
+    { id: 43, categoryCode: 'BILLBOOKS', code: 'COLOR_FIRST_PAGE', label: 'Color of first page', render: 'FIELD', scope: 'LINE', level: 7, required: true, active: true, selectionType: 'SINGLE', inputType: 'TEXT', unit: '', options: [] },
+    { id: 44, categoryCode: 'BILLBOOKS', code: 'DESIGN_FILE_LINK', label: 'Design file link (optional)', render: 'FIELD', scope: 'ORDER', level: 90, required: false, active: true, selectionType: 'SINGLE', inputType: 'TEXT', unit: '', options: [] },
+  ],
+};
+
 /** Report cards: three segmented choices, a minimum of 50, and the only estimate in the catalog. */
 export const reportCardDefinition: FormDefinition = {
   enabled: true, dependencies: [],

@@ -3,7 +3,7 @@ import { Check, FileSpreadsheet, RotateCcw, Save, ShieldCheck } from 'lucide-rea
 import { selectionLabel } from '../catalog/types';
 import { DraftImages } from './DraftImages';
 import { trackerApi, trackerError } from './api';
-import { PRINTING_CHECK_ITEMS, PRODUCTION_FOLLOW_UP_ITEMS, QC_ITEMS, SIGN_OFF_STEPS, STEP_FIELDS, VENDOR_CATEGORY_LABELS, VENDOR_DIRECTORY, countsMismatch, formatDay, isSignedOff, titleCardQuantities, titleCardQuantitiesFromCounts, vendorCategoriesForStep, wordCount, type FieldSpec, type VendorCategory } from './steps';
+import { PRINTING_CHECK_ITEMS, PRODUCTION_FOLLOW_UP_ITEMS, PRODUCTION_PLANNING_ITEMS, QC_ITEMS, SIGN_OFF_STEPS, STEP_FIELDS, VENDOR_CATEGORY_LABELS, VENDOR_DIRECTORY, countsMismatch, formatDay, isSignedOff, titleCardQuantities, titleCardQuantitiesFromCounts, vendorCategoriesForStep, wordCount, type FieldSpec, type VendorCategory } from './steps';
 import type { DesignerRow, OrderSummary, TrackerContact, TrackerDesigner, TrackerStep, TrackerView } from './types';
 import type { NotebookWorkbookPreview } from '../../generated/catalogClient';
 import '../catalog/product-form.css';
@@ -114,7 +114,7 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
   designers: DesignerRow[]; operators: Array<{ userId: number; fullName: string }>; onTracker: (next: TrackerView) => void;
 }) {
   const specs = STEP_FIELDS[step.step] ?? [];
-  const checkField = step.step === 8 ? 'pressChecks' : step.step === 10 ? 'productionChecks' : 'checks';
+  const checkField = step.step === 5 ? 'planningChecks' : step.step === 8 ? 'pressChecks' : step.step === 10 ? 'productionChecks' : 'checks';
   const superadmin = role === 'SUPERADMIN';
   const [form, setForm] = useState(() => toForm(step, specs));
   const [checks, setChecks] = useState<number[]>(() => (Array.isArray(step.data[checkField]) ? step.data[checkField] as number[] : []));
@@ -337,9 +337,20 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
         </>
       )}
 
+      {step.step === 5 && (
+        <fieldset className="ck-product-fieldset">
+          <legend>Production planning checklist</legend>
+          <ul className="ck-trk-checks">
+            {PRODUCTION_PLANNING_ITEMS.map((label, index) => (
+              <li key={label}><label><input type="checkbox" checked={checks.includes(index)} disabled={!editable}
+                onChange={(e) => setChecks(e.target.checked ? [...checks, index].sort((a, b) => a - b) : checks.filter((c) => c !== index))} /> {label}</label></li>
+            ))}
+          </ul>
+        </fieldset>
+      )}
       {step.step === 7 && (
         <fieldset className="ck-product-fieldset">
-          <legend>Pre-print checklist <span className="ck-product-muted">(optional)</span></legend>
+          <legend>Pre-print checklist <span className="ck-product-muted">(all checks required)</span></legend>
           <ul className="ck-trk-checks">
             {QC_ITEMS.map((label, index) => (
               <li key={label}><label><input type="checkbox" checked={checks.includes(index)} disabled={!editable}
@@ -417,7 +428,7 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
         {(specs.length > 0 || step.step === 10) && editable && (
           <button type="button" className="ck-btn ck-btn-ghost" disabled={busy}
             onClick={() => void act(() => trackerApi.saveDraft(tracker.orderId, step.step,
-              toPayload(specs, form, [7, 8, 10].includes(step.step) ? checks : null, checkField), step.version), 'Draft saved.')}><Save size={15} aria-hidden="true" /> Save draft</button>
+              toPayload(specs, form, [5, 7, 8, 10].includes(step.step) ? checks : null, checkField), step.version), 'Draft saved.')}><Save size={15} aria-hidden="true" /> Save draft</button>
         )}
         {step.can.canEditStageNote && (
           <button type="button" className="ck-btn ck-btn-ghost" disabled={busy || noteWords > NOTE_WORDS}

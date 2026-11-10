@@ -12,7 +12,11 @@ final class CompletionGates {
                     : Optional.of(new TrackerRuleViolation("DESIGN_NOT_SENT", "Send the design for approval before completing this step"));
             case HEAD_APPROVAL -> facts.designApproved() ? Optional.empty()
                     : Optional.of(new TrackerRuleViolation("DESIGN_NOT_APPROVED", "The design must be approved before this step can be completed"));
-            case PRE_PRINT_QUALITY_GATE, DELIVERY_INVOICING -> facts.superadminSignedOff() ? Optional.empty()
+            case PRE_PRINT_QUALITY_GATE -> !facts.qualityChecksComplete()
+                    ? Optional.of(new TrackerRuleViolation("QC_CHECKS_INCOMPLETE", "Complete every pre-print quality check before completing this step"))
+                    : facts.superadminSignedOff() ? Optional.empty()
+                    : Optional.of(new TrackerRuleViolation("SIGN_OFF_REQUIRED", "Superadmin sign-off is required"));
+            case DELIVERY_INVOICING -> facts.superadminSignedOff() ? Optional.empty()
                     : Optional.of(new TrackerRuleViolation("SIGN_OFF_REQUIRED", "Superadmin sign-off is required"));
             case VALIDATION_COUNT -> validationCount(facts);
             default -> Optional.empty();

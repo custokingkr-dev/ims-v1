@@ -650,8 +650,11 @@ public class NotebookTrackerService {
         Map<String, Object> counts = row(rows, TrackerStep.VALIDATION_COUNT).data();
         Counts typed = new Counts(t.orderedCount(), intOf(counts.get("producedCount")), intOf(counts.get("acceptedCount")), intOf(counts.get("dispatchCount")));
         Object note = counts.get("discrepancyNote");
+        Map<String, Object> qc = row(rows, TrackerStep.PRE_PRINT_QUALITY_GATE).data();
+        Object checks = qc.get("checks");
+        boolean qualityChecksComplete = checks instanceof List<?> selected && selected.size() == 8;
         return new StepFacts(!"NOT_SENT".equals(t.designState()), "APPROVED".equals(t.designState()),
-                signedOff(rows, step), typed, note == null ? null : String.valueOf(note));
+                signedOff(rows, step), qualityChecksComplete, typed, note == null ? null : String.valueOf(note));
     }
 
     private boolean signedOff(List<StepRow> rows, TrackerStep step) {

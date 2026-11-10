@@ -252,7 +252,12 @@ class NotebookTrackerServiceIntegrationTest {
             switch (n) {
                 case 2 -> service.sendDesign(order);
                 case 4 -> service.approveDesign(order, 501, "Looks good");
-                case 7, 12 -> service.signOff(order, n, step(service.view(order), n).version());
+                case 7 -> {
+                    TrackerView.Step s = step(service.view(order), 7);
+                    service.saveDraft(order, 7, Map.of("checks", List.of(0, 1, 2, 3, 4, 5, 6, 7)), s.version());
+                    service.signOff(order, 7, step(service.view(order), 7).version());
+                }
+                case 12 -> service.signOff(order, n, step(service.view(order), n).version());
                 case 11 -> {
                     TrackerView.Step s = step(service.view(order), 11);
                     service.saveDraft(order, 11, Map.of("producedCount", 1000, "acceptedCount", 1000, "dispatchCount", 1000), s.version());
@@ -666,11 +671,15 @@ class NotebookTrackerServiceIntegrationTest {
         asOperator(OP_A, 10L);
         TrackerView atSeven = service.view(order);
         assertEquals(7, atSeven.progress().currentStep());
-        assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 7, step(atSeven, 7).version())));
+        assertEquals("QC_CHECKS_INCOMPLETE", codeOf(() -> service.completeStep(order, 7, step(atSeven, 7).version())));
         assertEquals(403, http(() -> service.signOff(order, 7, step(atSeven, 7).version())).status());
 
         asSuper();
-        TrackerView signed = service.signOff(order, 7, step(atSeven, 7).version());
+        TrackerView signedWithoutChecks = service.signOff(order, 7, step(atSeven, 7).version());
+        assertEquals("QC_CHECKS_INCOMPLETE", codeOf(() -> service.completeStep(order, 7, step(signedWithoutChecks, 7).version())));
+        TrackerView drafted = service.saveDraft(order, 7, Map.of("checks", List.of(0, 1, 2, 3, 4, 5, 6, 7)),
+                step(signedWithoutChecks, 7).version());
+        TrackerView signed = service.signOff(order, 7, step(drafted, 7).version());
         assertNotNull(step(signed, 7).data().get("signOff"));
         assertEquals(400, http(() -> service.signOff(order, 8, step(signed, 8).version())).status(), "only steps 7 and 12 have a sign-off");
         TrackerView passed = service.completeStep(order, 7, step(signed, 7).version());
@@ -695,17 +704,17 @@ class NotebookTrackerServiceIntegrationTest {
         String order = create(false, 10L, OP_A);
         advance(order, 6);
         asSuper();
-        TrackerView drafted = service.saveDraft(order, 7, Map.of("sampleLink", "https://example.test/sample", "checks", List.of(0, 2)),
+        TrackerView drafted = service.saveDraft(order, 7, Map.of("sampleLink", "https://example.test/sample", "checks", List.of(0, 1, 2, 3, 4, 5, 6, 7)),
                 step(service.view(order), 7).version());
         TrackerView signed = service.signOff(order, 7, step(drafted, 7).version());
 
         // The form sends every value again; the same values, in any order and as whole numbers of any width, are not a change.
-        TrackerView same = service.saveDraft(order, 7, Map.of("checks", List.of(2L, 0L), "sampleLink", " https://example.test/sample "),
+        TrackerView same = service.saveDraft(order, 7, Map.of("checks", List.of(7L, 6L, 5L, 4L, 3L, 2L, 1L, 0L), "sampleLink", " https://example.test/sample "),
                 step(signed, 7).version());
         assertNotNull(step(same, 7).data().get("signOff"), "an unchanged save keeps the sign-off");
         assertEquals(step(drafted, 7).data().get("sampleLink"), step(same, 7).data().get("sampleLink"));
 
-        TrackerView changed = service.saveDraft(order, 7, Map.of("sampleLink", "https://example.test/other", "checks", List.of(0, 2)),
+        TrackerView changed = service.saveDraft(order, 7, Map.of("sampleLink", "https://example.test/other", "checks", List.of(0, 1, 2, 3, 4, 5, 6, 7)),
                 step(same, 7).version());
         assertNull(step(changed, 7).data().get("signOff"), "changed data needs a new sign-off");
         assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 7, step(changed, 7).version())));
@@ -725,10 +734,11 @@ class NotebookTrackerServiceIntegrationTest {
 
         TrackerView atSeven = service.completeStep(order, 6, step(reopened, 6).version());
         assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 7, step(atSeven, 7).version())),
-                "a step reverted by the reopen is signed off again");
+                "reopening the earlier step keeps the QC checklist but clears its sign-off");
 
         // Reopening a signed step itself takes its own sign-off back too.
-        TrackerView signed = service.signOff(order, 7, step(atSeven, 7).version());
+        TrackerView drafted = service.saveDraft(order, 7, Map.of("checks", List.of(0, 1, 2, 3, 4, 5, 6, 7)), step(atSeven, 7).version());
+        TrackerView signed = service.signOff(order, 7, step(drafted, 7).version());
         service.completeStep(order, 7, step(signed, 7).version());
         TrackerView sevenReopened = service.reopenStep(order, 7);
         assertEquals("ACTIVE", step(sevenReopened, 7).status());
