@@ -185,7 +185,7 @@ class CatalogProductFormIntegrationTest {
     void certificatesBuildLinesFromThreeChoicesWithAMinimumOfTwenty() {
         var certificates = repository.form("CERTIFICATES", false);
         assertTrue(Boolean.TRUE.equals(certificates.get("enabled")));
-        assertEquals(List.of("Category", "Size", "GSM"),
+        assertEquals(List.of("Category", "Size", "Card (GSM)"),
                 maps(certificates.get("groups")).stream().map(g -> String.valueOf(g.get("label"))).toList());
         assertEquals(List.of("SEGMENTED", "SEGMENTED", "SEGMENTED"),
                 maps(certificates.get("groups")).stream().map(g -> String.valueOf(g.get("render"))).toList());
@@ -256,8 +256,8 @@ class CatalogProductFormIntegrationTest {
     @Test
     void seedContainsAllConfirmedOptionsAndThreeRules() {
         var definition = repository.form("NOTEBOOKS", false);
-        // Trophies extend the fourteen existing categories without changing notebook options.
-        assertEquals(15, repository.categories(false).size());
+        // Trophies and the three client printing categories extend the original fourteen.
+        assertEquals(18, repository.categories(false).size());
         assertTrue(Boolean.TRUE.equals(definition.get("enabled")));
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());
@@ -345,6 +345,26 @@ class CatalogProductFormIntegrationTest {
         // The prototype rejects a count under 3000 rather than raising it, unlike the notebook floor.
         var minimum = maps(flier.get("rules")).stream().filter(r -> "MIN_VALUE".equals(r.get("ruleType"))).findFirst().orElseThrow();
         assertEquals(3000, map(minimum.get("params")).get("value"));
+    }
+
+    @Test
+    void clientPrintingCategoriesHaveStructuredForms() {
+        var brochure = repository.form("BROCHURES", false);
+        assertTrue(Boolean.TRUE.equals(brochure.get("enabled")));
+        assertEquals("TEXT", group(brochure, "INNER_PAGES").get("inputType"));
+        assertEquals("ORDER", group(brochure, "DESIGN_FILE_LINK").get("scope"));
+        assertFalse(Boolean.TRUE.equals(group(brochure, "DESIGN_FILE_LINK").get("required")));
+
+        var flute = repository.form("FLUTE_BOARDS", false);
+        assertTrue(Boolean.TRUE.equals(flute.get("enabled")));
+        assertEquals("DECIMAL", group(flute, "HEIGHT_FT").get("inputType"));
+        assertEquals("ft", group(flute, "WIDTH_FT").get("unit"));
+
+        var standee = repository.form("STANDEES", false);
+        assertTrue(Boolean.TRUE.equals(standee.get("enabled")));
+        assertEquals("DECIMAL", group(standee, "HEIGHT_FT").get("inputType"));
+        assertEquals("TEXT", group(standee, "FLEX_TYPE").get("inputType"));
+        assertEquals("Card (GSM)", group(repository.form("CERTIFICATES", false), "GSM").get("label"));
     }
 
     @Test

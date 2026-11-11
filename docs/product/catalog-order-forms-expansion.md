@@ -339,6 +339,16 @@ optional because the sheet does not define conditional validation when numbering
 Expected completion date uses the existing shared `requiredByDate` control. This records the sheet's
 fields without treating its first sample row as a general import/update contract.
 
+## Additional client printing products
+
+Migration V34 enables structured order forms for Brochures, Flute Boards, and Standees, which were
+present in the client handoff but absent from the IMS catalog. Dimensions and paper values whose
+units/semantics vary across the supplied sheets are kept as typed free-text fields; Flute Board and
+Standee dimensions use decimal feet where the client sheet specifies feet. All three expose an
+optional design link without treating an external Drive URL as a verified uploaded asset. The
+Certificate GSM selector is relabeled `Card (GSM)` to match the supplied certificate sheet's `CARD`
+column and its numeric sample values.
+
 ## Decisions taken by the product owner
 
 1. **The notebook quantity change reverses D-2, and that reversal is confirmed (2026-09-23).** The
