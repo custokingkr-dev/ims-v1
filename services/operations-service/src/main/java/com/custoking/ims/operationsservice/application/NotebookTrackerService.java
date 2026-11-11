@@ -30,6 +30,8 @@ import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -165,6 +167,29 @@ public class NotebookTrackerService {
             Actor actor = actor(false);
             return assemble(actor, tracker(orderId, false));
         }));
+    }
+
+    public Map<String, String> whatsappGroupLinks(String orderId) {
+        return tx.execute(status -> {
+            begin();
+            actor(false);
+            TrackerRow order = tracker(orderId, false);
+            return repo.whatsappGroupLinks(order.schoolId());
+        });
+    }
+
+    public Map<String, String> setWhatsAppGroupLink(String orderId, String targetKey, String inviteUrl) {
+        Actor actor = actor(true);
+        requireSuperadmin(actor, "Only superadmin can maintain WhatsApp group links");
+        String target = validateWhatsAppTarget(targetKey);
+        String cleanUrl = inviteUrl == null || inviteUrl.isBlank() ? null : validateWhatsAppInviteUrl(inviteUrl);
+        return tx.execute(status -> {
+            begin();
+            TrackerRow order = tracker(orderId, true);
+            if (cleanUrl == null) repo.deleteWhatsAppGroupLink(order.schoolId(), target);
+            else repo.upsertWhatsAppGroupLink(order.schoolId(), target, cleanUrl, actor.userId());
+            return repo.whatsappGroupLinks(order.schoolId());
+        });
     }
 
     // ---- step work ----------------------------------------------------------------------------------------------------
@@ -720,6 +745,32 @@ public class NotebookTrackerService {
         if (comment == null || comment.isBlank()) return null;
         if (comment.strip().length() > 1000) throw bad("A comment is limited to 1000 characters");
         return comment.strip();
+    }
+
+    private static String validateWhatsAppTarget(String targetKey) {
+        String target = targetKey == null ? "" : targetKey.strip();
+        boolean vendor = VendorDirectory.CATEGORIES.values().stream().flatMap(List::stream)
+                .anyMatch(item -> item.id().equals(target));
+        if (!"SCHOOL_GROUP".equals(target) && !"INTERNAL_APPROVAL".equals(target) && !vendor) {
+            throw bad("Choose a supported school, internal, or vendor group");
+        }
+        return target;
+    }
+
+    private static String validateWhatsAppInviteUrl(String value) {
+        String clean = value.strip();
+        if (clean.length() > 2048) throw bad("The WhatsApp group link is too long");
+        try {
+            URI uri = new URI(clean);
+            if (!"https".equalsIgnoreCase(uri.getScheme()) || !"chat.whatsapp.com".equalsIgnoreCase(uri.getHost())
+                    || uri.getPort() != -1 || uri.getUserInfo() != null || uri.getQuery() != null || uri.getFragment() != null
+                    || uri.getRawPath() == null || !uri.getRawPath().matches("/[A-Za-z0-9_-]{10,64}")) {
+                throw bad("Enter a valid WhatsApp group invite link");
+            }
+            return uri.toASCIIString();
+        } catch (URISyntaxException exception) {
+            throw bad("Enter a valid WhatsApp group invite link");
+        }
     }
 
     private static void requireSaved(int updated) {

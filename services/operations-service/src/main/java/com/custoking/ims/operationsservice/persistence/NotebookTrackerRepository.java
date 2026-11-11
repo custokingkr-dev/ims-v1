@@ -83,6 +83,8 @@ public class NotebookTrackerRepository {
 
     public record ActionRow(long id, int stepOrder, String action, Long actorId, String notes, OffsetDateTime actedAt) { }
 
+    public record WhatsAppGroupLink(String targetKey, String inviteUrl) { }
+
     // ---- request scope ------------------------------------------------------------------------------------------
 
     /** Operators have no home school: admit exactly their assigned schools for this transaction (empty = none). */
@@ -121,6 +123,29 @@ public class NotebookTrackerRepository {
                 .param("school", schoolId).param("definition", DEFINITION)
                 .query((rs, n) -> new SchoolSla(rs.getInt("step_order"), sla(rs.getObject("sla_value", Integer.class), rs.getString("sla_unit"))))
                 .list();
+    }
+
+    public Map<String, String> whatsappGroupLinks(long schoolId) {
+        return jdbc.sql("SELECT target_key, invite_url FROM workflow.workflow_school_whatsapp_group_links "
+                        + "WHERE school_id = :school ORDER BY target_key")
+                .param("school", schoolId)
+                .query((rs, n) -> new WhatsAppGroupLink(rs.getString("target_key"), rs.getString("invite_url")))
+                .list().stream().collect(Collectors.toMap(WhatsAppGroupLink::targetKey, WhatsAppGroupLink::inviteUrl,
+                        (first, ignored) -> first, java.util.LinkedHashMap::new));
+    }
+
+    public void upsertWhatsAppGroupLink(long schoolId, String targetKey, String inviteUrl, long userId) {
+        jdbc.sql("INSERT INTO workflow.workflow_school_whatsapp_group_links "
+                        + "(school_id, target_key, invite_url, updated_by, updated_at) "
+                        + "VALUES (:school, :target, :url, :user, now()) "
+                        + "ON CONFLICT (school_id, target_key) DO UPDATE SET invite_url = EXCLUDED.invite_url, "
+                        + "updated_by = EXCLUDED.updated_by, updated_at = now()")
+                .param("school", schoolId).param("target", targetKey).param("url", inviteUrl).param("user", userId).update();
+    }
+
+    public int deleteWhatsAppGroupLink(long schoolId, String targetKey) {
+        return jdbc.sql("DELETE FROM workflow.workflow_school_whatsapp_group_links WHERE school_id = :school AND target_key = :target")
+                .param("school", schoolId).param("target", targetKey).update();
     }
 
     public void upsertSchoolSla(long schoolId, int stepOrder, Sla sla, long userId) {

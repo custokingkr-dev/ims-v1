@@ -12,8 +12,8 @@
   "summary": {
     "services": 5,
     "controllers": 54,
-    "endpoints": 487,
-    "canonicalEndpoints": 376,
+    "endpoints": 489,
+    "canonicalEndpoints": 378,
     "compatibilityEndpoints": 90,
     "internalEndpoints": 21,
     "diagnosticAliases": 12,
@@ -1120,7 +1120,7 @@
       "basePaths": [
         "/api/v1/workflows/notebook-orders"
       ],
-      "endpointCount": 23,
+      "endpointCount": 25,
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java"
     },
     {
@@ -2467,7 +2467,7 @@
       "path": "/api/v1/workflows/notebook-orders",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 68
+      "line": 69
     },
     {
       "service": "operations-service",
@@ -2476,7 +2476,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 79
+      "line": 80
     },
     {
       "service": "operations-service",
@@ -2485,7 +2485,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/assignee",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 131
+      "line": 148
     },
     {
       "service": "operations-service",
@@ -2494,7 +2494,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/design/approve",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 155
+      "line": 172
     },
     {
       "service": "operations-service",
@@ -2503,7 +2503,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/design/request-changes",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 163
+      "line": 180
     },
     {
       "service": "operations-service",
@@ -2512,7 +2512,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/design/send",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 148
+      "line": 165
     },
     {
       "service": "operations-service",
@@ -2521,7 +2521,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/designer",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 186
+      "line": 203
     },
     {
       "service": "operations-service",
@@ -2530,7 +2530,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/follow-ups",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 138
+      "line": 155
     },
     {
       "service": "operations-service",
@@ -2539,7 +2539,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/internal-notes",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 194
+      "line": 211
     },
     {
       "service": "operations-service",
@@ -2548,7 +2548,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/assignee",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 124
+      "line": 141
     },
     {
       "service": "operations-service",
@@ -2557,7 +2557,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/complete",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 102
+      "line": 119
     },
     {
       "service": "operations-service",
@@ -2566,7 +2566,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/draft",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 88
+      "line": 105
     },
     {
       "service": "operations-service",
@@ -2575,7 +2575,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/reopen",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 109
+      "line": 126
     },
     {
       "service": "operations-service",
@@ -2584,7 +2584,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/sign-off",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 117
+      "line": 134
     },
     {
       "service": "operations-service",
@@ -2593,7 +2593,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/stage-note",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 95
+      "line": 112
     },
     {
       "service": "operations-service",
@@ -2602,7 +2602,7 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/vendor",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 172
+      "line": 189
     },
     {
       "service": "operations-service",
@@ -2611,7 +2611,25 @@
       "path": "/api/v1/workflows/notebook-orders/{orderId}/vendor-selections",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 179
+      "line": 196
+    },
+    {
+      "service": "operations-service",
+      "controller": "NotebookTrackerController",
+      "method": "GET",
+      "path": "/api/v1/workflows/notebook-orders/{orderId}/whatsapp-groups",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+      "line": 87
+    },
+    {
+      "service": "operations-service",
+      "controller": "NotebookTrackerController",
+      "method": "PUT",
+      "path": "/api/v1/workflows/notebook-orders/{orderId}/whatsapp-groups/{target}",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+      "line": 95
     },
     {
       "service": "operations-service",
@@ -2620,7 +2638,7 @@
       "path": "/api/v1/workflows/notebook-orders/designers",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 203
+      "line": 220
     },
     {
       "service": "operations-service",
@@ -2629,7 +2647,7 @@
       "path": "/api/v1/workflows/notebook-orders/designers",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 209
+      "line": 226
     },
     {
       "service": "operations-service",
@@ -2638,7 +2656,7 @@
       "path": "/api/v1/workflows/notebook-orders/designers/{id}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 216
+      "line": 233
     },
     {
       "service": "operations-service",
@@ -2647,7 +2665,7 @@
       "path": "/api/v1/workflows/notebook-orders/time-slots/{schoolId}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 223
+      "line": 240
     },
     {
       "service": "operations-service",
@@ -2656,7 +2674,7 @@
       "path": "/api/v1/workflows/notebook-orders/time-slots/{schoolId}/{step}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 244
+      "line": 261
     },
     {
       "service": "operations-service",
@@ -2665,7 +2683,7 @@
       "path": "/api/v1/workflows/notebook-orders/time-slots/{schoolId}/{step}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
-      "line": 230
+      "line": 247
     },
     {
       "service": "operations-service",

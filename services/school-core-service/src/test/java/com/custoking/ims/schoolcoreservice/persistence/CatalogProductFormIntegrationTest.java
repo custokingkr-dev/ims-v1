@@ -185,10 +185,15 @@ class CatalogProductFormIntegrationTest {
     void certificatesBuildLinesFromThreeChoicesWithAMinimumOfTwenty() {
         var certificates = repository.form("CERTIFICATES", false);
         assertTrue(Boolean.TRUE.equals(certificates.get("enabled")));
+        assertFalse(Boolean.TRUE.equals(group(certificates, "CATEGORY").get("required")),
+                "the client certificate order sheet does not contain a category column");
         assertEquals(List.of("Category", "Size", "Card (GSM)"),
-                maps(certificates.get("groups")).stream().map(g -> String.valueOf(g.get("label"))).toList());
+                maps(certificates.get("groups")).stream().filter(g -> "LINE".equals(g.get("scope")))
+                        .map(g -> String.valueOf(g.get("label"))).toList());
         assertEquals(List.of("SEGMENTED", "SEGMENTED", "SEGMENTED"),
-                maps(certificates.get("groups")).stream().map(g -> String.valueOf(g.get("render"))).toList());
+                maps(certificates.get("groups")).stream().filter(g -> "LINE".equals(g.get("scope")))
+                        .map(g -> String.valueOf(g.get("render"))).toList());
+        assertEquals("ORDER", group(certificates, "DESIGN_FILE_LINK").get("scope"));
         // No matrix: a certificate line is built one at a time, as bill books and fliers are.
         assertTrue(maps(certificates.get("groups")).stream().noneMatch(g -> "MATRIX".equals(g.get("render"))));
 
@@ -198,6 +203,9 @@ class CatalogProductFormIntegrationTest {
                 maps(group(certificates, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(List.of("250", "300"),
                 maps(group(certificates, "GSM").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("Slips", "Pages", "Slips and pages"),
+                maps(group(repository.form("BILLBOOKS", false), "NUMBERING_BASED_ON").get("options")).stream()
+                        .map(o -> String.valueOf(o.get("label"))).toList());
 
         var minimum = maps(certificates.get("rules")).stream()
                 .filter(r -> "MIN_VALUE".equals(r.get("ruleType"))).findFirst().orElseThrow();
@@ -216,7 +224,9 @@ class CatalogProductFormIntegrationTest {
     void reportCardsCarryAMinimumOfFiftyAndTheSeededEstimateRates() {
         var cards = repository.form("REPORT_CARDS", false);
         assertEquals(List.of("After folding size", "Inner pages (multiple of 4)", "Folding required"),
-                maps(cards.get("groups")).stream().map(g -> String.valueOf(g.get("label"))).toList());
+                maps(cards.get("groups")).stream().filter(g -> "LINE".equals(g.get("scope")))
+                        .map(g -> String.valueOf(g.get("label"))).toList());
+        assertEquals("Report card file link (optional)", group(cards, "DESIGN_FILE_LINK").get("label"));
         assertEquals(List.of("A4", "A5"),
                 maps(group(cards, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(List.of("0", "4", "8", "12", "16", "20", "24"),
@@ -365,6 +375,11 @@ class CatalogProductFormIntegrationTest {
         assertEquals("DECIMAL", group(standee, "HEIGHT_FT").get("inputType"));
         assertEquals("TEXT", group(standee, "FLEX_TYPE").get("inputType"));
         assertEquals("Card (GSM)", group(repository.form("CERTIFICATES", false), "GSM").get("label"));
+        for (String code : List.of("CERTIFICATES", "REPORT_CARDS", "FLEX", "FLIERS")) {
+            var link = group(repository.form(code, false), "DESIGN_FILE_LINK");
+            assertEquals("ORDER", link.get("scope"), code);
+            assertFalse(Boolean.TRUE.equals(link.get("required")), code);
+        }
     }
 
     @Test

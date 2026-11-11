@@ -45,6 +45,11 @@ export function parseList<T>(value: unknown): T[] {
   return value as T[];
 }
 
+export function parseWhatsAppGroupLinks(value: unknown): Record<string, string> {
+  if (!isRecord(value) || Object.values(value).some((link) => typeof link !== 'string')) throw new Error(NOT_UNDERSTOOD);
+  return value as Record<string, string>;
+}
+
 /** An order summary is read for its lines, so a summary without a list of lines is a bad response. */
 export function parseSummary(value: unknown): OrderSummary {
   if (!isRecord(value) || !Array.isArray(value.lines)) throw new Error(NOT_UNDERSTOOD);
@@ -69,6 +74,9 @@ export function trackerError(error: unknown, fallback?: string): string {
 
 export const trackerApi = {
   get: (orderId: string) => view(client.getNotebookTracker({ orderId })),
+  whatsappGroupLinks: async (orderId: string) => parseWhatsAppGroupLinks(await client.getNotebookWhatsAppGroupLinks({ orderId })),
+  saveWhatsAppGroupLink: async (orderId: string, target: Parameters<typeof client.saveNotebookWhatsAppGroupLink>[0]['target'], url: string) =>
+    parseWhatsAppGroupLinks(await client.saveNotebookWhatsAppGroupLink({ orderId, target }, { url })),
   saveDraft: (orderId: string, step: number, data: Record<string, unknown>, expectedVersion: number) =>
     view(client.saveNotebookStepDraft({ orderId, step }, { data, expectedVersion })),
   saveStageNote: (orderId: string, step: number, note: string, expectedVersion: number) =>

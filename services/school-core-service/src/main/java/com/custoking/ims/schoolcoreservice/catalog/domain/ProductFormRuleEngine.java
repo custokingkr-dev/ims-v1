@@ -3,6 +3,8 @@ package com.custoking.ims.schoolcoreservice.catalog.domain;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -19,6 +21,7 @@ public class ProductFormRuleEngine {
                                          List<Map<String, Object>> rawLines) {
         var groups = maps(definition.get("groups"));
         var order = selections(groups, orderSelections, "ORDER", "orderSelections");
+        order.putAll(typedValues(groups, orderSelections, "ORDER", "orderSelections"));
         if (rawLines == null || rawLines.isEmpty() || rawLines.size() > 500) {
             throw error("lines", "Include between 1 and 500 product lines");
         }
@@ -237,8 +240,12 @@ public class ProductFormRuleEngine {
             String text = String.valueOf(input).trim();
             switch (type) {
                 case "TEXT" -> {
-                    if (text.length() > 120) throw error(path + "." + code, group.get("label") + " is too long");
-                    values.put(code, text);
+                    if (code.endsWith("_LINK") || code.endsWith("_URL")) {
+                        values.put(code, externalLink(text, path + "." + code));
+                    } else {
+                        if (text.length() > 120) throw error(path + "." + code, group.get("label") + " is too long");
+                        values.put(code, text);
+                    }
                 }
                 case "INTEGER" -> values.put(code, positiveInt(text, path + "." + code));
                 case "DECIMAL" -> {
@@ -256,6 +263,20 @@ public class ProductFormRuleEngine {
             }
         }
         return values;
+    }
+
+    private static String externalLink(String value, String path) {
+        if (value.length() > 2048) throw error(path, "The link is too long");
+        try {
+            URI uri = new URI(value);
+            if (!"https".equalsIgnoreCase(uri.getScheme()) || uri.getHost() == null
+                    || uri.getUserInfo() != null || uri.getHost().isBlank()) {
+                throw error(path, "Enter a valid HTTPS link");
+            }
+            return uri.toASCIIString();
+        } catch (URISyntaxException exception) {
+            throw error(path, "Enter a valid HTTPS link");
+        }
     }
 
     private static boolean isSelect(Map<String, Object> group) {

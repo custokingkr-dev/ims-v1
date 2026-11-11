@@ -37,6 +37,11 @@
 .ck-product-actions > .ck-product-muted { margin-right: auto; }
 .ck-product-form .ck-alert { margin-bottom: var(--ck-space-4); gap: var(--ck-space-2); }
 .ck-product-detail { width: min(1100px, 100%); margin-inline: auto; }
+.ck-product-order-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--ck-space-3); margin-block: var(--ck-space-4); }
+.ck-product-order-meta > div { min-width: 0; padding: var(--ck-space-3); background: var(--bg); border: 1px solid var(--border); border-radius: var(--ck-radius-xs); }
+.ck-product-order-meta dt { color: var(--ink3); font-size: var(--ck-text-xs); }
+.ck-product-order-meta dd { margin: var(--ck-space-1) 0 0; overflow-wrap: anywhere; }
+.ck-product-order-meta a { color: var(--g); }
 .ck-product-table-scroll { max-width: 100%; overflow-x: auto; }
 .ck-product-table-scroll table { width: 100%; border-collapse: collapse; font-size: var(--ck-text-sm); font-variant-numeric: tabular-nums; }
 .ck-product-table-scroll th, .ck-product-table-scroll td { text-align: left; padding: var(--ck-space-3); border-bottom: 1px solid var(--border); }

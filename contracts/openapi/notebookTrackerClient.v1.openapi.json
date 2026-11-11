@@ -140,6 +140,121 @@
         }
       }
     },
+    "/api/v1/workflows/notebook-orders/{orderId}/whatsapp-groups": {
+      "get": {
+        "operationId": "getNotebookWhatsAppGroupLinks",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configured school-scoped WhatsApp group links",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/notebook-orders/{orderId}/whatsapp-groups/{target}": {
+      "put": {
+        "operationId": "saveNotebookWhatsAppGroupLink",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "target",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SCHOOL_GROUP",
+                "INTERNAL_APPROVAL",
+                "board_shree",
+                "board_national",
+                "board_prime",
+                "lam_glosspro",
+                "lam_crystal",
+                "lam_brightfinish",
+                "binder_perfect",
+                "binder_classic",
+                "binder_metro",
+                "offset_metro",
+                "offset_precision",
+                "offset_cityline"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppGroupLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated school-scoped WhatsApp group links",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid target or WhatsApp invite link"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Only superadmin can update group links"
+          },
+          "404": {
+            "description": "Order not found"
+          }
+        }
+      }
+    },
     "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/draft": {
       "put": {
         "operationId": "saveNotebookStepDraft",
@@ -2213,6 +2328,24 @@
         "x-ims-java-record": {
           "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
           "name": "SlaRequest",
+          "requireAll": true
+        }
+      },
+      "WhatsAppGroupLinkRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/NotebookTrackerController.java",
+          "name": "WhatsAppGroupLinkRequest",
           "requireAll": true
         }
       }

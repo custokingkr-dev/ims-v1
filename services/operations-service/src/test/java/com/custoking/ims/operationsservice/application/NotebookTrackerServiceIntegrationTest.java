@@ -239,6 +239,24 @@ class NotebookTrackerServiceIntegrationTest {
         return order;
     }
 
+    @Test
+    void whatsappGroupRedirectsAreConfiguredPerSchoolAndOnlyBySuperadmin() {
+        String order = create(true, 10, OP_A);
+        as(() -> asSuper(), () -> service.setWhatsAppGroupLink(order, "SCHOOL_GROUP",
+                " https://chat.whatsapp.com/AbCdEf1234567890 "));
+        assertEquals(Map.of("SCHOOL_GROUP", "https://chat.whatsapp.com/AbCdEf1234567890"),
+                as(() -> asOperator(OP_A, 10L), () -> service.whatsappGroupLinks(order)));
+
+        assertEquals(403, as(() -> asOperator(OP_A, 10L),
+                () -> http(() -> service.setWhatsAppGroupLink(order, "SCHOOL_GROUP", "https://chat.whatsapp.com/AbCdEf1234567890"))).status());
+        assertEquals(400, as(() -> asSuper(),
+                () -> http(() -> service.setWhatsAppGroupLink(order, "SCHOOL_GROUP", "https://example.com/AbCdEf1234567890"))).status());
+        assertEquals(400, as(() -> asSuper(),
+                () -> http(() -> service.setWhatsAppGroupLink(order, "UNKNOWN", "https://chat.whatsapp.com/AbCdEf1234567890"))).status());
+
+        assertEquals(Map.of(), as(() -> asSuper(), () -> service.setWhatsAppGroupLink(order, "SCHOOL_GROUP", "")));
+    }
+
     static TrackerView.Step step(TrackerView view, int number) {
         return view.steps().stream().filter(s -> s.step() == number).findFirst().orElseThrow();
     }

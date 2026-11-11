@@ -109,6 +109,97 @@ function SelectedVendorGroups({ step, selections }: { step: number; selections: 
   );
 }
 
+const WHATSAPP_GROUP_TARGETS = [
+  { key: 'SCHOOL_GROUP', label: 'School group' },
+  { key: 'INTERNAL_APPROVAL', label: 'Internal approval group' },
+  ...VENDOR_DIRECTORY.board.map((vendor) => ({ key: vendor.id, label: `${vendor.name} · board supplier` })),
+  ...VENDOR_DIRECTORY.lamination.map((vendor) => ({ key: vendor.id, label: `${vendor.name} · lamination` })),
+  ...VENDOR_DIRECTORY.binder.map((vendor) => ({ key: vendor.id, label: `${vendor.name} · binder` })),
+  ...VENDOR_DIRECTORY.offset.map((vendor) => ({ key: vendor.id, label: `${vendor.name} · offset printer` })),
+] as const;
+type WhatsAppGroupTarget = (typeof WHATSAPP_GROUP_TARGETS)[number]['key'];
+
+function WhatsAppGroupLinks({ orderId, editable }: { orderId: string; editable: boolean }) {
+  const [links, setLinks] = useState<Record<string, string>>({});
+  const [target, setTarget] = useState<WhatsAppGroupTarget>('SCHOOL_GROUP');
+  const [url, setUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    trackerApi.whatsappGroupLinks(orderId)
+      .then((result) => { if (active) { setLinks(result); setUrl(result[target] ?? ''); } })
+      .catch((failure: unknown) => { if (active) setError(trackerError(failure)); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [orderId]);
+
+  const save = async () => {
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const updated = await trackerApi.saveWhatsAppGroupLink(orderId, target, url.trim());
+      setLinks(updated);
+      setUrl(updated[target] ?? '');
+      setNotice(updated[target] ? 'WhatsApp redirect saved for this school.' : 'WhatsApp redirect removed.');
+    } catch (failure) {
+      setError(trackerError(failure));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="ck-trk-card" aria-label="WhatsApp group redirects">
+      <h4>WhatsApp group redirects</h4>
+      <p className="ck-product-muted">Configured links apply to this school. Only validated WhatsApp group invites are opened.</p>
+      {error && <p className="ck-product-error" role="alert">{error}</p>}
+      {notice && <p role="status">{notice}</p>}
+      {loading ? <p role="status">Loading group links…</p> : (
+        <div className="ck-trk-group-links">
+          {Object.entries(links).map(([key, link]) => {
+            const targetLabel = WHATSAPP_GROUP_TARGETS.find((item) => item.key === key)?.label ?? key;
+            let href: string | null = null;
+            try {
+              const parsed = new URL(link);
+              if (parsed.protocol === 'https:' && parsed.hostname === 'chat.whatsapp.com') href = parsed.href;
+            } catch { /* Invalid persisted links are not made clickable. */ }
+            return href ? <a key={key} className="ck-btn ck-btn-ghost" href={href} target="_blank" rel="noopener noreferrer">
+              Open {targetLabel}
+            </a> : null;
+          })}
+          {!Object.keys(links).length && <p className="ck-product-muted">No group redirects are configured.</p>}
+        </div>
+      )}
+      {editable && !loading && <div className="ck-product-fields">
+        <label className="field">Group target
+          <select value={target} disabled={saving} onChange={(event) => {
+            const next = event.target.value;
+            const selected = WHATSAPP_GROUP_TARGETS.find((item) => item.key === next);
+            if (!selected) return;
+            setTarget(selected.key);
+            setUrl(links[next] ?? '');
+          }}>
+            {WHATSAPP_GROUP_TARGETS.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
+          </select>
+        </label>
+        <label className="field">WhatsApp invite link
+          <input type="url" maxLength={2048} placeholder="https://chat.whatsapp.com/…" value={url}
+            disabled={saving} onChange={(event) => setUrl(event.target.value)} />
+        </label>
+        <div><button type="button" className="ck-btn ck-btn-ghost" disabled={saving}
+          onClick={() => void save()}>{saving ? 'Saving…' : url.trim() ? 'Save redirect' : 'Remove redirect'}</button></div>
+      </div>}
+    </section>
+  );
+}
+
 export function StepWorkArea({ tracker, step, role, userId, designers, operators, summary = null, summaryError = '', onTracker }: {
   tracker: TrackerView; step: TrackerStep; role: Role; userId?: number; summary?: OrderSummary | null; summaryError?: string;
   designers: DesignerRow[]; operators: Array<{ userId: number; fullName: string }>; onTracker: (next: TrackerView) => void;
@@ -196,6 +287,7 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
 
   return (
     <div className="ck-trk-work">
+      <WhatsAppGroupLinks orderId={tracker.orderId} editable={superadmin} />
       {step.step === 1 && (
         <dl className="ck-trk-facts">
           <div><dt>Order</dt><dd>{tracker.orderId}</dd></div>

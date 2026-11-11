@@ -67,7 +67,7 @@ describe('ProductFormBuilder, 2026-09-25 product decisions', () => {
     render(<ProductFormBuilder definition={billBookDetailDefinition} preview />);
     expect(screen.getByLabelText('Page copies needed')).toHaveAttribute('type', 'number');
     expect(screen.getByLabelText('Color of first page')).toHaveAttribute('type', 'text');
-    expect(screen.getByLabelText('Design file link (optional)')).toHaveAttribute('type', 'text');
+    expect(screen.getByLabelText('Design file link (optional)')).toHaveAttribute('type', 'url');
   });
 
   // A wholesale notebook run is printed from stock, so there is no artwork to attach. The upload
@@ -204,16 +204,27 @@ describe('ProductFormBuilder', () => {
     });
     vi.mocked(api.get).mockImplementation(async () => ({ data: savedNotebook('DRAFT', false) }));
     vi.mocked(api.patch).mockImplementation(async () => ({ data: savedNotebook('DRAFT', false) }));
+    const definition = { ...flexDefinition, groups: [...flexDefinition.groups, {
+      id: 14, categoryCode: 'FLEX', code: 'DESIGN_FILE_LINK', label: 'Design file link (optional)',
+      render: 'FIELD' as const, scope: 'ORDER' as const, level: 90, required: false, active: true,
+      selectionType: 'SINGLE', inputType: 'TEXT' as const, unit: '', options: [],
+    }] };
     // No categoryCode prop: the definition already names the category, and defaulting to
     // NOTEBOOKS filed every flex, flier, bill book and belt order as a notebook order.
-    render(<ProductFormBuilder definition={flexDefinition} schoolId={7} />);
+    render(<ProductFormBuilder definition={definition} schoolId={7} />);
+    fireEvent.change(screen.getByLabelText('Design file link (optional)'), { target: { value: 'https://drive.google.com/file/d/artwork' } });
     fireEvent.click(screen.getByRole('button', { name: 'Star flex' }));
     fireEvent.change(screen.getByLabelText('Length'), { target: { value: '6' } });
     fireEvent.change(screen.getByLabelText('Breadth'), { target: { value: '3' } });
     fireEvent.change(screen.getByLabelText('Count'), { target: { value: '4' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/catalog/orders', expect.objectContaining({ category: 'FLEX' })));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/catalog/orders', expect.objectContaining({
+      category: 'FLEX',
+      orderData: expect.objectContaining({
+        orderSelections: { DESIGN_FILE_LINK: 'https://drive.google.com/file/d/artwork' },
+      }),
+    })));
   });
 
   it('saves an incomplete aggregate as draft and retries placement using that same id', async () => {

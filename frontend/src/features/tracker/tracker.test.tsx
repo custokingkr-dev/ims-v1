@@ -16,6 +16,7 @@ vi.mock('./api', async (importOriginal) => {
     assignOrder: vi.fn(), designers: vi.fn(), operators: vi.fn(), addInternalNote: vi.fn(), draftImages: vi.fn(), uploadDraft: vi.fn(),
     deleteDraft: vi.fn(), draftBlob: vi.fn(), sendDesign: vi.fn(), approveDesign: vi.fn(), requestChanges: vi.fn(), setVendor: vi.fn(), setVendorSelections: vi.fn(),
     setDesigner: vi.fn(), addFollowUp: vi.fn(), summary: vi.fn(), startTracker: vi.fn(), previewWorkbook: vi.fn(),
+    whatsappGroupLinks: vi.fn(), saveWhatsAppGroupLink: vi.fn(),
   } };
 });
 // The order detail reports, once it has loaded the order, when the server says the tracker runs it.
@@ -73,6 +74,7 @@ beforeEach(() => {
   vi.mocked(trackerApi.summary).mockResolvedValue(summary());
   vi.mocked(trackerApi.designers).mockResolvedValue([]); vi.mocked(trackerApi.operators).mockResolvedValue([]);
   vi.mocked(trackerApi.draftImages).mockResolvedValue([]);
+  vi.mocked(trackerApi.whatsappGroupLinks).mockResolvedValue({});
   URL.createObjectURL = vi.fn((blob: Blob) => `blob:${blob.type}`); URL.revokeObjectURL = vi.fn();
 });
 afterEach(cleanup);
@@ -80,6 +82,27 @@ afterEach(cleanup);
 describe('tracker rules', () => {
   it('counts words the way the server does', () => {
     expect(wordCount('')).toBe(0); expect(wordCount('  one   two\nthree ')).toBe(3);
+  });
+
+  it('opens configured WhatsApp groups and lets only superadmin manage school redirects', async () => {
+    const invite = 'https://chat.whatsapp.com/AbCdEf1234567890';
+    vi.mocked(trackerApi.whatsappGroupLinks).mockResolvedValue({ SCHOOL_GROUP: invite });
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    vi.mocked(trackerApi.saveWhatsAppGroupLink).mockResolvedValue({ SCHOOL_GROUP: invite });
+    render(<NotebookTracker orderId="CK-1" initial={tracker()} onBack={vi.fn()} />);
+    const link = await screen.findByRole('link', { name: 'Open School group' });
+    expect(link).toHaveAttribute('href', invite);
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    fireEvent.change(screen.getByLabelText('WhatsApp invite link'), { target: { value: invite } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save redirect' }));
+    await waitFor(() => expect(trackerApi.saveWhatsAppGroupLink).toHaveBeenCalledWith('CK-1', 'SCHOOL_GROUP', invite));
+
+    cleanup();
+    auth.user = { role: 'OPERATIONS', userId: 42 };
+    render(<NotebookTracker orderId="CK-1" initial={tracker()} onBack={vi.fn()} />);
+    expect(await screen.findByRole('link', { name: 'Open School group' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('WhatsApp invite link')).not.toBeInTheDocument();
   });
   it('flags a count mismatch unless accepted = dispatch and accepted <= produced <= ordered', () => {
     expect(countsMismatch(100, { producedCount: 100, acceptedCount: 90, dispatchCount: 90 })).toBe(false);

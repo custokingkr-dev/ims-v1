@@ -61,6 +61,7 @@ public class NotebookTrackerController {
     public record DesignerRequest(String name, String phone, Boolean active) { }
     /** Both null means "no timer for this school and step". */
     public record SlaRequest(Integer value, String unit) { }
+    public record WhatsAppGroupLinkRequest(String url) { }
 
     // ---- reads ---------------------------------------------------------------------------------------------------------
 
@@ -81,6 +82,22 @@ public class NotebookTrackerController {
                             @PathVariable String orderId) {
         requireToken(token, "workflow:read");
         return tracker.view(orderId);
+    }
+
+    @GetMapping("/{orderId}/whatsapp-groups")
+    public Map<String, String> whatsappGroupLinks(
+            @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
+            @PathVariable String orderId) {
+        requireToken(token, "workflow:read");
+        return tracker.whatsappGroupLinks(orderId);
+    }
+
+    @PutMapping("/{orderId}/whatsapp-groups/{target}")
+    public Map<String, String> saveWhatsAppGroupLink(
+            @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
+            @PathVariable String orderId, @PathVariable String target, @RequestBody WhatsAppGroupLinkRequest request) {
+        requireToken(token, "workflow:write");
+        return tracker.setWhatsAppGroupLink(orderId, target, request.url());
     }
 
     // ---- step work ----------------------------------------------------------------------------------------------------

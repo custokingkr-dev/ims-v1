@@ -25,6 +25,21 @@ it('shows trophy model/size and quantity instead of notebook fields for placed o
   expect(screen.queryByRole('columnheader', { name: 'Ruling' })).not.toBeInTheDocument();
   expect(screen.getByText('No design approval required')).toBeInTheDocument();
 });
+it('renders a persisted HTTPS client design link safely in order details', async () => {
+  const href = 'https://drive.google.com/file/d/example/view';
+  const detail = { ...savedNotebook('PROCESSING', false), formDefinition: {
+    ...trophyDefinition,
+    groups: [...trophyDefinition.groups, { id: 99, categoryCode: 'TROPHIES', code: 'DESIGN_FILE_LINK',
+      label: 'Design file link', level: 90, selectionType: 'SINGLE', required: false, scope: 'ORDER' as const,
+      active: true, inputType: 'TEXT' as const, render: 'FIELD' as const, options: [] }],
+  }, orderSelections: { DESIGN_FILE_LINK: href } };
+  vi.mocked(api.get).mockResolvedValue({ data: detail });
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  const link = await screen.findByRole('link', { name: href });
+  expect(link).toHaveAttribute('href', href);
+  expect(link).toHaveAttribute('target', '_blank');
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+});
 it('quotes persisted lines in paise, refreshes computed totals, and gates approval on the quote', async () => {
   let detail = legacy('PROCESSING', false);
   vi.mocked(api.get).mockImplementation(async () => ({ data: detail }));

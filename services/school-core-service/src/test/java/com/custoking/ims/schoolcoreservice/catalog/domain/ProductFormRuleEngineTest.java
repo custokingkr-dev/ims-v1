@@ -137,6 +137,8 @@ class ProductFormRuleEngineTest {
         return row("groups", List.of(
                 row("code", "TYPE", "label", "Type", "scope", "LINE", "required", true, "inputType", "SELECT", "options", List.of(
                         row("id", 1, "code", "STAR", "label", "Star flex", "specStatus", "CONFIRMED"))),
+                row("code", "DESIGN_FILE_LINK", "label", "Design file link", "scope", "ORDER", "required", false,
+                        "inputType", "TEXT", "options", List.of()),
                 row("code", "LENGTH_FT", "label", "Length (ft)", "scope", "LINE", "required", true, "inputType", "DECIMAL", "options", List.of()),
                 row("code", "BREADTH_FT", "label", "Breadth (ft)", "scope", "LINE", "required", true, "inputType", "DECIMAL", "options", List.of()),
                 row("code", "NOTE", "label", "Note", "scope", "LINE", "required", false, "inputType", "TEXT", "options", List.of())),
@@ -145,7 +147,8 @@ class ProductFormRuleEngineTest {
 
     @Test
     void typedGroupsCaptureValuesInsteadOfOptionCodes() {
-        var result = engine.normalise(typedDefinition(), row(), List.of(
+        var result = engine.normalise(typedDefinition(), row("DESIGN_FILE_LINK", " https://drive.google.com/file/d/example "),
+                List.of(
                 row("selections", row("TYPE", "STAR", "LENGTH_FT", "6.5", "BREADTH_FT", 8, "NOTE", " matte "),
                         "bookCount", 12, "pageCount", 1)));
 
@@ -153,8 +156,18 @@ class ProductFormRuleEngineTest {
         assertEquals(new java.math.BigDecimal("6.5"), attributes.get("LENGTH_FT"));
         assertEquals(new java.math.BigDecimal("8"), attributes.get("BREADTH_FT"));
         assertEquals("matte", attributes.get("NOTE"), "text values are trimmed");
+        assertEquals("https://drive.google.com/file/d/example", result.orderSelections().get("DESIGN_FILE_LINK"));
         // The selection map keeps only real option selections, so rule matching is unaffected.
         assertEquals(Set.of("TYPE"), map(result.lines().get(0).get("optionSelections")).keySet());
+    }
+
+    @Test
+    void typedOrderLinksMustBeAbsoluteHttpsUrls() {
+        var invalid = assertThrows(ProductFormValidationException.class, () -> engine.normalise(typedDefinition(),
+                row("DESIGN_FILE_LINK", "javascript:alert(1)"), List.of(
+                        row("selections", row("TYPE", "STAR", "LENGTH_FT", "6", "BREADTH_FT", 8),
+                                "bookCount", 1, "pageCount", 1))));
+        assertTrue(invalid.fieldErrors().containsKey("orderSelections.DESIGN_FILE_LINK"));
     }
 
     @Test

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '../../services/api';
-import { TRACKER_UNAVAILABLE, parseTracker, trackerApi, trackerError } from './api';
+import { TRACKER_UNAVAILABLE, parseTracker, parseWhatsAppGroupLinks, trackerApi, trackerError } from './api';
 
 vi.mock('../../services/api', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() } }));
 
@@ -14,6 +14,20 @@ beforeEach(() => {
 
 // These run the real client against a recording transport: the wire is what the server's records bind to.
 describe('tracker wire contract', () => {
+  it('reads and configures school-scoped WhatsApp group redirects', async () => {
+    const links = { SCHOOL_GROUP: 'https://chat.whatsapp.com/AbCdEf1234567890' };
+    vi.mocked(api.get).mockResolvedValue({ data: links });
+    expect(await trackerApi.whatsappGroupLinks('CK 1/x')).toEqual(links);
+    expect(api.get).toHaveBeenLastCalledWith('/workflows/notebook-orders/CK%201%2Fx/whatsapp-groups');
+    expect(() => parseWhatsAppGroupLinks({ SCHOOL_GROUP: 42 })).toThrow('The response was not understood.');
+    vi.mocked(api.put).mockResolvedValue({ data: links });
+    expect(await trackerApi.saveWhatsAppGroupLink('CK 1/x', 'SCHOOL_GROUP', links.SCHOOL_GROUP)).toEqual(links);
+    expect(api.put).toHaveBeenLastCalledWith(
+      '/workflows/notebook-orders/CK%201%2Fx/whatsapp-groups/SCHOOL_GROUP',
+      { url: links.SCHOOL_GROUP },
+    );
+  });
+
   it('encodes the order id into every path and sends the documented body', async () => {
     await trackerApi.saveDraft('CK 1/x', 5, { paperGsm: '300' }, 3);
     expect(api.put).toHaveBeenLastCalledWith('/workflows/notebook-orders/CK%201%2Fx/steps/5/draft', { data: { paperGsm: '300' }, expectedVersion: 3 });

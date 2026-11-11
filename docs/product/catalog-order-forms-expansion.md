@@ -349,6 +349,22 @@ optional design link without treating an external Drive URL as a verified upload
 Certificate GSM selector is relabeled `Card (GSM)` to match the supplied certificate sheet's `CARD`
 column and its numeric sample values.
 
+Migration V35 also preserves optional order-level design links for Certificates, Report Cards, Flex,
+Fliers, and Bill Books, alongside their managed upload flows. The links are stored with the order,
+must be absolute HTTPS URLs, and are rendered as safe external links in order details. Certificates
+do not require the category choice present in a different prototype; Bill Books accept the observed
+`Slips and pages` numbering basis. No sample-sheet URL is imported as a production group mapping.
+
+## WhatsApp group redirects
+
+The Notebook tracker now supports school-scoped redirects for the school group, internal approval
+group, and configured vendor targets. Superadmin manages each invite from the tracker; operators can
+open only the links configured for a school they are assigned to. The API accepts only HTTPS
+`chat.whatsapp.com` invite URLs and the database enforces tenant isolation. No client prototype URL is
+preloaded: its vendor/internal pages reused a single hard-coded invite, while the school CSV contains
+only a sample school mapping. Other product categories do not yet have production trackers, so their
+group links are not surfaced until those tracker workflows are implemented.
+
 ## Decisions taken by the product owner
 
 1. **The notebook quantity change reverses D-2, and that reversal is confirmed (2026-09-23).** The

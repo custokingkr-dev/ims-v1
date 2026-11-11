@@ -75,6 +75,13 @@ export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManage
   const pricing = (paise: number) => `Rs. ${formatMoney(Number(paise || 0) / 100)}`;
   const paged = detail?.formDefinition.category.paged !== false;
   const lineGroups = detail?.formDefinition.groups.filter((group) => group.active && group.scope === 'LINE') || [];
+  const orderGroups = detail?.formDefinition.groups.filter((group) => group.active && group.scope === 'ORDER') || [];
+  const externalUrl = (value: string) => {
+    try {
+      const url = new URL(value);
+      return url.protocol === 'https:' ? url.href : null;
+    } catch { return null; }
+  };
   return <div className="ck-content"><div className="ck-product-detail ck-product-form">
     <div className="ck-product-section-head"><button className="ck-btn ck-btn-ghost" onClick={onBack} disabled={busy}><ArrowLeft size={16} />Back to orders</button><button className="ck-btn ck-btn-ghost ck-product-icon" title="Refresh order" aria-label="Refresh order" disabled={busy} onClick={() => void mutate(async () => undefined, '')}><RefreshCw size={16} /></button></div>
     <div className="ck-product-section-head"><h1 className="ck-page-title">Order {orderId}</h1>{detail && <span className="ck-status">{prettyOrderStatus(status)}</span>}</div>
@@ -83,6 +90,16 @@ export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManage
     {loading ? <p role="status">Loading order...</p> : detail && (status === 'DRAFT' ? <ProductFormBuilder key={`${orderId}-${detail.version}`} definition={detail.formDefinition} initialOrder={detail} onSaved={(next, placed) => { setDetail(next); onChanged?.(); if (placed) void load(); }} /> : <>
       <div className="ck-product-section-head"><h2>{detail.formDefinition.category.label}</h2>{!onTracker && <span className={`ck-status ${quoted ? 'sg' : 'sam'}`}>{quoted ? 'Quoted' : 'Pending pricing'}</span>}</div>
       <p>{selectionLabel(detail.orderSelections, 'CUSTOMIZATION')}{detail.order.requiredByDate ? ` | Required by ${detail.order.requiredByDate}` : ''}</p>
+      {orderGroups.some((group) => selectionLabel(detail.orderSelections, group.code)) && <dl className="ck-product-order-meta">
+        {orderGroups.map((group) => {
+          const value = selectionLabel(detail.orderSelections, group.code);
+          if (!value) return null;
+          const href = group.code.endsWith('_LINK') || group.code.endsWith('_URL') ? externalUrl(value) : null;
+          return <div key={group.code}><dt>{group.label}</dt><dd>{href
+            ? <a href={href} target="_blank" rel="noopener noreferrer">{value}</a>
+            : value}</dd></div>;
+        })}
+      </dl>}
       {!onTracker && <p className="ck-product-muted">{customization !== 'CUSTOMIZED' ? 'No design approval required' : designApproved ? 'Design approval completed' : 'Design approval pending'}</p>}
       <div className="ck-product-table-scroll"><table className="ck-product-order-lines"><thead><tr>
         {paged ? <><th scope="col">Size</th><th scope="col">Ruling</th></> : lineGroups.map((group) => <th scope="col" key={group.code}>{group.label}</th>)}

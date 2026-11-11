@@ -19,6 +19,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -35,8 +36,23 @@ class NotebookTrackerControllerTest {
     @Test void everyUserEndpointNeedsTheWorkflowServiceToken() throws Exception {
         mvc.perform(get("/api/v1/workflows/notebook-orders")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/workflows/notebook-orders/CK-1")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/workflows/notebook-orders/CK-1/whatsapp-groups")).andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/v1/workflows/notebook-orders/CK-1/whatsapp-groups/SCHOOL_GROUP")
+                .contentType("application/json").content("{\"url\":\"https://chat.whatsapp.com/AbCdEf1234567890\"}"))
+                .andExpect(status().isUnauthorized());
         mvc.perform(get("/api/v1/workflows/notebook-orders/CK-1").header("X-Workflow-Service-Token", "machine-token")).andExpect(status().isUnauthorized());
         verifyNoInteractions(service);
+    }
+
+    @Test void whatsappGroupLinksUseTheAuthenticatedTrackerService() throws Exception {
+        org.mockito.Mockito.when(service.whatsappGroupLinks("CK-1")).thenReturn(java.util.Map.of("SCHOOL_GROUP", "https://chat.whatsapp.com/AbCdEf1234567890"));
+        mvc.perform(get("/api/v1/workflows/notebook-orders/CK-1/whatsapp-groups").header("X-Workflow-Service-Token", "workflow-token"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.SCHOOL_GROUP").value("https://chat.whatsapp.com/AbCdEf1234567890"));
+        mvc.perform(put("/api/v1/workflows/notebook-orders/CK-1/whatsapp-groups/SCHOOL_GROUP")
+                .header("X-Workflow-Service-Token", "workflow-token").contentType("application/json")
+                .content("{\"url\":\"https://chat.whatsapp.com/AbCdEf1234567890\"}"))
+                .andExpect(status().isOk());
+        org.mockito.Mockito.verify(service).setWhatsAppGroupLink("CK-1", "SCHOOL_GROUP", "https://chat.whatsapp.com/AbCdEf1234567890");
     }
 
     @Test void theMachineEndpointsAreNoLongerOnTheUserFacingPath() throws Exception {

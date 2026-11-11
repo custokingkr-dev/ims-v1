@@ -170,7 +170,10 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
     if (Object.values(files).some(Boolean) && !can('order:update')) validation.assets = 'You do not have permission to upload attachments.';
     if (!input.lines.length) validation.lines = 'Add at least one line to the order.';
     for (const group of orderGroups.filter((g) => g.required)) {
-      if (!input.orderSelections[group.code]) validation[`orderSelections.${group.code}`] = `Select ${group.label.toLowerCase()}.`;
+      if (!input.orderSelections[group.code]) {
+        const action = renderOf(group) === 'FIELD' ? 'Enter' : 'Select';
+        validation[`orderSelections.${group.code}`] = `${action} ${group.label.toLowerCase()}.`;
+      }
     }
     if (place) {
       if (evaluation.quantityResults.some((r) => !r.valid)) validation.quantity = 'The combined book count must match the required total before placing.';
@@ -226,9 +229,10 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
     const mode = renderOf(group);
     if (mode === 'FIELD') {
       const numeric = group.inputType === 'INTEGER' || group.inputType === 'DECIMAL';
+      const externalLink = group.code.endsWith('_LINK') || group.code.endsWith('_URL');
       return <span className="ck-product-typed-field">
-        <input aria-label={group.label} type={numeric ? 'number' : 'text'}
-          {...(numeric ? { min: group.inputType === 'INTEGER' ? '1' : '0.01', step: group.inputType === 'INTEGER' ? '1' : '0.01' } : { maxLength: 120 })}
+        <input aria-label={group.label} type={numeric ? 'number' : externalLink ? 'url' : 'text'}
+          {...(numeric ? { min: group.inputType === 'INTEGER' ? '1' : '0.01', step: group.inputType === 'INTEGER' ? '1' : '0.01' } : externalLink ? { maxLength: 2048, placeholder: 'https://…' } : { maxLength: 120 })}
           value={value || ''} disabled={saving} onChange={(e) => change(e.target.value)} />
         {group.unit ? <span className="ck-product-unit">{group.unit}</span> : null}
       </span>;

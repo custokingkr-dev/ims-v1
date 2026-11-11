@@ -47,6 +47,8 @@
 .ck-trk-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ck-space-4); }
 .ck-trk-card { border: 1px solid var(--border); border-radius: var(--ck-radius-xs); padding: var(--ck-space-3); display: grid; gap: var(--ck-space-3); min-width: 0; }
 .ck-trk-card > h4 { display: flex; align-items: center; gap: var(--ck-space-2); }
+.ck-trk-group-links { display: flex; flex-wrap: wrap; gap: var(--ck-space-2); }
+.ck-trk-group-links .ck-btn { min-height: 36px; }
 .ck-trk-workbook-preview, .ck-trk-workbook-saved { display: grid; gap: var(--ck-space-3); padding: var(--ck-space-3); border-left: 3px solid var(--g); background: var(--bg); }
 .ck-trk-workbook-preview > p, .ck-trk-workbook-saved > p { margin: 0; }
 /* A card sits in half the work area: its edit fields stack full width so names and phone numbers are not cut short. */

@@ -56,9 +56,13 @@ export type TrackerDesignerRequest = { "name": string; "phone": string | null; "
 
 export type TrackerSlaRequest = { "value": number; "unit": "HOURS" | "WORKING_DAYS"; };
 
+export type WhatsAppGroupLinkRequest = { "url": string; };
+
 export interface NotebookTrackerClient {
   listNotebookOrders(parameters: { scope: "mine" | "all"; schoolId?: number; includeFinished?: boolean; limit?: number; }): Promise<Array<TrackerListItem>>;
   getNotebookTracker(parameters: { orderId: string; }): Promise<TrackerView>;
+  getNotebookWhatsAppGroupLinks(parameters: { orderId: string; }): Promise<{ [key: string]: string; }>;
+  saveNotebookWhatsAppGroupLink(parameters: { orderId: string; target: "SCHOOL_GROUP" | "INTERNAL_APPROVAL" | "board_shree" | "board_national" | "board_prime" | "lam_glosspro" | "lam_crystal" | "lam_brightfinish" | "binder_perfect" | "binder_classic" | "binder_metro" | "offset_metro" | "offset_precision" | "offset_cityline"; }, request: WhatsAppGroupLinkRequest): Promise<{ [key: string]: string; }>;
   saveNotebookStepDraft(parameters: { orderId: string; step: number; }, request: TrackerDraftRequest): Promise<TrackerView>;
   saveNotebookStageNote(parameters: { orderId: string; step: number; }, request: TrackerNoteRequest): Promise<TrackerView>;
   completeNotebookStep(parameters: { orderId: string; step: number; }, request: TrackerVersionRequest): Promise<TrackerView>;
@@ -90,6 +94,14 @@ export function createNotebookTrackerClient(http: AxiosInstance): NotebookTracke
     },
     async getNotebookTracker(parameters: { orderId: string; }) {
       const response = await http.get<TrackerView>(`/workflows/notebook-orders/${encodeURIComponent(String(parameters.orderId))}`);
+      return response.data;
+    },
+    async getNotebookWhatsAppGroupLinks(parameters: { orderId: string; }) {
+      const response = await http.get<{ [key: string]: string; }>(`/workflows/notebook-orders/${encodeURIComponent(String(parameters.orderId))}/whatsapp-groups`);
+      return response.data;
+    },
+    async saveNotebookWhatsAppGroupLink(parameters: { orderId: string; target: "SCHOOL_GROUP" | "INTERNAL_APPROVAL" | "board_shree" | "board_national" | "board_prime" | "lam_glosspro" | "lam_crystal" | "lam_brightfinish" | "binder_perfect" | "binder_classic" | "binder_metro" | "offset_metro" | "offset_precision" | "offset_cityline"; }, request: WhatsAppGroupLinkRequest) {
+      const response = await http.put<{ [key: string]: string; }>(`/workflows/notebook-orders/${encodeURIComponent(String(parameters.orderId))}/whatsapp-groups/${encodeURIComponent(String(parameters.target))}`, request);
       return response.data;
     },
     async saveNotebookStepDraft(parameters: { orderId: string; step: number; }, request: TrackerDraftRequest) {
