@@ -162,6 +162,11 @@ test('internal upstream paths are never reachable through the gateway, canonical
   assert.equal(isInternalUpstreamPath('/api/v1/internals'), false);
   assert.equal(isInternalUpstreamPath('/api/v1/dashboard'), false);
   assert.equal(isInternalUpstreamPath('/api/v1/notifications/logs'), false);
+  // The transport decodes each segment before forwarding, so encoded forms are the same upstream path.
+  assert.equal(isInternalUpstreamPath('/api/v1/%69nternal/outbox/relay'), true);
+  assert.equal(isInternalUpstreamPath('/api/v1/%70ubsub/notifications'), true);
+  assert.equal(isInternalUpstreamPath('/api/v1/%49nternal/outbox/relay'), false);
+  assert.equal(isInternalUpstreamPath('/api/v1/%zz/outbox'), false);
 });
 
 test('diagnostic alias to an internal upstream path is refused before authentication', async () => {
@@ -172,6 +177,8 @@ test('diagnostic alias to an internal upstream path is refused before authentica
     '/reporting-api/v1/internal/async/drain',
     '/notification-api/v1/internal/notifications/deliveries',
     '/billing-api/v1/internal/outbox/relay',
+    '/billing-api/v1/%69nternal/outbox/relay',
+    '/reporting-api/v1/%70ubsub/reporting-events',
   ]) {
     const response = await fetch(`${baseUrl}${path}`, { method: 'POST', body: '{}' });
     const payload = await response.json();
