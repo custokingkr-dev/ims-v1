@@ -186,6 +186,58 @@ class ProductFormRuleEngineTest {
         assertTrue(negative.fieldErrors().keySet().stream().anyMatch(k -> k.endsWith("LENGTH_FT")));
     }
 
+    /** A category with typed whole-number fields, as fliers (GSM) and bill books (page copies, numbering start) have. */
+    static Map<String, Object> integerDefinition() {
+        return row("groups", List.of(
+                row("code", "GSM", "label", "GSM", "scope", "LINE", "required", true, "inputType", "INTEGER", "options", List.of()),
+                row("code", "NUMBERING_START", "label", "Numbering start (optional)", "scope", "LINE", "required", false,
+                        "inputType", "INTEGER", "options", List.of())),
+                "rules", List.of(), "dependencies", List.of());
+    }
+
+    private Map<String, Object> integerLine(Map<String, Object> selections) {
+        var result = engine.normalise(integerDefinition(), row(), List.of(row("selections", selections, "bookCount", 3000, "pageCount", 1)));
+        return map(result.lines().getFirst().get("attributes"));
+    }
+
+    /** Every typed input reaches the engine as text, so a whole-number field must parse it rather than require a JSON number. */
+    @Test
+    void typedWholeNumbersAreAcceptedWhetherSentAsTextOrAsNumbers() {
+        assertEquals(130, integerLine(row("GSM", "130")).get("GSM"));
+        assertEquals(3, integerLine(row("GSM", " 3 ")).get("GSM"), "surrounding spaces are trimmed");
+        assertEquals(130, integerLine(row("GSM", 130)).get("GSM"));
+        assertEquals(2147483647, integerLine(row("GSM", "2147483647")).get("GSM"));
+        assertEquals(1001, integerLine(row("GSM", "90", "NUMBERING_START", "1001")).get("NUMBERING_START"));
+    }
+
+    @Test
+    void typedWholeNumbersRejectFractionsZeroNegativesTextAndOverflow() {
+        for (Object bad : List.of("1.5", "0", "-2", "abc", "2147483648", "99999999999999999999", 1.5, 0, -2)) {
+            var refused = assertThrows(ProductFormValidationException.class, () -> integerLine(row("GSM", bad)), String.valueOf(bad));
+            assertEquals(Map.of("lines[0].selections.GSM", "Enter a positive whole number up to 2147483647"), refused.fieldErrors(),
+                    String.valueOf(bad));
+        }
+    }
+
+    @Test
+    void aBlankWholeNumberIsRequiredOnlyWhereTheFieldIsRequired() {
+        var missing = assertThrows(ProductFormValidationException.class, () -> integerLine(row("GSM", "  ")));
+        assertEquals(Map.of("lines[0].selections.GSM", "Enter GSM"), missing.fieldErrors());
+        // Bill books' numbering start is optional: left blank, it is simply not recorded.
+        var attributes = integerLine(row("GSM", "130", "NUMBERING_START", ""));
+        assertEquals(Map.of("GSM", 130), attributes);
+    }
+
+    /** Book and page counts are not typed fields: they must still be sent as numbers. */
+    @Test
+    void countsStillRejectText() {
+        assertThrows(ProductFormValidationException.class, () -> positiveInt("3", "bookCount"));
+        assertEquals(3, positiveInt(3, "bookCount"));
+        var definition = integerDefinition();
+        assertThrows(ProductFormValidationException.class, () -> engine.normalise(definition, row(),
+                List.of(row("selections", row("GSM", "130"), "bookCount", "3000", "pageCount", 1))));
+    }
+
     /** The default optional artwork upload is added unless a category states its own DESIGN offer, active or not. */
     @Test
     void theDefaultArtworkUploadYieldsOnlyToACategorysOwnDesignOffer() {

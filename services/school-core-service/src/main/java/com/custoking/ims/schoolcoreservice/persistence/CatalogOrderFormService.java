@@ -696,13 +696,20 @@ public class CatalogOrderFormService {
                 .param("id", id).param("kind", kind).query(Long.class).optional().orElse(null);
     }
 
+    /**
+     * Re-checks the saved order against its form snapshot. Each line is rebuilt as a client sends it: the codes of its option
+     * selections plus its typed values (length, size, GSM), which are stored apart from them in the line's attributes, so a
+     * typed field is checked as saved rather than read as missing.
+     */
     private void requireStage(Map<String, Object> order, String stage) {
         Map<String, Object> definition = map(order.get("form_snapshot"));
         Map<String, Object> raw = new LinkedHashMap<>();
         raw.put("orderSelections", codes(map(order.get("order_selections"))));
         raw.put("lines", lines(string(order.get("id"))).stream().map(line -> {
             Map<String, Object> value = new LinkedHashMap<>();
-            value.put("selections", codes(map(line.get("optionSelections"))));
+            Map<String, Object> selections = codes(map(line.get("optionSelections")));
+            map(line.get("attributes")).forEach((code, typed) -> selections.put(code, typedText(typed)));
+            value.put("selections", selections);
             value.put("bookCount", line.get("requestedBookCount"));
             value.put("pageCount", line.get("requestedPageCount"));
             return value;
@@ -981,6 +988,11 @@ public class CatalogOrderFormService {
     private static boolean customized(Map<String, Object> selections) {
         Object selection = selections.get("CUSTOMIZATION");
         return "CUSTOMIZED".equals(selection instanceof Map<?, ?> ? map(selection).get("code") : selection);
+    }
+
+    /** A stored typed value as the text a client sends: a number read back from JSON is written out plainly, never as 1.0E7. */
+    private static Object typedText(Object value) {
+        return value instanceof Number number ? new java.math.BigDecimal(number.toString()).toPlainString() : value;
     }
 
     private static Map<String, Object> codes(Map<String, Object> snapshots) {

@@ -281,7 +281,7 @@ public class ProductFormRuleEngine {
                         values.put(code, text);
                     }
                 }
-                case "INTEGER" -> values.put(code, positiveInt(text, path + "." + code));
+                case "INTEGER" -> values.put(code, wholeNumber(text, path + "." + code));
                 case "DECIMAL" -> {
                     java.math.BigDecimal number;
                     try {
@@ -372,9 +372,16 @@ public class ProductFormRuleEngine {
     private static String message(Map<String, Object> rule, String fallback) { return rule.get("message") instanceof String s && !s.isBlank() ? s : fallback; }
     public static ProductFormValidationException error(String field, String message) { return new ProductFormValidationException(Map.of(field, message)); }
     public static int positiveInt(Object value, String field) {
+        if (!(value instanceof Number)) throw error(field, "Enter a positive whole number up to 2147483647");
+        return wholeNumber(value.toString(), field);
+    }
+    /**
+     * A typed whole-number field (GSM, page copies), which arrives as the trimmed text {@link #typedValues} reads every typed
+     * input as. Counts and rule parameters go through {@link #positiveInt} instead, which also insists on a JSON number.
+     */
+    private static int wholeNumber(String text, String field) {
         try {
-            if (!(value instanceof Number)) throw new NumberFormatException();
-            int result = new BigDecimal(value.toString()).intValueExact();
+            int result = new BigDecimal(text).intValueExact();
             if (result <= 0) throw new NumberFormatException();
             return result;
         } catch (ArithmeticException | NumberFormatException exception) { throw error(field, "Enter a positive whole number up to 2147483647"); }

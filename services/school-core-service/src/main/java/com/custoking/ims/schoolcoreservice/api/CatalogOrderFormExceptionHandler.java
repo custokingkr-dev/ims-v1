@@ -14,13 +14,17 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 /**
- * Carries the reason of a refused order-form or production-workflow request to the screen as {@code {"message": ...}},
- * which is where the frontend looks for it. Without this the message is dropped and the user sees a generic failure
- * instead of, for example, "No more images allowed. Contact IT." or "Workflow changed; refresh and try again". Limited
- * to those two controllers so no other endpoint changes. A workflow request that reaches no controller (wrong method,
- * unknown path) gets its message from {@link ProductOrderWorkflowRouteExceptionHandler} instead.
+ * Carries the reason of a refused order request to the screen as {@code {"message": ...}}, which is where the frontend
+ * looks for it, with the refusal's own status. Without this the message is dropped (Spring Boot leaves it out of its error
+ * body) and the user sees a generic failure instead of, for example, "No more images allowed. Contact IT.", "Workflow
+ * changed; refresh and try again" or "This action is unavailable while the order is PROCESSING". Limited to the order
+ * controllers: the order form, the production workflow, and the order lifecycle in {@link CatalogReadController} (create,
+ * place, design approval, final approval, return, delivery and status changes), so no other endpoint changes. A workflow
+ * request that reaches no controller (wrong method, unknown path) gets its message from
+ * {@link ProductOrderWorkflowRouteExceptionHandler} instead.
  */
-@RestControllerAdvice(assignableTypes = {CatalogOrderFormController.class, ProductOrderWorkflowController.class})
+@RestControllerAdvice(assignableTypes = {CatalogOrderFormController.class, ProductOrderWorkflowController.class,
+        CatalogReadController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class CatalogOrderFormExceptionHandler {
 

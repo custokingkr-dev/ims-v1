@@ -8,7 +8,7 @@ import { estimateLine, estimateRatesFrom } from './reportCardEstimate';
 import { OrderAssetField } from './OrderAssetField';
 import { TrophyCatalogue } from './trophies/TrophyCatalogue';
 import { trophyReferencePrice } from './trophies/catalogue';
-import { selectionCodes, type AssetKind, type FormDefinition, type FormInput, type FormLine, type FormOrderDetail, type ProductGroup, type ProductOption } from './types';
+import { savedLineSelections, selectionCodes, type AssetKind, type FormDefinition, type FormInput, type FormLine, type FormOrderDetail, type ProductGroup, type ProductOption } from './types';
 import './product-form.css';
 
 interface Props {
@@ -45,7 +45,8 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
 
   const [input, setInput] = useState<FormInput>(() => initialOrder ? {
     orderSelections: selectionCodes(initialOrder.orderSelections),
-    lines: initialOrder.lines.map((line) => ({ selections: selectionCodes(line.optionSelections), bookCount: line.requestedBookCount ?? line.bookCount, pageCount: line.requestedPageCount ?? line.pageCount })),
+    // Typed values (length, GSM, text) are stored on the line's attributes, apart from its option codes.
+    lines: initialOrder.lines.map((line) => ({ selections: savedLineSelections(line), bookCount: line.requestedBookCount ?? line.bookCount, pageCount: line.requestedPageCount ?? line.pageCount })),
   } : {
     orderSelections: Object.fromEntries(orderGroups.map((g) => [g.code, renderOf(g) === 'SEGMENTED' ? firstOption(g) : ''])),
     lines: [],
@@ -94,7 +95,15 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
   // selections that distinguish it.
   const lineLabel = (line: FormLine) => matrixGroup
     ? labelFor(matrixGroup.code, line.selections[matrixGroup.code])
-    : contextGroups.map((g) => renderOf(g) === 'FIELD' ? `${line.selections[g.code] || ''}${g.unit || ''}` : labelFor(g.code, line.selections[g.code])).filter(Boolean).join(' · ');
+    : contextGroups.map((g) => renderOf(g) === 'FIELD'
+      ? line.selections[g.code] ? `${line.selections[g.code]}${g.unit ? ` ${g.unit}` : ''}` : ''
+      : labelFor(g.code, line.selections[g.code])).filter(Boolean).join(' · ');
+  // The server names a refused line by its index; the order list is where that line is, so say which one it is.
+  const describeError = (key: string) => {
+    const index = /^lines\[(\d+)\]\./.exec(key)?.[1];
+    const line = index === undefined ? undefined : input.lines[Number(index)];
+    return line ? `Line ${Number(index) + 1} (${lineLabel(line)}): ` : '';
+  };
   // Lines added together under the same context are shown as one block, as the prototypes do.
   const contextLabel = (line: FormLine) => contextGroups
     .map((g) => renderOf(g) === 'FIELD' ? '' : labelFor(g.code, line.selections[g.code]))
@@ -213,7 +222,11 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
       setNotice(place ? definition.category.code === 'NOTEBOOKS' ? 'Order placed. Our team will start work on it shortly.' : customized ? 'Order placed. Design approval and pricing are pending.' : 'Order placed. Processing and pricing are pending; no design approval is required.' : `Draft ${detail.order.id} saved.`);
       onSaved?.(detail, place);
     } catch (error) {
-      setErrors({ ...fieldErrorsFrom(error), _api: errorMessage(error) });
+      // A form refusal carries its reason both as the message and on the field; show it once, on the field.
+      const fieldErrors = fieldErrorsFrom(error);
+      const message = errorMessage(error);
+      const repeated = Object.values(fieldErrors).includes(message) || message === Object.values(fieldErrors).join(' ');
+      setErrors({ ...fieldErrors, ...(repeated ? {} : { _api: message }) });
       if (savedRef.current?.order.id) {
         try { recordSaved(await getFormOrder(savedRef.current.order.id)); } catch { /* Retain the known draft id for retry. */ }
       }
@@ -283,7 +296,10 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
   return <div className="ck-product-form">
     <div className="ck-product-section-head"><h2>{definition.category.label} order</h2>{definition.category.code !== 'NOTEBOOKS' && <span className="ck-status sam">Pending pricing</span>}</div>
     {notice && <div className="ck-alert ck-alert-g" role="status"><Check size={17} aria-hidden="true" />{notice}</div>}
-    {!!Object.keys(errors).length && <div className="ck-alert ck-alert-re" role="alert"><div>{Object.entries(errors).map(([key, value]) => <div key={key}>{value}</div>)}</div></div>}
+    {!!Object.keys(errors).length && <div className="ck-alert ck-alert-re" role="alert"><div>{Object.entries(errors).map(([key, value]) => {
+      const line = describeError(key);
+      return <div key={key}>{line && <span>{line}</span>}{value}</div>;
+    })}</div></div>}
 
     <fieldset className="ck-product-fieldset" disabled={saving || isPlaced}>
       <div className="ck-product-fields">

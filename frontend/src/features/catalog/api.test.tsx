@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import api from '../../services/api';
-import { getFormOrder, parseProductCategories, parseProductFormDefinition, useProductCategories, useProductFormDefinition } from './api';
+import { errorMessage, fieldErrorsFrom, getFormOrder, parseProductCategories, parseProductFormDefinition, useProductCategories, useProductFormDefinition } from './api';
 import { notebookDefinition } from './catalogTestFixtures';
 vi.mock('../../services/api', () => ({ default: { get: vi.fn() } }));
 beforeEach(() => vi.clearAllMocks());
@@ -35,4 +35,14 @@ it('shows a recoverable error for a sparse form response', async () => {
 it('rejects an invalid order detail before the saved-order view can render it', async () => {
   vi.mocked(api.get).mockResolvedValue({ data: {} });
   await expect(getFormOrder('ORD-42')).rejects.toThrow('Order details could not be read. Please refresh the order.');
+});
+// A refused order action answers {message} (and, for a form error, the field it belongs to); the screen must show
+// that reason rather than Axios's "Request failed with status code 400".
+it('reads the refusal reason from the response body before the transport error', () => {
+  const refusal = (data: unknown) => Object.assign(new Error('Request failed with status code 400'), { response: { status: 400, data } });
+  expect(errorMessage(refusal({ message: 'This action is unavailable while the order is PROCESSING' }))).toBe('This action is unavailable while the order is PROCESSING');
+  expect(errorMessage(refusal({ fieldErrors: { 'orderSelections.SCHOOL': 'Select a school for the order' } }))).toBe('Select a school for the order');
+  expect(fieldErrorsFrom(refusal({ message: 'Enter Length', fieldErrors: { 'lines[0].selections.LENGTH_FT': 'Enter Length', bad: 3 } })))
+    .toEqual({ 'lines[0].selections.LENGTH_FT': 'Enter Length' });
+  expect(errorMessage(refusal({ timestamp: '2026-11-12T13:39:50Z', status: 400, error: 'Bad Request' }))).toBe('Request failed with status code 400');
 });

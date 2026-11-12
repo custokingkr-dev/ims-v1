@@ -58,6 +58,16 @@ export interface FormOrderDetail {
 export function selectionCodes(snapshot: SelectionSnapshot): Record<string, string> {
   return Object.fromEntries(Object.entries(snapshot).map(([key, value]) => [key, typeof value === 'string' ? value : value.code]));
 }
+/**
+ * A saved line as the form edits it: its option codes plus its typed values (a length, a GSM, free text),
+ * which the server stores apart on `attributes` and returns as numbers or strings.
+ */
+export function savedLineSelections(line: Pick<SavedLine, 'optionSelections' | 'attributes'>): Record<string, string> {
+  const typed = Object.entries(line.attributes ?? {})
+    .filter(([, value]) => typeof value === 'number' || (typeof value === 'string' && value !== ''))
+    .map(([key, value]) => [key, String(value)]);
+  return { ...selectionCodes(line.optionSelections), ...Object.fromEntries(typed) };
+}
 export function selectionLabel(snapshot: SelectionSnapshot, key: string): string {
   const value = snapshot[key];
   return typeof value === 'string' ? value : value?.label || '';
