@@ -16,8 +16,10 @@ So cost is reconstructed from what each service actually consumed.
 
 WHY PYTHON RATHER THAN NODE
 
-This runs both on a workstation and as a Cloud Run job on google/cloud-sdk:slim, which carries python3
-and bq but no node. One implementation that runs in both places beats two that drift apart.
+This runs both on a workstation and as a Cloud Run job on a pinned google/cloud-sdk slim image
+(local.cloud_sdk_job_image in deploy/gcp/observability/cost_metric_job.tf), which carries python3 and bq
+but no node. One implementation that runs in both places beats two that drift apart. The floating
+google/cloud-sdk:slim tag dropped python3 on 2026-11-03, which is why the image is pinned.
 
 WHAT IT GIVES UP AND GAINS
 

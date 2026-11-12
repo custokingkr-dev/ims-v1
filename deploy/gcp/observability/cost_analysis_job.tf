@@ -62,8 +62,8 @@ resource "google_cloud_run_v2_job" "cost_analysis" {
       containers {
         # Carries python3 and bq already. The collector is Python rather than Node specifically so that
         # one implementation runs both here and on a workstation; a Node image would need bq installing
-        # and would leave two copies of this logic to drift apart.
-        image   = "google/cloud-sdk:slim"
+        # and would leave two copies of this logic to drift apart. Pinned; see local.cloud_sdk_job_image.
+        image   = local.cloud_sdk_job_image
         command = ["bash"]
         args    = ["-c", "echo $SCRIPT_B64 | base64 -d > /tmp/collect.py && python3 /tmp/collect.py"]
 
