@@ -118,6 +118,37 @@ class IdentityControllersTest {
     }
 
     @Test
+    void introspectAdmitsSensitiveSuperadminWritesWithoutAnyStepUp() {
+        // Passkey step-up was removed: the gateway still sends method/path (rollout compatibility) and
+        // identity keeps accepting them for abuse accounting only, never to demand re-verification.
+        IdentityAuthService authService = mock(IdentityAuthService.class);
+        var abuse = mock(com.custoking.ims.identityservice.application.AuthAbuseProtection.class);
+        AuthController controller = new AuthController(authService, abuse, false, "Strict", 60_000L, "identity-token");
+        IntrospectionResponse result = new IntrospectionResponse(true, authResponse("access-token"));
+        when(authService.introspect("access-token")).thenReturn(result);
+
+        for (String[] call : List.of(
+                new String[] {"POST", "/api/v1/rbac/roles"},
+                new String[] {"PUT", "/api/v1/rbac/roles/3/permissions"},
+                new String[] {"POST", "/api/v1/billing/payments/9/refund"},
+                new String[] {"DELETE", "/api/v1/students/5/permanent-delete"},
+                new String[] {"GET", "/api/v1/students/export"},
+                new String[] {"PATCH", "/api/v1/catalog/orders/CK-1"})) {
+            IntrospectionResponse response = controller.introspect(
+                    "identity-token", new AuthController.IntrospectionRequest("access-token", call[0], call[1], 7L));
+            assertThat(response).isSameAs(result);
+            verify(abuse).authenticated(result.principal(), call[0], call[1], 7L);
+        }
+    }
+
+    @Test
+    void principalNoLongerCarriesStepUpExpiry() {
+        assertThat(java.util.Arrays.stream(AuthResponse.class.getRecordComponents()).map(java.lang.reflect.RecordComponent::getName))
+                .contains("sessionId")
+                .doesNotContain("stepUpExpiresAt");
+    }
+
+    @Test
     void rbacRolesRejectsInvalidTokenBeforeQuerying() {
         RbacReadRepository rbac = mock(RbacReadRepository.class);
         RbacReadController controller = new RbacReadController(rbac, mock(RbacCommandRepository.class), mock(TenantSchoolClient.class), "identity-token");

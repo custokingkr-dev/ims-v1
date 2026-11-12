@@ -1,5 +1,7 @@
 # Parallel security follow-up — 2026-10-08
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. The physical authenticator input no longer applies.
+
 This follow-up fixes newly demonstrated provider wire ambiguity and hardens governance evidence and recovery preparation. [PR335](https://github.com/custokingkr-dev/ims-v1/pull/335) passed its exact source CI/CodeQL and independently verified dev acceptance. Its local checkpoint, PR checks and live acceptance remain separately dated. It does not close the [nine live/governance workstreams](acceptance-owner-actions.md), residual upstream advisories or private snapshot custody. Production is outside this follow-up.
 
 ## Provider wire ambiguity

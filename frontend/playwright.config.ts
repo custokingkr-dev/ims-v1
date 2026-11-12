@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// Most CI tests exercise the shipped bundle. The session/passkey suite imports
-// the actual source transport to drive cross-tab races, so it keeps a source server.
+// Most CI tests exercise the shipped bundle. The session suite imports the
+// actual source transport to drive cross-tab races, so it keeps a source server.
 const usePrebuilt = process.env.PLAYWRIGHT_USE_PREBUILT === '1';
 const sourceServer = {
   command: 'npm run dev -- --host 127.0.0.1 --port 4173 --strictPort',
@@ -26,12 +26,12 @@ export default defineConfig({
   projects: usePrebuilt ? [
     {
       name: 'production-bundle',
-      testIgnore: '**/security-sessions-passkeys.spec.ts',
+      testIgnore: '**/security-sessions.spec.ts',
       use: { baseURL: 'http://127.0.0.1:4174' },
     },
     {
       name: 'source-security',
-      testMatch: '**/security-sessions-passkeys.spec.ts',
+      testMatch: '**/security-sessions.spec.ts',
     },
   ] : undefined,
   webServer: usePrebuilt ? [

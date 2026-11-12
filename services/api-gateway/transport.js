@@ -62,7 +62,6 @@ function createProxyTransport({ upstreams, tokenHeaders, serviceTokens, CLOUD_RU
     if (principal) {
       headers['x-authenticated-user-id'] = stringOrEmpty(principal.userId);
       headers['x-authenticated-session-id'] = stringOrEmpty(principal.sessionId);
-      headers['x-authenticated-step-up-expires-at'] = stringOrEmpty(principal.stepUpExpiresAt);
       headers['x-authenticated-email'] = stringOrEmpty(principal.email);
       headers['x-authenticated-role'] = stringOrEmpty(principal.role);
       headers['x-authenticated-school-id'] = stringOrEmpty(principal.branchId);
@@ -155,6 +154,8 @@ function createProxyTransport({ upstreams, tokenHeaders, serviceTokens, CLOUD_RU
     return headers;
   }
 
+  // Every x-authenticated-* name is gateway-only, including retired ones the gateway no longer sets, such as
+  // x-authenticated-step-up-expires-at, so a client can never supply one that a downstream might trust.
   function isClientSpoofableHeader(name) {
     const n = name.toLowerCase();
     return n.startsWith('x-authenticated-') || n.endsWith('-service-token') || n === 'x-ims-principal-carrier-token';

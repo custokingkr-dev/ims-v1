@@ -165,3 +165,98 @@ it('uploads the later pre-delivery photo on the same order and enables delivery 
   const body = vi.mocked(api.post).mock.calls[0][1] as FormData;
   expect(body.get('assetKind')).toBe('PRE_DELIVERY_PHOTO');
 });
+
+// The production workflow: the server says which orders have one (order.productionWorkflowAvailable) and who may act on it.
+const WORKFLOW_URL = '/catalog/orders/ORD-42/production-workflow';
+const LINKS_URL = '/workflows/school-whatsapp-groups/7';
+const productionView = (canEdit: boolean) => ({
+  orderId: 'ORD-42', category: 'TROPHIES', status: 'ACTIVE', currentStage: 'ORDER_DETAILS', version: 0, canEdit, canComplete: canEdit,
+  stages: [
+    { code: 'ORDER_DETAILS', order: 1, title: 'Order Details', status: 'ACTIVE', data: canEdit ? { details: 'Brief received' } : {}, note: null, completedAt: null },
+    { code: 'DESIGN_ACTIVITY', order: 2, title: 'Designing Activity', status: 'LOCKED', data: {}, note: null, completedAt: null },
+  ],
+});
+const trophyOrder = (status: string, productionWorkflowAvailable?: boolean) => {
+  const base = savedNotebook(status, false);
+  return { ...base, formDefinition: trophyDefinition, orderSelections: {}, order: { ...base.order, productionWorkflowAvailable } };
+};
+function routeGets(detail: () => unknown, workflow: () => unknown = () => productionView(true)) {
+  vi.mocked(api.get).mockImplementation(async (url) => {
+    if (url === '/supply/orders/ORD-42/form') return { data: detail() };
+    if (url === WORKFLOW_URL) return { data: workflow() };
+    if (url === LINKS_URL) return { data: {} };
+    throw new Error(`Unexpected GET ${url}`);
+  });
+}
+const workflowGets = () => vi.mocked(api.get).mock.calls.filter(([url]) => url === WORKFLOW_URL).length;
+
+it.each([['DELIVERED', false], ['REJECTED', false], ['PROCESSING', undefined]] as const)(
+  'never mounts or requests the production workflow for a %s order the server has not made available (%s)', async (status, available) => {
+    routeGets(() => trophyOrder(status, available));
+    render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+    expect(await screen.findByRole('row', { name: 'Order line 1' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Production workflow' })).not.toBeInTheDocument();
+    expect(workflowGets()).toBe(0);
+  });
+
+it('mounts the production workflow for whatever category the server makes available, with the school WhatsApp groups for a superadmin', async () => {
+  routeGets(() => trophyOrder('PROCESSING', true));
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByRole('region', { name: 'Production workflow' })).toBeInTheDocument();
+  expect(await screen.findByRole('textbox', { name: 'Production update' })).toHaveValue('Brief received');
+  expect(await screen.findByRole('textbox', { name: 'School group invite URL' })).toBeInTheDocument();
+  expect(api.get).toHaveBeenCalledWith(LINKS_URL);
+});
+
+it('gives a school administrator a read-only workflow and no WhatsApp groups, whatever local permissions say', async () => {
+  auth.role = 'ADMIN';
+  routeGets(() => trophyOrder('PROCESSING', true), () => productionView(false));
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByText('0 / 2 stages')).toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: 'Production update' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Complete stage' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'WhatsApp groups' })).not.toBeInTheDocument();
+  expect(api.get).not.toHaveBeenCalledWith(LINKS_URL);
+});
+
+it('refetches the production workflow when the order changes underneath it', async () => {
+  let detail = trophyOrder('PROCESSING', true);
+  routeGets(() => detail);
+  vi.mocked(api.put).mockImplementation(async (url) => {
+    if (url !== '/supply/orders/ORD-42/quote') throw new Error(`Unexpected PUT ${url}`);
+    detail = { ...detail, version: 1, pricingStatus: 'QUOTED' };
+    return { data: detail };
+  });
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  await screen.findByRole('textbox', { name: 'Production update' });
+  expect(workflowGets()).toBe(1);
+  fireEvent.change(screen.getByLabelText('Unit price for line 1'), { target: { value: '45' } });
+  fireEvent.change(screen.getByLabelText('GST amount in rupees'), { target: { value: '0' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save quote' }));
+  expect(await screen.findByText('Quote saved.')).toBeInTheDocument();
+  await waitFor(() => expect(workflowGets()).toBe(2));
+});
+
+it('refetches the production workflow on Refresh order, and drops it once the server no longer offers it', async () => {
+  let detail = trophyOrder('PROCESSING', true);
+  routeGets(() => detail);
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  await screen.findByRole('textbox', { name: 'Production update' });
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
+  await waitFor(() => expect(workflowGets()).toBe(2));
+  detail = { ...trophyOrder('CANCELLED', false), version: 2 };
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'Production workflow' })).not.toBeInTheDocument());
+  expect(workflowGets()).toBe(2);
+});
+
+it.each([
+  ['a non-boolean productionWorkflowAvailable', { productionWorkflowAvailable: 'yes' }],
+  ['a non-numeric schoolId', { schoolId: '7' }],
+])('refuses order details with %s rather than guessing', async (_label, order) => {
+  const detail = trophyOrder('PROCESSING');
+  vi.mocked(api.get).mockResolvedValue({ data: { ...detail, order: { ...detail.order, ...order } } });
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByRole('alert')).toHaveTextContent('Order details could not be read. Please refresh the order.');
+  expect(screen.queryByRole('region', { name: 'Production workflow' })).not.toBeInTheDocument();
+});

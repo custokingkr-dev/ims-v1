@@ -42,6 +42,8 @@ function isSelections(value: unknown): boolean {
 }
 export function parseFormOrderDetail(value: unknown): FormOrderDetail {
   if (!isRecord(value) || !isRecord(value.order) || !hasStrings(value.order, ['id', 'status'])
+    || (value.order.schoolId != null && typeof value.order.schoolId !== 'number')
+    || (value.order.productionWorkflowAvailable != null && typeof value.order.productionWorkflowAvailable !== 'boolean')
     || !isSelections(value.orderSelections) || !Array.isArray(value.lines) || !value.lines.every((line: unknown) => isRecord(line)
       && typeof line.id === 'number' && typeof line.bookCount === 'number' && typeof line.pageCount === 'number' && isSelections(line.optionSelections))
     || !Array.isArray(value.assets) || !value.assets.every((asset: unknown) => isRecord(asset)

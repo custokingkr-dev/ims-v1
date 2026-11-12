@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { identityAuthClient, invalidateAuthSession, refreshToken, setAccessToken, withAuthSessionLock } from '../services/api';
-import { PasskeyVerification } from '../features/security/PasskeyVerification';
 import { AuthUser } from '../types/auth';
+import '../features/security/security.css';
 
 const LS_KEY = 'custoking_isLoggedIn';
 
@@ -18,7 +18,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [restoreError, setRestoreError] = useState(false);
-  const [stepUpRequired, setStepUpRequired] = useState(false);
   const generation = useRef(0);
   // Start loading only if we believe a session exists; avoids a flash of the
   // login screen for returning users while the silent refresh is in-flight.
@@ -46,16 +45,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [restore]);
 
   useEffect(() => {
-    const show = () => setStepUpRequired(true);
-    window.addEventListener('custoking-step-up-required', show);
-    return () => window.removeEventListener('custoking-step-up-required', show);
-  }, []);
-
-  useEffect(() => {
     const clear = (event: StorageEvent) => {
       if (event.key !== 'custoking_session_epoch') return;
       generation.current += 1;
-      setAccessToken(null); setUser(null); setRestoreError(false); setLoading(false); setStepUpRequired(false);
+      setAccessToken(null); setUser(null); setRestoreError(false); setLoading(false);
     };
     window.addEventListener('storage', clear);
     return () => window.removeEventListener('storage', clear);
@@ -74,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     async logout() {
       generation.current += 1;
-      invalidateAuthSession(); setUser(null); setRestoreError(false); setLoading(false); setStepUpRequired(false);
+      invalidateAuthSession(); setUser(null); setRestoreError(false); setLoading(false);
       try {
         // Ask the server to clear the HttpOnly refresh-token cookie.
         await withAuthSessionLock(() => identityAuthClient.logout());
@@ -93,10 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         generation.current += 1; invalidateAuthSession(); setUser(null); setRestoreError(false); setLoading(false);
       }}>Return to sign in</button>
     </main> : children}
-    {stepUpRequired && user && <PasskeyVerification
-      onClose={() => setStepUpRequired(false)}
-      onVerified={() => { setStepUpRequired(false); void restore(); }}
-    />}
   </AuthContext.Provider>;
 }
 

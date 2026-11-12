@@ -2,7 +2,7 @@
 
 const { flushTracing } = require('./tracing');
 const { classifyCompatibilityRequest } = require('./api-contract');
-const { routes, route, diagnostic, isInternalUpstreamPath } = require('./routing');
+const { routes, route, diagnostic, isInternalUpstreamPath, isRetiredUpstreamPath } = require('./routing');
 const { createQuotaControls } = require('./quota');
 const { createAuthentication } = require('./authentication');
 const { createProxyTransport, boundedMilliseconds, stringOrEmpty } = require('./transport');
@@ -121,7 +121,7 @@ const { proxyFrontend, proxy, proxyToUrl, proxyDeadline, proxyLifecycle, outboun
   PROXY_TIMEOUT_MS, EXPORT_TIMEOUT_MS, AUTH_TIMEOUT_MS, activeSpanContext, formatTraceparent, sendJson,
 });
 
-const { requiresUserAuth, isCookieAuthPath, verifyJwtLocally, principalFromClaims, authenticate, introspect, requiresStepUp } = createAuthentication({
+const { requiresUserAuth, isCookieAuthPath, verifyJwtLocally, principalFromClaims, authenticate, introspect } = createAuthentication({
   LOCAL_JWT_VERIFY, APP_JWT_SECRET, upstreams, tokenHeaders, serviceTokens,
   parseBearerToken, addCloudRunAuthorization,
 });
@@ -248,6 +248,11 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 404, { message: 'No service route is configured for this API path' });
       return;
     }
+    if (matched && isRetiredUpstreamPath(matched.rewrite(parsed.pathname))) {
+      // Removed routes answer exactly as an unknown API path does, before authentication.
+      sendJson(res, 404, { message: 'No service route is configured for this API path' });
+      return;
+    }
     if (matched) {
       matchedService = matched.service;
       compatibility = classifyCompatibilityRequest(parsed.pathname, req.method);
@@ -270,11 +275,6 @@ const server = http.createServer(async (req, res) => {
         }
         schoolId = principal.branchId ?? null;
         userId = principal.userId ?? null;
-        if (requiresStepUp(parsed.pathname, req.method, principal)
-            && !(Date.parse(principal.stepUpExpiresAt) > Date.now())) {
-          sendJson(res, 403, { code: 'STEP_UP_REQUIRED', message: 'Verify your passkey before this action' });
-          return;
-        }
         await proxy(req, res, matched, parsed, requestId, principal, compatibility);
         return;
       }
@@ -290,10 +290,6 @@ const server = http.createServer(async (req, res) => {
     matchedService = 'frontend';
     await proxyFrontend(req, res, parsed, requestId);
   } catch (error) {
-    if (error?.code === 'STEP_UP_REQUIRED') {
-      sendJson(res, 403, { code: 'STEP_UP_REQUIRED', message: 'Verify your passkey before this action' });
-      return;
-    }
     if (error && error.code === 'IDENTITY_QUOTA_EXCEEDED') {
       res.setHeader('Retry-After', String(error.retryAfter));
       sendJson(res, 429, { message: 'Too many requests. Try again later.' });
@@ -474,6 +470,7 @@ module.exports = {
   diagnostic,
   requiresUserAuth,
   isInternalUpstreamPath,
+  isRetiredUpstreamPath,
   isCookieAuthPath,
   outboundHeaders,
   isRequestHopHeader,
@@ -509,5 +506,4 @@ module.exports = {
   proxyLifecycle,
   proxyDeadline,
   cookieAuthRequestAllowed,
-  requiresStepUp,
 };

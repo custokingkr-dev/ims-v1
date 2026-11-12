@@ -4,7 +4,6 @@ import { createIdentityAuthClient, type AuthResponse } from './identityAuthApi';
 
 const principal: AuthResponse = {
   sessionId: 'test-session-id',
-  stepUpExpiresAt: null,
   accessToken: 'access-token',
   userId: 17,
   fullName: 'API Contract Fixture',

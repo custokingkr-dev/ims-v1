@@ -385,19 +385,23 @@ public class CatalogOrderFormService {
                 }).list();
     }
 
-    /** The size cap a category allows for this kind, taken from its seeded asset rule. */
+    /**
+     * The size cap a category allows for this kind, read from the same effective rules its order form shows, so the default
+     * artwork upload (ProductFormRuleEngine.withDefaultArtwork) is enforced exactly as it is offered. A category that has
+     * switched artwork off, by storing its own DESIGN offer inactive with nothing requiring one, takes no artwork at all.
+     */
     private long maxUploadBytes(String category, String kind) {
         if (DesignDraftRules.KIND.equals(kind)) return CatalogOrderAssetStorage.DESIGN_DRAFT_MAX_BYTES;
         if (category == null || category.isBlank()) return CatalogOrderAssetStorage.MAX_BYTES;
-        return jdbc.sql("""
-                        SELECT params ->> 'maxBytes' FROM catalog.product_form_rules
-                        WHERE category_code = :category AND rule_type IN ('OFFER_ASSET', 'REQUIRE_ASSET')
-                          AND params ->> 'assetKind' = :kind AND active AND params ->> 'maxBytes' IS NOT NULL
-                        ORDER BY priority LIMIT 1
-                        """)
-                .param("category", category).param("kind", kind)
-                .query(String.class).optional()
-                .map(value -> { try { return Long.parseLong(value); } catch (NumberFormatException e) { return CatalogOrderAssetStorage.MAX_BYTES; } })
+        List<Map<String, Object>> assetRules = products.effectiveRules(category).stream()
+                .filter(rule -> Set.of("OFFER_ASSET", "REQUIRE_ASSET").contains(string(rule.get("ruleType")))
+                        && kind.equals(string(map(rule.get("params")).get("assetKind"))))
+                .sorted(java.util.Comparator.comparingInt(rule -> rule.get("priority") instanceof Number n ? n.intValue() : 0))
+                .toList();
+        if ("DESIGN".equals(kind) && assetRules.isEmpty()) throw bad("This product does not take an artwork upload");
+        return assetRules.stream().map(rule -> map(rule.get("params")).get("maxBytes"))
+                .filter(value -> value != null && !string(value).isBlank()).findFirst()
+                .map(value -> { try { return Long.parseLong(string(value)); } catch (NumberFormatException e) { return CatalogOrderAssetStorage.MAX_BYTES; } })
                 .orElse(CatalogOrderAssetStorage.MAX_BYTES);
     }
 
@@ -773,6 +777,16 @@ public class CatalogOrderFormService {
                     line.put("lineTotalPaise", rs.getObject("line_total_paise"));
                     return line;
                 }).list();
+    }
+
+    /**
+     * One order as a feature on the order screen reads it (the product production workflow), through the checks every order
+     * read here starts with: the operator's row-level scope, the item-only operator rule (D2), the read scope and the
+     * school's ORDERS module. Call it inside a transaction: an operator's row-level scope is transaction-local, and what the
+     * caller reads next relies on it. Returns the order's row.
+     */
+    public Map<String, Object> readableOrder(String id) {
+        return load(id, false);
     }
 
     private Map<String, Object> load(String id, boolean lock) {

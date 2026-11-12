@@ -81,9 +81,6 @@ app:
 identity:
   cookie:
     allowed-origins: ${IDENTITY_COOKIE_ALLOWED_ORIGINS:${IDENTITY_WEBAUTHN_ORIGINS:}}
-  webauthn:
-    rp-id: ${IDENTITY_WEBAUTHN_RP_ID:}
-    origins: ${IDENTITY_WEBAUTHN_ORIGINS:}
   quotas:
     login-per-minute: ${IDENTITY_QUOTA_LOGIN_PER_MINUTE:300}
     user-reads-per-minute: ${IDENTITY_QUOTA_USER_READS_PER_MINUTE:900}

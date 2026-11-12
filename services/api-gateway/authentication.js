@@ -136,16 +136,9 @@ function createAuthentication({ LOCAL_JWT_VERIFY, APP_JWT_SECRET, upstreams, tok
         ? AbortSignal.any([req.gatewayAbortSignal, AbortSignal.timeout(10_000)])
         : AbortSignal.timeout(10_000),
     });
-    if (response.status === 401) return null;
-    if (response.status === 403) {
-      const denied = await response.json().catch(() => null);
-      if (denied?.code === 'STEP_UP_REQUIRED') {
-        const error = new Error('Passkey verification required');
-        error.code = 'STEP_UP_REQUIRED';
-        throw error;
-      }
-      return null;
-    }
+    // A 403 is a refusal like a 401, whatever its body says. An identity revision released before passkey
+    // step-up was removed can still answer 403 STEP_UP_REQUIRED; it is never passed on to the client.
+    if (response.status === 401 || response.status === 403) return null;
     if (response.status === 429) {
       const error = new Error('Identity request quota exceeded');
       error.code = 'IDENTITY_QUOTA_EXCEEDED';
@@ -157,16 +150,7 @@ function createAuthentication({ LOCAL_JWT_VERIFY, APP_JWT_SECRET, upstreams, tok
     return payload && payload.active ? payload.principal : null;
   }
 
-  function requiresStepUp(pathname, method, principal) {
-    if (/^\/api\/v1\/auth\/(?:passkeys|logout|refresh)(?:\/|$)/.test(pathname)) return false;
-    const mutating = !['GET', 'HEAD', 'OPTIONS'].includes(method);
-    if (principal?.role === 'SUPERADMIN' && mutating) return true;
-    return /\/(?:export|exports)(?:\/|$)/i.test(pathname)
-      || (method === 'DELETE' && /\/students(?:\/|$)/.test(pathname))
-      || (mutating && /\/(?:payments|billing-payments|pay|refunds|invoices|purge|roles|permissions|assignments)(?:\/|$)/.test(pathname));
-  }
-
-  return { requiresUserAuth, isCookieAuthPath, verifyJwtLocally, principalFromClaims, authenticate, introspect, requiresStepUp };
+  return { requiresUserAuth, isCookieAuthPath, verifyJwtLocally, principalFromClaims, authenticate, introspect };
 }
 
 module.exports = { createAuthentication };

@@ -362,7 +362,10 @@ public class CatalogReadRepository {
             emitOrderUpserted(placed);
             return placed;
         }
+        // A legacy order is placed once, from DRAFT, as the structured path requires. Placing it again would rewind an
+        // approved or delivered order and reset its approval state.
         CatalogOrderRow current = requiredOrder(id);
+        if (!DRAFT.equals(current.status())) throw notPlaceable(current.status());
         String category = normalize(current.category(), "");
         String newStatus;
         String designStatus;
@@ -380,23 +383,35 @@ public class CatalogReadRepository {
             designStatus = current.designStatus();
             superadminStatus = current.superadminApprovalStatus();
         }
-        jdbc.sql("""
+        // The read above takes no lock, so the write re-checks DRAFT itself: of two concurrent placements, the second waits
+        // for the first's row lock, then finds the order no longer a draft and changes nothing.
+        int changed = jdbc.sql("""
                 UPDATE catalog.catalog_orders
                 SET status = :status, design_status = :designStatus,
                     superadmin_approval_status = :superadminStatus,
                     placed_at = :placedAt, placed_by = :placedBy, version = version + 1
-                WHERE id = :id
+                WHERE id = :id AND status = :draft
                 """)
                 .param("id", id)
+                .param("draft", DRAFT)
                 .param("status", newStatus)
                 .param("designStatus", designStatus)
                 .param("superadminStatus", superadminStatus)
                 .param("placedAt", OffsetDateTime.now())
                 .param("placedBy", actorId)
                 .update();
+        if (changed == 0) throw notPlaceable(requiredOrder(id).status());
         CatalogOrderRow placed = requiredOrder(id);
         emitOrderUpserted(placed);
         return placed;
+    }
+
+    private static final String DRAFT = "DRAFT";
+
+    /** The structured path's refusal for the same request (CatalogOrderFormService.requireStatus), so both form versions answer alike. */
+    private static org.springframework.web.server.ResponseStatusException notPlaceable(String status) {
+        return new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "This action is unavailable while the order is " + status);
     }
 
     @Transactional

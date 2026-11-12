@@ -1,7 +1,7 @@
 """Guarded fresh dev journal acceptance. Default mode performs no cloud calls.
 
 Explicit apply modes use bounded fixed-project owner jobs. Browser deletion is a separate
-normal authenticated CTAP2 ceremony; this helper never directly deletes a student.
+normal authenticated, confirmed DELETE request; this helper never directly deletes a student.
 """
 import argparse
 import hashlib

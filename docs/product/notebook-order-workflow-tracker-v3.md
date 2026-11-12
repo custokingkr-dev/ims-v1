@@ -94,6 +94,8 @@ document is a specification only; no code, migration or configuration was change
 ([server.js:925-932](../../services/api-gateway/server.js#L925-L932)); approvals, sign-offs, reopening,
 reassignment, contacts, time slots and operator management by superadmin will prompt for it.
 
+> **Update 2026-11-12:** passkeys and step-up verification were removed entirely at the owner's request. Superadmin writes no longer prompt for any verification, so the finding above no longer applies.
+
 ### Time slots
 
 - Each step has a time slot, **database-configurable per step** and **customisable per school per step by

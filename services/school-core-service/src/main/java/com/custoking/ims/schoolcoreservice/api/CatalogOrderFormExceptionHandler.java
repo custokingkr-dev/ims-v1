@@ -5,6 +5,8 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
@@ -12,11 +14,13 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 /**
- * Carries the reason of a refused order-form request to the screen as {@code {"message": ...}}, which is where the
- * frontend looks for it. Without this the message is dropped and the user sees a generic failure instead of, for
- * example, "No more images allowed. Contact IT.". Limited to the order-form controller so no other endpoint changes.
+ * Carries the reason of a refused order-form or production-workflow request to the screen as {@code {"message": ...}},
+ * which is where the frontend looks for it. Without this the message is dropped and the user sees a generic failure
+ * instead of, for example, "No more images allowed. Contact IT." or "Workflow changed; refresh and try again". Limited
+ * to those two controllers so no other endpoint changes. A workflow request that reaches no controller (wrong method,
+ * unknown path) gets its message from {@link ProductOrderWorkflowRouteExceptionHandler} instead.
  */
-@RestControllerAdvice(assignableTypes = CatalogOrderFormController.class)
+@RestControllerAdvice(assignableTypes = {CatalogOrderFormController.class, ProductOrderWorkflowController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class CatalogOrderFormExceptionHandler {
 
@@ -28,5 +32,16 @@ public class CatalogOrderFormExceptionHandler {
             reason = status instanceof HttpStatus known ? known.getReasonPhrase() : "Request refused";
         }
         return ResponseEntity.status(status).headers(exception.getHeaders()).body(Map.of("message", reason));
+    }
+
+    /** A body that is not JSON of the expected shape, for example a version sent as text. */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, String>> unreadable(HttpMessageNotReadableException exception) {
+        return ResponseEntity.badRequest().body(Map.of("message", "The request could not be read. Refresh and try again"));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<Map<String, String>> unsupported(HttpMediaTypeNotSupportedException exception) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(Map.of("message", "This request's content type is not supported"));
     }
 }

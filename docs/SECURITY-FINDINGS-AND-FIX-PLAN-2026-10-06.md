@@ -45,6 +45,8 @@ Evidence already collected: 154 targeted tests in the architecture review and 18
 | SEC-08 | P2 Conditional | Cross-tab refresh coordination is absent; strict reuse detection may revoke a legitimate session family during concurrent refresh. Reproduce in browsers before selecting browser locking or carefully bounded server handling. | Multiple tabs refresh without avoidable logout; genuine stolen-token reuse still revokes the family. Test logout/reset races across replicas. | Identity and frontend |
 | SEC-09 | P2 Source/Debt | Transient refresh failure clears client auth state; memory-token comments overstate XSS protection. Distinguish temporary availability failure from confirmed session invalidity and correct the documentation. | A transient upstream outage has deliberate retry/recovery UX; invalid/revoked sessions still clear credentials; no durable access-token storage is introduced. | Frontend |
 
+Note for the SEC-05 row. Passkey step-up and dual-admin recovery were implemented after this assessment. Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again.
+
 ### Availability browser and dependencies
 
 | ID | Priority and evidence | Finding and fix | Acceptance criterion | Suggested owner |

@@ -11,9 +11,9 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 54,
-    "endpoints": 489,
-    "canonicalEndpoints": 378,
+    "controllers": 55,
+    "endpoints": 487,
+    "canonicalEndpoints": 376,
     "compatibilityEndpoints": 90,
     "internalEndpoints": 21,
     "diagnosticAliases": 12,
@@ -1045,16 +1045,6 @@
     },
     {
       "service": "identity-service",
-      "controller": "PasskeyController",
-      "classification": "canonical",
-      "basePaths": [
-        "/api/v1/auth/passkeys"
-      ],
-      "endpointCount": 7,
-      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java"
-    },
-    {
-      "service": "identity-service",
       "controller": "PasswordResetController",
       "classification": "canonical",
       "basePaths": [
@@ -1152,6 +1142,16 @@
       ],
       "endpointCount": 4,
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/QuotationDocumentController.java"
+    },
+    {
+      "service": "operations-service",
+      "controller": "SchoolWhatsAppGroupController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/workflows/school-whatsapp-groups"
+      ],
+      "endpointCount": 2,
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/SchoolWhatsAppGroupController.java"
     },
     {
       "service": "operations-service",
@@ -1436,6 +1436,16 @@
     },
     {
       "service": "school-core-service",
+      "controller": "ProductOrderWorkflowController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/catalog/orders"
+      ],
+      "endpointCount": 3,
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/ProductOrderWorkflowController.java"
+    },
+    {
+      "service": "school-core-service",
       "controller": "StudentExportController",
       "classification": "canonical",
       "basePaths": [
@@ -1693,7 +1703,7 @@
       "path": "/api/v1/auth/introspect",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 86
+      "line": 85
     },
     {
       "service": "identity-service",
@@ -1702,7 +1712,7 @@
       "path": "/api/v1/auth/login",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 57
+      "line": 56
     },
     {
       "service": "identity-service",
@@ -1711,70 +1721,7 @@
       "path": "/api/v1/auth/logout",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 77
-    },
-    {
-      "service": "identity-service",
-      "controller": "PasskeyController",
-      "method": "GET",
-      "path": "/api/v1/auth/passkeys",
-      "classification": "canonical",
-      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
-      "line": 28
-    },
-    {
-      "service": "identity-service",
-      "controller": "PasskeyController",
-      "method": "POST",
-      "path": "/api/v1/auth/passkeys/assertion/options",
-      "classification": "canonical",
-      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
-      "line": 37
-    },
-    {
-      "service": "identity-service",
-      "controller": "PasskeyController",
-      "method": "POST",
-      "path": "/api/v1/auth/passkeys/assertion/verify",
-      "classification": "canonical",
-      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
-      "line": 38
-    },
-    {
-      "service": "identity-service",
-      "controller": "PasskeyController",
-      "method": "POST",
-      "path": "/api/v1/auth/passkeys/recovery/approve",
-      "classification": "canonical",
-      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
-      "line": 48
-    },
-    {
-      "service": "identity-service",
-      "controller": "PasskeyController",
-      "method": "POST",
-      "path": "/api/v1/auth/passkeys/recovery/request",
-      "classification": "canonical",
-      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
-      "line": 44
-    },
-    {
-      "service": "identity-service",
-      "controller": "PasskeyController",
-      "method": "POST",
-      "path": "/api/v1/auth/passkeys/registration/options",
-      "classification": "canonical",
-      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
-      "line": 29
-    },
-    {
-      "service": "identity-service",
-      "controller": "PasskeyController",
-      "method": "POST",
-      "path": "/api/v1/auth/passkeys/registration/verify",
-      "classification": "canonical",
-      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasskeyController.java",
-      "line": 33
+      "line": 76
     },
     {
       "service": "identity-service",
@@ -1810,7 +1757,7 @@
       "path": "/api/v1/auth/refresh",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 65
+      "line": 64
     },
     {
       "service": "identity-service",
@@ -2696,6 +2643,24 @@
     },
     {
       "service": "operations-service",
+      "controller": "SchoolWhatsAppGroupController",
+      "method": "GET",
+      "path": "/api/v1/workflows/school-whatsapp-groups/{schoolId}",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/SchoolWhatsAppGroupController.java",
+      "line": 51
+    },
+    {
+      "service": "operations-service",
+      "controller": "SchoolWhatsAppGroupController",
+      "method": "PUT",
+      "path": "/api/v1/workflows/school-whatsapp-groups/{schoolId}/{target}",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/SchoolWhatsAppGroupController.java",
+      "line": 59
+    },
+    {
+      "service": "operations-service",
       "controller": "FirefightingPublicCompatibilityController",
       "method": "POST",
       "path": "/api/v1/workspace/firefighting",
@@ -3574,7 +3539,7 @@
       "path": "/api/v1/catalog/orders/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 61
+      "line": 64
     },
     {
       "service": "school-core-service",
@@ -3583,7 +3548,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 114
+      "line": 117
     },
     {
       "service": "school-core-service",
@@ -3592,7 +3557,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 121
+      "line": 124
     },
     {
       "service": "school-core-service",
@@ -3601,7 +3566,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets/{assetId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 132
+      "line": 135
     },
     {
       "service": "school-core-service",
@@ -3610,7 +3575,7 @@
       "path": "/api/v1/catalog/orders/{id}/assets/{assetId}/content",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 140
+      "line": 143
     },
     {
       "service": "school-core-service",
@@ -3637,7 +3602,7 @@
       "path": "/api/v1/catalog/orders/{id}/form",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 54
+      "line": 57
     },
     {
       "service": "school-core-service",
@@ -3650,12 +3615,39 @@
     },
     {
       "service": "school-core-service",
+      "controller": "ProductOrderWorkflowController",
+      "method": "GET",
+      "path": "/api/v1/catalog/orders/{id}/production-workflow",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/ProductOrderWorkflowController.java",
+      "line": 37
+    },
+    {
+      "service": "school-core-service",
+      "controller": "ProductOrderWorkflowController",
+      "method": "PUT",
+      "path": "/api/v1/catalog/orders/{id}/production-workflow/stages/{stageCode}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/ProductOrderWorkflowController.java",
+      "line": 44
+    },
+    {
+      "service": "school-core-service",
+      "controller": "ProductOrderWorkflowController",
+      "method": "POST",
+      "path": "/api/v1/catalog/orders/{id}/production-workflow/stages/{stageCode}/complete",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/ProductOrderWorkflowController.java",
+      "line": 52
+    },
+    {
+      "service": "school-core-service",
       "controller": "CatalogOrderFormController",
       "method": "PUT",
       "path": "/api/v1/catalog/orders/{id}/quote",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 69
+      "line": 72
     },
     {
       "service": "school-core-service",
@@ -3691,7 +3683,7 @@
       "path": "/api/v1/catalog/orders/{id}/tracker-summary",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 91
+      "line": 94
     },
     {
       "service": "school-core-service",
@@ -3700,7 +3692,7 @@
       "path": "/api/v1/catalog/orders/{id}/tracker/ensure",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 82
+      "line": 85
     },
     {
       "service": "school-core-service",
@@ -3718,7 +3710,7 @@
       "path": "/api/v1/catalog/orders/{id}/workbook-preview",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 98
+      "line": 101
     },
     {
       "service": "school-core-service",
@@ -5239,7 +5231,7 @@
       "path": "/api/v1/supply/orders/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 61
+      "line": 64
     },
     {
       "service": "school-core-service",
@@ -5248,7 +5240,7 @@
       "path": "/api/v1/supply/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 114
+      "line": 117
     },
     {
       "service": "school-core-service",
@@ -5257,7 +5249,7 @@
       "path": "/api/v1/supply/orders/{id}/assets",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 121
+      "line": 124
     },
     {
       "service": "school-core-service",
@@ -5266,7 +5258,7 @@
       "path": "/api/v1/supply/orders/{id}/assets/{assetId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 132
+      "line": 135
     },
     {
       "service": "school-core-service",
@@ -5275,7 +5267,7 @@
       "path": "/api/v1/supply/orders/{id}/assets/{assetId}/content",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 140
+      "line": 143
     },
     {
       "service": "school-core-service",
@@ -5302,7 +5294,7 @@
       "path": "/api/v1/supply/orders/{id}/form",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 54
+      "line": 57
     },
     {
       "service": "school-core-service",
@@ -5320,7 +5312,7 @@
       "path": "/api/v1/supply/orders/{id}/quote",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 69
+      "line": 72
     },
     {
       "service": "school-core-service",
@@ -5356,7 +5348,7 @@
       "path": "/api/v1/supply/orders/{id}/tracker-summary",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 91
+      "line": 94
     },
     {
       "service": "school-core-service",
@@ -5365,7 +5357,7 @@
       "path": "/api/v1/supply/orders/{id}/tracker/ensure",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 82
+      "line": 85
     },
     {
       "service": "school-core-service",
@@ -5374,7 +5366,7 @@
       "path": "/api/v1/supply/orders/{id}/workbook-preview",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
-      "line": 98
+      "line": 101
     },
     {
       "service": "school-core-service",

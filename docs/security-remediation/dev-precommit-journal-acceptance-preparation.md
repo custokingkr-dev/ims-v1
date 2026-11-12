@@ -63,6 +63,8 @@ reviewed file/hash after deployment. A local file hash alone is not GitHub prove
    and confirmed application DELETE. It includes original server-generated incarnation,
    expected source SHA and guarded-ready marker. Tokens remain browser memory only.
    Run the browser helper with `--apply-dev --private-file tmp/dev-journal-...-private.json`.
+   (2026-11-12: passkeys and step-up verification were removed, so the helper now performs no CTAP2
+   enrollment or assertion; it logs in with the password and sends the confirmed DELETE.)
 4. Run Python `--apply-dev --mode verify` with the same plan/release flags and
    `--browser-proof tmp/dev-journal-browser-proof.json`. It requires the bound actual
    application 200 DELETE proof, then reads SQL receipt and checks source/child absence,

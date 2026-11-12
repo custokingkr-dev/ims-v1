@@ -137,6 +137,8 @@ Each row describes a relevant family, the current evidence and the next verifica
 | Service credential theft/lateral movement | Conditional: IAM plus shared service tokens are trust boundaries | Minimize invoker graph, rotate secrets, scope each service's DB and storage rights |
 | Workflow approval and state bypass | Source finding described above | Enforce step authority and state machine; database-backed concurrent tests |
 
+Note for the phishing and privileged account takeover row. Passkey step-up was implemented after this assessment. Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again.
+
 ### Browser HTTP and injection
 
 | Attack family | Current evidence | Remaining verification or improvement |

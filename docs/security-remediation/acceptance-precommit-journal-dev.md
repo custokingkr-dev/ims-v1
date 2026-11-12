@@ -1,5 +1,7 @@
 # Actual prospective precommit erasure acceptance
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. The CTAP2 ceremony described below was part of the run recorded here; DELETE no longer requires it.
+
 Executed against `custoking-dev` on 2026-10-07 after successful [PR 323](https://github.com/custokingkr-dev/ims-v1/pull/323) release [37643895536](https://github.com/custokingkr-dev/ims-v1/actions/runs/37643895536), source `25eb41d9bd0915c9fe9ec60e5078f6492f118380`. [Independent release readback](acceptance-durability-dev-release.json) verified all seven Ready revisions with 100% untagged traffic, five exact changed image digests, two unchanged revisions, all seven journal configuration pins and absence of five owner migration jobs. [Machine-readable live evidence](acceptance-precommit-journal-dev.json) retains exact fixture and outcome bindings.
 
 One new synthetic non-contact student, school `990008101`, student `990008301`, and isolated SCHOOL_ADMIN `990008201` were created only after a bounded live collision check. The browser used normal login, fresh Chromium software CTAP2 registration/assertion with user verification, and the real confirmed application DELETE. All nine browser checks passed, including DELETE 200 and subsequent student GET 404. No service-token bypass or direct SQL student deletion was used.

@@ -1,5 +1,7 @@
 # Security implementation and verification ledger
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. Entries below that describe passkey enrollment, step-up, dual-admin recovery or physical security keys (SEC-05, VER-03, VER-04 and the passkey acceptance runs) are historical.
+
 [PR342](https://github.com/custokingkr-dev/ims-v1/pull/342) is merged as `629bb9bd432d5fcd9cc2f05fd548ca7ee7ff9f06` and [dev release 37971242023](https://github.com/custokingkr-dev/ims-v1/actions/runs/37971242023) is accepted. Source CI and release each passed platform 498/498 and school 986/986 with zero failures, errors or skips; the separate Linux dashboard helper suite passed 11. Source and postmerge CodeQL passed both actual uploads. Independent checks bind two changed runtimes and five retained PR330 runtimes, all seven Ready at 100% traffic with guarded roles and configuration. Two fresh high/critical scan gates, four additive rollback tags, fifteen public authorization denials and frontend CSP passed. The two fresh SARIF scans retain 34 actual LOW/MEDIUM findings, including two libpng `0.7` rows for CVE-2026-46675. These observations and the current scanner/vendor disagreement remain reported without VEX or suppression. [Completion](acceptance-owner-execution-completion.json), [runtime proof](acceptance-owner-execution-dev-release.json), [current selected-image scans](acceptance-owner-execution-current-scan-inventory.json). The libpng fixed-version and signed publisher/binary checkpoint is closed for the two prior inspected PR340 digests; other native advisories remain open. Nine owner groups plus native applicability and local snapshot custody remain open. Earlier pending captures keep their bytes and dates.
 
 
@@ -126,6 +128,8 @@ Earlier read-only owner checks found repository administration unavailable and d
 | SEC-33 | Implemented CRLF-safe generated drift checks and LF attributes; checks passed. |
 | SEC-34 | Implemented typed financial/workflow mutations and contract convergence; contract schemas/wrappers and strict version parsing verified; current UI uses independent FF approval routes. |
 
+Note for the SEC-05 row. Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again.
+
 ## Verification tasks
 
 | ID | Current evidence and remaining criteria |
@@ -142,6 +146,8 @@ Earlier read-only owner checks found repository administration unavailable and d
 | VER-10 | Exact runtime scale metadata and local pool fixtures verified. Live240 reads passed p95 422ms and documented memory Usage guard. Peak/global budget, agreed SLO and physical drain remain unproved; read-only198-revision deletion review prepared. |
 | VER-11 | Pinned WIF/release/image gates and mandatory CI/CodeQL passed for PR 321 and its successful two-service dev release, with five unchanged exact-service readbacks. PR 323 mandatory CI/CodeQL and its five-service dev release passed; seven exact Ready revisions and five absent owner jobs were independently verified. PR 324 mandatory CI/CodeQL and its school-only dev release also passed, with 952/952 school tests, one fresh exact-digest scan, seven Ready revisions/six unchanged and the owner job absent. Repository enforcement requires administrator readback; scoped CodeQL results are not repository-wide historical assurance. |
 | VER-12 | Private encrypted source backups/PITR remain enabled. Actual isolated recovery verified12 schemas+2marker checksums and resource absence; interruption prevents a30minRTOpass. Dev external journal infrastructure/control/IAM is now verified, and prospective source safeguards are CI-verified and deployed by PR 323; the actual one-fixture canonical intent/receipt/source deletion and cleanup passed, with later one-fixture downstream convergence proved; photo/provider and governed full restore remain separate. Approved RPO/RTO/retention, complete old-epoch/legacy coverage, physically proved full multi-service restore fencing/purge and alert recipient exercise remain open. |
+
+Note for the VER-03 and VER-04 rows. Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. Their passkey parts no longer apply.
 
 ## Evidence
 

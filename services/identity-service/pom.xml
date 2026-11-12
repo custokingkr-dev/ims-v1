@@ -13,12 +13,19 @@
     <name>custoking-identity-service</name>
     <description>Custoking IMS identity microservice</description>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- google-auth-library-oauth2-http brings guava 33.6.0-jre (CVE-2026-102554). The removed WebAuthn
+                 library used to pull 33.8.0-jre ahead of it; keep that version so runtime guava is unchanged. -->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>33.8.0-jre</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
-        <dependency>
-            <groupId>com.yubico</groupId>
-            <artifactId>webauthn-server-core</artifactId>
-            <version>2.9.0</version>
-        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
@@ -68,7 +75,7 @@
             <version>0.13.0</version>
             <scope>runtime</scope>
         </dependency>
-        <!-- JJWT and WebAuthn require Jackson 2 alongside Spring's Jackson 3.
+        <!-- jjwt-jackson requires Jackson 2 alongside Spring's Jackson 3.
              Align the explicit databind dependency with the patched parent Jackson 2 BOM. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

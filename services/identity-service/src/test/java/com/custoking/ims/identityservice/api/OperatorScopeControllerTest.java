@@ -28,8 +28,8 @@ class OperatorScopeControllerTest {
     private final OperatorDirectory directory = mock(OperatorDirectory.class);
     private final MockMvc mvc = MockMvcBuilders
             .standaloneSetup(new OperatorScopeController(commands, directory, IDENTITY_TOKEN))
-            .addFilters(com.custoking.ims.identityservice.VerifiedSessionFixtures.filter())
-            .defaultRequest(get("/").header("X-Authenticated-User-Id", "1").header("X-Authenticated-Session-Id", "verified-test-session"))
+            .addFilters(new com.custoking.ims.identityservice.security.TenantContextFilter())
+            .defaultRequest(get("/").header("X-Authenticated-User-Id", "1"))
             .build();
 
     @AfterEach

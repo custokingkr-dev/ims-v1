@@ -1,5 +1,7 @@
 # Identity and dashboard dev acceptance â€” 2026-10-07
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. The passkey and dual-control recovery rows below record past runs of a feature that no longer exists.
+
 These are executed, isolated `custoking-dev` acceptance results. They do not certify production or physical authenticator interoperability. The main identity signing configuration was not changed. The main implementation ledger remains authoritative for the broader plan.
 
 | Executed check | Result | Evidence |

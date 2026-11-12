@@ -62,7 +62,27 @@ class CatalogOrderFormControllerTest {
                 0L, 0L, 0L, "ORDER_DETAILS", null, null, null, null, null, null, null, null, "NOT_REQUIRED", "NOT_SUBMITTED",
                 null, null, 7L, null, null, null, 1L, 1L, null, null, null, null, null, "School A", 2, "NOT_APPLICABLE", true)));
         mvc.perform(get("/api/v1/supply/orders/CK-1/form").header("X-Catalog-Service-Token", "test-token"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.order.trackerManaged").value(true));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.order.trackerManaged").value(true))
+                .andExpect(jsonPath("$.order.productionWorkflowAvailable").value(false));
+    }
+
+    /** The order screen shows the production workflow only where the server says one exists; it keeps no category list. */
+    @Test void theFormPayloadSaysWhetherAProductionWorkflowIsAvailable() throws Exception {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+        var row = new CatalogReadRepository.CatalogOrderRow("CK-2", "FLEX", "{}",
+                0L, 0L, 0L, "PROCESSING", null, null, null, null, null, null, null, null, "NOT_REQUIRED", "PENDING",
+                null, null, 7L, null, null, null, 4L, 1L, null, null, null, null, null, "School A", 2, "PENDING_PRICING", false);
+        var workflows = mock(com.custoking.ims.schoolcoreservice.persistence.ProductOrderWorkflowService.class);
+        when(workflows.available(row)).thenReturn(true);
+        var controller = new CatalogOrderFormController(forms, orders, "test-token");
+        controller.configureWorkflows(workflows);
+        mvc = MockMvcBuilders.standaloneSetup(controller).build();
+        when(forms.detail("CK-2")).thenReturn(new java.util.LinkedHashMap<>(java.util.Map.of("formVersion", 2)));
+        when(orders.order("CK-2")).thenReturn(java.util.Optional.of(row));
+        mvc.perform(get("/api/v1/supply/orders/CK-2/form").header("X-Catalog-Service-Token", "test-token"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.order.productionWorkflowAvailable").value(true))
+                .andExpect(jsonPath("$.order.id").value("CK-2")).andExpect(jsonPath("$.order.schoolId").value(4))
+                .andExpect(jsonPath("$.order.category").value("FLEX")).andExpect(jsonPath("$.order.order").doesNotExist());
     }
 
     @Test void streamedFilesArePrivateAndCannotExecuteInline() throws Exception {

@@ -2,7 +2,9 @@ package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.CatalogOrderFormService;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository;
+import com.custoking.ims.schoolcoreservice.persistence.ProductOrderWorkflowService;
 import com.custoking.ims.schoolcoreservice.photoimport.NotebookOrderWorkbookParser;
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +38,7 @@ public class CatalogOrderFormController {
     private final CatalogReadRepository orders;
     private final String token;
     private final NotebookOrderWorkbookParser workbookParser;
+    private ProductOrderWorkflowService workflows;
 
     @Autowired
     public CatalogOrderFormController(CatalogOrderFormService forms, CatalogReadRepository orders,
@@ -151,9 +154,24 @@ public class CatalogOrderFormController {
                 .body(content.bytes());
     }
 
+    /** Optional: without it (unit tests) no order offers a production workflow. */
+    @Autowired(required = false)
+    public void configureWorkflows(ProductOrderWorkflowService workflows) {
+        this.workflows = workflows;
+    }
+
+    /**
+     * The order as the order screen reads it, plus {@code productionWorkflowAvailable}: whether
+     * {@code GET /api/v1/catalog/orders/{id}/production-workflow} would answer this caller with a workflow. The server
+     * owns which categories have one, so the screen never keeps its own list.
+     */
+    public record OrderDetail(@JsonUnwrapped CatalogReadRepository.CatalogOrderRow order, boolean productionWorkflowAvailable) { }
+
     private Map<String, Object> detailResponse(String id) {
         Map<String, Object> result = forms.detail(id);
-        result.put("order", orders.order(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found")));
+        CatalogReadRepository.CatalogOrderRow order = orders.order(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        result.put("order", new OrderDetail(order, workflows != null && workflows.available(order)));
         return result;
     }
 

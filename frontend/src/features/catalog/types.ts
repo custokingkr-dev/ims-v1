@@ -49,7 +49,9 @@ export interface FormOrderDetail {
   order: { id: string; schoolId?: number; status: string; requiredByDate?: string; notes?: string;
     subtotal: number; gst: number; totalAmount: number; approvedDesignAssetId?: number;
     /** True for a notebook order placed on the notebook order tracker; absent or false keeps the approval flow (owner decision D1). */
-    trackerManaged?: boolean | null; [key: string]: unknown };
+    trackerManaged?: boolean | null;
+    /** True exactly when GET /catalog/orders/{id}/production-workflow serves this caller; the server owns the category list. */
+    productionWorkflowAvailable?: boolean | null; [key: string]: unknown };
   formDefinition: FormDefinition; orderSelections: SelectionSnapshot; lines: SavedLine[]; assets: OrderAsset[];
   formVersion: number; pricingStatus: string; version: number; quantityRuleResults: unknown[]; approvedDesignAssetId?: number | null;
 }

@@ -11,7 +11,7 @@ EXPECTED=['api-gateway','identity-service','frontend','school-core-service','ope
 POWERSHELL=shutil.which('pwsh') or shutil.which('powershell.exe')
 
 class PrincipalCarrierReleaseOrderTest(unittest.TestCase):
-    def test_both_real_release_scripts_install_carrier_and_step_up_dependencies_first(self):
+    def test_both_real_release_scripts_install_carrier_identity_and_frontend_before_backends(self):
         for filename in ['invoke-clouddeploy-release.ps1','invoke-direct-cloudrun-release.ps1']:
             with self.subTest(filename=filename),tempfile.TemporaryDirectory(prefix='ims-release-order-') as folder:
                 source=ROOT/'scripts'/filename

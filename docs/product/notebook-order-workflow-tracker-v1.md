@@ -109,6 +109,9 @@ and are not all durations ("Before bulk print", "Daily follow-up") — see Q7.
   `SUPERADMIN`** ([server.js:925-932](../../services/api-gateway/server.js#L925-L932)). Every superadmin
   write in this feature (approval, SLA edits, contacts, reallocation) will therefore prompt for
   passkey verification. Operators are not subject to this rule on these routes.
+
+  > **Update 2026-11-12:** passkeys and step-up verification were removed entirely at the owner's request. Superadmin writes no longer prompt for any verification, so the finding above no longer applies.
+
 - **[Repo]** The only email-sending code found is `PasswordResetMailer` in identity-service,
   SMTP-based and disabled by default (`identity.password-reset.enabled=false`). The notification
   service is built around MSG91 delivery. No general-purpose email sender for order events was found.
@@ -210,7 +213,7 @@ must be confirmed; the sequential rule in R2 applies to all steps regardless.
   add **optional comments**.
 - **[Prototype]** Prototype fields: choose the design version, comments, *Approve design* and
   *Request changes* buttons. **[Prototype]** Step cannot complete until approved.
-- **[Repo]** Superadmin writes require passkey verification (see baseline).
+- **[Repo]** Superadmin writes require passkey verification (see baseline). *(Removed 2026-11-12; see the note in the baseline.)*
 - **[Open]** Interaction with the existing design-approval state (Q3), and whether "Request changes"
   is in scope — the request mentions approval only (Q3).
 

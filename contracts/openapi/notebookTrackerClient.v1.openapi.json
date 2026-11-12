@@ -255,6 +255,127 @@
         }
       }
     },
+    "/api/v1/workflows/school-whatsapp-groups/{schoolId}": {
+      "get": {
+        "operationId": "getSchoolWhatsAppGroupLinks",
+        "summary": "A school's WhatsApp group links by school, for product orders: the rows a notebook order's endpoints share, plus PRODUCT_VENDOR, which those endpoints leave out",
+        "x-ims-controller": "SchoolWhatsAppGroupController",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configured school-scoped WhatsApp group links",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Only superadmin and operators assigned to the whole school can read group links; an operator scoped there to one item only is refused, as product orders are hidden from them"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/school-whatsapp-groups/{schoolId}/{target}": {
+      "put": {
+        "operationId": "saveSchoolWhatsAppGroupLink",
+        "summary": "Sets or (with a blank url) removes one of a school's WhatsApp group links",
+        "x-ims-controller": "SchoolWhatsAppGroupController",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "target",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SCHOOL_GROUP",
+                "INTERNAL_APPROVAL",
+                "PRODUCT_VENDOR",
+                "board_shree",
+                "board_national",
+                "board_prime",
+                "lam_glosspro",
+                "lam_crystal",
+                "lam_brightfinish",
+                "binder_perfect",
+                "binder_classic",
+                "binder_metro",
+                "offset_metro",
+                "offset_precision",
+                "offset_cityline"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppGroupLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated school-scoped WhatsApp group links",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid target or WhatsApp invite link"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Only superadmin can update group links"
+          }
+        }
+      }
+    },
     "/api/v1/workflows/notebook-orders/{orderId}/steps/{step}/draft": {
       "put": {
         "operationId": "saveNotebookStepDraft",

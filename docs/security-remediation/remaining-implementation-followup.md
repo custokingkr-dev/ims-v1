@@ -1,5 +1,7 @@
 # Provider, restore and native-library follow-up — 2026-10-08
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. The physical authenticator matrix no longer applies.
+
 The source changes were implemented and locally tested at the checkpoint below. Subsequent CI/dev acceptance is recorded separately here. The complete security plan remains open. Production has not been changed.
 
 ## Accepted source and platform dev release
