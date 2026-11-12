@@ -63,7 +63,7 @@ const {
   proxyToUrl,
   proxyLifecycle,
   cookieAuthRequestAllowed,
-  requiresStepUp,
+  isRetiredUpstreamPath,
 } = require('./server');
 const {
   configuredResourceAttributes,
@@ -1190,14 +1190,167 @@ test('JWT purpose, issuer, audience, expiration and algorithm are mandatory befo
   }), principal);
 });
 
-test('step-up denial survives introspection as403 and privileged policies cover canonical billing mutations', async () => {
+// Sends the request target byte for byte (http.request does no client-side normalisation), so tests can
+// replace global.fetch for the gateway's own upstream calls.
+function sendToGateway(baseUrl, method, path, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const outgoing = http.request({ host: baseUrl.hostname, port: baseUrl.port, method, path,
+      headers: { 'content-length': '0', ...headers } }, (response) => {
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => resolve({ status: response.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
+    });
+    outgoing.on('error', reject);
+    outgoing.end();
+  });
+}
+
+// Stands in for identity and every upstream; records what the gateway sends to each.
+function recordingUpstreams(principalFor) {
+  const calls = { introspected: [], forwarded: [] };
+  const fake = async (url, init) => {
+    const target = new URL(String(url));
+    if (target.pathname === '/api/v1/auth/introspect') {
+      const body = JSON.parse(init.body);
+      calls.introspected.push(body);
+      return new Response(JSON.stringify({ active: true, principal: principalFor(body) }), { status: 200 });
+    }
+    if (init.body) for await (const _chunk of init.body) { /* drain */ }
+    calls.forwarded.push({ line: `${init.method} ${target.pathname}`, origin: target.origin, headers: init.headers });
+    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  return { calls, fake };
+}
+
+test('introspection treats any 403 as a refusal and never relays a step-up demand', async () => {
   const originalFetch = global.fetch;
   try {
-    global.fetch = async () => new Response(JSON.stringify({ code: 'STEP_UP_REQUIRED' }), { status: 403 });
-    await assert.rejects(() => introspect({ headers: { authorization: 'Bearer token' }, method: 'POST', url: '/api/v1/billing-payments' }, 'step-up'), error => error.code === 'STEP_UP_REQUIRED');
+    // An identity revision released before step-up was removed can still answer like this while a release rolls out.
+    global.fetch = async () => new Response(JSON.stringify({ code: 'STEP_UP_REQUIRED', message: 'Passkey verification required' }), { status: 403 });
+    assert.equal(await introspect({ headers: { authorization: 'Bearer token' }, method: 'POST', url: '/api/v1/billing-payments' }, 'old-identity'), null);
+
+    const baseUrl = new URL(await listen());
+    const response = await sendToGateway(baseUrl, 'POST', '/api/v1/catalog/orders/CK-7/approve', { authorization: 'Bearer old-identity-403' });
+    assert.equal(response.status, 401);
+    assert.deepEqual(JSON.parse(response.body), { message: 'Unauthorized' });
   } finally { global.fetch = originalFetch; }
-  assert.equal(requiresStepUp('/api/v1/billing-payments', 'POST', { role: 'ACCOUNTANT' }), true);
-  assert.equal(requiresStepUp('/api/v1/auth/passkeys/assertion/verify', 'POST', { role: 'SUPERADMIN' }), false);
+});
+
+test('SUPERADMIN mutations and formerly sensitive paths are forwarded with no step-up gate', async () => {
+  const baseUrl = new URL(await listen());
+  const originalFetch = global.fetch;
+  let principal = null;
+  // No stepUpExpiresAt anywhere: nothing on these paths may depend on one.
+  const { calls, fake } = recordingUpstreams(() => principal);
+  global.fetch = fake;
+  const expectForwarded = async (method, path, service) => {
+    calls.forwarded.length = 0;
+    const response = await sendToGateway(baseUrl, method, path, { authorization: 'Bearer no-step-up' });
+    const label = `${principal.role} ${method} ${path}`;
+    assert.equal(response.status, 200, `${label}: ${response.body}`);
+    assert.equal(response.body.includes('STEP_UP_REQUIRED'), false, label);
+    assert.deepEqual(calls.forwarded.map((entry) => entry.line), [`${method} ${path}`], label);
+    assert.equal(calls.forwarded[0].origin, new URL(`http://${service}:8080`).origin, label);
+    // The introspection request keeps its shape, so identity revisions on either side of this release accept it.
+    assert.deepEqual(calls.introspected.at(-1), { token: 'no-step-up', method, path }, label);
+  };
+  try {
+    principal = { userId: 4242, role: 'SUPERADMIN', branchId: null, sessionId: 'sa-session', permissions: [] };
+    await expectForwarded('POST', '/api/v1/catalog/orders/CK-7/approve', 'school-core-service');
+    await expectForwarded('POST', '/api/v1/catalog/orders/CK-7/superadmin-approve', 'school-core-service');
+    await expectForwarded('PATCH', '/api/v1/catalog/orders/CK-7/status', 'school-core-service');
+    await expectForwarded('DELETE', '/api/v1/supply/orders/CK-7/assets/12', 'school-core-service');
+    await expectForwarded('POST', '/api/v1/rbac/users/9/roles/school', 'identity-service');
+    await expectForwarded('DELETE', '/api/v1/rbac/users/9/roles/31', 'identity-service');
+    await expectForwarded('PUT', '/api/v1/rbac/roles/3', 'identity-service');
+    await expectForwarded('POST', '/api/v1/billing-payments', 'billing-service');
+
+    principal = { userId: 77, role: 'SCHOOL_ADMIN', branchId: 3, sessionId: 'admin-session', permissions: [] };
+    await expectForwarded('DELETE', '/api/v1/students/5', 'school-core-service');
+    await expectForwarded('GET', '/api/v1/students/export', 'school-core-service');
+    await expectForwarded('POST', '/api/v1/payments', 'school-core-service');
+    await expectForwarded('POST', '/api/v1/invoices', 'billing-service');
+  } finally { global.fetch = originalFetch; }
+});
+
+test('a client-supplied step-up expiry header is stripped and the gateway no longer forwards one', async () => {
+  assert.equal(isClientSpoofableHeader('x-authenticated-step-up-expires-at'), true);
+  assert.equal(isClientSpoofableHeader('X-Authenticated-Step-Up-Expires-At'), true);
+  const stripped = outboundHeaders({
+    headers: { 'x-authenticated-step-up-expires-at': '2999-01-01T00:00:00Z', 'content-type': 'application/json' },
+    socket: { remoteAddress: '10.0.0.2' },
+  }, 'strip-step-up');
+  assert.equal(stripped['x-authenticated-step-up-expires-at'], undefined);
+  assert.equal(stripped['content-type'], 'application/json');
+
+  const baseUrl = new URL(await listen());
+  const originalFetch = global.fetch;
+  // An identity revision released before step-up was removed still reports an expiry on the principal.
+  const { calls, fake } = recordingUpstreams(() => ({
+    userId: 4242, role: 'SUPERADMIN', branchId: null, sessionId: 'sa-session', permissions: [], stepUpExpiresAt: '2999-01-01T00:00:00Z',
+  }));
+  global.fetch = fake;
+  try {
+    const response = await sendToGateway(baseUrl, 'POST', '/api/v1/catalog/orders/CK-7/approve', {
+      authorization: 'Bearer forged-step-up',
+      'x-authenticated-step-up-expires-at': '2999-01-01T00:00:00Z',
+      'X-Authenticated-Role': 'FORGED',
+    });
+    assert.equal(response.status, 200, response.body);
+    assert.equal(calls.forwarded.length, 1);
+    const { headers } = calls.forwarded[0];
+    assert.deepEqual(Object.keys(headers).filter((name) => /step-up/i.test(name)), []);
+    assert.equal(headers['x-authenticated-user-id'], '4242');
+    assert.equal(headers['x-authenticated-session-id'], 'sa-session');
+    assert.equal(headers['x-authenticated-role'], 'SUPERADMIN');
+  } finally { global.fetch = originalFetch; }
+});
+
+test('passkey routes are no longer routed: they answer as an unknown API path, before authentication', async () => {
+  for (const path of ['/api/v1/auth/passkeys', '/api/v1/auth/passkeys/status', '/api/v1/auth/passkeys/assertion/verify',
+    '/api/v1/auth/%70asskeys/status', '/api/v1/auth/passkeys%2Fstatus']) {
+    assert.equal(isRetiredUpstreamPath(path), true, path);
+  }
+  for (const path of ['/api/v1/auth/login', '/api/v1/auth/passkeysx', '/api/v1/auth/sessions', '/api/v1/auth/%zz']) {
+    assert.equal(isRetiredUpstreamPath(path), false, path);
+  }
+
+  const baseUrl = new URL(await listen());
+  const originalFetch = global.fetch;
+  const upstreamCalls = [];
+  global.fetch = async (url) => { upstreamCalls.push(String(url)); return new Response('{}', { status: 200 }); };
+  try {
+    const unknown = await sendToGateway(baseUrl, 'GET', '/api/v1/unknown-resource');
+    assert.equal(unknown.status, 404);
+    for (const [method, path] of [
+      ['GET', '/api/v1/auth/passkeys/status'],
+      ['GET', '/api/v1/auth/passkeys'],
+      ['POST', '/api/v1/auth/passkeys/registration/options'],
+      ['POST', '/api/v1/auth/passkeys/registration/verify'],
+      ['POST', '/api/v1/auth/passkeys/assertion/options'],
+      ['POST', '/api/v1/auth/passkeys/assertion/verify'],
+      ['POST', '/api/v1/auth/passkeys/recovery/request'],
+      ['POST', '/api/v1/auth/passkeys/recovery/approve'],
+      ['GET', '/identity-api/v1/auth/passkeys/status'],
+      ['GET', '/api/v1/auth/%70asskeys/status'],
+    ]) {
+      for (const headers of [{}, { authorization: 'Bearer signed-in-user' }]) {
+        const response = await sendToGateway(baseUrl, method, path, headers);
+        assert.equal(response.status, unknown.status, `${method} ${path}`);
+        assert.deepEqual(JSON.parse(response.body), JSON.parse(unknown.body), `${method} ${path}`);
+      }
+    }
+    // Neither identity introspection nor any upstream is consulted.
+    assert.deepEqual(upstreamCalls, []);
+  } finally { global.fetch = originalFetch; }
+});
+
+test('an id segment carrying a matrix parameter or escaped separator is forwarded as one literal segment, so Spring cannot strip or split it', () => {
+  const upstream = new URL('https://school-core.example.test');
+  assert.equal(buildUpstreamTarget(upstream, '/api/v1/catalog/orders/CK-7;status/place').pathname, '/api/v1/catalog/orders/CK-7%3Bstatus/place');
+  assert.equal(buildUpstreamTarget(upstream, '/api/v1/catalog/orders/..%3B/assets').pathname, '/api/v1/catalog/orders/..%3B/assets');
+  assert.throws(() => buildUpstreamTarget(upstream, '/api/v1/catalog/orders/CK-7%2Fstatus'), /forbidden segment/);
+  assert.throws(() => buildUpstreamTarget(upstream, '/api/v1/catalog/orders/CK-7%5Cstatus'), /forbidden segment/);
 });
 
 test('proxy whole-body deadline stops a slow body even while bytes continue arriving', async () => {

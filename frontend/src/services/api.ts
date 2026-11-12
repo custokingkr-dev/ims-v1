@@ -98,12 +98,7 @@ export async function refreshToken(): Promise<AuthUser | null> {
 
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError<{ message?: string; code?: string }>) => {
-    if (error.response?.status === 403 && error.response.data?.code === 'STEP_UP_REQUIRED') {
-      window.dispatchEvent(new Event('custoking-step-up-required'));
-      // Do not replay a mutation automatically after a verification ceremony.
-      return Promise.reject(error);
-    }
+  async (error: AxiosError<{ message?: string }>) => {
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
     const isAuthEndpoint = original?.url?.includes('/auth/');
 

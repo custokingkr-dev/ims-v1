@@ -65,6 +65,7 @@ vendor); repositories under forced row-level security; endpoints `GET/POST /api/
 ### Phase 3 — Operators scoped by catalogue item (identity-service)
 Catalogue-item dimension on operator assignments; superadmin-only create/list/disable API; auto-selection rules
 (item-specific, else school-wide, several matches → unassigned); passkey step-up already applies to superadmin writes.
+*(Removed 2026-11-12: passkeys and step-up verification no longer exist, so superadmin writes are not re-verified.)*
 
 ### Phase 4 — Draft images and email intent (school-core)
 New draft asset kind exempt from the one-current rule; 6-image cap; delete; PNG/JPEG/WEBP/PDF, 5 MB; the
@@ -91,4 +92,5 @@ categories; committing or pushing. Nothing is committed until you ask.
 - The `OTEL_SDK_DISABLED` / `SPRING_PROFILES_ACTIVE` overrides needed to run the stack locally are in a scratchpad
   file, not the repo. A repo fix is a separate decision.
 - The passkey prompt appears for every superadmin write; local WebAuthn settings are unset, so those writes may be
-  blocked locally. Operator-side flows are unaffected.
+  blocked locally. Operator-side flows are unaffected. *(No longer true from 2026-11-12: passkeys and step-up
+  verification were removed, so superadmin writes work locally without WebAuthn settings.)*

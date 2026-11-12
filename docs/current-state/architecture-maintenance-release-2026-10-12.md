@@ -88,6 +88,9 @@ areas remain open. The architecture refactor and its deployment do not supply th
 | Native advisories | Review scanner findings against actual installed packages and authoritative vendor advisories for each immutable digest; patch supported fixes and rerun exact-image gates. Do not infer applicability from finding absence. |
 | Private snapshot custody | Privately classify the recorded unclassified local object and obtain exact cleanup approval before any local ref or physical-storage removal. |
 
+Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed, so the Physical
+authenticators area no longer applies. SEC-05 (no phishing-resistant MFA for privileged accounts) is open again.
+
 No provider messages, full restore, physical-device acceptance, owner infrastructure changes or revision
 deletions were performed by this continuation. Existing dated security evidence and pending captures
 retain their recorded scope.

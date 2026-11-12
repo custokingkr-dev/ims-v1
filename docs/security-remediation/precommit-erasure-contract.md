@@ -2,6 +2,8 @@
 
 The source now supports an explicitly enabled **development** erasure journal. After the existing authenticated DELETE authorization, fresh step-up and admission confirmation, it verifies the externally controlled restore epoch and synchronously creates/verifies an immutable deletion intent **before** removing any source or child row. Production defaults to the existing behavior until separately authorized. Source implementation and local tests do not establish live deployment, complete historical journal coverage, physical object purge or restoration-ready status.
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. The DELETE path now checks authorization and admission confirmation only; there is no step-up check.
+
 ## Request and failure behavior
 
 Successful DELETE retains its existing 200 response and `deleted=true, permanent=true` body after the source transaction commits. An enabled but unavailable/misconfigured journal returns 503 before source erasure. Wrong confirmation still fails before any external intent. The source transaction has a 45-second deadline; the complete journal claim has a 25-second deadline and two bounded worker slots, with single-attempt bounded SDK transport. Transport details, credentials and object content are not included in errors.

@@ -1,5 +1,7 @@
 # Portrait metadata: fresh dev photo acceptance
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. The CTAP2 step-up described below was part of the run recorded here; DELETE no longer requires it.
+
 [Sanitized proof](acceptance-portrait-metadata-live-photo-erasure.json) records application source `6f562c4296471263ee2f31d061c19b8d76981ef6`, dev release `37739036093`, and fresh exact seven-service revision/runtime pins. The earlier PR324 photo proof remains unchanged.
 
 Reserved school `990008402`, actor `990008502`, and student `990008602` passed current and retained-witness collision checks. Normal PNG upload/JPEG read and role/input boundaries passed six browser checks. Fresh software CTAP2 step-up and confirmed DELETE passed nine checks, including DELETE200 and GET404.

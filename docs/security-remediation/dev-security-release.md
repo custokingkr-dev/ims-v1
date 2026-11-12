@@ -47,6 +47,8 @@ The [final role catalog](dev-final-runtime-role-catalog.json) passed all five de
 
 Still open: real two-school user/object and WebAuthn ceremonies, managed rotation/emergency recovery rehearsals, actual provider delivery and idle/scale-zero workloads, broker restart/replay/DLQ drills, load/SLO and drain certification, privacy/retention/backup deletion replay, dashboard cross-instance/TTL and protected edge/repository-owned controls.
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. WebAuthn ceremonies are no longer an open item.
+
 The earlier release stopped safely on owner-only zero-policy repair tables. The forward migration fixed that conflict without a guard bypass. Two subsequent operator-canceled attempts performed no deployment work. These histories remain recorded in the gate evidence; the successful final release does not erase remaining verification criteria.
 
 ## Proof provenance and ongoing verification

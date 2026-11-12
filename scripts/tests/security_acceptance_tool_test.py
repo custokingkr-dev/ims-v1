@@ -9,6 +9,11 @@ import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 HELPERS = ROOT / 'scripts/security'
+# Listed in the historical digest file but deleted on 2026-11-12, when passkeys and their recovery flow were removed.
+RETIRED = {
+    'scripts/security/provision-recovery-admin-fixtures.py',
+    'scripts/security/disable-recovery-admin-fixtures.py',
+}
 
 class AcceptanceToolTests(unittest.TestCase):
     def functions(self, filename, names):
@@ -54,6 +59,10 @@ class AcceptanceToolTests(unittest.TestCase):
 
     def test_all_python_entrypoints_refuse_execution_without_explicit_dev_flag(self):
         files = [name for name in json.loads((ROOT / 'docs/security-remediation/acceptance-identity-dashboard-sources.json').read_text()) if name['path'].endswith('.py')]
+        for path in RETIRED:
+            self.assertFalse((ROOT / path).exists(), path)
+        files = [entry for entry in files if entry['path'] not in RETIRED]
+        self.assertTrue(files)
         for entry in files:
             with self.subTest(entry=entry['path']):
                 result = subprocess.run(['python', str(ROOT / entry['path'])], capture_output=True, text=True, timeout=10)

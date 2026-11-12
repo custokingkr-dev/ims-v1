@@ -335,6 +335,59 @@ Required follow-up:
 
 ## Lower Priority Cleanups
 
+### Passkey Leftovers After Removal (2026-11-12)
+
+On 2026-11-12, at the owner's request, passkeys (WebAuthn) and step-up verification were removed. Login is
+password-only, no action asks the user to verify again, and `/api/v1/auth/passkeys/**` no longer exists.
+Nothing emits `STEP_UP_REQUIRED`. The gateway no longer forwards `x-authenticated-step-up-expires-at`, but it
+still strips that header, like every other client-supplied `x-authenticated-*` header. Security consequence:
+SEC-05 (no phishing-resistant MFA for privileged accounts) is open again, so one superadmin password protects
+every school.
+
+Some configuration and data were left in place on purpose, so that removing the feature did not need a Cloud
+Deploy target change or a destructive migration:
+
+- `deploy/cloudrun/identity-service.yaml` still sets `IDENTITY_WEBAUTHN_RP_ID` and
+  `IDENTITY_WEBAUTHN_ORIGINS` from the target parameters `webauthn_rp_id` and `webauthn_origins` in
+  `deploy/clouddeploy/targets-dev.yaml` and `targets-prod.yaml`. Identity starts with or without them.
+- Identity still reads `IDENTITY_WEBAUTHN_ORIGINS` in one place: `allowed-origins:
+  ${IDENTITY_COOKIE_ALLOWED_ORIGINS:${IDENTITY_WEBAUTHN_ORIGINS:}}` in identity `application.yml`. It is the
+  cookie-origin fallback for when `IDENTITY_COOKIE_ALLOWED_ORIGINS` is unset. Both environments set
+  `IDENTITY_COOKIE_ALLOWED_ORIGINS` (`identity_cookie_allowed_origins`), so the fallback is not used today.
+- The four identity tables created by `V9__passkeys_and_session_step_up.sql` and
+  `V10__passkey_dual_control_recovery.sql` are dormant: `identity.passkey_credentials`,
+  `identity.passkey_challenges`, `identity.session_step_up` and `identity.passkey_recovery_requests`. No code
+  reads or writes them. Those two migrations are applied in production, and Flyway validates their checksums,
+  so they must never be edited or deleted.
+- The gateway still forwards `x-authenticated-session-id` on every authenticated request
+  (`services/api-gateway/transport.js`), and still refuses `/api/v1/auth/passkeys/**` before authentication
+  (`isRetiredUpstreamPath` in `routing.js`, called from `server.js`). No current service reads that header.
+  Both exist only for the rollout: the gateway is released before identity. A passkey-aware identity
+  revision still serving behind it needs the session ID for the step-up check on requests routed to identity
+  itself (such as role assignments), and its passkey routes must stay unreachable. `server.test.js` asserts
+  both.
+
+Required follow-up (optional, low risk):
+
+- Remove the two manifest entries and the two target parameters together in one change. Then follow
+  [Releasing after a Cloud Deploy target change](deployment-cicd.md#releasing-after-a-cloud-deploy-target-change):
+  a `targets-<env>.yaml` edit blocks the release until the reconciliation workflow runs. Do not remove only
+  the target parameters, because a missing parameter ships the manifest's literal default (the dev frontend
+  URL). Before dropping `IDENTITY_WEBAUTHN_ORIGINS`, confirm that the serving identity revision in each
+  environment has `IDENTITY_COOKIE_ALLOWED_ORIGINS`, and remove the `application.yml` fallback in the same
+  change.
+- Drop the four dormant tables with a new forward migration (the next free identity version). Do it only
+  after the removal has been in production long enough that rolling back to a passkey-aware identity
+  revision is ruled out. Such a revision would fail without those tables.
+- Under the same condition, remove the gateway's rollout scaffolding: the `x-authenticated-session-id`
+  assignment in `transport.js`; `isRetiredUpstreamPath` (its definition and export in `routing.js`, and its
+  import, call and re-export in `server.js`); and the matching tests in `server.test.js` (the
+  `x-authenticated-session-id` assertion and the retired passkey-route test). Keep stripping every
+  client-supplied `x-authenticated-*` header either way, including `x-authenticated-session-id` and
+  `x-authenticated-step-up-expires-at`.
+- Until that condition holds, api-gateway, identity-service and the frontend roll back together. See
+  [Passkey removal release](../runbooks/rollback.md#passkey-removal-release-2026-11-12).
+
 ### GCP Service Account Strategy Is Broad
 
 All fourteen dev/prod Cloud Run services now use dedicated per-service identities. All seven live dev Cloud

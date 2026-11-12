@@ -86,9 +86,8 @@ def lower_role():
  result=owner_sql('viewer-provenance',sql)
  if result.get('viewerProvisioned')!=1:raise SafeFailure('VIEWER_PROVISION_NOT_CONFIRMED')
  checks=[]
- def check(name,status,expected,data=None):
+ def check(name,status,expected):
   passed=status==expected
-  if status==403 and data and data.get('code')=='STEP_UP_REQUIRED':passed=False
   checks.append(dict(check=name,status=status,expected=expected,passed=passed))
   if not passed:raise SafeFailure('LOWER_ROLE_INVARIANT_FAILED:'+name+':'+str(status))
  status,data=req('POST','/api/v1/auth/login',dict(email=c['email'],password=c['password']))
@@ -101,13 +100,13 @@ def lower_role():
  if data.get('id')!=990007301 or data.get('schoolId')!=990007101:raise SafeFailure('OWN_STUDENT_RESPONSE_MISMATCH')
  status,data=req('GET','/api/v1/students/990007311',token=token);check('foreign-object-concealed',status,404)
  body=dict(schoolId=990007101,fullName='Synthetic Security Student 1',admissionNumber=MARKER+'-STUDENT-1',classId=MARKER+'-CLASS',sectionId=MARKER+'-SECTION-990007101',phone='0000000000',address='Synthetic fixture')
- status,data=req('PUT','/api/v1/students/990007301',body,token);check('valid-own-student-write-permission-denied',status,403,data)
+ status,data=req('PUT','/api/v1/students/990007301',body,token);check('valid-own-student-write-permission-denied',status,403)
  directory_status,directory_data=req('GET','/api/v1/rbac/roles',token=token)
- status,data=req('GET','/api/v1/rbac/user-role-assignments?userId=990007205&limit=1',token=token);check('admin-only-owned-user-assignment-directory-denied',status,403,data)
+ status,data=req('GET','/api/v1/rbac/user-role-assignments?userId=990007205&limit=1',token=token);check('admin-only-owned-user-assignment-directory-denied',status,403)
  spoof={'X-Authenticated-Role':'SUPERADMIN','X-Authenticated-User-Id':'990007201','X-Authenticated-School-Id':'990007102','X-Authenticated-Branch-Id':'990007102','X-Authenticated-Permissions':'*','X-IMS-Principal-Carrier-Token':'Bearer synthetic-spoof'}
  status,data=req('GET','/api/v1/students/990007311',token=token,extra=spoof);check('spoofed-role-carrier-foreign-object-denied',status,404)
- status,data=req('PUT','/api/v1/students/990007301',body,token,spoof);check('spoofed-role-carrier-write-still-denied',status,403,data)
- status,data=req('GET','/api/v1/rbac/user-role-assignments?userId=990007205&limit=1',token=token,extra=spoof);check('spoofed-role-carrier-admin-still-denied',status,403,data)
+ status,data=req('PUT','/api/v1/students/990007301',body,token,spoof);check('spoofed-role-carrier-write-still-denied',status,403)
+ status,data=req('GET','/api/v1/rbac/user-role-assignments?userId=990007205&limit=1',token=token,extra=spoof);check('spoofed-role-carrier-admin-still-denied',status,403)
  proof=dict(schemaVersion=1,project=PROJECT,marker=MARKER,role='VIEWER',userId=990007205,schoolId=990007101,normalLogin=True,validBody=True,allowedOrigin=True,bearerAuthCookieCsrfNotApplicable=True,studentReadGranted=True,studentUpdateGranted=False,roleCatalogObservation=dict(status=directory_status,legitimatelyGrantedRead='role:read' in permissions,initialExpected=403,initialObserved=200,initialAttemptStopped=True,initialHarnessExpectationCorrected=True),checks=checks,passed=all(x['passed'] for x in checks),checkedAtUtc=datetime.datetime.now(datetime.timezone.utc).isoformat())
  (TMP/'security-lower-role-live-proof.json').write_text(json.dumps(proof,indent=2),encoding='utf-8');print(json.dumps(proof))
 def ready_gate(revision):
@@ -116,15 +115,13 @@ def ready_gate(revision):
  svc=json.loads(cloud(['run','services','describe','custoking-platform-service-dev','--region='+REGION,'--format=json']))
  s=svc.get('status',{});t=s.get('traffic',[])
  if s.get('latestReadyRevisionName')!=revision or s.get('latestCreatedRevisionName')!=revision or not any(x.get('type')=='Ready' and x.get('status')=='True' for x in s.get('conditions',[])) or len(t)!=1 or t[0].get('revisionName')!=revision or t[0].get('percent')!=100:raise SafeFailure('EXACT_READY_REVISION_REQUIRED')
-def reset_factors(revision):
+def confirm_erasure_preconditions(revision):
  ready_gate(revision)
- sql="""BEGIN; SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='5s'; SET LOCAL app.bypass_rls='on'; DO $$ BEGIN
- IF (SELECT count(*) FROM student.students WHERE id BETWEEN 990007301 AND 990007320 AND admission_no='SEC-ACPT-20261007-STUDENT-'||(id-990007300) AND created_by='SEC-ACPT-20261007' AND school_id=CASE WHEN id<=990007310 THEN 990007101 ELSE 990007102 END AND photo_url IS NULL)<>20 OR (SELECT count(*) FROM tenant_school.schools WHERE id IN(990007101,990007102) AND name LIKE 'SEC-ACPT-20261007-%')<>2 OR (SELECT count(*) FROM identity.app_users WHERE id IN(990007201,990007202) AND full_name='SEC-ACPT-20261007-'||(id-990007200) AND email='sec-acpt-20261007-'||(id-990007200)||'@security-fixture.invalid' AND role='SCHOOL_ADMIN' AND branch_id=CASE WHEN id=990007201 THEN 990007101 ELSE 990007102 END AND deleted_at IS NULL)<>2 OR EXISTS(SELECT 1 FROM tenant_school.outbox_events WHERE event_type='student.deleted.v1' AND aggregate_id IN(SELECT n::text FROM generate_series(990007301,990007320)n)) THEN RAISE EXCEPTION 'Exact marker ownership/reset precondition failed'; END IF; END $$;
- DELETE FROM identity.passkey_credentials WHERE user_id IN(990007201,990007202); DELETE FROM identity.session_step_up WHERE user_id IN(990007201,990007202); DELETE FROM identity.passkey_challenges WHERE user_id IN(990007201,990007202);
- INSERT INTO identity.rbac_audit_log(event_type,target_user_id,new_value,correlation_id) SELECT 'SYNTHETIC_FIXTURE_AUTHENTICATOR_RESET',id,'Owner maintenance of isolated lost virtual factors before actual browser final erasure step-up only','SEC-ACPT-20261007' FROM identity.app_users WHERE id IN(990007201,990007202);
- SELECT jsonb_build_object('marker','SEC-ACPT-20261007','ownedStudents',20,'ownedSchools',2,'ordinaryActors',2,'resetAudited',true,'privilegedActorsUntouched',true); COMMIT;"""
- result=owner_sql('factor-reset',sql);result.update(checkedAtUtc=datetime.datetime.now(datetime.timezone.utc).isoformat(),project=PROJECT,readyRevision=revision)
- (TMP/'security-final-factor-reset-proof.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
+ sql="""BEGIN READ ONLY; SET LOCAL statement_timeout='15s'; SET LOCAL app.bypass_rls='on'; DO $$ BEGIN
+ IF (SELECT count(*) FROM student.students WHERE id BETWEEN 990007301 AND 990007320 AND admission_no='SEC-ACPT-20261007-STUDENT-'||(id-990007300) AND created_by='SEC-ACPT-20261007' AND school_id=CASE WHEN id<=990007310 THEN 990007101 ELSE 990007102 END AND photo_url IS NULL)<>20 OR (SELECT count(*) FROM tenant_school.schools WHERE id IN(990007101,990007102) AND name LIKE 'SEC-ACPT-20261007-%')<>2 OR (SELECT count(*) FROM identity.app_users WHERE id IN(990007201,990007202) AND full_name='SEC-ACPT-20261007-'||(id-990007200) AND email='sec-acpt-20261007-'||(id-990007200)||'@security-fixture.invalid' AND role='SCHOOL_ADMIN' AND branch_id=CASE WHEN id=990007201 THEN 990007101 ELSE 990007102 END AND deleted_at IS NULL)<>2 OR EXISTS(SELECT 1 FROM tenant_school.outbox_events WHERE event_type='student.deleted.v1' AND aggregate_id IN(SELECT n::text FROM generate_series(990007301,990007320)n)) THEN RAISE EXCEPTION 'Exact marker ownership/erasure precondition failed'; END IF; END $$;
+ SELECT jsonb_build_object('marker','SEC-ACPT-20261007','ownedStudents',20,'ownedSchools',2,'ordinaryActors',2,'preconditionsVerified',true); COMMIT;"""
+ result=owner_sql('erase-precondition',sql);result.update(checkedAtUtc=datetime.datetime.now(datetime.timezone.utc).isoformat(),project=PROJECT,readyRevision=revision)
+ (TMP/'security-final-erasure-precondition-proof.json').write_text(json.dumps(result,indent=2));print(json.dumps(result))
 def inspect_erasure():
  sql="""BEGIN READ ONLY; SET LOCAL statement_timeout='10s'; SET LOCAL app.bypass_rls='on';
  WITH own_outbox AS (SELECT id,published_at FROM tenant_school.outbox_events WHERE event_type='student.deleted.v1' AND event_key='StudentDeleted:'||aggregate_id AND aggregate_id IN(SELECT n::text FROM generate_series(990007301,990007320)n) AND school_id=CASE WHEN aggregate_id IN(SELECT n::text FROM generate_series(990007301,990007310)n) THEN 990007101 ELSE 990007102 END AND payload->>'id'=aggregate_id AND payload->>'schoolId'=school_id::text)
@@ -188,7 +185,7 @@ def disable_parents(revision):
  sql="""BEGIN; SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='5s'; SET LOCAL app.bypass_rls='on'; DO $$ BEGIN
  IF EXISTS(SELECT 1 FROM student.students WHERE school_id IN(990007101,990007102) OR id BETWEEN 990007301 AND 990007320) OR (SELECT count(*) FROM tenant_school.schools WHERE id IN(990007101,990007102) AND name='SEC-ACPT-20261007-'||(id-990007100))<>2 OR (SELECT count(*) FROM identity.app_users WHERE id IN(990007201,990007202) AND full_name='SEC-ACPT-20261007-'||(id-990007200) AND email='sec-acpt-20261007-'||(id-990007200)||'@security-fixture.invalid')<>2 OR (SELECT count(*) FROM identity.app_users WHERE id=990007205 AND full_name='SEC-ACPT-20261007-VIEWER' AND email='sec-acpt-20261007-viewer@security-fixture.invalid')<>1 OR EXISTS(SELECT 1 FROM tenant_school.staff_members WHERE school_id IN(990007101,990007102)) OR EXISTS(SELECT 1 FROM tenant_school.school_module_entitlements WHERE school_id IN(990007101,990007102) AND (notes IS DISTINCT FROM 'SEC-ACPT-20261007' OR module_code NOT IN('STUDENTS','ATTENDANCE'))) OR EXISTS(SELECT 1 FROM tenant_school.school_sections WHERE school_id IN(990007101,990007102) AND id NOT IN('SEC-ACPT-20261007-SECTION-990007101','SEC-ACPT-20261007-SECTION-990007102')) THEN RAISE EXCEPTION 'Exact final parent ownership precondition failed'; END IF; END $$;
  UPDATE identity.app_users SET deleted_at=now(),deleted_by='SEC-ACPT-20261007-OWNER-CLEANUP',credential_version=credential_version+1 WHERE id IN(990007201,990007202,990007205) AND deleted_at IS NULL;
- UPDATE identity.auth_sessions SET status='REVOKED' WHERE user_id IN(990007201,990007202,990007205); UPDATE identity.user_role_assignments SET active=false,revoked_at=now() WHERE user_id IN(990007201,990007202,990007205); DELETE FROM identity.passkey_credentials WHERE user_id IN(990007201,990007202,990007205); DELETE FROM identity.session_step_up WHERE user_id IN(990007201,990007202,990007205); DELETE FROM identity.passkey_challenges WHERE user_id IN(990007201,990007202,990007205);
+ UPDATE identity.auth_sessions SET status='REVOKED' WHERE user_id IN(990007201,990007202,990007205); UPDATE identity.user_role_assignments SET active=false,revoked_at=now() WHERE user_id IN(990007201,990007202,990007205);
  INSERT INTO identity.rbac_audit_log(event_type,target_user_id,new_value,correlation_id) SELECT 'SYNTHETIC_ORDINARY_ACTOR_DISABLED',id,'Final marker-bound dev acceptance cleanup; sessions and assignments revoked, audit and tombstones retained','SEC-ACPT-20261007' FROM identity.app_users WHERE id IN(990007201,990007202,990007205);
  DELETE FROM tenant_school.school_module_entitlements WHERE school_id IN(990007101,990007102) AND notes='SEC-ACPT-20261007'; DELETE FROM tenant_school.school_sections WHERE id IN('SEC-ACPT-20261007-SECTION-990007101','SEC-ACPT-20261007-SECTION-990007102') AND school_id IN(990007101,990007102); DELETE FROM tenant_school.schools WHERE id IN(990007101,990007102) AND name='SEC-ACPT-20261007-'||(id-990007100); DELETE FROM tenant_school.school_classes WHERE id='SEC-ACPT-20261007-CLASS' AND name='Synthetic Security Class'; DELETE FROM tenant_school.academic_years WHERE id='SEC-ACPT-20261007-YEAR' AND label='Synthetic Security Year';
  SELECT jsonb_build_object('marker','SEC-ACPT-20261007','disabledOrdinaryActors',(SELECT count(*) FROM identity.app_users WHERE id IN(990007201,990007202,990007205) AND deleted_at IS NOT NULL),'activeSessions',(SELECT count(*) FROM identity.auth_sessions WHERE user_id IN(990007201,990007202,990007205) AND status='ACTIVE'),'activeAssignments',(SELECT count(*) FROM identity.user_role_assignments WHERE user_id IN(990007201,990007202,990007205) AND active),'remainingSchools',(SELECT count(*) FROM tenant_school.schools WHERE id IN(990007101,990007102)),'remainingSections',(SELECT count(*) FROM tenant_school.school_sections WHERE id IN('SEC-ACPT-20261007-SECTION-990007101','SEC-ACPT-20261007-SECTION-990007102')),'remainingClass',(SELECT count(*) FROM tenant_school.school_classes WHERE id='SEC-ACPT-20261007-CLASS'),'remainingYear',(SELECT count(*) FROM tenant_school.academic_years WHERE id='SEC-ACPT-20261007-YEAR'),'preservedStudentTombstones',(SELECT count(*) FROM reporting.student_projection_tombstones WHERE student_id BETWEEN 990007301 AND 990007320),'preservedBrokerTombstones',(SELECT count(*) FROM reporting.student_projection_tombstones WHERE student_id IN(990007111,990007112))); COMMIT;"""
@@ -228,10 +225,10 @@ def verify_broker_jobs():
   cleanup['jobs'].append(dict(name=name,independentlyAbsent=True,checkedAtUtc=datetime.datetime.now(datetime.timezone.utc).isoformat(),phase='broker-restart'))
  path.write_text(json.dumps(cleanup,indent=2));print(json.dumps(dict(project=PROJECT,brokerVerificationJobs=2,independentlyAbsent=True)))
 def main():
- p=argparse.ArgumentParser();p.add_argument('--apply-dev',action='store_true');p.add_argument('--revision');p.add_argument('mode',choices=['lower-role','reset-factors','inspect-erasure','photo-key','photo-before','photo-after','disable-parents','verify-broker-jobs','wake-source','inspect-cleanup-rollback']);a=p.parse_args()
+ p=argparse.ArgumentParser();p.add_argument('--apply-dev',action='store_true');p.add_argument('--revision');p.add_argument('mode',choices=['lower-role','erasure-preconditions','inspect-erasure','photo-key','photo-before','photo-after','disable-parents','verify-broker-jobs','wake-source','inspect-cleanup-rollback']);a=p.parse_args()
  if not a.apply_dev:raise SafeFailure('EXPLICIT_APPLY_DEV_REQUIRED')
  if a.mode=='lower-role':lower_role()
- elif a.mode=='reset-factors':reset_factors(a.revision)
+ elif a.mode=='erasure-preconditions':confirm_erasure_preconditions(a.revision)
  elif a.mode=='inspect-erasure':inspect_erasure()
  elif a.mode=='photo-key':photo_key()
  elif a.mode=='photo-before':photo_metadata()

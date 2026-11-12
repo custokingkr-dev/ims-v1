@@ -15,11 +15,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.yubico</groupId>
-            <artifactId>webauthn-server-core</artifactId>
-            <version>2.9.0</version>
-        </dependency>
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
@@ -68,7 +63,7 @@
             <version>0.13.0</version>
             <scope>runtime</scope>
         </dependency>
-        <!-- JJWT and WebAuthn require Jackson 2 alongside Spring's Jackson 3.
+        <!-- jjwt-jackson requires Jackson 2 alongside Spring's Jackson 3.
              Align the explicit databind dependency with the patched parent Jackson 2 BOM. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

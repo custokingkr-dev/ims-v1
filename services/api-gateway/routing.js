@@ -107,8 +107,25 @@ function diagnostic(service, prefix) {
   };
 }
 
+// Upstream paths are compared decoded, because the transport decodes every segment before forwarding it.
+// Invalid percent-encoding yields null; the transport refuses such a path before anything is forwarded.
+function decodedUpstreamPath(upstreamPathname) {
+  try {
+    return decodeURIComponent(upstreamPathname);
+  } catch {
+    return null;
+  }
+}
+
 function isInternalUpstreamPath(upstreamPathname) {
   return /^\/api\/v1\/(internal|pubsub)(\/|$)/.test(upstreamPathname);
 }
 
-module.exports = { routes, route, diagnostic, isInternalUpstreamPath };
+// Passkey step-up was removed. Its identity routes are refused here too, so an identity revision that still
+// serves them is unreachable while a release rolls out.
+function isRetiredUpstreamPath(upstreamPathname) {
+  const decoded = decodedUpstreamPath(upstreamPathname);
+  return decoded !== null && /^\/api\/v1\/auth\/passkeys(\/|$)/.test(decoded);
+}
+
+module.exports = { routes, route, diagnostic, isInternalUpstreamPath, isRetiredUpstreamPath };

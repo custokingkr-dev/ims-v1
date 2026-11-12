@@ -87,6 +87,8 @@ no code, migration or configuration was changed while writing it.
 ([server.js:925-932](../../services/api-gateway/server.js#L925-L932)). Superadmin approvals, sign-offs,
 reassignment, reopening, contact entry and time-slot edits will therefore prompt for the passkey.
 
+> **Update 2026-11-12:** passkeys and step-up verification were removed entirely at the owner's request. Superadmin writes no longer prompt for any verification, so the finding above no longer applies.
+
 ### Time slots — [Decided]
 
 1. A time slot is shown for each step, as in the prototype.

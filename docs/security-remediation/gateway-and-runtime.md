@@ -8,6 +8,8 @@ Gateway authentication fails closed on Cloud Run. Bound HS256 access JWTs requir
 
 Proxy deadlines cover complete response bodies, disconnects cancel upstream work, and writable backpressure waits for drain. Identity token metadata and introspection calls have bounded deadlines. Sensitive operations preserve structured step-up denials; clients require a fresh session-bound passkey assertion and do not automatically replay financial mutations.
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. The gateway no longer emits step-up denials or forwards a step-up expiry; it still strips any client-supplied `x-authenticated-*` header.
+
 Frontend and gateway containers run as nonroot on port8080. Enforced nginx CSP and security headers cover HTML, assets and errors. Browser refresh uses same-origin Web Locks, session epochs prevent logout resurrection, transient restore failures remain recoverable, and credentials remain out of Web Storage. Modern Chromium was tested; browsers lacking Web Locks only have same-tab serialization. Memory-held tokens remain accessible to script running in the origin, so CSP and XSS defenses are still necessary.
 
 Generated source comparison normalizes CRLF while retaining meaningful content drift. Ten shared infrastructure classes are now guarded across services. Five service runtime manifests disable migrations and reject all owner credential configuration. Release orchestration executes migrations in a separate bounded owner job before traffic.

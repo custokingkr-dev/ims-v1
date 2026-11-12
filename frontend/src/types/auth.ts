@@ -16,5 +16,4 @@ export interface AuthUser {
   /** Item-specific operator scopes as `schoolId:CATEGORY`; operatorSchools lists school-wide assignments only. */
   operatorScopes?: string[];
   sessionId?: string | null;
-  stepUpExpiresAt?: string | null;
 }

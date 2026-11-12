@@ -1,5 +1,7 @@
 # Actual dev durable photo erasure
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. The CTAP2 ceremony described below was part of the run recorded here; DELETE no longer requires it.
+
 The deployed school source `01522d74d039b9f46162572ddafd1a5c90d6e7ee` (release 37651698357) passed a new reserved synthetic fixture on 2026-10-07. Fresh readback pinned all seven Ready revisions at 100% traffic and the unchanged journal profile before each applied helper phase. School 990008401, actor 990008501 and student 990008601 were collision-checked before seed; prior journal/photo fixtures were not reused.
 
 Normal SCHOOL_ADMIN authorization uploaded a deterministic nonpersonal PNG and read its normalized JPEG (8,987 bytes). The exact owned generation `1791394574200597` was captured through metadata only. Archive export correctly returned 403 because that route requires operations/superadmin; positive export remains unexercised. A compatibility request carrying a foreign raw object key returned 400. These are separate role/key boundary checks, not a live cross-tenant photo matrix.

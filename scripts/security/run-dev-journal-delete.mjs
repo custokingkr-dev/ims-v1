@@ -21,15 +21,12 @@ if(config.project!=='custoking-dev' || config.schoolId!==990008101 || config.use
   throw new Error('EXACT_OWNED_READY_FIXTURE_REQUIRED');
 const proof={schemaVersion:1,project:config.project,marker:config.marker,studentId:config.studentId,
  expectedSourceSha:config.expectedSourceSha,startedAtUtc:new Date().toISOString(),
- authenticator:'Chromium software CTAP2',physicalHardwareProof:false,providerCalls:0,checks:[],passed:false};
+ providerCalls:0,checks:[],passed:false};
 const output=new URL('../../tmp/dev-journal-browser-proof.json',import.meta.url);
 const save=()=>writeFileSync(output,JSON.stringify(proof,null,2)+'\n');
 const browser=await chromium.launch({headless:true});
 try {
  const context=await browser.newContext();const page=await context.newPage();
- const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
- await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,
-   hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  await page.goto(origin,{waitUntil:'domcontentloaded',timeout:30000});
  const result=await page.evaluate(async(config)=>{
   const checks=[];let token;
@@ -54,28 +51,6 @@ try {
   r=await api('GET','/api/v1/students/'+config.studentId);expect('owned-student-preflight',r,200);
   if(r.data.id!==config.studentId||r.data.schoolId!==config.schoolId
      ||(r.data.admissionNumber??r.data.admissionNo)!==config.admissionNumber)throw new Error('STUDENT_MARKER_MISMATCH');
-  const decode=v=>Uint8Array.from(atob(v.replace(/-/g,'+').replace(/_/g,'/')),x=>x.charCodeAt(0)).buffer;
-  const encode=v=>btoa(String.fromCharCode(...new Uint8Array(v))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-  const serialize=c=>({id:c.id,rawId:encode(c.rawId),type:c.type,clientExtensionResults:c.getClientExtensionResults(),
-   authenticatorAttachment:c.authenticatorAttachment,response:'attestationObject' in c.response
-    ?{clientDataJSON:encode(c.response.clientDataJSON),attestationObject:encode(c.response.attestationObject),transports:c.response.getTransports()}
-    :{clientDataJSON:encode(c.response.clientDataJSON),authenticatorData:encode(c.response.authenticatorData),signature:encode(c.response.signature),
-      userHandle:c.response.userHandle?encode(c.response.userHandle):null}});
-  r=await api('GET','/api/v1/auth/passkeys');expect('actual-rp-status',r,200);
-  if(r.data.rpId!==location.hostname)throw new Error('RP_MISMATCH');
-  r=await api('POST','/api/v1/auth/passkeys/registration/options',{password:config.password});expect('registration-options',r,200);
-  const registration=r.data;registration.publicKey.challenge=decode(registration.publicKey.challenge);
-  registration.publicKey.user.id=decode(registration.publicKey.user.id);
-  if(registration.publicKey.excludeCredentials)registration.publicKey.excludeCredentials=registration.publicKey.excludeCredentials.map(x=>({...x,id:decode(x.id)}));
-  const enrolled=await navigator.credentials.create({publicKey:registration.publicKey});
-  r=await api('POST','/api/v1/auth/passkeys/registration/verify',{challengeId:registration.challengeId,credential:serialize(enrolled)});
-  expect('browser-registration-verified',r,200);
-  r=await api('POST','/api/v1/auth/passkeys/assertion/options',{});expect('assertion-options',r,200);
-  const assertion=r.data;assertion.publicKey.challenge=decode(assertion.publicKey.challenge);
-  if(assertion.publicKey.allowCredentials)assertion.publicKey.allowCredentials=assertion.publicKey.allowCredentials.map(x=>({...x,id:decode(x.id)}));
-  const signed=await navigator.credentials.get({publicKey:assertion.publicKey});
-  r=await api('POST','/api/v1/auth/passkeys/assertion/verify',{challengeId:assertion.challengeId,credential:serialize(signed)});
-  expect('fresh-step-up',r,200);if(!(Date.parse(r.data.stepUpExpiresAt)>Date.now()))throw new Error('MISSING_FRESH_STEP_UP');
   r=await api('DELETE','/api/v1/students/'+config.studentId,undefined,{'X-Student-Delete-Confirmation':encodeURIComponent(config.admissionNumber)});
   expect('confirmed-application-delete',r,200);
   if(r.data.id!==config.studentId||r.data.deleted!==true||r.data.permanent!==true)throw new Error('UNCONFIRMED_DELETE_BODY');

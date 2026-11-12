@@ -48,7 +48,7 @@ flowchart TD
 | --- | --- | --- |
 | Frontend | nginx-served React workspace, role/module navigation, forms and generated API clients | None |
 | API gateway | Ordered routing, authoritative user authentication, trusted context, quotas, bounded proxying and Cloud Run upstream identity | None |
-| Identity service | Login, refresh/logout, password recovery, MFA/passkeys, users, RBAC and school/zone/operator assignments | `identity` |
+| Identity service | Password login, refresh/logout, password recovery, users, RBAC and school/zone/operator assignments | `identity` |
 | School-core service | Schools, zones, classes, staff, timetable, students, guardians, consent, imports, photos, attendance, school fees, catalog orders and annual plans | `tenant_school`, `student`, `attendance`, `fee`, `catalog` |
 | Operations service | Versioned workflow decisions, urgent procurement, quotations and documents | `workflow`, `firefighting` |
 | Platform service | Reporting projections, dashboards, command center, notifications, broadcasts, provider outcomes and audit | `reporting`, `notification`, `audit` |
@@ -144,7 +144,7 @@ Compatibility aliases and callback siblings do not inherit that exemption.
 - `services/api-gateway/server.js`: environment configuration, module composition, ordered HTTP request
   handling, security headers/CORS and structured request/tracing lifecycle.
 - `services/api-gateway/authentication.js`: explicit-dependency factory for authoritative identity
-  introspection, optional rejecting JWT prefilter, public/cookie route policy and step-up policy.
+  introspection, optional rejecting JWT prefilter and public/cookie route policy.
 - `services/api-gateway/quota.js`: per-instance bounded rate buckets and verified-user budget grouping;
   associations never authenticate a request or suppress identity introspection.
 - `services/api-gateway/transport.js`: explicit-dependency factory for service credentials, Cloud Run

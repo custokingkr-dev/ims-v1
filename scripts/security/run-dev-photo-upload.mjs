@@ -21,15 +21,12 @@ if(config.project!=='custoking-dev' || config.schoolId!==990008401 || config.use
   throw new Error('EXACT_OWNED_READY_FIXTURE_REQUIRED');
 const proof={schemaVersion:1,project:config.project,marker:config.marker,studentId:config.studentId,
  expectedSourceSha:config.expectedSourceSha,startedAtUtc:new Date().toISOString(),
- authenticator:'Chromium software CTAP2',physicalHardwareProof:false,providerCalls:0,checks:[],passed:false};
+ providerCalls:0,checks:[],passed:false};
 const output=new URL('../../tmp/dev-photo-read-boundary-browser-proof.json',import.meta.url);
 const save=()=>writeFileSync(output,JSON.stringify(proof,null,2)+'\n');
 const browser=await chromium.launch({headless:true});
 try {
  const context=await browser.newContext();const page=await context.newPage();
- const cdp=await context.newCDPSession(page);await cdp.send('WebAuthn.enable');
- await cdp.send('WebAuthn.addVirtualAuthenticator',{options:{protocol:'ctap2',transport:'internal',hasResidentKey:true,
-   hasUserVerification:true,isUserVerified:true,automaticPresenceSimulation:true}});
  await page.goto(origin,{waitUntil:'domcontentloaded',timeout:30000});
  const result=await page.evaluate(async(config)=>{
   const checks=[];let token;

@@ -29,8 +29,8 @@ class IdentityProvisioningAuthorizationTest {
 
     private final MockMvc mvc = MockMvcBuilders
             .standaloneSetup(new IdentityProvisioningController(users, VALID_TOKEN))
-            .addFilters(com.custoking.ims.identityservice.VerifiedSessionFixtures.filter())
-            .defaultRequest(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/").header("X-Authenticated-User-Id","1").header("X-Authenticated-Session-Id","verified-test-session"))
+            .addFilters(new TenantContextFilter())
+            .defaultRequest(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/").header("X-Authenticated-User-Id","1"))
             .build();
 
     @AfterEach

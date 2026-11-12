@@ -10,6 +10,8 @@ Mirroring **committed** outbox records into independently managed storage protec
 
 The authorized precommit source contract validates tenant/permission/fresh step-up/confirmation, durably claims immutable external intent, then executes source erasure and downstream outbox/photo work. SQL rollback after that external claim does not cancel the request. It preserves the successful 200 response and returns 503 before source erasure when the journal cannot be verified; deterministic retry and pinned controlled reconciliation are documented separately. This toolkit itself adds no delivery-resume authority.
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. Erasure now validates tenant, permission and admission confirmation only; there is no step-up check.
+
 ## Scope and operation sequence
 
 The prototype accepts only project `custoking-dev`, original instance `custoking-db-dev`, database `custoking_dev`, marker `SEC-ACPT-20261007` and the exact twenty approved student/school mappings990007301..990007320. The inventory includes an independently reviewed ownership-proof SHA256 and an external source-lineage identifier. It rejects arbitrary IDs, schools, tables, projects and free-form SQL. All input JSON is limited to128KiB. UTC capture/clone evidence must be fresh within10minutes. Reviewed inventory, journal and clone evidence hashes are mandatory. Output files are exclusively created, never overwritten.

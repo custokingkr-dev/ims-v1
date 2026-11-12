@@ -4,7 +4,7 @@ Last reconciled: 2026-10-12 against source controllers, the generated route inve
 Java DTOs, and browser contracts.
 
 The gateway route inventory records controller ownership and compatibility use.
-OpenAPI adds payload schemas for **108 canonical operations across 12 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
+OpenAPI adds payload schemas for **101 canonical operations across 12 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
 from 95. Static source coverage is not production traffic telemetry, and retained
 aliases can still have external consumers.
 
@@ -12,7 +12,7 @@ aliases can still have external consumers.
 
 | Contract | Operations | Workflow |
 | --- | ---: | --- |
-| Identity | 13 | Login, refresh, logout, password reset, MFA and passkey enrollment/authentication/recovery |
+| Identity | 6 | Login, refresh, logout and password reset |
 | Fees | 6 | Stable-key collection, JSON/PDF receipt, collection/overdue reports, reminders |
 | Students | 40 | Directory/detail/history, create/update/roster/photos, import preview/confirmation/progress/evidence, promotions, reviews and confirmed erasure |
 | Drive photo-import | 15 | Scoped context/batches, creation/provisioning, reviewed scan/freeze/execute/cancel, row review, recovery/progress, private JPEG and CSV |
@@ -24,6 +24,10 @@ aliases can still have external consumers.
 | Reporting | 7 | Workspace, command-center dashboard, fee defaulters, low-attendance sections/students, vendor dues and reorder signals |
 | Firefighting creation | 2 | Stable-key request and quotation creation |
 | Workflow decisions | 3 | Read versioned instance, approve/reject with the reviewed expectedVersion |
+
+2026-11-12: the seven passkey operations under `/api/v1/auth/passkeys/**` (status, registration
+options/verify, assertion options/verify, recovery request/approve) were removed from the identity
+contract, its generated client and the gateway. The identity row and the total above reflect that.
 
 Specifications live in `contracts/openapi/*.openapi.json`; generated TypeScript
 clients live in `frontend/src/generated`. These are critical workflow contracts,

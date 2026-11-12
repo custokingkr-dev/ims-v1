@@ -4,6 +4,8 @@ This workstream report preserves its original implementation checkpoints. The [c
 
 This workstream records historical implementation and controlled-test checkpoints from 2026-10-06 UTC, before PR 314 and the PR 316 follow-up merged. The final dev release is commit `9509d20c` (PR 317 orchestration follow-up). Current deployment and live acceptance status is authoritative in [the implementation ledger](IMPLEMENTATION-STATUS.md), [release report](dev-security-release.md) and [sanitized gate evidence](dev-release-gates.json). Production was not changed; historical test counts below are not final CI totals.
 
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. The SEC-05 row, the WebAuthn configuration lines and the passkey recovery runbook below describe a feature that no longer exists; the `/api/v1/auth/passkeys/**` endpoints are gone. See [the current follow-ups](../current-state/gaps-and-drift.md#passkey-leftovers-after-removal-2026-11-12).
+
 | Plan item | Source implementation | Remaining operational evidence |
 |---|---|---|
 | SEC-03 | Five identical pre-traffic effective-role guards reject superuser/BYPASSRLS/create-role/create-db/replication memberships, owner relations/schemas, and unforced tenant policies in fixed owned schemas. Pooled tenant GUCs reset after success and abandoned/failed transactions. Forward FORCE RLS migrations preserve policies. | Final five owner migrations/runtime cutovers passed; independent final role/RLS catalog proof is linked in the current release ledger. |
@@ -33,9 +35,12 @@ Identity:
 - `APP_JWT_ISSUER=ims-identity`, `APP_JWT_AUDIENCE=ims-api`, `APP_JWT_PREVIOUS_SECRET` only during rotation; refresh audience is `ims-identity-refresh`. Gateway has no default minting secret.
 - `IDENTITY_WEBAUTHN_RP_ID`: exact canonical frontend hostname; `IDENTITY_WEBAUTHN_ORIGINS`: explicit HTTPS origin(s) belonging to that RP. Do not use the shared `run.app` parent as RP. Status returns configured `rpId`/`canonicalOrigin` so clients can explain alias mismatch.
 - `IDENTITY_COOKIE_ALLOWED_ORIGINS`: exact reviewed frontend aliases, independent of canonical WebAuthn origin.
+  (2026-11-12: the two WebAuthn variables above are no longer used for passkeys; `IDENTITY_WEBAUTHN_ORIGINS` remains only as the cookie-origin fallback when `IDENTITY_COOKIE_ALLOWED_ORIGINS` is unset.)
 - `IDENTITY_PASSWORD_RESET_WORKER_READY=true` only after a real authenticated scheduler or always-allocated worker is verified. Scheduler POSTs reset drain with exact identity-service audience and allowlisted account. One message/trigger requires a cadence matching expected reset volume. Mail feature additionally needs enabled/configured SMTP provider; no claim of external delivery from local queue tests.
 
 ## Passkey recovery runbook
+
+> Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again. This runbook no longer applies: there are no passkeys to recover.
 
 1. Prefer the account's second enrolled authenticator. It performs a fresh assertion, not password-only downgrade.
 2. A different SUPERADMIN with a fresh passkey assertion submits `POST /api/v1/auth/passkeys/recovery/request` with target `userId` and bounded verified-identity `reason`.

@@ -53,7 +53,7 @@ try {
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
     let body = {};
-    if (path.includes('/auth/')) body = { accessToken: 'mock-security-token', sessionId: 'fixture-session', stepUpExpiresAt: null, userId: 42, fullName: 'Security fixture', email: 'fixture@example.test', role: 'SUPERADMIN', branchId: 7, permissions: ['platform:admin', 'school:read', 'order:read', 'order:update'] };
+    if (path.includes('/auth/')) body = { accessToken: 'mock-security-token', sessionId: 'fixture-session', userId: 42, fullName: 'Security fixture', email: 'fixture@example.test', role: 'SUPERADMIN', branchId: 7, permissions: ['platform:admin', 'school:read', 'order:read', 'order:update'] };
     else if (path.endsWith('/assets/1/content')) return route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.4\n%%EOF' });
     else if (path.endsWith('/assets/2/content')) return route.fulfill({ contentType: 'image/png', body: png });
     else if (path === '/supply/orders/CK-SECURITY/form') body = detail;

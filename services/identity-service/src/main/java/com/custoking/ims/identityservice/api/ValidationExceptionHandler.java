@@ -15,12 +15,6 @@ import java.util.Map;
 @RestControllerAdvice
 public class ValidationExceptionHandler {
 
-    @ExceptionHandler(com.custoking.ims.identityservice.security.StepUpRequiredException.class)
-    public ResponseEntity<Map<String,Object>> stepUpRequired() {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(Map.of("message","Passkey verification required","code","STEP_UP_REQUIRED"));
-    }
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> onBodyValidation(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();

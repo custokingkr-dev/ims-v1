@@ -14,8 +14,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -40,7 +38,6 @@ public class IdentityAuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthAuditRepository authAudit;
-    private JdbcClient jdbc;
 
     public IdentityAuthService(AppUserRepository users,
                                AuthSessionRepository sessions,
@@ -56,14 +53,6 @@ public class IdentityAuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authAudit = authAudit;
-    }
-
-    @Autowired
-    public IdentityAuthService(AppUserRepository users, AuthSessionRepository sessions, RbacLookupRepository rbac,
-            RbacReadRepository rbacRead, PasswordEncoder passwordEncoder, JwtService jwtService,
-            AuthAuditRepository authAudit, JdbcClient jdbc) {
-        this(users,sessions,rbac,rbacRead,passwordEncoder,jwtService,authAudit);
-        this.jdbc=jdbc;
     }
 
     public LoginResult login(LoginRequest request) {
@@ -201,15 +190,6 @@ public class IdentityAuthService {
         List<String> permissions = loginPermissions(user, operatorSchools, operatorScopes);
         boolean noSchool = dropsSchoolContext(user, operatorSchools, operatorScopes);
         AuthSessionEntity session = sessions.findByAccessTokenHash(tokenDigest(accessToken)).orElse(null);
-        OffsetDateTime stepUp = null;
-        if (jdbc != null && session != null) {
-            stepUp = jdbc.sql("""
-                SELECT expires_at FROM identity.session_step_up
-                WHERE family_id=:family AND user_id=:user AND credential_version=:version
-                AND expires_at>clock_timestamp()
-                """).param("family",session.getFamilyId()).param("user",user.getId())
-                    .param("version",user.getCredentialVersion()).query(OffsetDateTime.class).optional().orElse(null);
-        }
         return new AuthResponse(
                 accessToken,
                 user.getId(),
@@ -222,7 +202,7 @@ public class IdentityAuthService {
                 user.getZoneName(),
                 roles,
                 permissions,
-                operatorSchools, operatorScopes, session == null ? null : session.getId(), stepUp);
+                operatorSchools, operatorScopes, session == null ? null : session.getId());
     }
 
     /**
@@ -312,18 +292,11 @@ public class IdentityAuthService {
             String zoneName,
             List<String> roles,
             List<String> permissions,
-            List<Long> operatorSchools, List<String> operatorScopes, String sessionId, OffsetDateTime stepUpExpiresAt) {
+            List<Long> operatorSchools, List<String> operatorScopes, String sessionId) {
         public AuthResponse(String accessToken, Long userId, String fullName, String email, String role,
                 Long branchId, String branchName, Long zoneId, String zoneName,
                 List<String> roles, List<String> permissions, List<Long> operatorSchools) {
-            this(accessToken,userId,fullName,email,role,branchId,branchName,zoneId,zoneName,roles,permissions,operatorSchools,List.of(),null,null);
-        }
-
-        public AuthResponse(String accessToken, Long userId, String fullName, String email, String role,
-                Long branchId, String branchName, Long zoneId, String zoneName,
-                List<String> roles, List<String> permissions, List<Long> operatorSchools,
-                String sessionId, OffsetDateTime stepUpExpiresAt) {
-            this(accessToken,userId,fullName,email,role,branchId,branchName,zoneId,zoneName,roles,permissions,operatorSchools,List.of(),sessionId,stepUpExpiresAt);
+            this(accessToken,userId,fullName,email,role,branchId,branchName,zoneId,zoneName,roles,permissions,operatorSchools,List.of(),null);
         }
 
         public AuthResponse {

@@ -203,6 +203,8 @@ Priority indicates proposed implementation order. A source weakness is not autom
 | P3 | Generated checks compare raw LF output with CRLF working-tree files | Apply explicit LF attributes to generated outputs or normalize comparisons. Test generation checks on Windows and Linux. |
 | P3 | Broad Map payloads, mixed command/read repositories and historical compatibility increase reasoning cost | Convert security-sensitive mutations to validated DTOs, separate command responsibilities gradually, and maintain endpoint-to-policy tests. |
 
+Note for the MFA/passkey row. Passkey step-up was implemented after this review. Removed 2026-11-12 at the owner's request: passkeys and step-up verification were removed; SEC-05 (no phishing-resistant MFA for privileged accounts) is open again.
+
 JWT purpose/algorithm/issuer/audience hardening follows [RFC 8725](https://www.rfc-editor.org/rfc/rfc8725.html). Resource limits, object scope and privileged business operations align with [OWASP API Security Top 10](https://api-security.owasp.org/editions/2023/en/0x11-t10/). CSP must be delivered on the executing document, not merely API responses; see [OWASP CSP guidance](https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html).
 
 ### Dependency audit results
