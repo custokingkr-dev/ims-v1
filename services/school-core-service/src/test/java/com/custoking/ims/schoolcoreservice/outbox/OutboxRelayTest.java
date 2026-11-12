@@ -172,6 +172,56 @@ class OutboxRelayTest {
                 .param("id", id).query(Boolean.class).single()).isTrue();
     }
 
+    /**
+     * The first publish on a new instance can outlast the relay's timeout and still reach Pub/Sub. The row is retried, but
+     * that retry must collect the earlier publish rather than send the event a second time.
+     */
+    @Test
+    void aPublishThatTimedOutIsCollectedOnTheRetryNotSentTwice() throws Exception {
+        long id = insertOutboxEvent("CatalogOrderUpserted:CK-1017-" + System.nanoTime(), "CatalogOrder", 1L);
+        var client = new FakePubSubClient();
+        var timedRelay = new OutboxRelay(jdbc, new PubSubDomainEventPublisher(new ObjectMapper(), client, 50, 50), "tenant_school", 10);
+
+        assertThat(timedRelay.publishBatch()).isZero();
+        assertThat(jdbc.sql("SELECT published_at IS NULL FROM tenant_school.outbox_events WHERE id = :id").param("id", id)
+                .query(Boolean.class).single()).isTrue();
+        assertThat(jdbc.sql("SELECT last_error FROM tenant_school.outbox_events WHERE id = :id").param("id", id)
+                .query(String.class).single()).contains("deadline");
+
+        client.last().set("message-1");
+        jdbc.sql("UPDATE tenant_school.outbox_events SET next_attempt_at = NULL WHERE id = :id").param("id", id).update();
+        assertThat(timedRelay.publishBatch()).isEqualTo(1);
+        assertThat(publishedAt(id)).isNotNull();
+        assertThat(client.sent).as("the event reached Pub/Sub once").hasSize(1);
+    }
+
+    /**
+     * The first publish after starting is allowed longer than a pass's usual 10 s. The relay is what hands the publisher its
+     * time, so its first pass must allow that longer publish, and later passes go back to 10 s.
+     */
+    @Test
+    void theFirstPassHandsTheFirstPublishItsLongerAllowance() throws Exception {
+        insertOutboxEvent("SchoolUpserted:first-pass-" + System.nanoTime(), "School", 2L);
+        var budgets = new CopyOnWriteArrayList<Long>();
+        var client = new FakePubSubClient().respond(future -> future.set("message-1")).respond(future -> future.set("message-2"));
+        var publisher = new PubSubDomainEventPublisher(new ObjectMapper(), client, 50, 20_000) {
+            @Override
+            void publishWithin(EventEnvelope envelope, long remainingBudgetMs) {
+                budgets.add(remainingBudgetMs);
+                super.publishWithin(envelope, remainingBudgetMs);
+            }
+        };
+        var firstPassRelay = new OutboxRelay(jdbc, publisher, "tenant_school", 10);
+
+        assertThat(firstPassRelay.publishBatch()).isEqualTo(1);
+        insertOutboxEvent("SchoolUpserted:second-pass-" + System.nanoTime(), "School", 2L);
+        assertThat(firstPassRelay.publishBatch()).isEqualTo(1);
+
+        assertThat(budgets).hasSize(2);
+        assertThat(budgets.get(0)).as("the first pass allows the first publish its 20 s").isGreaterThan(10_000L);
+        assertThat(budgets.get(1)).as("once a publish has succeeded, a pass is 10 s again").isLessThanOrEqualTo(10_000L);
+    }
+
     @Test
     void healthSnapshot_readsRetryStateFromMigratedSchema() throws Exception {
         insertOutboxEvent("SchoolUpserted:health-" + System.nanoTime(), "School", 66L);

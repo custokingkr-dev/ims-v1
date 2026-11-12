@@ -190,6 +190,9 @@ school-core:
       # (empty string) and wrongly satisfy the condition, so we omit it.
       project-id: ${SCHOOL_CORE_OUTBOX_PUBSUB_PROJECT_ID:${GOOGLE_CLOUD_PROJECT:${GCP_PROJECT:}}}
       publish-timeout-ms: ${SCHOOL_CORE_OUTBOX_PUBSUB_PUBLISH_TIMEOUT_MS:5000}
+      # The first publish after the service starts opens the Pub/Sub connection on a new, possibly throttled instance and
+      # outlasted 5 s on dev (order CK-1017), so it gets longer; the relay's pass is extended to match. Both are capped at 60 s.
+      first-publish-timeout-ms: ${SCHOOL_CORE_OUTBOX_PUBSUB_FIRST_PUBLISH_TIMEOUT_MS:20000}
 
 app:
   runtime-db-role: ${RUNTIME_DB_ROLE:app_rt}
