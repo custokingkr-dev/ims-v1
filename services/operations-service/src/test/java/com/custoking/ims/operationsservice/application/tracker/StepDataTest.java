@@ -138,6 +138,39 @@ class StepDataTest {
         assertFalse(StepData.sameValues(Map.of("paperGsm", "70"), Map.of("paperGsm", 70L)), "text is not a number");
     }
 
+    /** Step 5's two save buttons each send their own part (dev audit 2026-11-12, #8): a save keeps what it leaves out. */
+    @Test
+    void aSaveReplacesWhatItSendsClearsWhatItSendsEmptyAndKeepsTheRest() {
+        Map<String, Object> saved = Map.of("paperGsm", "70", "planningChecks", List.of(0, 2), "workbookTotalQuantity", 26,
+                StepData.SIGN_OFF_KEY, Map.of("by", 1), "retiredField", "x");
+        Map<String, Object> raw = new java.util.HashMap<>();
+        raw.put("paperGsm", " 80 ");
+        raw.put("planningNotes", "");
+        raw.put("productionStart", null);
+        raw.put("planningChecks", List.of(1));
+        assertEquals(Map.of("paperGsm", "80", "planningChecks", List.of(1L), "workbookTotalQuantity", 26),
+                StepData.merge(TrackerStep.PRODUCTION_PLANNING, saved, raw), "the sign-off and fields the step no longer has are not carried");
+
+        Map<String, Object> clear = new java.util.HashMap<>();
+        clear.put("paperGsm", null);
+        assertEquals(Map.of("planningChecks", List.of(0, 2), "workbookTotalQuantity", 26),
+                StepData.merge(TrackerStep.PRODUCTION_PLANNING, saved, clear));
+        assertEquals(Map.of("paperGsm", "70"), StepData.merge(TrackerStep.PRODUCTION_PLANNING, Map.of("paperGsm", "70"), null));
+
+        TrackerRuleViolation violation = assertThrows(TrackerRuleViolation.class,
+                () -> StepData.merge(TrackerStep.PRE_PRINT_QUALITY_GATE, Map.of(), Map.of(StepData.SIGN_OFF_KEY, Map.of("by", 1))));
+        assertEquals("INVALID_STEP_DATA", violation.code());
+        assertThrows(TrackerRuleViolation.class, () -> StepData.merge(TrackerStep.PRODUCTION_PLANNING, Map.of(), Map.of("productionStart", "soon")));
+    }
+
+    /** A checklist nobody ticked reads the same whether it was never saved or saved empty (dev audit 2026-11-12, #9). */
+    @Test
+    void anEmptyChecklistIsTheSameAsNoChecklist() {
+        assertTrue(StepData.sameValues(Map.of("sampleLink", "x"), Map.of("sampleLink", "x", "checks", List.of())));
+        assertTrue(StepData.sameValues(Map.of("checks", List.of()), Map.of()));
+        assertFalse(StepData.sameValues(Map.of(), Map.of("checks", List.of(0L))));
+    }
+
     @Test
     void signOffRecordCarriesWhoAndWhen() {
         Map<String, Object> signOff = StepData.signOff(9L, Instant.parse("2026-10-19T10:00:00Z"));

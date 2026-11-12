@@ -45,8 +45,12 @@ changed while writing it.
 - The left list shows **all steps** of the order's path. At the start every step is disabled except the first.
 - A step is enabled only once its predecessor is **marked completed**; the tracker above the work area follows.
   Marking a step completed moves the user to the next one. Enforcement is **server-side**.
-- Work is saved only through an explicit **Save Draft** button; nothing is auto-saved. Reopening a step shows
-  the last saved draft.
+- Work is saved only when the user presses a button; nothing is auto-saved. **Save Draft** saves the step, and
+  **Sign off** and **Complete** first save any unsaved changes on screen, then act on what was saved (changed
+  2026-11-12: Complete used to run on the last saved copy and was refused when the ticks were still unsaved).
+  On a step that is already signed off, unsaved changes disable **Complete** instead: saving them takes the
+  sign-off back, so save the draft and sign off again first.
+  A save keeps the step values it does not send. Reopening a step shows the last saved draft.
 - **Operators:** a step is locked once completed. **Superadmin only** can reopen or re-edit a completed step.
 - When superadmin reopens a completed step, **later steps relock and revert to not-completed**; their saved data
   is kept as drafts. Each is completed again in order.

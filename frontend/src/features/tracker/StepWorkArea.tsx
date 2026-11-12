@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Check, FileSpreadsheet, RotateCcw, Save, ShieldCheck } from 'lucide-react';
 import { selectionLabel } from '../catalog/types';
 import { DraftImages } from './DraftImages';
@@ -14,15 +14,49 @@ const NOTE_WORDS = 100;
 function toForm(step: TrackerStep, specs: FieldSpec[]): Record<string, string> {
   return Object.fromEntries(specs.map((spec) => [spec.key, step.data[spec.key] == null ? '' : String(step.data[spec.key])]));
 }
-function toPayload(specs: FieldSpec[], form: Record<string, string>, checks: number[] | null, checkField = 'checks'): Record<string, unknown> {
+function fieldValue(spec: FieldSpec, form: Record<string, string>): string | number | null {
+  const raw = (form[spec.key] ?? '').trim();
+  if (!raw) return null;
+  return spec.kind === 'whole' || spec.kind === 'number' ? Number(raw) : raw;
+}
+/** The typed fields only, empty ones left out: what the count-mismatch warning reads. */
+function toPayload(specs: FieldSpec[], form: Record<string, string>): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   for (const spec of specs) {
-    const raw = (form[spec.key] ?? '').trim();
-    if (!raw) continue;
-    payload[spec.key] = spec.kind === 'whole' || spec.kind === 'number' ? Number(raw) : raw;
+    const value = fieldValue(spec, form);
+    if (value != null) payload[spec.key] = value;
   }
-  if (checks) payload[checkField] = checks;
   return payload;
+}
+
+/** Steps whose work area has a checklist. */
+const CHECKLIST_STEPS = new Set([5, 7, 8, 10]);
+/** Step 5's workbook snapshot: written only by "Save workbook totals", and sent back as saved by every other save of the step. */
+const WORKBOOK_KEYS = ['workbookFileName', 'workbookSheetName', 'workbookOrderId', 'workbookImportedAt', 'workbookTotalQuantity', 'workbookKing',
+  'workbookJumboKing', 'workbookLong', 'workbookJumboLong', 'workbookFa', 'workbookValidRows'];
+
+/**
+ * The whole work area as one save: every field (an emptied one as null, so the server clears it), the checklist and, on
+ * step 5, the saved workbook totals. A save that sent only its own part used to wipe the rest (dev audit 2026-11-12, #8).
+ */
+function stepData(step: TrackerStep, specs: FieldSpec[], form: Record<string, string>, checks: number[], checkField: string): Record<string, unknown> {
+  const data: Record<string, unknown> = {};
+  if (step.step === 5) for (const key of WORKBOOK_KEYS) if (step.data[key] != null) data[key] = step.data[key];
+  for (const spec of specs) data[spec.key] = fieldValue(spec, form);
+  if (CHECKLIST_STEPS.has(step.step)) data[checkField] = checks;
+  return data;
+}
+
+function blank(value: unknown): boolean { return value == null || value === '' || (Array.isArray(value) && value.length === 0); }
+function sameValue(a: unknown, b: unknown): boolean {
+  if (blank(a) || blank(b)) return blank(a) && blank(b);
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((item, i) => Number(item) === Number(b[i]));
+  if (typeof a === 'number' || typeof b === 'number') return Number(a) === Number(b);
+  return String(a) === String(b);
+}
+/** Whether the screen holds work the server has not saved: an empty field or checklist matches a missing one. */
+function unsaved(step: TrackerStep, data: Record<string, unknown>): boolean {
+  return Object.entries(data).some(([key, value]) => !sameValue(value, step.data[key]));
 }
 
 function Field({ spec, value, disabled, onChange }: { spec: FieldSpec; value: string; disabled: boolean; onChange: (value: string) => void }) {
@@ -220,13 +254,17 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
   const [followUp, setFollowUp] = useState({ percentComplete: '', nextFollowUpOn: '', contactPhone: '' });
   const [vendorSelections, setVendorSelections] = useState<Record<string, string[]>>(() => tracker.vendorSelections);
 
+  // Set when this screen's own save brought the fresh copy below and a refusal that followed it must stay on screen.
+  const keepNotice = useRef(false);
+
   // A fresh server copy (another save, a reopen) replaces whatever was typed against the old one.
   useEffect(() => {
     setForm(toForm(step, specs)); setChecks(Array.isArray(step.data[checkField]) ? step.data[checkField] as number[] : []); setNote(step.stageNote ?? '');
     setVendorSelections(tracker.vendorSelections);
     setWorkbookFile(null);
     setWorkbookPreview(null);
-    setError(''); setMessage('');
+    if (keepNotice.current) keepNotice.current = false;
+    else { setError(''); setMessage(''); }
   }, [step.step, step.version, checkField, tracker.orderId, tracker.version]);
 
   const act = async (operation: () => Promise<TrackerView>, done: string) => {
@@ -237,7 +275,28 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
   const editable = step.can.canEditDetails;
   const noteWords = wordCount(note);
   const signedOff = isSignedOff(step);
-  const mismatch = step.step === 11 && countsMismatch(tracker.orderedCount, toPayload(specs, form, null));
+  const draft = stepData(step, specs, form, checks, checkField);
+  const dirty = editable && (specs.length > 0 || CHECKLIST_STEPS.has(step.step)) && unsaved(step, draft);
+  // Saving changes to a signed-off step takes the sign-off back (spec: Sequence and drafts), so completing over them would only be refused.
+  const needsNewSignOff = SIGN_OFF_STEPS.has(step.step) && signedOff && dirty;
+  /**
+   * Sign off and Complete act on what is saved, so unsaved ticks and fields are saved first and the action then runs on the
+   * version that save left (dev audit 2026-11-12, #9). A refused action still leaves the draft saved, and says why.
+   */
+  const actAfterSaving = async (operation: (version: number) => Promise<TrackerView>, done: string) => {
+    if (!dirty) return act(() => operation(step.version), done);
+    setBusy(true); setError(''); setMessage('');
+    let saved: TrackerView | null = null;
+    try {
+      saved = await trackerApi.saveDraft(tracker.orderId, step.step, draft, step.version);
+      const version = saved.steps.find((s) => s.step === step.step)?.version ?? step.version;
+      onTracker(await operation(version)); setMessage(done);
+    } catch (e) {
+      if (saved) { keepNotice.current = true; onTracker(saved); }
+      setError(trackerError(e));
+    } finally { setBusy(false); }
+  };
+  const mismatch = step.step === 11 && countsMismatch(tracker.orderedCount, toPayload(specs, form));
   // A wholesale order has no design approval (null); only the customised design steps 2 and 3 read it.
   const design = tracker.design;
   // Head approval completes only once a design is approved; the server checks it too, so say why before it is refused.
@@ -264,7 +323,7 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
   const saveWorkbookTotals = () => {
     if (!workbookPreview) return;
     const snapshot = {
-      ...toPayload(specs, form, null),
+      ...draft,
       workbookFileName: workbookPreview.fileName,
       workbookSheetName: workbookPreview.sheetName,
       workbookOrderId: workbookPreview.workbookOrderId ?? '',
@@ -519,22 +578,23 @@ export function StepWorkArea({ tracker, step, role, userId, designers, operators
       <div className="ck-trk-actions">
         {(specs.length > 0 || step.step === 10) && editable && (
           <button type="button" className="ck-btn ck-btn-ghost" disabled={busy}
-            onClick={() => void act(() => trackerApi.saveDraft(tracker.orderId, step.step,
-              toPayload(specs, form, [5, 7, 8, 10].includes(step.step) ? checks : null, checkField), step.version), 'Draft saved.')}><Save size={15} aria-hidden="true" /> Save draft</button>
+            onClick={() => void act(() => trackerApi.saveDraft(tracker.orderId, step.step, draft, step.version), 'Draft saved.')}><Save size={15} aria-hidden="true" /> Save draft</button>
         )}
         {step.can.canEditStageNote && (
           <button type="button" className="ck-btn ck-btn-ghost" disabled={busy || noteWords > NOTE_WORDS}
             onClick={() => void act(() => trackerApi.saveStageNote(tracker.orderId, step.step, note, step.version), 'Stage note saved.')}>Save stage note</button>
         )}
         {superadmin && SIGN_OFF_STEPS.has(step.step) && step.status === 'ACTIVE' && !signedOff && (
-          <button type="button" className="ck-btn ck-btn-ghost" disabled={busy} onClick={() => void act(() => trackerApi.signOff(tracker.orderId, step.step, step.version), 'Signed off.')}><ShieldCheck size={15} aria-hidden="true" /> Sign off</button>
+          <button type="button" className="ck-btn ck-btn-ghost" disabled={busy} onClick={() => void actAfterSaving((version) => trackerApi.signOff(tracker.orderId, step.step, version), 'Signed off.')}><ShieldCheck size={15} aria-hidden="true" /> Sign off</button>
         )}
         {SIGN_OFF_STEPS.has(step.step) && signedOff && <span className="ck-product-muted">Signed off</span>}
         {step.can.canComplete && (
-          <button type="button" className="ck-btn ck-btn-g" disabled={busy || awaitingApproval} aria-describedby={awaitingApproval ? completeHint : undefined}
-            onClick={() => void act(() => trackerApi.complete(tracker.orderId, step.step, step.version), 'Step completed.')}><Check size={15} aria-hidden="true" /> Complete step</button>
+          <button type="button" className="ck-btn ck-btn-g" disabled={busy || awaitingApproval || needsNewSignOff}
+            aria-describedby={awaitingApproval || needsNewSignOff ? completeHint : undefined}
+            onClick={() => void actAfterSaving((version) => trackerApi.complete(tracker.orderId, step.step, version), 'Step completed.')}><Check size={15} aria-hidden="true" /> Complete step</button>
         )}
         {step.can.canComplete && awaitingApproval && <span id={completeHint} className="ck-product-muted">Approve a design first</span>}
+        {step.can.canComplete && needsNewSignOff && <span id={completeHint} className="ck-product-muted">Your changes need a new sign-off: save the draft, then sign off again</span>}
         {step.can.canReopen && (
           <button type="button" className="ck-btn ck-btn-ghost" disabled={busy} onClick={() => void act(() => trackerApi.reopen(tracker.orderId, step.step), 'Step reopened.')}><RotateCcw size={15} aria-hidden="true" /> Reopen step</button>
         )}

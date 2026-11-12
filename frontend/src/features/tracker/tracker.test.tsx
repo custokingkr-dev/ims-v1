@@ -56,6 +56,10 @@ const summary = (over: Partial<OrderSummary> = {}): OrderSummary => ({
 });
 
 const UNAVAILABLE = 'The notebook order tracker is not available right now. Try again in a moment.';
+/** A save sends every field of its step, an empty one as null, so a save never leaves out what another saved. */
+const EMPTY_PLANNING_FORM = { paperGsm: null, capacityConfirmed: null, productionStart: null, targetCompletion: null, planningNotes: null };
+const EMPTY_QC_FORM = { sampleLink: null, schoolVerification: null, qcComments: null };
+const ALL_QC = [0, 1, 2, 3, 4, 5, 6, 7];
 
 const TITLES: Record<number, string> = {
   1: 'Order Details', 2: 'Designing Activity', 3: 'CDR Conversion', 4: 'Head Approval', 5: 'Production Planning', 6: 'Board Procurement',
@@ -232,9 +236,36 @@ describe('NotebookTracker', () => {
     expect(trackerApi.previewWorkbook).toHaveBeenCalledWith('CK-1', file);
     fireEvent.click(screen.getByRole('button', { name: /Save workbook totals/ }));
     await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 5, {
+      ...EMPTY_PLANNING_FORM, planningChecks: [],
       workbookFileName: 'order.xlsx', workbookSheetName: 'Order', workbookOrderId: 'CK-1',
       workbookImportedAt: expect.any(String), workbookTotalQuantity: 26, workbookKing: 5,
       workbookJumboKing: 3, workbookLong: 6, workbookJumboLong: 4, workbookFa: 8, workbookValidRows: 5,
+    }, 3));
+  });
+
+  it('sends the whole step with either step-5 save, so the draft keeps the workbook totals and the totals keep the checklist', async () => {
+    const saved = {
+      paperGsm: '70', planningChecks: [0, 2], workbookFileName: 'order.xlsx', workbookSheetName: 'Order', workbookOrderId: 'CK-1',
+      workbookImportedAt: '2026-11-10T10:00:00.000Z', workbookTotalQuantity: 26, workbookKing: 5, workbookJumboKing: 3, workbookLong: 6,
+      workbookJumboLong: 4, workbookFa: 8, workbookValidRows: 5,
+    };
+    const t = onStep(5, { data: saved });
+    vi.mocked(trackerApi.saveDraft).mockResolvedValue(t);
+    render(<NotebookTracker orderId="CK-1" initial={t} onBack={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Paper GSM'), { target: { value: '80' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
+    await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 5, { ...saved, ...EMPTY_PLANNING_FORM, paperGsm: '80' }, 3));
+
+    vi.mocked(trackerApi.previewWorkbook).mockResolvedValue({
+      orderId: 'CK-1', fileName: 'new.xlsx', sheetName: 'Sheet1', workbookOrderId: null, total: 30, king: 10, longBooks: 5, jumboKing: 5, jumboLong: 5, fa: 5, validRows: 6,
+    });
+    fireEvent.change(screen.getByLabelText('Order workbook (.xlsx)'), { target: { files: [new File(['xlsx'], 'new.xlsx')] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Preview workbook' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Save workbook totals/ }));
+    await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenLastCalledWith('CK-1', 5, {
+      ...EMPTY_PLANNING_FORM, paperGsm: '80', planningChecks: [0, 2],
+      workbookFileName: 'new.xlsx', workbookSheetName: 'Sheet1', workbookOrderId: '', workbookImportedAt: expect.any(String),
+      workbookTotalQuantity: 30, workbookKing: 10, workbookJumboKing: 5, workbookLong: 5, workbookJumboLong: 5, workbookFa: 5, workbookValidRows: 6,
     }, 3));
   });
 
@@ -257,6 +288,60 @@ describe('NotebookTracker', () => {
     await waitFor(() => expect(trackerApi.complete).toHaveBeenCalledWith('CK-1', 5, 3));
     expect(await screen.findByText(/2 of 3 done/)).toBeInTheDocument();
     expect(changed).toHaveBeenCalled();
+    expect(trackerApi.saveDraft).not.toHaveBeenCalled();
+  });
+
+  it('saves unsaved ticks before completing, and completes on the version that save left', async () => {
+    const ticked = onStep(7, { version: 4, data: { checks: ALL_QC } });
+    vi.mocked(trackerApi.saveDraft).mockResolvedValue(ticked);
+    vi.mocked(trackerApi.complete).mockResolvedValue(onStep(7, { status: 'COMPLETED', version: 5, data: { checks: ALL_QC } }));
+    render(<NotebookTracker orderId="CK-1" initial={onStep(7)} onBack={vi.fn()} />);
+    for (const box of within(screen.getByRole('group', { name: /Pre-print checklist/ })).getAllByRole('checkbox')) fireEvent.click(box);
+    fireEvent.click(screen.getByRole('button', { name: /Complete step/ }));
+    await waitFor(() => expect(trackerApi.complete).toHaveBeenCalledWith('CK-1', 7, 4));
+    expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 7, { ...EMPTY_QC_FORM, checks: ALL_QC }, 3);
+    expect(vi.mocked(trackerApi.saveDraft).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(trackerApi.complete).mock.invocationCallOrder[0]);
+  });
+
+  it('keeps the saved ticks and shows the reason when completion is refused after saving them', async () => {
+    vi.mocked(trackerApi.saveDraft).mockResolvedValue(onStep(7, { version: 4, data: { checks: [0, 1] } }));
+    vi.mocked(trackerApi.complete).mockRejectedValue({ response: { status: 409, data: { code: 'QC_CHECKS_INCOMPLETE',
+      message: 'Complete every pre-print quality check before completing this step' } } });
+    render(<NotebookTracker orderId="CK-1" initial={onStep(7)} onBack={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText(/School name, logo/)); fireEvent.click(screen.getByLabelText(/Latest approved artwork/));
+    fireEvent.click(screen.getByRole('button', { name: /Complete step/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Complete every pre-print quality check');
+    expect(trackerApi.complete).toHaveBeenCalledWith('CK-1', 7, 4);
+    expect(screen.getByLabelText(/School name, logo/)).toBeChecked();
+    expect(screen.getByLabelText(/Latest approved artwork/)).toBeChecked();
+    // The screen now holds the saved version, so the next try is not refused as stale.
+    vi.mocked(trackerApi.complete).mockResolvedValue(onStep(7, { status: 'COMPLETED', version: 5 }));
+    fireEvent.click(screen.getByRole('button', { name: /Complete step/ }));
+    await waitFor(() => expect(trackerApi.complete).toHaveBeenLastCalledWith('CK-1', 7, 4));
+    expect(trackerApi.saveDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it('saves unsaved ticks before superadmin signs off, so the sign-off covers what is on screen', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1 };
+    vi.mocked(trackerApi.saveDraft).mockResolvedValue(onStep(7, { version: 4, data: { checks: ALL_QC } }));
+    vi.mocked(trackerApi.signOff).mockResolvedValue(onStep(7, { version: 5, data: { checks: ALL_QC, signOff: { by: 1, at: 'x' } } }));
+    render(<NotebookTracker orderId="CK-1" initial={onStep(7)} onBack={vi.fn()} />);
+    for (const box of within(screen.getByRole('group', { name: /Pre-print checklist/ })).getAllByRole('checkbox')) fireEvent.click(box);
+    fireEvent.click(screen.getByRole('button', { name: /Sign off/ }));
+    await waitFor(() => expect(trackerApi.signOff).toHaveBeenCalledWith('CK-1', 7, 4));
+    expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 7, { ...EMPTY_QC_FORM, checks: ALL_QC }, 3);
+    expect(await screen.findByText('Signed off', { selector: 'span' })).toBeInTheDocument();
+  });
+
+  it('will not complete a signed-off step over unsaved changes, which would take the sign-off back', () => {
+    render(<NotebookTracker orderId="CK-1" initial={onStep(7, { data: { checks: ALL_QC, signOff: { by: 1, at: 'x' } } })} onBack={vi.fn()} />);
+    const complete = screen.getByRole('button', { name: /Complete step/ });
+    expect(complete).toBeEnabled();
+    fireEvent.click(screen.getByLabelText(/School name, logo/));
+    expect(complete).toBeDisabled();
+    expect(complete).toHaveAccessibleDescription('Your changes need a new sign-off: save the draft, then sign off again');
+    fireEvent.click(screen.getByLabelText(/School name, logo/));
+    expect(complete).toBeEnabled();
   });
 
   it('shows the server reason when a save is refused, and keeps what was typed', async () => {
@@ -266,17 +351,19 @@ describe('NotebookTracker', () => {
     fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
     expect(await screen.findByRole('alert')).toHaveTextContent('paperGsm is limited to 50 characters');
     expect(screen.getByLabelText('Paper GSM')).toHaveValue('300');
-    expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 5, { paperGsm: '300', planningChecks: [] }, 3);
+    expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 5, { ...EMPTY_PLANNING_FORM, paperGsm: '300', planningChecks: [] }, 3);
   });
 
-  it('sends numbers as numbers and leaves blank fields out of a draft', async () => {
+  it('sends numbers as numbers and an emptied field as null, so the server clears it', async () => {
     vi.mocked(trackerApi.saveDraft).mockResolvedValue(tracker());
-    const t = tracker({ steps: [step(6, 'Board Procurement', { status: 'ACTIVE', can: can({ canEditDetails: true }) })], progress: { completed: 0, total: 1, currentStep: 6, currentTitle: 'Board Procurement', finished: false } });
+    const t = tracker({ steps: [step(6, 'Board Procurement', { status: 'ACTIVE', data: { procurementReference: 'PO-1' }, can: can({ canEditDetails: true }) })], progress: { completed: 0, total: 1, currentStep: 6, currentTitle: 'Board Procurement', finished: false } });
     render(<NotebookTracker orderId="CK-1" initial={t} onBack={vi.fn()} />);
     fireEvent.change(screen.getByLabelText('Total title units'), { target: { value: '12' } });
     fireEvent.change(screen.getByLabelText('Wastage %'), { target: { value: '2.5' } });
+    fireEvent.change(screen.getByLabelText('Procurement reference'), { target: { value: ' ' } });
     fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
-    await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 6, { totalTitleUnits: 12, wastagePercent: 2.5 }, 3));
+    await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 6,
+      { totalTitleUnits: 12, piecesPerBoard: null, wastagePercent: 2.5, availableBoards: null, procurementReference: null }, 3));
   });
 
   it('refuses a stage note over 100 words before it is sent', () => {
@@ -314,7 +401,7 @@ describe('NotebookTracker', () => {
     expect(within(checklist).getByText(/all checks required/)).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/Latest approved artwork/)); fireEvent.click(screen.getByLabelText(/School name, logo/));
     fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
-    await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 7, { checks: [0, 1] }, 3));
+    await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 7, { ...EMPTY_QC_FORM, checks: [0, 1] }, 3));
   });
 
   it('saves the production-planning checklist separately from its text fields', async () => {
@@ -327,7 +414,7 @@ describe('NotebookTracker', () => {
     fireEvent.click(within(checklist).getByLabelText(/Check board availability/));
     fireEvent.click(screen.getByRole('button', { name: /Save draft/ }));
     await waitFor(() => expect(trackerApi.saveDraft).toHaveBeenCalledWith('CK-1', 5,
-      { planningChecks: [1] }, 3));
+      { ...EMPTY_PLANNING_FORM, planningChecks: [1] }, 3));
   });
 
   it('offers sign-off to superadmin only, and only until it is given', async () => {
