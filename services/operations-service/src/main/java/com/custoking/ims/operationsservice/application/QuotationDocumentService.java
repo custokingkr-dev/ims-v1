@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.MessageDigest;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -138,7 +139,13 @@ public class QuotationDocumentService {
         });
     }
 
-    /** Trusted maintenance, also invoked by the existing IAM-protected Scheduler relay route. */
+    /**
+     * Trusted maintenance, also invoked by the existing IAM-protected Scheduler relay route. Storage is never called inside
+     * a transaction: a slow bucket used to hold the rows locked until the 45-second transaction timed out. One short
+     * transaction claims the candidates, the objects are deleted with nothing locked, and another records each outcome.
+     * A claim leases its rows for ten minutes, so an overlapping run (the scheduler and the relay trigger) skips them, and
+     * a crash before the outcome is recorded only delays the retry: deleting an object that is already gone is harmless.
+     */
     @Scheduled(fixedDelayString = "${firefighting.quotation-documents.cleanup-delay-ms:300000}", initialDelayString = "${firefighting.quotation-documents.cleanup-delay-ms:300000}")
     public int cleanup() {
         if (!storage.configured()) return 0;
@@ -146,36 +153,66 @@ public class QuotationDocumentService {
         TenantContext previous = TenantContext.get();
         try {
             TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
-            return cleanupTransaction.execute(status -> {
-                List<CleanupRow> candidates = jdbc.sql("""
-                        SELECT d.id, d.object_key FROM firefighting.quotation_documents d
-                        WHERE (d.status IN ('RETIRED', 'DELETED') OR (d.status = 'PENDING' AND d.created_at <= now() - interval '1 hour'))
-                          AND d.next_cleanup_at <= now()
-                          AND NOT EXISTS (SELECT 1 FROM firefighting.ff_quotations q WHERE q.document_id = d.id)
-                        ORDER BY d.created_at LIMIT 20 FOR UPDATE OF d SKIP LOCKED
-                        """).query(CleanupRow.class).list();
-                int checked = 0;
-                for (CleanupRow candidate : candidates) {
-                    if (monotonicNanos.getAsLong() >= deadline) break;
-                    checked++;
-                    try {
-                        storage.delete(candidate.objectKey());
-                        // Retain and periodically reconcile tombstones too: a storage write whose
-                        // response was lost could finish after the first cleanup attempt.
-                        jdbc.sql("UPDATE firefighting.quotation_documents SET status = 'DELETED', cleanup_attempts = cleanup_attempts + 1, next_cleanup_at = now() + interval '1 day' WHERE id = :id")
-                                .param("id", candidate.id()).update();
-                    } catch (RuntimeException failure) {
-                        jdbc.sql("""
-                                UPDATE firefighting.quotation_documents
-                                SET cleanup_attempts = cleanup_attempts + 1, next_cleanup_at = now() + interval '10 minutes'
-                                WHERE id = :id
-                                """).param("id", candidate.id()).update();
-                        log.warn("Private quotation cleanup will retry document {}", candidate.id());
-                    }
+            List<CleanupRow> candidates = cleanupTransaction.execute(status -> claimCleanupCandidates());
+            if (candidates == null || candidates.isEmpty()) return 0;
+            List<String> deleted = new ArrayList<>(), failed = new ArrayList<>(), unattempted = new ArrayList<>();
+            for (CleanupRow candidate : candidates) {
+                if (!unattempted.isEmpty() || monotonicNanos.getAsLong() >= deadline) {
+                    unattempted.add(candidate.id());
+                    continue;
                 }
-                return checked;
-            });
+                try {
+                    storage.delete(candidate.objectKey());
+                    deleted.add(candidate.id());
+                } catch (RuntimeException failure) {
+                    failed.add(candidate.id());
+                    log.warn("Private quotation cleanup will retry document {}", candidate.id(), failure);
+                }
+            }
+            cleanupTransaction.executeWithoutResult(status -> recordCleanup(deleted, failed, unattempted));
+            return deleted.size() + failed.size();
         } finally { TenantContext.set(previous); }
+    }
+
+    /**
+     * Claims up to 20 candidates by leasing them past this run. An expired reservation also leaves PENDING: an upload that
+     * finishes late attaches only a PENDING reservation, so it can no longer attach an object this run is deleting.
+     */
+    private List<CleanupRow> claimCleanupCandidates() {
+        List<CleanupRow> candidates = jdbc.sql("""
+                SELECT d.id, d.object_key FROM firefighting.quotation_documents d
+                WHERE (d.status IN ('RETIRED', 'DELETED') OR (d.status = 'PENDING' AND d.created_at <= now() - interval '1 hour'))
+                  AND d.next_cleanup_at <= now()
+                  AND NOT EXISTS (SELECT 1 FROM firefighting.ff_quotations q WHERE q.document_id = d.id)
+                ORDER BY d.created_at LIMIT 20 FOR UPDATE OF d SKIP LOCKED
+                """).query(CleanupRow.class).list();
+        if (!candidates.isEmpty()) {
+            jdbc.sql("""
+                    UPDATE firefighting.quotation_documents
+                    SET status = CASE WHEN status = 'PENDING' THEN 'RETIRED' ELSE status END,
+                        next_cleanup_at = now() + interval '10 minutes'
+                    WHERE id IN (:ids)
+                    """).param("ids", candidates.stream().map(CleanupRow::id).toList()).update();
+        }
+        return candidates;
+    }
+
+    private void recordCleanup(List<String> deleted, List<String> failed, List<String> unattempted) {
+        // Retain and periodically reconcile tombstones too: a storage write whose
+        // response was lost could finish after the first cleanup attempt.
+        if (!deleted.isEmpty()) jdbc.sql("""
+                UPDATE firefighting.quotation_documents
+                SET status = 'DELETED', cleanup_attempts = cleanup_attempts + 1, next_cleanup_at = now() + interval '1 day'
+                WHERE id IN (:ids)
+                """).param("ids", deleted).update();
+        if (!failed.isEmpty()) jdbc.sql("""
+                UPDATE firefighting.quotation_documents
+                SET cleanup_attempts = cleanup_attempts + 1, next_cleanup_at = now() + interval '10 minutes'
+                WHERE id IN (:ids)
+                """).param("ids", failed).update();
+        // Out of time, not failed: release them for the next run instead of holding them for the lease.
+        if (!unattempted.isEmpty()) jdbc.sql("UPDATE firefighting.quotation_documents SET next_cleanup_at = now() WHERE id IN (:ids)")
+                .param("ids", unattempted).update();
     }
 
     private QuoteContext quote(String code, String id, boolean lock) {
