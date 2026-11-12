@@ -1,10 +1,8 @@
-import { useState, useEffect, useCallback, useRef, useId } from 'react';
-import { useDialogFocus } from '../../../../hooks/useDialogFocus';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { CommandCenterDrawer } from '../components/CommandCenterDrawer';
 import {
   fetchLowAttendanceSections,
   fetchLowAttendanceStudents,
-  sendMeetingInvites,
 } from '../../../../api/dashboardCommandCenterApi';
 import type {
   LowAttendanceSectionItem,
@@ -17,8 +15,6 @@ interface Props {
   open: boolean;
   onClose: () => void;
 }
-
-const CHANNELS = ['SMS', 'WhatsApp', 'Email', 'Push'];
 
 // ── Progress bar ──────────────────────────────────────────────────────────────
 
@@ -34,133 +30,21 @@ function AttendanceBar({ pct }: { pct: number }) {
   );
 }
 
-// ── Confirm modal ─────────────────────────────────────────────────────────────
-
-interface ConfirmModalProps {
-  selected: LowAttendanceStudentItem[];
-  onClose: () => void;
-  onSent: (sentCount: number) => void;
-}
-
-function ConfirmInviteModal({ selected, onClose, onSent }: ConfirmModalProps) {
-  const [channel, setChannel] = useState('SMS');
-  const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-  const titleId = useId();
-  const messageId = useId();
-  const channelName = useId();
-  useDialogFocus(ref, true, onClose, sending);
-
-  const handleSend = async () => {
-    if (!message.trim()) { setError('Message is required.'); return; }
-    setSending(true);
-    setError(null);
-    try {
-      const result = await sendMeetingInvites({
-        studentIds: selected.map(s => s.studentId),
-        channel,
-        message: message.trim(),
-      });
-      onSent(result.sentCount);
-    } catch {
-      setError('Failed to send invites. Please try again.');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2000,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} style={{ background: 'var(--ck-bg-surface)', borderRadius: 12, padding: 24, width: 420, maxWidth: '90vw',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
-        <h3 id={titleId} style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--ck-color-indigo-deep)' }}>
-          Send Meeting Invites
-        </h3>
-        <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--ck-text-secondary)' }}>
-          Sending to <strong>{selected.length}</strong> parent{selected.length !== 1 ? 's' : ''}.
-        </p>
-
-        <fieldset disabled={sending} style={{ border: 0, padding: 0, margin: '0 0 12px' }}>
-          <legend style={{ fontSize: 12, fontWeight: 600, color: 'var(--ck-text-primary)', display: 'block', marginBottom: 4 }}>
-            Channel
-          </legend>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {CHANNELS.map(c => (
-              <label key={c}
-                style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid var(--ck-color-indigo-border)',
-                         background: channel === c ? 'var(--ck-color-indigo)' : 'var(--ck-bg-surface)',
-                         color: channel === c ? 'var(--ck-text-inverse)' : 'var(--ck-color-indigo)',
-                         cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
-                <input type="radio" name={channelName} value={c} checked={channel === c} onChange={() => setChannel(c)} /> {c}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <div style={{ marginBottom: 16 }}>
-          <label htmlFor={messageId} style={{ fontSize: 12, fontWeight: 600, color: 'var(--ck-text-primary)', display: 'block', marginBottom: 4 }}>
-            Message
-          </label>
-          <textarea
-            id={messageId}
-            disabled={sending}
-            value={message}
-            onChange={e => setMessage(e.target.value)}
-            rows={4}
-            placeholder="Dear parent, your child's attendance is below 75%. Please schedule a meeting..."
-            style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--ck-color-indigo-border)', borderRadius: 6,
-                     fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }}
-          />
-        </div>
-
-        {error && (
-          <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--ck-color-danger)', background: 'var(--ck-color-danger-soft)',
-                        padding: '6px 10px', borderRadius: 4 }}>
-            {error}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} disabled={sending}
-            style={{ padding: '8px 16px', border: '1px solid var(--ck-color-indigo-border)', borderRadius: 6,
-                     cursor: 'pointer', fontSize: 13, background: 'var(--ck-bg-surface)' }}>
-            Cancel
-          </button>
-          <button onClick={handleSend} disabled={sending || !message.trim()}
-            style={{ padding: '8px 16px', border: 'none', borderRadius: 6,
-                     background: sending || !message.trim() ? 'var(--ck-color-indigo-border)' : 'var(--ck-color-warning)',
-                     color: 'var(--ck-text-inverse)', cursor: sending || !message.trim() ? 'default' : 'pointer',
-                     fontWeight: 600, fontSize: 13 }}>
-            {sending ? 'Sending…' : `Send ${selected.length} Invite${selected.length !== 1 ? 's' : ''}`}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Section detail panel ──────────────────────────────────────────────────────
 
 function SectionDetail({
   section,
   canSend,
   onBack,
-  onInvitesSent,
 }: {
   section: LowAttendanceSectionItem;
   canSend: boolean;
   onBack: () => void;
-  onInvitesSent: (count: number) => void;
 }) {
   const [students, setStudents] = useState<LowAttendanceStudentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [showModal, setShowModal] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const unavailableId = useId();
 
   useEffect(() => {
     setLoading(true);
@@ -168,30 +52,6 @@ function SectionDetail({
       .then(data => { setStudents(data); setLoading(false); })
       .catch(() => { setError('Failed to load students.'); setLoading(false); });
   }, [section.sectionId]);
-
-  const toggleAll = () => {
-    if (selected.size === students.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(students.map(s => s.studentId)));
-    }
-  };
-
-  const toggle = (id: number) => {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    setSelected(next);
-  };
-
-  const handleInvitesSent = (count: number) => {
-    setShowModal(false);
-    setSelected(new Set());
-    setToast(`${count} invite${count !== 1 ? 's' : ''} queued successfully.`);
-    setTimeout(() => setToast(null), 3000);
-    onInvitesSent(count);
-  };
-
-  const selectedStudents = students.filter(s => selected.has(s.studentId));
 
   return (
     <div>
@@ -222,32 +82,28 @@ function SectionDetail({
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={selected.size === students.length && students.length > 0}
-                    onChange={toggleAll} />
-                  Select all ({students.length})
-                </label>
-                {canSend && selected.size > 0 && (
-                  <button onClick={() => setShowModal(true)}
-                    style={{ padding: '6px 14px', background: 'var(--ck-color-warning)', color: 'var(--ck-text-inverse)',
-                             border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
-                    Invite {selected.size}
+              {/* POST /dashboard/attendance/meeting-invites has had no handler since the microservice cutover, and
+                  no other service sends these invites (docs/FRONTEND-AB-DECISIONS-2026-07-02.md). Say so rather than
+                  offer a send that always fails. */}
+              {canSend && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                  <button disabled aria-describedby={unavailableId}
+                    style={{ padding: '6px 14px', background: 'var(--ck-color-indigo-border)', color: 'var(--ck-text-inverse)',
+                             border: 'none', borderRadius: 6, cursor: 'default', fontWeight: 600, fontSize: 13 }}>
+                    Send meeting invites
                   </button>
-                )}
-              </div>
+                  <span id={unavailableId} style={{ fontSize: 12, color: 'var(--ck-text-muted)' }}>
+                    Sending meeting invites from the dashboard isn't available yet.
+                  </span>
+                </div>
+              )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {students.map(s => (
                   <div key={s.studentId}
                     style={{ border: '1px solid var(--ck-color-indigo-soft)', borderRadius: 8, padding: '10px 14px',
-                             background: selected.has(s.studentId) ? 'var(--ck-color-indigo-wash)' : 'var(--ck-bg-surface)',
+                             background: 'var(--ck-bg-surface)',
                              display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {canSend && (
-                      <input type="checkbox" checked={selected.has(s.studentId)}
-                        onChange={() => toggle(s.studentId)}
-                        style={{ width: 14, height: 14, flexShrink: 0 }} />
-                    )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div>
@@ -279,21 +135,6 @@ function SectionDetail({
             </>
           )}
         </>
-      )}
-
-      {toast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, background: 'var(--ck-color-primary)', color: 'var(--ck-text-inverse)',
-                      padding: '10px 18px', borderRadius: 8, fontWeight: 600, fontSize: 13, zIndex: 3000 }}>
-          {toast}
-        </div>
-      )}
-
-      {showModal && (
-        <ConfirmInviteModal
-          selected={selectedStudents}
-          onClose={() => setShowModal(false)}
-          onSent={handleInvitesSent}
-        />
       )}
     </div>
   );
@@ -340,7 +181,6 @@ export function LowAttendanceDrawer({ open, onClose }: Props) {
             section={selectedSection}
             canSend={canSend}
             onBack={() => setSelectedSection(null)}
-            onInvitesSent={() => {}}
           />
         ) : (
           <div>

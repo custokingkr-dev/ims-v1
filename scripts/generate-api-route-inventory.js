@@ -302,7 +302,18 @@ function parseGatewayRoutes(file) {
 function findFrontendCompatibilityReferences(compatibilityMappings) {
   const frontendRoot = path.join(repositoryRoot, 'frontend', 'src');
   if (!fs.existsSync(frontendRoot)) return [];
-  const matchers = compatibilityMappings.map((endpoint) => ({
+  const matchers = compatibilityMatchers(compatibilityMappings);
+  const references = [];
+  for (const file of walk(frontendRoot).filter((candidate) => /\.tsx?$/.test(candidate) && !/\.test\.tsx?$/.test(candidate))) {
+    const source = fs.readFileSync(file, 'utf8');
+    references.push(...compatibilityReferencesIn(
+      source, path.relative(repositoryRoot, file).replaceAll(path.sep, '/'), matchers));
+  }
+  return references.sort(compareBy('source', 'line', 'method'));
+}
+
+function compatibilityMatchers(compatibilityMappings) {
+  return compatibilityMappings.map((endpoint) => ({
     endpoint,
     matcher: new RegExp(`^${endpoint.path.split(/(\{[^}]+\})/g)
       .map((part) => part.startsWith('{') && part.endsWith('}') ? '[^/]+' : escapeRegExp(part))
@@ -312,28 +323,29 @@ function findFrontendCompatibilityReferences(compatibilityMappings) {
     const rightVariables = (right.endpoint.path.match(/\{/g) || []).length;
     return leftVariables - rightVariables || right.endpoint.path.length - left.endpoint.path.length;
   });
+}
+
+function compatibilityReferencesIn(source, relativeSource, matchers) {
   const references = [];
-  const callPattern = /\bapi\.(get|post|put|patch|delete)(?:<[\s\S]{0,500}?>)?\s*\(\s*(["'`])([\s\S]*?)\2/g;
-  for (const file of walk(frontendRoot).filter((candidate) => /\.tsx?$/.test(candidate) && !/\.test\.tsx?$/.test(candidate))) {
-    const source = fs.readFileSync(file, 'utf8');
-    for (const match of source.matchAll(callPattern)) {
-      const method = match[1].toUpperCase();
-      const literal = match[3];
-      if (!literal.startsWith('/')) continue;
-      const samplePath = `/api/v1${literal.split(/[?#]/, 1)[0].replace(/\$\{[^}]+\}/g, 'sample')}`;
-      const matched = matchers.find((candidate) => candidate.endpoint.method === method
-        && candidate.matcher.test(samplePath));
-      if (!matched) continue;
-      references.push({
-        method,
-        pathExpression: literal,
-        compatibilityTemplate: matched.endpoint.path,
-        source: path.relative(repositoryRoot, file).replaceAll(path.sep, '/'),
-        line: lineNumberAt(source, match.index),
-      });
-    }
+  // `api` and `.get(` may sit on different lines when the call is chained (`api\n  .get(...)\n  .then(...)`).
+  const callPattern = /\bapi\s*\.\s*(get|post|put|patch|delete)(?:<[\s\S]{0,500}?>)?\s*\(\s*(["'`])([\s\S]*?)\2/g;
+  for (const match of source.matchAll(callPattern)) {
+    const method = match[1].toUpperCase();
+    const literal = match[3];
+    if (!literal.startsWith('/')) continue;
+    const samplePath = `/api/v1${literal.split(/[?#]/, 1)[0].replace(/\$\{[^}]+\}/g, 'sample')}`;
+    const matched = matchers.find((candidate) => candidate.endpoint.method === method
+      && candidate.matcher.test(samplePath));
+    if (!matched) continue;
+    references.push({
+      method,
+      pathExpression: literal,
+      compatibilityTemplate: matched.endpoint.path,
+      source: relativeSource,
+      line: lineNumberAt(source, match.index),
+    });
   }
-  return references.sort(compareBy('source', 'line', 'method'));
+  return references;
 }
 
 function escapeRegExp(value) {
@@ -342,4 +354,4 @@ function escapeRegExp(value) {
 
 if (require.main === module) main(process.argv.includes('--check'));
 
-module.exports = { mappingAnnotations, parseGatewayRoutes };
+module.exports = { mappingAnnotations, parseGatewayRoutes, compatibilityMatchers, compatibilityReferencesIn };

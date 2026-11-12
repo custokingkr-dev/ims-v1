@@ -1,24 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { CommandCenterDrawer } from '../components/CommandCenterDrawer';
-import {
-  fetchClassPhotographyPaymentStatus,
-  sendPhotographyPaymentReminders,
-  fetchCommandCenterMetrics,
-} from '../../../../api/dashboardCommandCenterApi';
+import { fetchClassPhotographyPaymentStatus } from '../../../../api/dashboardCommandCenterApi';
 import type {
   PhotoContributionItem,
   ClassPhotographyPaymentStatusResponse,
-  DashboardCommandCenterResponse,
 } from '../../../../types/dashboardCommandCenter';
 import { usePermissions } from '../../../../hooks/usePermissions';
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  onMetricsRefresh?: (data: DashboardCommandCenterResponse) => void;
 }
 
-const CHANNELS = ['SMS', 'WhatsApp', 'Email', 'Push'];
 const PAGE_SIZE = 20;
 
 function fmt(paise: number): string {
@@ -39,92 +32,16 @@ function StatusBadge({ status }: { status: PhotoContributionItem['status'] }) {
   );
 }
 
-interface ConfirmModalProps {
-  eventId: string;
-  selected: PhotoContributionItem[];
-  onClose: () => void;
-  onSent: (sentCount: number, failedCount: number) => void;
-}
-
-function ConfirmReminderModal({ eventId, selected, onClose, onSent }: ConfirmModalProps) {
-  const [channel, setChannel] = useState('SMS');
-  const [message, setMessage] = useState(
-    'Dear parent, your child\'s class photography contribution is pending. Please make the payment at the earliest.'
-  );
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleSend() {
-    setSending(true);
-    setError('');
-    try {
-      const result = await sendPhotographyPaymentReminders(eventId, {
-        studentIds: selected.map(s => s.studentId),
-        channel,
-        message,
-      });
-      onSent(result.sentCount, result.failedCount);
-    } catch {
-      setError('Failed to send reminders. Please try again.');
-      setSending(false);
-    }
-  }
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1100,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'var(--ck-bg-surface)', borderRadius: 12, padding: 28, width: '100%',
-                    maxWidth: 460, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
-        <h3 style={{ margin: '0 0 6px', fontSize: 17 }}>Send Payment Reminder</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--ck-text-secondary)' }}>
-          {selected.length} student{selected.length !== 1 ? 's' : ''} selected
-        </p>
-
-        <label className="ck-field" style={{ display: 'block', marginBottom: 14 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ck-text-secondary)', display: 'block', marginBottom: 4 }}>Channel</span>
-          <select value={channel} onChange={e => setChannel(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ck-border-default)', fontSize: 14 }}>
-            {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </label>
-
-        <label className="ck-field" style={{ display: 'block', marginBottom: 14 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ck-text-secondary)', display: 'block', marginBottom: 4 }}>Message</span>
-          <textarea value={message} onChange={e => setMessage(e.target.value)} rows={3}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ck-border-default)',
-                             fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
-        </label>
-
-        <div style={{ background: 'var(--ck-bg-surface-raised)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ck-text-muted)', marginBottom: 6 }}>PREVIEW</div>
-          <div style={{ fontSize: 13, color: 'var(--ck-text-primary)' }}>{message || <em style={{ color: 'var(--ck-text-muted)' }}>No message</em>}</div>
-        </div>
-
-        {error && <div className="ck-alert" style={{ marginBottom: 12, fontSize: 13 }}>{error}</div>}
-
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button className="ck-btn-ghost" onClick={onClose} disabled={sending}>Cancel</button>
-          <button className="ck-btn" onClick={handleSend} disabled={sending || !message.trim()}>
-            {sending ? 'Sending…' : `Send to ${selected.length}`}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Props) {
+export function ClassPhotographyDrawer({ open, onClose }: Props) {
   const { can } = usePermissions();
   const canNotify = can('fee:collect');
+  const unavailableId = useId();
 
   const [data, setData] = useState<ClassPhotographyPaymentStatusResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState('');
-  const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [toast, setToast] = useState('');
 
   const load = useCallback(async (pg: number, sf: string) => {
     setLoading(true);
@@ -144,59 +61,20 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
   }, []);
 
   useEffect(() => {
-    if (open) { setPage(0); setSelected(new Set()); load(0, statusFilter); }
+    if (open) { setPage(0); load(0, statusFilter); }
   }, [open]);
 
   function handleFilterChange(sf: string) {
     setStatusFilter(sf);
     setPage(0);
-    setSelected(new Set());
     load(0, sf);
   }
 
   function handlePageChange(pg: number) {
     setPage(pg);
-    setSelected(new Set());
     load(pg, statusFilter);
   }
 
-  function toggleRow(id: number) {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
-
-  function toggleAll() {
-    if (!data) return;
-    const pendingIds = data.students.filter(s => s.status !== 'PAID').map(s => s.studentId);
-    if (selected.size === pendingIds.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(pendingIds));
-    }
-  }
-
-  async function handleReminderSent(sentCount: number, failedCount: number) {
-    setShowConfirm(false);
-    setSelected(new Set());
-    const msg = failedCount > 0
-      ? `${sentCount} reminder${sentCount !== 1 ? 's' : ''} sent, ${failedCount} failed.`
-      : `${sentCount} reminder${sentCount !== 1 ? 's' : ''} sent successfully.`;
-    setToast(msg);
-    setTimeout(() => setToast(''), 4000);
-
-    await load(page, statusFilter);
-    try {
-      const fresh = await fetchCommandCenterMetrics();
-      onMetricsRefresh?.(fresh);
-    } catch { /* best-effort */ }
-  }
-
-  const selectedItems = data?.students?.filter(s => selected.has(s.studentId)) ?? [];
-  const pendingIds = data?.students?.filter(s => s.status !== 'PAID').map(s => s.studentId) ?? [];
-  const allPendingSelected = pendingIds.length > 0 && pendingIds.every(id => selected.has(id));
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;
 
   return (
@@ -247,11 +125,18 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
               <option value="PAID">Paid</option>
             </select>
 
-            {canNotify && selected.size > 0 && (
-              <button className="ck-btn" style={{ fontSize: 13 }}
-                      onClick={() => setShowConfirm(true)}>
-                Send Bulk Reminder ({selected.size})
-              </button>
+            {/* No service sends these reminders since the microservice cutover: the old endpoint is gone, and
+                POST /reporting/event-contributions/reminders only records a reminder date without sending
+                anything (docs/FRONTEND-AB-DECISIONS-2026-07-02.md). Say so rather than offer a send that fails. */}
+            {canNotify && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <button className="ck-btn" style={{ fontSize: 13 }} disabled aria-describedby={unavailableId}>
+                  Send payment reminder
+                </button>
+                <span id={unavailableId} style={{ fontSize: 12, color: 'var(--ck-text-muted)' }}>
+                  Sending payment reminders from the dashboard isn't available yet.
+                </span>
+              </span>
             )}
           </div>
         )}
@@ -259,10 +144,6 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
         {/* Loading / error */}
         {loading && <div style={{ padding: 20, textAlign: 'center', color: 'var(--ck-text-muted)' }}>Loading…</div>}
         {error && <div className="ck-alert" style={{ marginBottom: 12 }}>{error}</div>}
-        {toast && (
-          <div style={{ background: 'var(--ck-color-primary-soft)', color: 'var(--ck-color-primary)', borderRadius: 8, padding: '10px 14px',
-                        marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{toast}</div>
-        )}
 
         {/* Table */}
         {!loading && data && data.eventId && data.students.length > 0 && (
@@ -270,11 +151,6 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--ck-bg-app)' }}>
-                  {canNotify && (
-                    <th style={{ padding: '8px 10px', textAlign: 'left', width: 36 }}>
-                      <input type="checkbox" checked={allPendingSelected} onChange={toggleAll} />
-                    </th>
-                  )}
                   <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}>Student</th>
                   <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}>Class</th>
                   <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}>Parent Contact</th>
@@ -283,20 +159,11 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
                   <th style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 600 }}>Pending</th>
                   <th style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>Status</th>
                   <th style={{ padding: '8px 10px', textAlign: 'left', fontWeight: 600 }}>Last Reminder</th>
-                  {canNotify && <th style={{ padding: '8px 10px' }}></th>}
                 </tr>
               </thead>
               <tbody>
                 {data.students.map(s => (
                   <tr key={s.studentId} style={{ borderBottom: '1px solid var(--ck-border-subtle)' }}>
-                    {canNotify && (
-                      <td style={{ padding: '8px 10px' }}>
-                        {s.status !== 'PAID' && (
-                          <input type="checkbox" checked={selected.has(s.studentId)}
-                                 onChange={() => toggleRow(s.studentId)} />
-                        )}
-                      </td>
-                    )}
                     <td style={{ padding: '8px 10px' }}>
                       <div style={{ fontWeight: 600 }}>{s.studentName}</div>
                       <div style={{ fontSize: 11, color: 'var(--ck-text-muted)' }}>{s.admissionNo}</div>
@@ -318,16 +185,6 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
                         ? new Date(s.lastReminderSentAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
                         : '—'}
                     </td>
-                    {canNotify && (
-                      <td style={{ padding: '8px 10px' }}>
-                        {s.status !== 'PAID' && (
-                          <button className="ck-btn-ghost" style={{ fontSize: 12, padding: '4px 10px' }}
-                                  onClick={() => { setSelected(new Set([s.studentId])); setShowConfirm(true); }}>
-                            Remind
-                          </button>
-                        )}
-                      </td>
-                    )}
                   </tr>
                 ))}
               </tbody>
@@ -355,15 +212,6 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
           </div>
         )}
       </CommandCenterDrawer>
-
-      {showConfirm && data?.eventId && (
-        <ConfirmReminderModal
-          eventId={data.eventId}
-          selected={selectedItems}
-          onClose={() => { setShowConfirm(false); }}
-          onSent={handleReminderSent}
-        />
-      )}
     </>
   );
 }

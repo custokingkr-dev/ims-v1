@@ -156,18 +156,6 @@ export interface PhotoContributionItem {
   lastReminderSentAt: string | null;
 }
 
-export interface SendEventPaymentRemindersRequest {
-  studentIds: number[];
-  channel: string;
-  message: string;
-}
-
-export interface SendEventPaymentRemindersResult {
-  sentCount: number;
-  failedCount: number;
-  failedItems: Array<{ studentId: number; reason: string }>;
-}
-
 // ── Student Review Campaigns ──────────────────────────────────────────────────
 
 export type {
@@ -210,17 +198,4 @@ export interface LowAttendanceStudentItem {
   fatherContact: string | null;
   attendancePercent: number | null;
   lastInviteSentAt: string | null;
-}
-
-export interface SendMeetingInvitesRequest {
-  studentIds: number[];
-  channel: string;
-  message: string;
-  meetingDate?: string | null;
-}
-
-export interface SendMeetingInvitesResult {
-  sentCount: number;
-  failedCount: number;
-  failedStudentIds: number[];
 }

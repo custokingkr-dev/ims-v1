@@ -1,5 +1,5 @@
 import { FormEvent, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 // ── Strings — single extraction point for future i18n ─────────────────────────
@@ -80,7 +80,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type FieldErrors = { email?: string; password?: string };
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -118,7 +118,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      navigate('/dashboard');
+      // Replace, so Back from the dashboard does not land a signed-in user on this form.
+      navigate('/dashboard', { replace: true });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       setFormError(
@@ -128,6 +129,11 @@ export default function LoginPage() {
       setLoading(false);
     }
   }
+
+  // A signed-in user (for example after a reload of /login silently restored the session) has
+  // nothing to do here. Showing the form anyway invited further reloads, and a reload while a
+  // refresh is in flight re-presents an already rotated refresh token, which revokes the session.
+  if (user) return <Navigate to="/dashboard" replace />;
 
   const submitDisabled = loading || !email.trim() || !password;
 

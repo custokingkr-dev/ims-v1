@@ -48,7 +48,7 @@ import {
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { ModuleShell } from '../ui';
-import { paiseToRupeeInput } from '../utils';
+import { localIsoDate, paiseToRupeeInput } from '../utils';
 import { formatSchoolCurrency } from '../../../utils/schoolLocalization';
 import type { WorkspaceData } from '../config';
 
@@ -98,11 +98,12 @@ function money(row: any, keys: string[]): number {
   return Number(valueOf(row, keys, 0) || 0);
 }
 
+// The 10th of the month `monthOffset` months from now, in the user's calendar. Built from the day directly, so the
+// 31st plus three months cannot overflow into the month after, and formatted locally, so the hours before 05:30
+// IST cannot give the previous day's UTC date.
 function isoDate(monthOffset: number): string {
-  const date = new Date();
-  date.setMonth(date.getMonth() + monthOffset);
-  date.setDate(10);
-  return date.toISOString().slice(0, 10);
+  const now = new Date();
+  return localIsoDate(new Date(now.getFullYear(), now.getMonth() + monthOffset, 10));
 }
 
 export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' }: FeeModulePanelProps) {

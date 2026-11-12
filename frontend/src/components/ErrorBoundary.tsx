@@ -1,4 +1,7 @@
 import { Component, ReactNode } from 'react';
+import {
+  isStaleChunkError, isStaleChunkReloadPending, reloadOnceForStaleChunk, STALE_CHUNK_RELOAD_STALL_MS,
+} from '../utils/staleChunkReload';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -6,20 +9,44 @@ interface ErrorBoundaryProps {
 
 interface ErrorBoundaryState {
   hasError: boolean;
+  /** The failure is a chunk retired by a deploy and the page is reloading onto the new release. */
+  reloading: boolean;
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  state = { hasError: false };
+  state = { hasError: false, reloading: false };
 
-  static getDerivedStateFromError(): ErrorBoundaryState {
-    return { hasError: true };
+  private reloadStall: ReturnType<typeof setTimeout> | undefined;
+
+  static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
+    // Once a reload is under way, whatever the failed import breaks next is part of the same stale page.
+    return { hasError: true, reloading: isStaleChunkError(error) || isStaleChunkReloadPending() };
   }
 
   componentDidCatch(error: Error, errorInfo: unknown) {
+    // A tab opened before a deploy asks for chunks the new release no longer serves: reload onto it, once.
+    if (isStaleChunkReloadPending() || (isStaleChunkError(error) && reloadOnceForStaleChunk())) {
+      this.awaitReload();
+      return;
+    }
+    if (this.state.reloading) this.setState({ reloading: false });
     console.error('Unhandled error in application:', error, errorInfo);
   }
 
+  componentWillUnmount() {
+    clearTimeout(this.reloadStall);
+  }
+
+  /** A reload the user refused leaves this page here: after a while, show the error screen and its reload button. */
+  private awaitReload() {
+    clearTimeout(this.reloadStall);
+    this.reloadStall = setTimeout(() => this.setState({ reloading: false }), STALE_CHUNK_RELOAD_STALL_MS);
+  }
+
   render() {
+    if (this.state.hasError && this.state.reloading) {
+      return <div className="ck-loading" role="status">Loading the latest version...</div>;
+    }
     if (this.state.hasError) {
       // This is the one screen a user only ever reaches when something has already gone wrong,
       // and it used to arrive as an unstyled heading over a browser-default button — reading as
