@@ -63,6 +63,8 @@ export interface NotebookTrackerClient {
   getNotebookTracker(parameters: { orderId: string; }): Promise<TrackerView>;
   getNotebookWhatsAppGroupLinks(parameters: { orderId: string; }): Promise<{ [key: string]: string; }>;
   saveNotebookWhatsAppGroupLink(parameters: { orderId: string; target: "SCHOOL_GROUP" | "INTERNAL_APPROVAL" | "board_shree" | "board_national" | "board_prime" | "lam_glosspro" | "lam_crystal" | "lam_brightfinish" | "binder_perfect" | "binder_classic" | "binder_metro" | "offset_metro" | "offset_precision" | "offset_cityline"; }, request: WhatsAppGroupLinkRequest): Promise<{ [key: string]: string; }>;
+  getSchoolWhatsAppGroupLinks(parameters: { schoolId: number; }): Promise<{ [key: string]: string; }>;
+  saveSchoolWhatsAppGroupLink(parameters: { schoolId: number; target: "SCHOOL_GROUP" | "INTERNAL_APPROVAL" | "PRODUCT_VENDOR" | "board_shree" | "board_national" | "board_prime" | "lam_glosspro" | "lam_crystal" | "lam_brightfinish" | "binder_perfect" | "binder_classic" | "binder_metro" | "offset_metro" | "offset_precision" | "offset_cityline"; }, request: WhatsAppGroupLinkRequest): Promise<{ [key: string]: string; }>;
   saveNotebookStepDraft(parameters: { orderId: string; step: number; }, request: TrackerDraftRequest): Promise<TrackerView>;
   saveNotebookStageNote(parameters: { orderId: string; step: number; }, request: TrackerNoteRequest): Promise<TrackerView>;
   completeNotebookStep(parameters: { orderId: string; step: number; }, request: TrackerVersionRequest): Promise<TrackerView>;
@@ -102,6 +104,14 @@ export function createNotebookTrackerClient(http: AxiosInstance): NotebookTracke
     },
     async saveNotebookWhatsAppGroupLink(parameters: { orderId: string; target: "SCHOOL_GROUP" | "INTERNAL_APPROVAL" | "board_shree" | "board_national" | "board_prime" | "lam_glosspro" | "lam_crystal" | "lam_brightfinish" | "binder_perfect" | "binder_classic" | "binder_metro" | "offset_metro" | "offset_precision" | "offset_cityline"; }, request: WhatsAppGroupLinkRequest) {
       const response = await http.put<{ [key: string]: string; }>(`/workflows/notebook-orders/${encodeURIComponent(String(parameters.orderId))}/whatsapp-groups/${encodeURIComponent(String(parameters.target))}`, request);
+      return response.data;
+    },
+    async getSchoolWhatsAppGroupLinks(parameters: { schoolId: number; }) {
+      const response = await http.get<{ [key: string]: string; }>(`/workflows/school-whatsapp-groups/${encodeURIComponent(String(parameters.schoolId))}`);
+      return response.data;
+    },
+    async saveSchoolWhatsAppGroupLink(parameters: { schoolId: number; target: "SCHOOL_GROUP" | "INTERNAL_APPROVAL" | "PRODUCT_VENDOR" | "board_shree" | "board_national" | "board_prime" | "lam_glosspro" | "lam_crystal" | "lam_brightfinish" | "binder_perfect" | "binder_classic" | "binder_metro" | "offset_metro" | "offset_precision" | "offset_cityline"; }, request: WhatsAppGroupLinkRequest) {
+      const response = await http.put<{ [key: string]: string; }>(`/workflows/school-whatsapp-groups/${encodeURIComponent(String(parameters.schoolId))}/${encodeURIComponent(String(parameters.target))}`, request);
       return response.data;
     },
     async saveNotebookStepDraft(parameters: { orderId: string; step: number; }, request: TrackerDraftRequest) {

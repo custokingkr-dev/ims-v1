@@ -84,10 +84,25 @@ public class ProductCatalogRepository {
                 JOIN catalog.product_option_groups g ON g.id = p.group_id
                 WHERE g.category_code = :category ORDER BY d.id
                 """).param("category", categoryCode).query().listOfRows();
-        var rules = readList("rules", " WHERE category_code = :category" + (includeInactive ? "" : " AND active"),
-                Map.of("category", categoryCode), " ORDER BY priority, id");
+        // The builder (includeInactive) edits the stored rules and nothing else; an order form gets the rules it is held to,
+        // which add the default artwork upload (ProductFormRuleEngine.withDefaultArtwork).
+        var rules = includeInactive ? storedRules(categoryCode) : effectiveRules(categoryCode);
         return row("enabled", enabled && Boolean.TRUE.equals(category.get("formEnabled")), "category", category,
                 "groups", groups, "dependencies", dependencies, "rules", rules);
+    }
+
+    /**
+     * The active rules an order of this category is held to: its stored active rules plus the default optional artwork
+     * upload, unless the category states its own. The order form a client receives carries exactly this list, and upload
+     * validation reads it too, so the two cannot disagree about which uploads a category takes or how large they may be.
+     */
+    public List<Map<String, Object>> effectiveRules(String categoryCode) {
+        return new ArrayList<>(withDefaultArtwork(categoryCode, storedRules(categoryCode)).stream()
+                .filter(rule -> !Boolean.FALSE.equals(rule.get("active"))).toList());
+    }
+
+    private List<Map<String, Object>> storedRules(String categoryCode) {
+        return readList("rules", " WHERE category_code = :category", Map.of("category", categoryCode), " ORDER BY priority, id");
     }
 
     public Map<String, Object> form(String categoryCode) { return form(categoryCode, false); }

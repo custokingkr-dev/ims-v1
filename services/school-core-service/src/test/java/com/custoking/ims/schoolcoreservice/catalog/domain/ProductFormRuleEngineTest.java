@@ -186,6 +186,37 @@ class ProductFormRuleEngineTest {
         assertTrue(negative.fieldErrors().keySet().stream().anyMatch(k -> k.endsWith("LENGTH_FT")));
     }
 
+    /** The default optional artwork upload is added unless a category states its own DESIGN offer, active or not. */
+    @Test
+    void theDefaultArtworkUploadYieldsOnlyToACategorysOwnDesignOffer() {
+        var withDefault = withDefaultArtwork("TROPHIES", List.of());
+        assertEquals(1, withDefault.size());
+        var offer = withDefault.getFirst();
+        assertEquals("OFFER_ASSET", offer.get("ruleType"));
+        assertEquals("TROPHIES", offer.get("categoryCode"));
+        assertFalse(offer.containsKey("id"), "the default is not a stored rule");
+        assertEquals(Map.of(), offer.get("matchOptions"), "an order-level upload, whatever is selected");
+        assertEquals(row("assetKind", "DESIGN", "label", "Sample design (optional)",
+                "accept", "image/png,image/jpeg,image/webp,application/pdf", "maxBytes", 5242880), offer.get("params"));
+        assertEquals(true, offer.get("active"));
+
+        // Neither a required design nor another kind of offer stands in for it.
+        var required = row("id", 1L, "ruleType", "REQUIRE_ASSET", "params", row("assetKind", "DESIGN", "stage", "ON_PLACE"), "active", true);
+        var references = row("id", 2L, "ruleType", "OFFER_ASSET", "params", row("assetKind", "PRINT_REFERENCE"), "active", true);
+        assertEquals(3, withDefaultArtwork("FLIERS", List.of(required, references)).size());
+
+        var own = row("id", 3L, "ruleType", "OFFER_ASSET", "params", row("assetKind", "DESIGN", "maxBytes", 10485760), "active", true);
+        assertEquals(List.of(own), withDefaultArtwork("FLEX", List.of(own)));
+        var switchedOff = row("id", 4L, "ruleType", "OFFER_ASSET", "params", row("assetKind", "DESIGN"), "active", false);
+        assertEquals(List.of(switchedOff), withDefaultArtwork("STANDEES", List.of(switchedOff)));
+
+        // It takes part in normalisation like any other rule and never blocks placement.
+        var definition = definition(withDefaultArtwork("NOTEBOOKS", List.of()));
+        var result = engine.normalise(definition, row("CUSTOMIZATION", "NON_CUSTOMIZED"),
+                List.of(row("selections", row("SIZE", "LONG", "RULING", "PLAIN"), "bookCount", 5, "pageCount", 100)));
+        engine.requireStage(definition, result, "ON_PLACE", Set.of());
+    }
+
     static Map<String, Object> definition(List<Map<String, Object>> rules) {
         var sizes = new ArrayList<Map<String, Object>>();
         sizes.add(row("id", 3, "code", "LONG", "label", "Long", "specText", "17 cm x 27 cm", "widthMm", 170, "heightMm", 270, "specStatus", "CONFIRMED"));

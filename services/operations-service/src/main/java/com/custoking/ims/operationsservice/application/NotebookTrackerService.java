@@ -169,27 +169,112 @@ public class NotebookTrackerService {
         }));
     }
 
+    // ---- WhatsApp group links: one set per school, shared by the notebook tracker and product orders --------------------
+
+    /**
+     * The groups the notebook tracker works with: the school's own group, the internal team's and each notebook vendor's.
+     * A notebook order's endpoints read and write only these, exactly as before product orders shared the store, so the
+     * tracker screen never meets a group it has no name for.
+     */
+    public static final Set<String> NOTEBOOK_WHATSAPP_TARGETS = java.util.stream.Stream.concat(
+                    java.util.stream.Stream.of("SCHOOL_GROUP", "INTERNAL_APPROVAL"),
+                    VendorDirectory.CATEGORIES.values().stream().flatMap(List::stream).map(VendorDirectory.Vendor::id))
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    /**
+     * Every group a school can keep a link for, reachable through the school endpoints: the notebook tracker's groups plus
+     * the product vendor's (product orders). V16's {@code target_key} check holds the same list.
+     */
+    public static final Set<String> WHATSAPP_TARGETS = java.util.stream.Stream.concat(
+                    NOTEBOOK_WHATSAPP_TARGETS.stream(), java.util.stream.Stream.of("PRODUCT_VENDOR"))
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+    private static final String WHATSAPP_STAFF_ONLY = "WhatsApp group links are for superadmin and operators only";
+
+    /**
+     * The notebook groups of a notebook order's school; the caller must be able to see that order's tracker. Groups that
+     * only product orders use (PRODUCT_VENDOR) are left out.
+     */
     public Map<String, String> whatsappGroupLinks(String orderId) {
         return tx.execute(status -> {
             begin();
             actor(false);
-            TrackerRow order = tracker(orderId, false);
-            return repo.whatsappGroupLinks(order.schoolId());
+            return notebookGroups(repo.whatsappGroupLinks(tracker(orderId, false).schoolId()));
         });
     }
 
+    /**
+     * The same links by school, for orders the tracker does not hold (product orders). Superadmin reads any school; an
+     * operator only a school they are assigned to school-wide. An operator who reaches a school only through an item scope
+     * (say {@code 31:NOTEBOOKS}) never sees a product order there (owner decision D2, which school-core enforces), so they
+     * get no product-order groups either; their notebook orders keep the per-order endpoints above. Row-level security is
+     * then narrowed to exactly that school.
+     */
+    public Map<String, String> schoolWhatsAppGroupLinks(long schoolId) {
+        return tx.execute(status -> {
+            actor(false, WHATSAPP_STAFF_ONLY);
+            if (schoolId <= 0) throw bad("A positive schoolId is required");
+            requireSchoolWideAccess(schoolId);
+            repo.applySchoolScope(schoolId);
+            return repo.whatsappGroupLinks(schoolId);
+        });
+    }
+
+    /**
+     * Superadmin only; resolves the notebook order's school, then changes one of that school's notebook groups and answers
+     * with its notebook groups. PRODUCT_VENDOR is not a notebook group and is refused here, as it was before.
+     */
     public Map<String, String> setWhatsAppGroupLink(String orderId, String targetKey, String inviteUrl) {
-        Actor actor = actor(true);
-        requireSuperadmin(actor, "Only superadmin can maintain WhatsApp group links");
-        String target = validateWhatsAppTarget(targetKey);
-        String cleanUrl = inviteUrl == null || inviteUrl.isBlank() ? null : validateWhatsAppInviteUrl(inviteUrl);
+        WhatsAppLinkChange change = whatsAppLinkChange(actor(true), targetKey, inviteUrl, NOTEBOOK_WHATSAPP_TARGETS);
         return tx.execute(status -> {
             begin();
-            TrackerRow order = tracker(orderId, true);
-            if (cleanUrl == null) repo.deleteWhatsAppGroupLink(order.schoolId(), target);
-            else repo.upsertWhatsAppGroupLink(order.schoolId(), target, cleanUrl, actor.userId());
-            return repo.whatsappGroupLinks(order.schoolId());
+            return notebookGroups(saveWhatsAppGroupLink(tracker(orderId, true).schoolId(), change));
         });
+    }
+
+    /** Superadmin only; any group in {@link #WHATSAPP_TARGETS}, and a blank link removes the group. */
+    public Map<String, String> setSchoolWhatsAppGroupLink(long schoolId, String targetKey, String inviteUrl) {
+        WhatsAppLinkChange change = whatsAppLinkChange(actor(true, WHATSAPP_STAFF_ONLY), targetKey, inviteUrl, WHATSAPP_TARGETS);
+        if (schoolId <= 0) throw bad("A positive schoolId is required");
+        return tx.execute(status -> {
+            begin();
+            return saveWhatsAppGroupLink(schoolId, change);
+        });
+    }
+
+    /** A validated change: who makes it, which group, and the clean invite link or null to remove it. */
+    private record WhatsAppLinkChange(long userId, String target, String inviteUrl) { }
+
+    private WhatsAppLinkChange whatsAppLinkChange(Actor actor, String targetKey, String inviteUrl, Set<String> allowedTargets) {
+        requireSuperadmin(actor, "Only superadmin can maintain WhatsApp group links");
+        String target = validateWhatsAppTarget(targetKey, allowedTargets);
+        String cleanUrl = inviteUrl == null || inviteUrl.isBlank() ? null : validateWhatsAppInviteUrl(inviteUrl);
+        return new WhatsAppLinkChange(actor.userId(), target, cleanUrl);
+    }
+
+    /** Inside the caller's transaction, against a school the caller has already been checked for. */
+    private Map<String, String> saveWhatsAppGroupLink(long schoolId, WhatsAppLinkChange change) {
+        if (change.inviteUrl() == null) repo.deleteWhatsAppGroupLink(schoolId, change.target());
+        else repo.upsertWhatsAppGroupLink(schoolId, change.target(), change.inviteUrl(), change.userId());
+        return repo.whatsappGroupLinks(schoolId);
+    }
+
+    /** A school's links narrowed to the notebook tracker's groups, keeping their order. */
+    private static Map<String, String> notebookGroups(Map<String, String> links) {
+        Map<String, String> notebook = new java.util.LinkedHashMap<>(links);
+        notebook.keySet().retainAll(NOTEBOOK_WHATSAPP_TARGETS);
+        return notebook;
+    }
+
+    /**
+     * Superadmin sees every school's links; an operator only those of a school they are assigned to school-wide, the same
+     * operators school-core shows that school's product orders to. Item scopes count for nothing here.
+     */
+    private static void requireSchoolWideAccess(long schoolId) {
+        TenantContext ctx = TenantContext.get();
+        if (!ctx.isSuperAdmin() && !ctx.operatorSchools().contains(schoolId)) {
+            throw forbidden("No access to this school");
+        }
     }
 
     // ---- step work ----------------------------------------------------------------------------------------------------
@@ -638,10 +723,15 @@ public class NotebookTrackerService {
     }
 
     private Actor actor(boolean write) {
+        return actor(write, "The notebook order tracker is for superadmin and operators only");
+    }
+
+    /** Superadmin, or an operator holding the tracker's read (or, to write, act) permission; anyone else is refused. */
+    private Actor actor(boolean write, String staffOnlyMessage) {
         TenantContext ctx = TenantContext.get();
         if (ctx.userId() == null) throw forbidden("Authenticated user required");
         if (ctx.isSuperAdmin()) return new Actor(Role.SUPERADMIN, ctx.userId());
-        if (!ctx.isOperations()) throw forbidden("The notebook order tracker is for superadmin and operators only");
+        if (!ctx.isOperations()) throw forbidden(staffOnlyMessage);
         TenantScope.requirePermission(write ? "notebook-tracker:act" : "notebook-tracker:read");
         return new Actor(Role.OPERATOR, ctx.userId());
     }
@@ -747,16 +837,21 @@ public class NotebookTrackerService {
         return comment.strip();
     }
 
-    private static String validateWhatsAppTarget(String targetKey) {
+    private static String validateWhatsAppTarget(String targetKey, Set<String> allowedTargets) {
         String target = targetKey == null ? "" : targetKey.strip();
-        boolean vendor = VendorDirectory.CATEGORIES.values().stream().flatMap(List::stream)
-                .anyMatch(item -> item.id().equals(target));
-        if (!"SCHOOL_GROUP".equals(target) && !"INTERNAL_APPROVAL".equals(target) && !vendor) {
-            throw bad("Choose a supported school, internal, or vendor group");
-        }
+        if (!allowedTargets.contains(target)) throw bad("Choose a supported school, internal, or vendor group");
         return target;
     }
 
+    /** The only origin an invite link is stored with: V15's {@code invite_url} check spells it exactly so. */
+    private static final String WHATSAPP_INVITE_ORIGIN = "https://chat.whatsapp.com";
+
+    /**
+     * Accepts an invite link however its scheme and host are cased, and with an empty port ({@code chat.whatsapp.com:}),
+     * as browsers do, but answers with the one canonical spelling: V15's {@code invite_url} check is case-sensitive and has
+     * no port, so storing the input as typed would pass here and then fail the insert as an unexplained server error.
+     * The invite code itself is kept exactly as given; it is case-sensitive.
+     */
     private static String validateWhatsAppInviteUrl(String value) {
         String clean = value.strip();
         if (clean.length() > 2048) throw bad("The WhatsApp group link is too long");
@@ -767,7 +862,7 @@ public class NotebookTrackerService {
                     || uri.getRawPath() == null || !uri.getRawPath().matches("/[A-Za-z0-9_-]{10,64}")) {
                 throw bad("Enter a valid WhatsApp group invite link");
             }
-            return uri.toASCIIString();
+            return WHATSAPP_INVITE_ORIGIN + uri.getRawPath();
         } catch (URISyntaxException exception) {
             throw bad("Enter a valid WhatsApp group invite link");
         }

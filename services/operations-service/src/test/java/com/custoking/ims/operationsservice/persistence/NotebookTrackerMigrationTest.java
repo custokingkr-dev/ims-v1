@@ -300,6 +300,35 @@ class NotebookTrackerMigrationTest {
         }
     }
 
+    /** V16: product orders' vendor group joins V15's school groups; the key list is replaced, the invite check is kept. */
+    @Test
+    void schoolWhatsAppGroupsAcceptTheProductVendorAndStillCheckKeysAndLinks() throws Exception {
+        String insert = "INSERT INTO workflow.workflow_school_whatsapp_group_links (school_id, target_key, invite_url, updated_by) VALUES (10, '%s', '%s', 1)";
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            st.execute("SELECT set_config('app.current_school_id', '10', false)");
+            st.execute(insert.formatted("PRODUCT_VENDOR", "https://chat.whatsapp.com/AbCdEf1234567890"));
+            st.execute(insert.formatted("SCHOOL_GROUP", "https://chat.whatsapp.com/AbCdEf1234567890"));
+            st.execute(insert.formatted("offset_cityline", "https://chat.whatsapp.com/AbCdEf1234567890"));
+            assertThrows(SQLException.class, () -> st.execute(insert.formatted("VENDOR", "https://chat.whatsapp.com/AbCdEf1234567890")),
+                    "an unknown group is still refused");
+            assertThrows(SQLException.class, () -> st.execute(insert.formatted("INTERNAL_APPROVAL", "https://example.com/AbCdEf1234567890")),
+                    "V15's invite link check still applies");
+            assertThrows(SQLException.class, () -> st.execute(insert.formatted("INTERNAL_APPROVAL", "https://chat.whatsapp.com/AbCdEf1234567890?x=1")));
+            try (ResultSet rs = st.executeQuery("SELECT count(*) FROM workflow.workflow_school_whatsapp_group_links WHERE school_id = 10")) {
+                rs.next();
+                assertEquals(3, rs.getLong(1));
+            }
+        }
+        try (Connection c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner"); Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT conname FROM pg_constraint WHERE contype = 'c' "
+                     + "AND conrelid = 'workflow.workflow_school_whatsapp_group_links'::regclass ORDER BY conname")) {
+            java.util.List<String> names = new java.util.ArrayList<>();
+            while (rs.next()) names.add(rs.getString(1));
+            assertEquals(java.util.List.of("workflow_school_whatsapp_group_links_invite_url_check",
+                    "workflow_school_whatsapp_group_links_target_key_check"), names, "one key list, not V15's beside V16's");
+        }
+    }
+
     @Test
     void redundantAssigneeIndexDropped() throws Exception {
         try (Connection c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner"); Statement st = c.createStatement();

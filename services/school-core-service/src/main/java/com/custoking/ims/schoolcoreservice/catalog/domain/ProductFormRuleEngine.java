@@ -131,6 +131,40 @@ public class ProductFormRuleEngine {
         }
     }
 
+    /** What the default artwork upload says and accepts. One order-level DESIGN upload, never required. */
+    public static final String DEFAULT_ARTWORK_LABEL = "Sample design (optional)";
+    public static final String DEFAULT_ARTWORK_ACCEPT = "image/png,image/jpeg,image/webp,application/pdf";
+    public static final int DEFAULT_ARTWORK_MAX_BYTES = 5 * 1024 * 1024;
+    public static final int DEFAULT_ARTWORK_PRIORITY = 50;
+
+    /**
+     * Every category offers one optional order-level artwork upload (decided 2026-11-12). It is derived here, not seeded, so
+     * a category created or enabled later offers it too, and both the form a client receives and the server's upload check
+     * read it from {@link #withDefaultArtwork}. A category that stores its own {@code OFFER_ASSET} rule for {@code DESIGN}
+     * keeps that rule instead: an active one replaces the default (a different label, type list or cap), and one stored
+     * inactive switches the upload off. The default carries no id because it is not a stored rule and cannot be edited.
+     */
+    public static Map<String, Object> defaultArtworkOffer(String categoryCode) {
+        return row("categoryCode", categoryCode, "ruleType", "OFFER_ASSET", "targetField", null,
+                "matchOptions", new LinkedHashMap<String, Object>(),
+                "params", row("assetKind", "DESIGN", "label", DEFAULT_ARTWORK_LABEL, "accept", DEFAULT_ARTWORK_ACCEPT,
+                        "maxBytes", DEFAULT_ARTWORK_MAX_BYTES),
+                "priority", DEFAULT_ARTWORK_PRIORITY, "message", DEFAULT_ARTWORK_LABEL, "active", true);
+    }
+
+    /**
+     * A category's stored rules (active and inactive) with the default artwork upload added when the category states no
+     * {@code OFFER_ASSET} rule for {@code DESIGN} of its own, in whatever state. Inactive rules are kept, so the caller
+     * decides what to show; an inactive stored offer is precisely what switches the default off.
+     */
+    public static List<Map<String, Object>> withDefaultArtwork(String categoryCode, List<Map<String, Object>> storedRules) {
+        var rules = new ArrayList<>(storedRules == null ? List.<Map<String, Object>>of() : storedRules);
+        boolean ownOffer = rules.stream().anyMatch(rule -> "OFFER_ASSET".equals(rule.get("ruleType"))
+                && "DESIGN".equals(String.valueOf(map(rule.get("params")).get("assetKind"))));
+        if (!ownOffer) rules.add(defaultArtworkOffer(categoryCode));
+        return rules;
+    }
+
     public static int round(int value, int multiple, String mode, int minimum) {
         if (value <= 0 || multiple <= 0 || minimum <= 0) throw error("pageCount", "Counts and rounding settings must be positive integers");
         long remainder = value % multiple;

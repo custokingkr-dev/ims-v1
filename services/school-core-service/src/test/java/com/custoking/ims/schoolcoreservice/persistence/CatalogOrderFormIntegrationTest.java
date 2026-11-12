@@ -541,6 +541,7 @@ class CatalogOrderFormIntegrationTest {
 
     @Test
     void optionalUploadsAreOfferedForEveryCategoryAndNeverBlockPlacement() {
+        // The stored offers are what each prototype asked for; the default artwork upload is derived, never seeded.
         var offers = jdbc.sql("SELECT category_code, params ->> 'assetKind' AS kind FROM catalog.product_form_rules WHERE rule_type = 'OFFER_ASSET' ORDER BY category_code, kind")
                 .query((rs, n) -> rs.getString("category_code") + ":" + rs.getString("kind")).list();
         assertThat(offers).containsExactlyInAnyOrder(
@@ -548,12 +549,103 @@ class CatalogOrderFormIntegrationTest {
                 "FLEX:DESIGN", "FLIERS:DESIGN", "FLIERS:PRINT_REFERENCE", "NOTEBOOKS:DESIGN",
                 "TIES:DESIGN", "CERTIFICATES:DESIGN", "CERTIFICATES:PRINT_REFERENCE",
                 "REPORT_CARDS:DESIGN");
+        // Every orderable category's form offers artwork: its own rule where it has one, otherwise the default.
+        var orderable = products.categories(false).stream().filter(category -> Boolean.TRUE.equals(category.get("formEnabled")))
+                .map(category -> String.valueOf(category.get("code"))).toList();
+        assertThat(orderable).contains("TROPHIES", "BROCHURES", "FLUTE_BOARDS", "STANDEES", "NOTEBOOKS", "FLEX");
+        for (String code : orderable) {
+            assertThat(designOffers(products.form(code, false))).as(code).hasSize(1);
+        }
         // The flex PDF is 10 MB in the prototype where the images are 5 MB.
         assertThat(jdbc.sql("SELECT params ->> 'maxBytes' FROM catalog.product_form_rules WHERE rule_type = 'OFFER_ASSET' AND category_code = 'FLEX'")
                 .query(String.class).single()).isEqualTo("10485760");
         // A non-customised order places with no attachment at all, as it did before.
         var created = create(false, 25, 30);
         assertThat(tx(() -> orders.placeOrder(created.id(), 7L)).status()).isNotNull();
+    }
+
+    /**
+     * The default optional artwork upload (2026-11-12), for the categories that state no artwork rule of their own. The form
+     * a client receives and the server's upload check both read it, and a category created later gets it without a
+     * migration.
+     */
+    @Test
+    void categoriesWithoutTheirOwnArtworkRuleOfferTheDefaultUploadOnTheFormAndOnTheServer() throws Exception {
+        for (String code : List.of("TROPHIES", "BROCHURES", "FLUTE_BOARDS", "STANDEES")) {
+            var offer = designOffers(products.form(code, false)).getFirst();
+            assertThat(offer).as(code).doesNotContainKey("id")
+                    .containsEntry("message", "Sample design (optional)").containsEntry("matchOptions", Map.of());
+            assertThat(asMap(offer.get("params"))).as(code).containsEntry("label", "Sample design (optional)")
+                    .containsEntry("accept", "image/png,image/jpeg,image/webp,application/pdf").containsEntry("maxBytes", 5242880);
+        }
+        // The builder edits stored rules, and the default is not one; a category with its own offer shows that one only.
+        assertThat(designOffers(products.form("TROPHIES", true))).isEmpty();
+        assertThat(designOffers(products.form("FLEX", false)).getFirst()).containsKey("id");
+
+        tx(() -> {
+            jdbc.sql("INSERT INTO catalog.product_categories (code, label, emoji, description, order_type, form_enabled, sort_order) VALUES ('TEST_PRINTS', 'Test prints', '', '', 'One-time', true, 99)").update();
+            assertThat(designOffers(products.form("TEST_PRINTS", false))).as("a category created later").hasSize(1);
+            return null;
+        });
+        jdbc.sql("DELETE FROM catalog.product_categories WHERE code = 'TEST_PRINTS'").update();
+
+        // The order's form snapshot carries the offer, the server takes a design for it, and enforces its 5 MB cap.
+        var created = trophyOrder();
+        assertThat(designOffers(tx(() -> forms.detail(created.id())).get("formDefinition"))).hasSize(1);
+        assertThat(upload(created.id(), "DESIGN", 5).get("assetKind")).isEqualTo("DESIGN");
+        assertThatThrownBy(() -> tx(() -> forms.upload(created.id(), "DESIGN", oversizedPng(), "large.png")))
+                .isInstanceOfSatisfying(ResponseStatusException.class, refused ->
+                        assertThat(refused.getReason()).isEqualTo("Upload a nonempty file of 5 MB or smaller"));
+    }
+
+    @Test
+    void aCategorysOwnArtworkRuleReplacesTheDefaultAndAnInactiveOneSwitchesTheUploadOff() throws Exception {
+        var created = trophyOrder();
+        long ruleId = jdbc.sql("""
+                INSERT INTO catalog.product_form_rules (category_code, rule_type, target_field, match_options, params, priority, message)
+                VALUES ('TROPHIES', 'OFFER_ASSET', NULL, '{}'::jsonb,
+                        '{"assetKind":"DESIGN","label":"Trophy artwork","accept":"application/pdf","maxBytes":10485760}'::jsonb, 40, 'Trophy artwork')
+                RETURNING id
+                """).query(Long.class).single();
+        try {
+            var offers = designOffers(products.form("TROPHIES", false));
+            assertThat(offers).hasSize(1);
+            assertThat(asMap(offers.getFirst().get("params"))).containsEntry("label", "Trophy artwork").containsEntry("maxBytes", 10485760);
+            // The category's own 10 MB cap applies, so a 6 MB file passes the size check and is refused only as a damaged image.
+            assertThatThrownBy(() -> tx(() -> forms.upload(created.id(), "DESIGN", oversizedPng(), "large.png")))
+                    .isInstanceOfSatisfying(ResponseStatusException.class, refused ->
+                            assertThat(refused.getReason()).isEqualTo("This file is damaged or is not a valid PDF or image."));
+
+            jdbc.sql("UPDATE catalog.product_form_rules SET active = false WHERE id = :id").param("id", ruleId).update();
+            assertThat(designOffers(products.form("TROPHIES", false))).as("an inactive own rule switches the upload off").isEmpty();
+            assertThatThrownBy(() -> upload(created.id(), "DESIGN", 6))
+                    .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
+                        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                        assertThat(refused.getReason()).isEqualTo("This product does not take an artwork upload");
+                    });
+            assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_order_assets WHERE order_id = :id").param("id", created.id())
+                    .query(Long.class).single()).isZero();
+        } finally {
+            jdbc.sql("DELETE FROM catalog.product_form_rules WHERE id = :id").param("id", ruleId).update();
+        }
+    }
+
+    private static List<Map<String, Object>> designOffers(Object definition) {
+        return rulesOf(definition).stream().filter(rule -> "OFFER_ASSET".equals(rule.get("ruleType"))
+                && "DESIGN".equals(asMap(rule.get("params")).get("assetKind"))).toList();
+    }
+
+    private static CatalogReadRepository.CatalogOrderRow trophyOrder() {
+        var data = Map.of("orderSelections", Map.of(), "lines", List.of(
+                Map.of("selections", Map.of("VARIANT", "T_WM001_A"), "bookCount", 1, "pageCount", 1)));
+        return tx(() -> orders.createOrder(Map.of("category", "TROPHIES", "orderData", data)));
+    }
+
+    /** 6 MB that starts like a PNG: over the default 5 MB cap, and not a decodable image. */
+    private static byte[] oversizedPng() {
+        byte[] bytes = new byte[6 * 1024 * 1024];
+        System.arraycopy(new byte[]{(byte) 0x89, 'P', 'N', 'G', 13, 10, 26, 10}, 0, bytes, 0, 8);
+        return bytes;
     }
 
     private Map<String, Object> upload(String id, String kind, int color) {

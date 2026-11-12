@@ -8,6 +8,25 @@ Status: built and enabled in dev and stage, with both product decisions confirme
 this document). Production is deliberately still off pending a walkthrough of one real order per
 category in dev — no order has yet been submitted through any of these forms in any environment.
 
+**Every orderable category offers an optional artwork upload (2026-11-12).** Categories with no
+artwork rule of their own (trophies, brochures, flute boards, standees, and any category created
+or enabled later) offer one order-level `DESIGN` upload: "Sample design (optional)", PNG, JPEG,
+WebP or PDF, up to 5 MB. It is not seeded. `ProductFormRuleEngine.withDefaultArtwork` derives it
+whenever a category's rules are read, so a category enabled next year gets it without a
+migration. The order form a client receives (`ProductCatalogRepository.effectiveRules`, served by
+`GET /supply/product-catalog/forms/{code}` and copied into each new order's snapshot) and the
+server's upload check (whether a category takes artwork at all, and its size cap) read the same
+rule list, so they cannot disagree. File types are checked by content against PNG, JPEG, WebP and
+PDF, the same four the default lists.
+A category's own `OFFER_ASSET` rule for `DESIGN` overrides the default. An active one replaces it,
+as on notebooks, flex (10 MB PDF), bill books, belts, ties, certificates, fliers and report cards.
+An inactive one switches artwork off. The form shows no upload and the server refuses a `DESIGN`
+upload for that category. The default has no rule id and does not appear in the builder
+(`/admin/forms/{code}`), which edits stored rules only. To change its label, types or cap for one
+category, add that category's own rule. The upload never blocks placement and is never copied onto
+order lines. An earlier draft did this with a one-time data migration, which would have missed
+every category added after it ran.
+
 ## Where the current implementation stands
 
 The data model is already generic — `product_categories`, `product_option_groups`,
@@ -355,15 +374,72 @@ must be absolute HTTPS URLs, and are rendered as safe external links in order de
 do not require the category choice present in a different prototype; Bill Books accept the observed
 `Slips and pages` numbering basis. No sample-sheet URL is imported as a production group mapping.
 
+## Production workflow for product orders (2026-11-12)
+
+A placed order in one of nine categories runs a production workflow of nine fixed stages: Order
+Details, Designing Activity, CDR Conversion, Head Approval, Production Planning, Pre-Print Quality
+Check, Production Follow-up, Final Verification, and Delivery & Invoicing. The nine categories are
+bill books, belts, brochures, certificates, flex, fliers, flute boards, report cards and standees.
+Notebooks keep the notebook order tracker. Ties, trophies and every other category have no
+workflow (`404`).
+
+**The server owns the category list.** `ProductOrderWorkflowService.CATEGORIES` holds it, and the
+order form detail (`GET /supply/orders/{id}/form`) carries `order.productionWorkflowAvailable`,
+which is true exactly when the workflow endpoint would answer the caller. The screen keeps no list
+of its own.
+
+**Who can do what** mirrors the notebook tracker:
+
+| | Read stages | Save stage details | Complete a stage | Complete Head Approval |
+| --- | --- | --- | --- | --- |
+| Superadmin | Yes, with details and notes | Yes | Yes | Yes |
+| Operator assigned to the school, with `order:update` | Yes, with details and notes | Yes | Yes | No |
+| Operator without `order:update` | Yes, with details and notes | No | No | No |
+| School users with `order:read` (admin, school admin, teachers and others) | Titles and statuses only; details and notes withheld | No | No | No |
+
+An operator who holds only an item scope at a school still reaches tracker orders and nothing else
+(owner decision D2), so product orders are hidden from them. Every call runs the same checks as
+any other order read: tenant and operator scope, then the school's `ORDERS` module (`403` when it
+is off).
+
+**When a workflow exists.** It is created, in one statement, the first time a placed order that is
+still in production is opened. A draft or cancelled order is refused (`409`). A finished order
+(delivered, fulfilled, rejected, returned or completed) keeps any workflow it already has, shown
+read-only, and is never given a new one (`409`). Saving and completing take the workflow's
+`expectedVersion`. A write the caller may not make gets `403`: anyone who is not superadmin or an
+assigned operator with `order:update`, Head Approval completed by anyone but superadmin, a finished
+order and a workflow that is already complete (the cases in which the view reports `canEdit` or
+`canComplete` false). A stale version gets `409` "Workflow changed; refresh and try again", and so
+does a stage that is no longer the active one. Every refusal carries `{ "message": ... }`, which the
+screen shows, including a wrong HTTP method (`405`) or an unknown path (`404`) under
+`.../production-workflow`.
+
+API: `GET /catalog/orders/{id}/production-workflow`,
+`PUT .../production-workflow/stages/{stage}` with `{ data: { details }, note, expectedVersion }`,
+and `POST .../production-workflow/stages/{stage}/complete` with `{ expectedVersion }`. Tables:
+`catalog.product_order_workflows` and `catalog.product_order_workflow_steps` (catalog V36), both
+under the tenant row-level policy.
+
 ## WhatsApp group redirects
 
-The Notebook tracker now supports school-scoped redirects for the school group, internal approval
-group, and configured vendor targets. Superadmin manages each invite from the tracker; operators can
-open only the links configured for a school they are assigned to. The API accepts only HTTPS
-`chat.whatsapp.com` invite URLs and the database enforces tenant isolation. No client prototype URL is
-preloaded: its vendor/internal pages reused a single hard-coded invite, while the school CSV contains
-only a sample school mapping. Other product categories do not yet have production trackers, so their
-group links are not surfaced until those tracker workflows are implemented.
+The notebook tracker supports school-scoped redirects to WhatsApp groups. They live in one store in
+operations-service, `workflow.workflow_school_whatsapp_group_links`. Product orders use the same
+store and do not keep a copy in school-core. The keys are `SCHOOL_GROUP` ("School group"),
+`INTERNAL_APPROVAL` ("Internal team") and `PRODUCT_VENDOR` ("Vendor group").
+
+Only superadmin and operators assigned to the whole school can read the links:
+`GET /workflows/school-whatsapp-groups/{schoolId}`. An operator scoped there to one item only is
+refused, because school-core hides product orders from them (owner decision D2). Only superadmin can
+change them: `PUT /workflows/school-whatsapp-groups/{schoolId}/{target}` with `{ url }`, where a
+blank URL removes the link. School users never see them. The notebook tracker's per-order endpoints
+read and write the same rows, but only the notebook keys: they neither return nor accept
+`PRODUCT_VENDOR`.
+
+Only HTTPS `chat.whatsapp.com` invite URLs are accepted, and the database enforces tenant isolation.
+An accepted link is stored and returned as `https://chat.whatsapp.com/<code>`, whatever the casing
+of its scheme and host and even with an empty port; the invite code keeps its case.
+No client prototype URL is preloaded. The prototype's vendor and internal pages reused a single
+hard-coded invite, and the school CSV contains only a sample school mapping.
 
 ## Decisions taken by the product owner
 

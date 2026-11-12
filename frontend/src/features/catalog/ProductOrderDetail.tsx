@@ -8,6 +8,7 @@ import { formatMoney, prettyOrderStatus } from '../../pages/workspace/utils';
 import { errorMessage, getFormOrder } from './api';
 import { ProductFormBuilder } from './ProductFormBuilder';
 import { OrderAssetField } from './OrderAssetField';
+import { ProductOrderWorkflow } from './ProductOrderWorkflow';
 import { selectionCodes, selectionLabel, selectionSpec, type AssetKind, type FormOrderDetail } from './types';
 import { matches } from './productFormRules';
 import './product-form.css';
@@ -30,11 +31,14 @@ export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManage
   const [busy, setBusy] = useState(false);
   const [prices, setPrices] = useState<Record<number, string>>({});
   const [gst, setGst] = useState('0');
+  // Counts reloads of this order (after any action or an explicit refresh). It changes in the same render as the reloaded
+  // order, so the production workflow refetches exactly once per reload, or unmounts if the server stopped offering it.
+  const [reloads, setReloads] = useState(0);
   const reportTracker = useRef(onTrackerManaged);
   reportTracker.current = onTrackerManaged;
   useEffect(() => { if (detail?.order.trackerManaged === true) reportTracker.current?.(); }, [detail?.order.trackerManaged]);
   const load = async () => {
-    const next = await getFormOrder(orderId); setDetail(next);
+    const next = await getFormOrder(orderId); setDetail(next); setReloads((value) => value + 1);
     setPrices(Object.fromEntries(next.lines.map((line) => [line.id, line.unitPricePaise === null ? '' : String(line.unitPricePaise / 100)])));
     setGst(String(Number(next.order.gst || 0) / 100)); return next;
   };
@@ -121,6 +125,11 @@ export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManage
         {superadmin && can('order:approve') && readyForApproval && <><span className="ck-product-muted">{quoted ? 'Pricing complete' : 'Quote required before approval'}{customization === 'CUSTOMIZED' ? designApproved ? ' | Design approval completed' : ' | Design approval required' : ''}</span><button className="ck-btn ck-btn-g" disabled={busy || !quoted || !designApproved} onClick={() => void mutate(() => api.post(`/catalog/orders/${orderId}/superadmin-approve`), 'Order approved.')}><Check size={16} />Approve order</button></>}
         {!onTracker && canOperate && (can('order:fulfill') || can('order:update')) && ['APPROVED', 'CUSTOKING_APPROVED'].includes(status) && <>{missingDeliveryAsset && <span className="ck-product-muted">Pre-delivery photo required</span>}<button className="ck-btn ck-btn-g" disabled={busy || missingDeliveryAsset} onClick={() => void mutate(() => catalogClient.markDelivered({ id: orderId }), 'Order marked delivered.')}><Truck size={16} />Mark delivered</button></>}
       </div>
+      {/* The server decides which orders run a production workflow (category, status, an existing workflow) and who may
+          act on it; this screen mounts the panel only when it says so, and refetches it whenever the order changes. */}
+      {detail.order.productionWorkflowAvailable === true && <ProductOrderWorkflow key={orderId}
+        orderId={orderId} schoolId={typeof detail.order.schoolId === 'number' ? detail.order.schoolId : null}
+        refreshKey={`${status}|${detail.version}|${reloads}`} staff={canOperate} superadmin={superadmin} />}
     </>)}
   </div></div>;
 }

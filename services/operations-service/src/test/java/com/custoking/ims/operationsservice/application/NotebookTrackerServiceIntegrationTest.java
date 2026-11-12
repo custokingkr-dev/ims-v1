@@ -257,6 +257,363 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals(Map.of(), as(() -> asSuper(), () -> service.setWhatsAppGroupLink(order, "SCHOOL_GROUP", "")));
     }
 
+    // ---- WhatsApp group links by school (product orders) --------------------------------------------------------------
+
+    static final String LINK_A = "https://chat.whatsapp.com/AbCdEf1234567890";
+    static final String LINK_B = "https://chat.whatsapp.com/ZyXwVu0987654321";
+
+    static ResponseStatusException refusal(Runnable action) {
+        return assertThrows(ResponseStatusException.class, action::run);
+    }
+
+    /** A school user as the gateway forwards them: their own school and the generic workflow codes they genuinely hold. */
+    static void asSchoolUser(String role, long school) {
+        TenantContext.set(new TenantContext(50L, "school@x", role, school, null, SCHOOL_ADMIN_WORKFLOW));
+    }
+
+    @Test
+    void superadminKeepsAnySchoolsLinksIncludingTheProductVendorGroup() {
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(30, "SCHOOL_GROUP", " " + LINK_A + " "));
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(30, "INTERNAL_APPROVAL", LINK_B));
+        Map<String, String> saved = as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(30, "PRODUCT_VENDOR", LINK_B));
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A, "INTERNAL_APPROVAL", LINK_B, "PRODUCT_VENDOR", LINK_B), saved,
+                "the answer is the school's links after the change, stripped");
+        assertEquals(saved, as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(30)));
+        // Replacing a link keeps one row per school and group.
+        assertEquals(LINK_A, as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(30, "PRODUCT_VENDOR", LINK_A)).get("PRODUCT_VENDOR"));
+        assertEquals(1L, owner.sql("SELECT count(*) FROM workflow.workflow_school_whatsapp_group_links WHERE school_id = 30 AND target_key = 'PRODUCT_VENDOR'")
+                .query(Long.class).single());
+        assertEquals(1L, owner.sql("SELECT updated_by FROM workflow.workflow_school_whatsapp_group_links WHERE school_id = 30 AND target_key = 'PRODUCT_VENDOR'")
+                .query(Long.class).single(), "the change records who made it");
+        // A school with nothing configured answers with no links rather than an error.
+        assertEquals(Map.of(), as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(39)));
+    }
+
+    @Test
+    void aSchoolWideOperatorReadsTheSchoolsLinksButCannotChangeThem() {
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(31, "PRODUCT_VENDOR", LINK_A));
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(32, "PRODUCT_VENDOR", LINK_B));
+        Map<String, String> school31 = Map.of("PRODUCT_VENDOR", LINK_A);
+
+        assertEquals(school31, as(() -> asOperator(OP_A, 31L), () -> service.schoolWhatsAppGroupLinks(31)));
+        // School-wide at two schools, asking about the second (not their branch): only that school's rows.
+        assertEquals(school31, as(() -> asOperator(OP_A, 32L, 31L), () -> service.schoolWhatsAppGroupLinks(31)));
+        assertEquals(Map.of("PRODUCT_VENDOR", LINK_B), as(() -> asOperator(OP_A, 32L, 31L), () -> service.schoolWhatsAppGroupLinks(32)));
+        // School-wide here and item-scoped elsewhere: the school-wide assignment is what admits them.
+        assertEquals(school31, as(() -> TenantContext.set(new TenantContext(OP_C, "op@x", "OPERATIONS", 31L, null, OPERATIONS,
+                Set.of(31L), Set.of("32:FLIERS"))), () -> service.schoolWhatsAppGroupLinks(31)));
+
+        ResponseStatusException refused = as(() -> asOperator(OP_A, 31L),
+                () -> refusal(() -> service.setSchoolWhatsAppGroupLink(31, "PRODUCT_VENDOR", LINK_B)));
+        assertEquals(403, refused.getStatusCode().value());
+        assertEquals("Only superadmin can maintain WhatsApp group links", refused.getReason());
+        assertEquals(403, as(() -> asOperator(OP_A, 31L), () -> http(() -> service.setSchoolWhatsAppGroupLink(31, "PRODUCT_VENDOR", ""))).status(),
+                "nor remove one");
+        assertEquals(school31, as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(31)), "nothing was changed");
+    }
+
+    /**
+     * Owner decision D2: school-core shows a school's product orders only to superadmin and its school-wide operators. An
+     * operator who reaches the school only through an item scope, notebooks included, never sees a product order there,
+     * so the product orders' groups are not theirs either.
+     */
+    @Test
+    void anItemOnlyOperatorAtTheSchoolIsRefusedLikeSchoolCoreRefusesThemItsProductOrders() {
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(241, "PRODUCT_VENDOR", LINK_A));
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(241, "SCHOOL_GROUP", LINK_B));
+
+        for (String scope : List.of("241:BELTS", "241:NOTEBOOKS")) {
+            ResponseStatusException read = as(() -> asScopedOperator(OP_C, scope), () -> refusal(() -> service.schoolWhatsAppGroupLinks(241)));
+            assertEquals(403, read.getStatusCode().value(), scope);
+            assertEquals("No access to this school", read.getReason(), scope);
+            ResponseStatusException write = as(() -> asScopedOperator(OP_C, scope),
+                    () -> refusal(() -> service.setSchoolWhatsAppGroupLink(241, "PRODUCT_VENDOR", LINK_B)));
+            assertEquals(403, write.getStatusCode().value(), scope);
+            assertEquals("Only superadmin can maintain WhatsApp group links", write.getReason(), scope);
+        }
+        // Every item there at once still makes no school-wide assignment; nor does a school-wide one elsewhere.
+        assertEquals(403, as(() -> asScopedOperator(OP_C, "241:BELTS", "241:NOTEBOOKS", "241:TIES"),
+                () -> http(() -> service.schoolWhatsAppGroupLinks(241))).status());
+        assertEquals(403, as(() -> TenantContext.set(new TenantContext(OP_C, "op@x", "OPERATIONS", 242L, null, OPERATIONS,
+                Set.of(242L), Set.of("241:NOTEBOOKS"))), () -> http(() -> service.schoolWhatsAppGroupLinks(241))).status());
+
+        // A school-wide operator there still reads, and superadmin still reads and writes.
+        assertEquals(Map.of("PRODUCT_VENDOR", LINK_A, "SCHOOL_GROUP", LINK_B), as(() -> asOperator(OP_A, 241L), () -> service.schoolWhatsAppGroupLinks(241)));
+        assertEquals(LINK_B, as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(241, "PRODUCT_VENDOR", LINK_B)).get("PRODUCT_VENDOR"));
+        assertEquals(Map.of("PRODUCT_VENDOR", LINK_B, "SCHOOL_GROUP", LINK_B), as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(241)));
+    }
+
+    /**
+     * The per-order notebook endpoints are unchanged: an operator scoped to notebooks at a school still reads that school's
+     * notebook groups through their notebook order, although the school endpoint refuses them.
+     */
+    @Test
+    void aNotebookScopedOperatorKeepsTheNotebookOrdersGroupsButNotTheSchoolEndpoint() {
+        String order = create(true, 243, OP_A);
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(243, "SCHOOL_GROUP", LINK_A));
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(243, "PRODUCT_VENDOR", LINK_B));
+
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A), as(() -> asScopedOperator(OP_C, "243:NOTEBOOKS"), () -> service.whatsappGroupLinks(order)));
+        assertEquals(403, as(() -> asScopedOperator(OP_C, "243:NOTEBOOKS"), () -> http(() -> service.schoolWhatsAppGroupLinks(243))).status());
+        // A scope for another item still reaches neither, as before: row-level security hides the notebook order itself.
+        assertEquals(404, as(() -> asScopedOperator(OP_C, "243:BELTS"), () -> http(() -> service.whatsappGroupLinks(order))).status());
+        assertEquals(403, as(() -> asScopedOperator(OP_C, "243:BELTS"), () -> http(() -> service.schoolWhatsAppGroupLinks(243))).status());
+        // Writing stays superadmin's on both.
+        assertEquals(403, as(() -> asScopedOperator(OP_C, "243:NOTEBOOKS"),
+                () -> http(() -> service.setWhatsAppGroupLink(order, "SCHOOL_GROUP", LINK_B))).status());
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A), as(() -> asSuper(), () -> service.whatsappGroupLinks(order)));
+    }
+
+    @Test
+    void anOperatorNotAssignedToTheSchoolIsRefused() {
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(33, "SCHOOL_GROUP", LINK_A));
+        ResponseStatusException otherSchool = as(() -> asOperator(OP_B, 20L), () -> refusal(() -> service.schoolWhatsAppGroupLinks(33)));
+        assertEquals(403, otherSchool.getStatusCode().value());
+        assertEquals("No access to this school", otherSchool.getReason());
+        assertEquals(403, as(() -> asScopedOperator(OP_C, "20:BELTS", "34:NOTEBOOKS"), () -> http(() -> service.schoolWhatsAppGroupLinks(33))).status(),
+                "item scopes at other schools grant nothing here");
+        assertEquals(403, as(() -> asOperator(OP_B), () -> http(() -> service.schoolWhatsAppGroupLinks(33))).status(),
+                "an operator with no assignment holds no permission");
+    }
+
+    @Test
+    void schoolSideUsersAndAnonymousCallersAreRefused() {
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(35, "SCHOOL_GROUP", LINK_A));
+        for (String role : List.of("ADMIN", "SCHOOL_ADMIN", "TEACHER", "ZONE_ADMIN")) {
+            ResponseStatusException read = as(() -> asSchoolUser(role, 35), () -> refusal(() -> service.schoolWhatsAppGroupLinks(35)));
+            assertEquals(403, read.getStatusCode().value(), role);
+            assertEquals("WhatsApp group links are for superadmin and operators only", read.getReason(), role);
+            assertEquals(403, as(() -> asSchoolUser(role, 35),
+                    () -> http(() -> service.setSchoolWhatsAppGroupLink(35, "SCHOOL_GROUP", LINK_B))).status(), role);
+        }
+        asNobody();
+        assertEquals(403, http(() -> service.schoolWhatsAppGroupLinks(35)).status());
+        assertEquals(403, http(() -> service.setSchoolWhatsAppGroupLink(35, "SCHOOL_GROUP", LINK_B)).status());
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A), as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(35)));
+    }
+
+    @Test
+    void aBlankLinkRemovesTheGroup() {
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(36, "SCHOOL_GROUP", LINK_A));
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(36, "PRODUCT_VENDOR", LINK_B));
+        assertEquals(Map.of("PRODUCT_VENDOR", LINK_B), as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(36, "SCHOOL_GROUP", "")));
+        assertEquals(Map.of(), as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(36, "PRODUCT_VENDOR", "   ")));
+        assertEquals(Map.of(), as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(36, "PRODUCT_VENDOR", null)),
+                "removing a group that has no link is not an error");
+    }
+
+    @Test
+    void anInvalidLinkTargetOrSchoolIsABadRequestWithAReason() {
+        String path64 = "A".repeat(64), path65 = "A".repeat(65);
+        for (String bad : List.of(LINK_A + "?x=1", "https://chat.whatsapp.com/" + path65, "http://chat.whatsapp.com/AbCdEf1234567890",
+                "https://example.com/AbCdEf1234567890", "https://chat.whatsapp.com.evil.example/AbCdEf1234567890",
+                "https://user@chat.whatsapp.com/AbCdEf1234567890", "https://chat.whatsapp.com:8443/AbCdEf1234567890",
+                LINK_A + "#join", "https://chat.whatsapp.com/Short12", "https://chat.whatsapp.com/AbCdEf1234567890/extra",
+                "https://chat.whatsapp.com/AbCd%20Ef1234567890", "not a link at all", "https://chat.whatsapp.com/" + "A".repeat(2048))) {
+            ResponseStatusException refused = as(() -> asSuper(), () -> refusal(() -> service.setSchoolWhatsAppGroupLink(37, "SCHOOL_GROUP", bad)));
+            assertEquals(400, refused.getStatusCode().value(), bad);
+            assertNotNull(refused.getReason(), bad);
+            assertFalse(refused.getReason().isBlank(), bad);
+        }
+        assertEquals("Enter a valid WhatsApp group invite link", as(() -> asSuper(),
+                () -> refusal(() -> service.setSchoolWhatsAppGroupLink(37, "SCHOOL_GROUP", LINK_A + "?x=1"))).getReason());
+        ResponseStatusException unknown = as(() -> asSuper(), () -> refusal(() -> service.setSchoolWhatsAppGroupLink(37, "VENDOR", LINK_A)));
+        assertEquals(400, unknown.getStatusCode().value());
+        assertEquals("Choose a supported school, internal, or vendor group", unknown.getReason());
+        assertEquals(400, as(() -> asSuper(), () -> http(() -> service.setSchoolWhatsAppGroupLink(37, "product_vendor", LINK_A))).status(),
+                "keys are exact");
+        assertEquals(400, as(() -> asSuper(), () -> http(() -> service.setSchoolWhatsAppGroupLink(0, "SCHOOL_GROUP", LINK_A))).status());
+        assertEquals(400, as(() -> asSuper(), () -> http(() -> service.setSchoolWhatsAppGroupLink(-3, "SCHOOL_GROUP", LINK_A))).status());
+        assertEquals("A positive schoolId is required", as(() -> asSuper(), () -> refusal(() -> service.schoolWhatsAppGroupLinks(0))).getReason());
+        assertEquals(Map.of(), as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(37)), "nothing invalid was stored");
+
+        // The bounds themselves are accepted: a 64-character and a 10-character invite path.
+        assertEquals("https://chat.whatsapp.com/" + path64,
+                as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(37, "SCHOOL_GROUP", "https://chat.whatsapp.com/" + path64)).get("SCHOOL_GROUP"));
+        assertEquals("https://chat.whatsapp.com/Ab_-567890",
+                as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(37, "SCHOOL_GROUP", "https://chat.whatsapp.com/Ab_-567890")).get("SCHOOL_GROUP"));
+    }
+
+    /** A cased scheme and host, and an empty port: accepted, as browsers accept them, but refused by V15's check as typed. */
+    static final String UPPER_CASE_LINK = "HTTPS://CHAT.WHATSAPP.COM/AbCdEf1234567890", EMPTY_PORT_LINK = "https://chat.whatsapp.com:/AbCdEf1234567890";
+
+    /** A school's stored links straight from the table, as "target=link", in byte order of the target. */
+    static List<String> storedLinks(long school) {
+        return owner.sql("SELECT target_key || '=' || invite_url FROM workflow.workflow_school_whatsapp_group_links "
+                + "WHERE school_id = :school ORDER BY target_key COLLATE \"C\"").param("school", school).query(String.class).list();
+    }
+
+    /**
+     * The check accepts a scheme and host in any case and an empty port; V15's invite_url check is case-sensitive and has
+     * no port. Such a link is stored in its one canonical spelling instead of failing the insert as a 500 without a
+     * message, and the answer carries that spelling. The invite code keeps its case.
+     */
+    @Test
+    void theSchoolEndpointStoresAMixedCaseOrEmptyPortLinkInItsCanonicalSpelling() {
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A), as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(245, "SCHOOL_GROUP", UPPER_CASE_LINK)));
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A, "PRODUCT_VENDOR", LINK_A),
+                as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(245, "PRODUCT_VENDOR", EMPTY_PORT_LINK)));
+        assertEquals(List.of("PRODUCT_VENDOR=" + LINK_A, "SCHOOL_GROUP=" + LINK_A), storedLinks(245));
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A, "PRODUCT_VENDOR", LINK_A), as(() -> asOperator(OP_A, 245L), () -> service.schoolWhatsAppGroupLinks(245)));
+
+        // Both at once, with a code whose case must survive.
+        assertEquals("https://chat.whatsapp.com/aBcDeF_-0987654321", as(() -> asSuper(),
+                () -> service.setSchoolWhatsAppGroupLink(245, "INTERNAL_APPROVAL", "Https://Chat.WhatsApp.Com:/aBcDeF_-0987654321")).get("INTERNAL_APPROVAL"));
+        assertTrue(storedLinks(245).contains("INTERNAL_APPROVAL=https://chat.whatsapp.com/aBcDeF_-0987654321"));
+    }
+
+    /** The same through a notebook order's endpoint, which shares the validation and the table. */
+    @Test
+    void aNotebookOrderStoresAMixedCaseOrEmptyPortLinkInItsCanonicalSpelling() {
+        String order = create(true, 246, OP_A);
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A), as(() -> asSuper(), () -> service.setWhatsAppGroupLink(order, "SCHOOL_GROUP", UPPER_CASE_LINK)));
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A, "board_shree", LINK_A),
+                as(() -> asSuper(), () -> service.setWhatsAppGroupLink(order, "board_shree", " " + EMPTY_PORT_LINK + " ")));
+        assertEquals(List.of("SCHOOL_GROUP=" + LINK_A, "board_shree=" + LINK_A), storedLinks(246));
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A, "board_shree", LINK_A), as(() -> asOperator(OP_A, 246L), () -> service.whatsappGroupLinks(order)));
+    }
+
+    /**
+     * Every link the service accepts, from a broad list of near misses, must satisfy the database's own invite_url check:
+     * each accepted link is really saved (an insert the check refuses fails this test as an unmapped error rather than a
+     * 400), it is answered in the canonical spelling, and that spelling matches the check's regular expression as read from
+     * the live constraint. Everything else is refused as a 400 with a reason.
+     */
+    @Test
+    void everyLinkTheServiceAcceptsSatisfiesTheDatabaseCheck() {
+        String definition = owner.sql("SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'workflow_school_whatsapp_group_links_invite_url_check'")
+                .query(String.class).single();
+        java.util.regex.Matcher quoted = java.util.regex.Pattern.compile("~ '((?:[^']|'')*)'").matcher(definition);
+        assertTrue(quoted.find(), definition);
+        String databasePattern = quoted.group(1).replace("''", "'");
+        assertEquals("^https://chat\\.whatsapp\\.com/[A-Za-z0-9_-]{10,64}$", databasePattern, "the check this test holds the service to");
+
+        List<String> schemes = List.of("https", "HTTPS", "Https", "hTtPs", "http", "wss");
+        List<String> hosts = List.of("chat.whatsapp.com", "CHAT.WHATSAPP.COM", "Chat.WhatsApp.Com", "chat.whatsapp.com.", "chat.whats\u017Fapp.com",
+                "www.chat.whatsapp.com", "chat.whatsapp.com.evil.example", "user@chat.whatsapp.com");
+        List<String> ports = List.of("", ":", ":443", ":0", ":abc");
+        List<String> codes = List.of("AbCdEf1234567890", "Ab_-567890", "z".repeat(64), "Short12", "A".repeat(65), "AbCd%20Ef1234567890", "AbCdEf12345678\u00E90");
+        List<String> suffixes = List.of("", "\n", "/", "?", "#", "?x=1", "#join", "/extra", "%0A", " junk", ";x");
+        List<List<String>> wrappers = List.of(List.of("", ""), List.of(" ", " "), List.of("\t", "\r\n"), List.of("\u2003", "\u3000"));
+
+        Set<String> accepted = new java.util.LinkedHashSet<>(), stored = new java.util.TreeSet<>();
+        int refused = 0;
+        for (String scheme : schemes) for (String host : hosts) for (String port : ports) for (String code : codes)
+            for (String suffix : suffixes) for (List<String> wrap : wrappers) {
+                String input = wrap.get(0) + scheme + "://" + host + port + "/" + code + suffix + wrap.get(1);
+                String shown = input.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
+                Map<String, String> saved;
+                try {
+                    saved = as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(244, "SCHOOL_GROUP", input));
+                } catch (ResponseStatusException refusal) {
+                    assertEquals(400, refusal.getStatusCode().value(), shown);
+                    assertNotNull(refusal.getReason(), shown);
+                    assertFalse(refusal.getReason().isBlank(), shown);
+                    refused++;
+                    continue;
+                } catch (RuntimeException unmapped) {
+                    throw new AssertionError("accepted by the service but refused by the database: " + shown, unmapped);
+                }
+                // The answer is read back from the table inside the same transaction, after the insert.
+                assertEquals("https://chat.whatsapp.com/" + code, saved.get("SCHOOL_GROUP"), shown);
+                accepted.add(input.strip());
+                stored.add(saved.get("SCHOOL_GROUP"));
+            }
+
+        assertEquals(new java.util.TreeSet<>(List.of("https://chat.whatsapp.com/AbCdEf1234567890", "https://chat.whatsapp.com/Ab_-567890",
+                "https://chat.whatsapp.com/" + "z".repeat(64))), stored);
+        assertTrue(stored.contains(owner.sql("SELECT invite_url FROM workflow.workflow_school_whatsapp_group_links "
+                + "WHERE school_id = 244 AND target_key = 'SCHOOL_GROUP'").query(String.class).single()), "the last accepted link is the stored one");
+        for (String link : stored) {
+            assertTrue(owner.sql("SELECT CAST(:link AS text) ~ CAST(:pattern AS text)").param("link", link).param("pattern", databasePattern)
+                    .query(Boolean.class).single(), link);
+        }
+        // The list really holds the inputs the database refuses as typed: a cased scheme or host, and an empty port.
+        for (String asTyped : List.of(UPPER_CASE_LINK, EMPTY_PORT_LINK, "hTtPs://Chat.WhatsApp.Com:/Ab_-567890")) {
+            assertTrue(accepted.contains(asTyped), asTyped);
+            assertFalse(owner.sql("SELECT CAST(:link AS text) ~ CAST(:pattern AS text)").param("link", asTyped).param("pattern", databasePattern)
+                    .query(Boolean.class).single(), asTyped);
+        }
+        // Only the canonical scheme and host, with no port or an empty one and nothing after the code but whitespace.
+        assertEquals(4 * 3 * 2 * 3, accepted.size(), "distinct accepted links, surrounding whitespace aside: " + accepted);
+        assertTrue(refused > 10_000, "the near misses were tried: " + refused);
+    }
+
+    @Test
+    void theDatabaseAcceptsEveryGroupTheServiceAllows() {
+        for (String target : NotebookTrackerService.WHATSAPP_TARGETS) {
+            assertEquals(LINK_A, as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(38, target, LINK_A)).get(target), target);
+        }
+        assertEquals(NotebookTrackerService.WHATSAPP_TARGETS, as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(38)).keySet());
+        assertTrue(NotebookTrackerService.WHATSAPP_TARGETS.containsAll(Set.of("SCHOOL_GROUP", "INTERNAL_APPROVAL", "PRODUCT_VENDOR", "board_shree")));
+    }
+
+    /** The notebook tracker's per-order endpoints and the school endpoints are two ways into the same rows. */
+    @Test
+    void linksAreSharedBetweenTheSchoolEndpointsAndANotebookOrdersEndpoints() {
+        String order = create(true, 40, OP_A);
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(40, "SCHOOL_GROUP", LINK_A));
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A), as(() -> asOperator(OP_A, 40L), () -> service.whatsappGroupLinks(order)),
+                "saved by school, seen through the notebook order");
+
+        as(() -> asSuper(), () -> service.setWhatsAppGroupLink(order, "INTERNAL_APPROVAL", LINK_B));
+        as(() -> asSuper(), () -> service.setWhatsAppGroupLink(order, "board_shree", LINK_B));
+        Map<String, String> all = Map.of("SCHOOL_GROUP", LINK_A, "INTERNAL_APPROVAL", LINK_B, "board_shree", LINK_B);
+        assertEquals(all, as(() -> asOperator(OP_A, 40L), () -> service.schoolWhatsAppGroupLinks(40)),
+                "saved through the notebook order, seen by school");
+
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(40, "INTERNAL_APPROVAL", ""));
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A, "board_shree", LINK_B), as(() -> asSuper(), () -> service.whatsappGroupLinks(order)),
+                "a removal by school is a removal for the order too");
+    }
+
+    /**
+     * The product vendor's group shares the school's store but is not a notebook group: a notebook order's endpoints
+     * neither show it (the tracker screen would print the raw key "PRODUCT_VENDOR") nor change it.
+     */
+    @Test
+    void aNotebookOrdersEndpointsKeepToTheNotebookGroups() {
+        String order = create(true, 140, OP_A);
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(140, "SCHOOL_GROUP", LINK_A));
+        as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(140, "PRODUCT_VENDOR", LINK_B));
+
+        Map<String, String> notebookOnly = Map.of("SCHOOL_GROUP", LINK_A);
+        assertEquals(notebookOnly, as(() -> asOperator(OP_A, 140L), () -> service.whatsappGroupLinks(order)),
+                "an operator's tracker screen does not see the product vendor's group");
+        assertEquals(notebookOnly, as(() -> asSuper(), () -> service.whatsappGroupLinks(order)), "nor does superadmin's");
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A, "PRODUCT_VENDOR", LINK_B), as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(140)),
+                "the school endpoint still sees both");
+
+        ResponseStatusException refused = as(() -> asSuper(), () -> refusal(() -> service.setWhatsAppGroupLink(order, "PRODUCT_VENDOR", LINK_A)));
+        assertEquals(400, refused.getStatusCode().value());
+        assertEquals("Choose a supported school, internal, or vendor group", refused.getReason());
+        assertEquals(400, as(() -> asSuper(), () -> http(() -> service.setWhatsAppGroupLink(order, "PRODUCT_VENDOR", ""))).status(),
+                "nor can a notebook order remove it");
+        assertEquals(LINK_B, as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(140)).get("PRODUCT_VENDOR"), "it is untouched");
+
+        // A notebook order's change answers with the notebook groups only, while the product vendor's stays stored.
+        assertEquals(Map.of("SCHOOL_GROUP", LINK_A, "INTERNAL_APPROVAL", LINK_B),
+                as(() -> asSuper(), () -> service.setWhatsAppGroupLink(order, "INTERNAL_APPROVAL", LINK_B)));
+        assertEquals(Map.of("INTERNAL_APPROVAL", LINK_B), as(() -> asSuper(), () -> service.setWhatsAppGroupLink(order, "SCHOOL_GROUP", "")));
+        assertEquals(Map.of("INTERNAL_APPROVAL", LINK_B, "PRODUCT_VENDOR", LINK_B), as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(140)));
+    }
+
+    @Test
+    void theNotebookGroupsAreEveryGroupButTheProductVendors() {
+        assertFalse(NotebookTrackerService.NOTEBOOK_WHATSAPP_TARGETS.contains("PRODUCT_VENDOR"));
+        assertTrue(NotebookTrackerService.NOTEBOOK_WHATSAPP_TARGETS.containsAll(Set.of("SCHOOL_GROUP", "INTERNAL_APPROVAL", "board_shree", "offset_cityline")));
+        Set<String> plusProductVendor = new java.util.HashSet<>(NotebookTrackerService.NOTEBOOK_WHATSAPP_TARGETS);
+        plusProductVendor.add("PRODUCT_VENDOR");
+        assertEquals(NotebookTrackerService.WHATSAPP_TARGETS, plusProductVendor);
+
+        // Every notebook group still round-trips through a notebook order, as before product orders shared the store.
+        String order = create(true, 141, OP_A);
+        for (String target : NotebookTrackerService.NOTEBOOK_WHATSAPP_TARGETS) {
+            assertEquals(LINK_A, as(() -> asSuper(), () -> service.setWhatsAppGroupLink(order, target, LINK_A)).get(target), target);
+        }
+        assertEquals(NotebookTrackerService.NOTEBOOK_WHATSAPP_TARGETS, as(() -> asSuper(), () -> service.whatsappGroupLinks(order)).keySet());
+    }
+
     static TrackerView.Step step(TrackerView view, int number) {
         return view.steps().stream().filter(s -> s.step() == number).findFirst().orElseThrow();
     }
