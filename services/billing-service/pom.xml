@@ -29,6 +29,13 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- google-cloud-pubsub brings guava 33.6.0-jre (CVE-2026-102554, HIGH), which the image scans
+                 report and the release Trivy gate can block on. Pin the version identity ships. -->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>33.8.0-jre</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
