@@ -43,13 +43,25 @@ function Get-Sha256([byte[]]$Bytes) {
     return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($Bytes)).ToLowerInvariant()
 }
 
+# The job's image is pinned in Terraform (local.cloud_sdk_job_image). Read it from there rather than
+# repeating it here, so moving the pin cannot leave this check expecting the old image.
+function Get-PinnedJobImage {
+    $terraformPath = Join-Path $PSScriptRoot "../deploy/gcp/observability/cost_metric_job.tf"
+    $match = Select-String -LiteralPath $terraformPath -Pattern '^\s*cloud_sdk_job_image\s*=\s*"([^"]+)"' |
+        Select-Object -First 1
+    if (-not $match) {
+        throw "Could not read the pinned cost-metric job image from Terraform."
+    }
+    return $match.Matches[0].Groups[1].Value
+}
+
 function Get-ValidatedEnvironment($Job) {
     $taskSpec = $Job.spec.template.spec.template.spec
     if ([string]$taskSpec.serviceAccountName -ne "cost-metric-exporter@custoking-prod.iam.gserviceaccount.com") {
         throw "The production job does not use the dedicated cost-metric exporter identity."
     }
     $containers = @($taskSpec.containers)
-    if ($containers.Count -ne 1 -or [string]$containers[0].image -ne "google/cloud-sdk:slim") {
+    if ($containers.Count -ne 1 -or [string]$containers[0].image -ne (Get-PinnedJobImage)) {
         throw "The production cost-metric job container contract has drifted."
     }
     $container = $containers[0]

@@ -71,8 +71,8 @@ Three files, three speeds. Read `budget.tf` before touching any number in it.
 | --- | --- | --- | --- |
 | `custoking-<env>-monthly` budget | `budget.tf` | hours to a day | a month drifting: 90% / 100% / 150% of a GROSS envelope, plus a 100% forecast |
 | `custoking-trial-credit-runway-to-<date>` budget (prod root only) | `budget.tf` | hours to a day | the free-trial credit being consumed faster than the expiry date -- the trial ends at the EARLIER of the two |
-| `custoking-<env>-daily-spend-jump` | `spend_anomaly_alerts.tf` | ~12-24 h | one calendar day's gross spend above `daily_spend_alert_inr`; sees everything the invoice sees, including Artifact Registry egress |
-| `custoking-<env>-billing-export-stale` | `spend_anomaly_alerts.tf` | 2 h | the export or the exporter job has stopped -- the only policy here that fires on ABSENCE of data |
+| `custoking-<env>-daily-spend-jump` | `spend_anomaly_alerts.tf` | ~12-24 h | one calendar day's gross spend above `daily_spend_alert_inr`; sees everything the invoice sees, including Artifact Registry egress. Also fires about 3 h after the exporter stops publishing, because it is blind until the feed is back |
+| `custoking-<env>-billing-export-stale` | `spend_anomaly_alerts.tf` | 2 h | the export or the exporter job has stopped. With no data it stays open for about 8 days (`auto_close` 7 days + 24 h), and then closes whether or not anything was fixed |
 | `custoking-<env>-cloud-run-instance-time-runaway` | `spend_anomaly_alerts.tf` | 2 h | project-wide Cloud Run instance time above `cloud_run_instance_seconds_per_hour_alert` per hour; the near-real-time signal |
 
 **Budgets must measure GROSS.** `credit_types_treatment` defaults to `INCLUDE_ALL_CREDITS`, which on a
@@ -95,6 +95,11 @@ After applying, confirm the anomaly policies can see their metrics: query
 `custom.googleapis.com/custoking/cost/gross_yesterday` and `export_lag_hours` for the last day and
 require non-empty results before trusting either policy. A policy on a metric with no series is
 indistinguishable from a healthy one.
+
+The three script jobs (`ims-cost-metric-<env>`, `ims-cost-analysis-<env>`, `ims-product-liveness-<env>`)
+run on `local.cloud_sdk_job_image` in `cost_metric_job.tf`, which is pinned by digest. Do not point them
+back at `google/cloud-sdk:slim`. A job looks its tag up again on every run, and on 2026-11-03 upstream
+dropped python3 from that tag. All three jobs then failed in both environments, with no change here.
 
 ## Prerequisites
 

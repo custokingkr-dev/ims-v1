@@ -7,8 +7,6 @@ import type {
   SendFeeRemindersRequest,
   SendFeeRemindersResult,
   ClassPhotographyPaymentStatusResponse,
-  SendEventPaymentRemindersRequest,
-  SendEventPaymentRemindersResult,
   IdCardReviewStatusResponse,
   FullNameVerificationStatusResponse,
   StudentVerificationStatusResponse,
@@ -20,8 +18,6 @@ import type {
   VerifyFullNameRequest,
   LowAttendanceSectionsResponse,
   LowAttendanceStudentItem,
-  SendMeetingInvitesRequest,
-  SendMeetingInvitesResult,
   VendorDuesListResponse,
   MarkVendorPaidRequest,
   ReorderSignalsResponse,
@@ -88,17 +84,6 @@ export async function fetchClassPhotographyPaymentStatus(params: {
   const res = await api.get<ClassPhotographyPaymentStatusResponse>(
     '/reporting/class-photography/payment-status',
     { params }
-  );
-  return res.data;
-}
-
-export async function sendPhotographyPaymentReminders(
-  eventId: string,
-  request: SendEventPaymentRemindersRequest
-): Promise<SendEventPaymentRemindersResult> {
-  const res = await api.post<SendEventPaymentRemindersResult>(
-    `/dashboard/events/${eventId}/payment-reminders`,
-    request
   );
   return res.data;
 }
@@ -189,16 +174,6 @@ export async function fetchLowAttendanceSections(date?: string): Promise<LowAtte
 
 export async function fetchLowAttendanceStudents(sectionId: string): Promise<LowAttendanceStudentItem[]> {
   return reportingClient.getLowAttendanceStudents({ sectionId });
-}
-
-export async function sendMeetingInvites(
-  request: SendMeetingInvitesRequest
-): Promise<SendMeetingInvitesResult> {
-  const res = await api.post<SendMeetingInvitesResult>(
-    '/dashboard/attendance/meeting-invites',
-    request
-  );
-  return res.data;
 }
 
 // ── Vendor Payment Dues ───────────────────────────────────────────────────────

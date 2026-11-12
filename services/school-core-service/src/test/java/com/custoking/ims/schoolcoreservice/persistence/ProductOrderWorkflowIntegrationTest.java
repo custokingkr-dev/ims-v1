@@ -60,8 +60,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * The product production workflow end to end: its controller, the order form detail, the shared refusal handler and the
  * transactional services, against the runtime role with row-level security forced, as production runs them. Order
- * fixtures are placed through the real order flow; the owner connection only moves an order into a status the flow cannot
- * reach in a test (cancelled, delivered and the like) or into a category with no workflow.
+ * fixtures are saved from each category's seeded form ({@link ProductOrderFixtures}) and placed through the real order flow;
+ * the owner connection only moves an order into a status the flow cannot reach in a test (cancelled, delivered and the like).
  */
 class ProductOrderWorkflowIntegrationTest {
     private static final String TOKEN = "test-token";
@@ -296,24 +296,32 @@ class ProductOrderWorkflowIntegrationTest {
         assertThat(workflows()).isEqualTo(1);
     }
 
+    /**
+     * Each category's order is created from its own seeded form and placed through the order flow, so a category whose form
+     * cannot be saved or placed fails here (until 2026-11-12, six of the nine could not reach a workflow at all).
+     */
     @Test
     void onlyTheNineProductionCategoriesHaveAWorkflow() throws Exception {
-        for (String category : List.of("TROPHIES", "TIES", "NOTEBOOKS", "UNIFORMS")) {
-            String id = placedBelts();
-            recategorise(id, category);
+        for (String category : List.of("TROPHIES", "TIES", "NOTEBOOKS")) {
+            String id = placed(category);
             view(id, SUPERADMIN).andExpect(status().isNotFound()).andExpect(jsonPath("$.message").value("This order has no production workflow"));
-            form(id, SUPERADMIN).andExpect(jsonPath("$.order.productionWorkflowAvailable").value(false));
+            form(id, SUPERADMIN).andExpect(jsonPath("$.order.productionWorkflowAvailable").value(false))
+                    .andExpect(jsonPath("$.order.category").value(category));
         }
+        // Uniforms have no structured form: a legacy order, which has no form detail to read either.
+        String uniforms = placedLegacy("UNIFORMS");
+        view(uniforms, SUPERADMIN).andExpect(status().isNotFound()).andExpect(jsonPath("$.message").value("This order has no production workflow"));
         assertThat(workflows()).isZero();
         for (String category : ProductOrderWorkflowService.CATEGORIES) {
-            String id = placedBelts();
-            recategorise(id, category);
+            String id = placed(category);
             form(id, SCHOOL_ADMIN).andExpect(status().isOk()).andExpect(jsonPath("$.order.productionWorkflowAvailable").value(true))
                     .andExpect(jsonPath("$.order.schoolId").value(1)).andExpect(jsonPath("$.order.id").value(id))
-                    .andExpect(jsonPath("$.order.category").value(category));
-            view(id, SCHOOL_ADMIN).andExpect(status().isOk()).andExpect(jsonPath("$.category").value(category));
+                    .andExpect(jsonPath("$.order.category").value(category)).andExpect(jsonPath("$.order.status").value("PROCESSING"));
+            view(id, SCHOOL_ADMIN).andExpect(status().isOk()).andExpect(jsonPath("$.category").value(category))
+                    .andExpect(jsonPath("$.currentStage").value("ORDER_DETAILS"));
         }
         assertThat(ProductOrderWorkflowService.CATEGORIES).hasSize(9);
+        assertThat(workflows()).isEqualTo(9);
     }
 
     /** A repeat read of an existing workflow writes nothing and reads each workflow table once (it used to issue 10 inserts). */
@@ -344,36 +352,53 @@ class ProductOrderWorkflowIntegrationTest {
     }
 
     private static String placedBelts() {
-        String id = draftBelts();
+        return placed("BELTS");
+    }
+
+    private static String draftBelts() {
+        return draft("BELTS");
+    }
+
+    /** A draft of {@code category} saved from its seeded form by the school, then placed by the school. */
+    private static String placed(String category) {
+        String id = draft(category);
         TenantContext.set(context(SCHOOL_ADMIN));
         try {
-            assertThat(orders.placeOrder(id, 7L).status()).isEqualTo("PROCESSING");
+            assertThat(orders.placeOrder(id, 7L).status()).as(category).isNotEqualTo("DRAFT");
         } finally {
             TenantContext.clear();
         }
         return id;
     }
 
-    private static String draftBelts() {
+    private static String draft(String category) {
         TenantContext.set(context(SCHOOL_ADMIN));
         try {
-            return orders.createOrder(Map.of("category", "BELTS", "orderData", belts())).id();
+            return orders.createOrder(Map.of("category", category, "orderData", ProductOrderFixtures.orderData(category))).id();
+        } finally {
+            TenantContext.clear();
+        }
+    }
+
+    /** An order of a category with no structured form, created and placed through the legacy order flow. */
+    private static String placedLegacy(String category) {
+        TenantContext.set(context(SCHOOL_ADMIN));
+        try {
+            String id = orders.createOrder(Map.of("schoolId", 1, "category", category, "totalAmount", 900, "status", "DRAFT")).id();
+            assertThat(orders.order(id).orElseThrow().formVersion()).as(category).isEqualTo(1);
+            assertThat(orders.placeOrder(id, 7L).status()).as(category).isNotEqualTo("DRAFT");
+            return id;
         } finally {
             TenantContext.clear();
         }
     }
 
     private static Map<String, Object> belts() {
-        return Map.of("orderSelections", Map.of(), "lines", List.of(Map.of(
-                "selections", Map.of("BELT_TYPE", "CLOTH", "BUCKLE_TYPE", "BRONZE", "LENGTH", "L70"), "bookCount", 10, "pageCount", 1)));
+        return ProductOrderFixtures.orderData("BELTS");
     }
 
     private static void moveTo(String id, String status) {
         owner.sql("UPDATE catalog.catalog_orders SET status = :status WHERE id = :id").param("status", status).param("id", id).update();
-    }
-
-    private static void recategorise(String id, String category) {
-        owner.sql("UPDATE catalog.catalog_orders SET category = :category WHERE id = :id").param("category", category).param("id", id).update();
     }
 
     private static long workflows() {

@@ -100,6 +100,28 @@ public final class StepData {
         return clean;
     }
 
+    /**
+     * The step's data after a save, without the sign-off: each field the save sends replaces the saved value, a field it
+     * sends null or blank is cleared, and a field it leaves out keeps its saved value. One step is saved by more than one
+     * button (step 5's draft and its workbook totals), each sending only its own part, so no save may erase another's.
+     * Saved keys the step no longer accepts are dropped, as a whole-step save always dropped them. Throws like
+     * {@link #validate} for a field the step does not accept.
+     */
+    public static Map<String, Object> merge(TrackerStep step, Map<String, Object> saved, Map<String, Object> raw) {
+        Map<String, Field> schema = SCHEMAS.get(step);
+        Map<String, Object> merged = new LinkedHashMap<>();
+        if (saved != null) saved.forEach((key, value) -> { if (schema.containsKey(key) && value != null) merged.put(key, value); });
+        if (raw == null) return merged;
+        for (Map.Entry<String, Object> entry : raw.entrySet()) {
+            Field field = schema.get(entry.getKey());
+            if (field == null) throw invalid(entry.getKey(), "is not a field of " + step.title());
+            Object value = clean(entry.getKey(), field, entry.getValue());
+            if (value == null) merged.remove(entry.getKey());
+            else merged.put(entry.getKey(), value);
+        }
+        return merged;
+    }
+
     /** The sign-off record superadmin's action writes next to the saved data. */
     public static Map<String, Object> signOff(long userId, Instant at) {
         return Map.of("by", userId, "at", at.toString());
@@ -107,14 +129,19 @@ public final class StepData {
 
     /**
      * Whether two work areas hold the same values, ignoring the sign-off record. Numbers compare by value: a save's
-     * validated longs and doubles come back from JSON as whatever width fits.
+     * validated longs and doubles come back from JSON as whatever width fits. A checklist with nothing ticked is the same
+     * as no checklist: the screen sends its untouched checklist as an empty list.
      */
     public static boolean sameValues(Map<String, Object> saved, Map<String, Object> other) {
         Map<String, Object> left = new HashMap<>(saved), right = new HashMap<>(other);
         left.remove(SIGN_OFF_KEY);
         right.remove(SIGN_OFF_KEY);
+        left.values().removeIf(StepData::emptyList);
+        right.values().removeIf(StepData::emptyList);
         return left.keySet().equals(right.keySet()) && left.keySet().stream().allMatch(key -> sameValue(left.get(key), right.get(key)));
     }
+
+    private static boolean emptyList(Object value) { return value instanceof List<?> list && list.isEmpty(); }
 
     private static boolean sameValue(Object a, Object b) {
         if (a instanceof Number x && b instanceof Number y) return new BigDecimal(x.toString()).compareTo(new BigDecimal(y.toString())) == 0;

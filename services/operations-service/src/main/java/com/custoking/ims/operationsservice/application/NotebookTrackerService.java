@@ -279,13 +279,18 @@ public class NotebookTrackerService {
 
     // ---- step work ----------------------------------------------------------------------------------------------------
 
+    /**
+     * Saves into the step's data: the fields sent replace the saved ones, a field sent empty is cleared and a field left out
+     * is kept ({@link StepData#merge}), so step 5's two save buttons never erase each other's part. The merge is made from
+     * the row read under the order's lock, and is still refused when the step changed since the caller loaded it.
+     */
     public TrackerView saveDraft(String orderId, int stepNumber, Map<String, Object> data, long expectedVersion) {
         return mutate(orderId, (actor, t, progress, rows) -> {
             TrackerStep step = stepOnPath(progress, stepNumber);
             StepRow row = row(rows, step);
             requireWorker(actor, row);
             requireEditable(progress.canEditDetails(actor.role(), step), progress, step, actor);
-            Map<String, Object> clean = StepData.validate(step, data);
+            Map<String, Object> clean = StepData.merge(step, row.data(), data);
             // A sign-off approves the data it saw (spec §3.4): saving the same values keeps it, changed values need a new one.
             Object signOff = row.data().get(StepData.SIGN_OFF_KEY);
             if (signOff != null && StepData.sameValues(row.data(), clean)) clean.put(StepData.SIGN_OFF_KEY, signOff);

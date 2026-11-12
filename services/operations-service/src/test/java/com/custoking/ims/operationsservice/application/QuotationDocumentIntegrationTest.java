@@ -180,5 +180,75 @@ class QuotationDocumentIntegrationTest {
         assertThat(bounded.cleanup()).isEqualTo(1);
         assertThat(admin.sql("SELECT count(*) FROM firefighting.quotation_documents WHERE status='RETIRED'").query(Long.class).single()).isEqualTo(4);
         assertThat(TenantContext.get().schoolId()).isEqualTo(7L);
+        // The four it ran out of time for are not held back until a later run: the next one takes them at once.
+        doAnswer(invocation -> { objects.remove(invocation.getArgument(0)); return null; }).when(storage).delete(anyString());
+        assertThat(service.cleanup()).isEqualTo(4);
+    }
+
+    /**
+     * Dev audit 2026-11-12, #13: cleanup called storage inside its 45-second transaction, holding the rows locked, so a slow
+     * bucket timed the transaction out. Storage is now called with no transaction open and no row locked, while the rows
+     * stay claimed so an overlapping run (the scheduler and the relay trigger) never deletes them twice, and a reservation
+     * being cleaned up is no longer PENDING, so an upload finishing late can never attach an object that is being deleted.
+     */
+    @Test void cleanupCallsStorageOutsideAnyTransactionWithTheRowsClaimedButNotLocked() {
+        var retired = service.upload("FF-A", "quote-a", png, "retired.png", "image/png");
+        service.remove("FF-A", "quote-a");
+        String pending = java.util.UUID.randomUUID().toString();
+        admin.sql("""
+                INSERT INTO firefighting.quotation_documents
+                  (id,school_id,request_code,quotation_id,object_key,filename,content_type,size_bytes,checksum_sha256,uploaded_by,status,created_at)
+                VALUES (:id,7,'FF-A','quote-a',:key,'late.png','image/png',1,repeat('0',64),77,'PENDING',now() - interval '2 hours')
+                """).param("id", pending).param("key", "schools/7/firefighting/quotations/" + pending + ".png").update();
+        var seen = new java.util.ArrayList<String>();
+        var nested = new java.util.concurrent.atomic.AtomicBoolean();
+        doAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            String id = admin.sql("SELECT id FROM firefighting.quotation_documents WHERE object_key = :key").param("key", key).query(String.class).single();
+            seen.add(id + " transaction=" + org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive());
+            boolean locked;
+            try {
+                admin.sql("SELECT id FROM firefighting.quotation_documents WHERE id = :id FOR UPDATE NOWAIT").param("id", id).query(String.class).single();
+                locked = false;
+            } catch (RuntimeException busy) { locked = true; }
+            seen.add(id + " locked=" + locked + " status=" + status(id));
+            if (nested.compareAndSet(false, true)) seen.add("overlapping run checked " + service.cleanup());
+            objects.remove(key);
+            return null;
+        }).when(storage).delete(anyString());
+
+        assertThat(service.cleanup()).isEqualTo(2);
+        assertThat(seen).contains(retired.id() + " transaction=false", pending + " transaction=false",
+                retired.id() + " locked=false status=RETIRED", pending + " locked=false status=RETIRED", "overlapping run checked 0");
+        assertThat(status(retired.id())).isEqualTo("DELETED");
+        assertThat(status(pending)).isEqualTo("DELETED");
+        assertThat(objects).isEmpty();
+        assertThat(TenantContext.get().schoolId()).isEqualTo(7L);
+    }
+
+    /** Dev audit 2026-11-12, #13: the retry warning dropped the storage failure, so the reason a cleanup failed was lost. */
+    @Test void aFailedStorageDeleteIsLoggedWithItsCause() {
+        var saved = service.upload("FF-A", "quote-a", png, "quote.png", "image/png");
+        service.remove("FF-A", "quote-a");
+        doThrow(new IllegalStateException("bucket said no")).when(storage).delete(anyString());
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(QuotationDocumentService.class);
+        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            assertThat(service.cleanup()).isEqualTo(1);
+        } finally {
+            logger.detachAppender(appender);
+        }
+        assertThat(appender.list).anySatisfy(event -> {
+            assertThat(event.getLevel()).isEqualTo(ch.qos.logback.classic.Level.WARN);
+            assertThat(event.getFormattedMessage()).contains(saved.id());
+            assertThat(event.getThrowableProxy()).isNotNull();
+            assertThat(event.getThrowableProxy().getMessage()).isEqualTo("bucket said no");
+        });
+        assertThat(status(saved.id())).isEqualTo("RETIRED");
+        assertThat(admin.sql("SELECT cleanup_attempts FROM firefighting.quotation_documents WHERE id=:id").param("id", saved.id()).query(Integer.class).single()).isEqualTo(1);
+        assertThat(admin.sql("SELECT next_cleanup_at > now() + interval '9 minutes' FROM firefighting.quotation_documents WHERE id=:id")
+                .param("id", saved.id()).query(Boolean.class).single()).isTrue();
     }
 }

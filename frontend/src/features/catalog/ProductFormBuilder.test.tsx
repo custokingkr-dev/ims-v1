@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '../../services/api';
 import { ProductFormBuilder } from './ProductFormBuilder';
-import { billBookDetailDefinition, flexDefinition, notebookDefinition, reportCardDefinition, savedNotebook, tieDefinition } from './catalogTestFixtures';
+import { billBookDetailDefinition, flexDefinition, notebookDefinition, reportCardDefinition, savedBillBook, savedFlex, savedNotebook, tieDefinition } from './catalogTestFixtures';
 vi.mock('../../services/api', () => ({ default: { post: vi.fn(), patch: vi.fn(), get: vi.fn() } }));
 vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
 beforeEach(() => { vi.clearAllMocks(); URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
@@ -270,5 +270,78 @@ describe('ProductFormBuilder', () => {
     expect(screen.getByLabelText('Ordered quantity for Single rule')).toHaveValue(1000);
     fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
     expect(await screen.findByText('Attach design artwork before placing this order.')).toBeInTheDocument();
+  });
+});
+
+// A typed measurement is stored on the line's `attributes`, apart from its option codes. Reopening a
+// draft used to rebuild each line from the option codes alone, so the order list read
+// "Star flex · ft · ft" and Save draft sent the line without its measurements (CK-1018).
+describe('ProductFormBuilder reopening a draft with typed line values', () => {
+  it('shows the saved measurements and saves them back unchanged', async () => {
+    const detail = savedFlex();
+    vi.mocked(api.patch).mockResolvedValue({ data: detail });
+    vi.mocked(api.get).mockResolvedValue({ data: detail });
+    render(<ProductFormBuilder definition={flexDefinition} initialOrder={detail} />);
+
+    const order = screen.getByRole('region', { name: 'Order' });
+    expect(within(order).getByRole('listitem')).toHaveTextContent('Star flex · 6 ft · 4.5 ft');
+    expect(within(order).getByLabelText('Ordered count for Star flex · 6 ft · 4.5 ft')).toHaveValue(4);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalledTimes(1));
+    expect(api.patch).toHaveBeenCalledWith('/supply/orders/CK-1018', {
+      orderData: { orderSelections: {}, lines: [{ selections: { FLEX_TYPE: 'STAR', LENGTH_FT: '6', BREADTH_FT: '4.5' }, bookCount: 4, pageCount: 1 }] },
+      requiredByDate: null, notes: '', version: 2,
+    });
+  });
+
+  it('keeps whole-number and text values on a reopened bill book line', async () => {
+    const detail = savedBillBook();
+    vi.mocked(api.patch).mockResolvedValue({ data: detail });
+    vi.mocked(api.get).mockResolvedValue({ data: detail });
+    render(<ProductFormBuilder definition={billBookDetailDefinition} initialOrder={detail} />);
+
+    expect(within(screen.getByRole('region', { name: 'Order' })).getByRole('listitem')).toHaveTextContent('A4 · 2 · Pink');
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(api.patch).mock.calls[0][1]).toEqual(expect.objectContaining({
+      orderData: {
+        orderSelections: { DESIGN_FILE_LINK: 'https://drive.google.com/file/d/bill' },
+        lines: [{ selections: { SIZE: 'A4', PAGE_COPIES: '2', COLOR_FIRST_PAGE: 'Pink' }, bookCount: 10, pageCount: 1 }],
+      },
+    }));
+  });
+});
+
+// The server answers a refused save or placement with {message} and, for a form error, the field it
+// belongs to. The form has to show that reason, once, and say which line it is about.
+describe('ProductFormBuilder showing a refusal from the server', () => {
+  const refusal = (data: unknown) => Object.assign(new Error('Request failed with status code 400'), { response: { status: 400, data } });
+
+  it('names the line a field error belongs to and does not repeat the message', async () => {
+    const detail = savedFlex();
+    vi.mocked(api.patch).mockResolvedValue({ data: detail });
+    vi.mocked(api.get).mockResolvedValue({ data: detail });
+    vi.mocked(api.post).mockRejectedValue(refusal({ message: 'Enter Length', fieldErrors: { 'lines[0].selections.LENGTH_FT': 'Enter Length' } }));
+    render(<ProductFormBuilder definition={flexDefinition} initialOrder={detail} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Line 1 (Star flex · 6 ft · 4.5 ft): Enter Length');
+    expect(within(alert).getAllByText('Enter Length')).toHaveLength(1);
+    expect(alert).not.toHaveTextContent('Request failed with status code 400');
+  });
+
+  it('shows a refusal reason that carries no field', async () => {
+    const detail = savedFlex();
+    vi.mocked(api.patch).mockResolvedValue({ data: detail });
+    vi.mocked(api.get).mockResolvedValue({ data: detail });
+    vi.mocked(api.post).mockRejectedValue(refusal({ message: 'This action is unavailable while the order is PROCESSING' }));
+    render(<ProductFormBuilder definition={flexDefinition} initialOrder={detail} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('This action is unavailable while the order is PROCESSING');
+    expect(alert).not.toHaveTextContent('Request failed with status code 400');
   });
 });

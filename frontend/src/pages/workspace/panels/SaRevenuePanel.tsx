@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../../../services/api';
+import { billingClient } from '../../../services/billingApi';
 import { ModuleShell, PanelMessage, Stat } from '../ui';
 import { formatMoney } from '../utils';
 
@@ -21,9 +21,10 @@ export function SaRevenuePanel() {
   const load = () => {
     setLoading(true);
     setError('');
-    api
-      .get<InvStats>('/sa/invoices/stats')
-      .then((res) => setStats(res.data ?? null))
+    // The canonical billing route; /sa/invoices/stats is a deprecated compatibility alias.
+    billingClient
+      .getInvoiceStatistics()
+      .then((data: InvStats) => setStats(data ?? null))
       .catch((e: any) => {
         setError(e?.response?.data?.message || 'Failed to load invoice statistics.');
       })

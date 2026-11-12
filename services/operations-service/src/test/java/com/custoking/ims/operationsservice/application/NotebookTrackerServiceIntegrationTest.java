@@ -824,6 +824,48 @@ class NotebookTrackerServiceIntegrationTest {
         assertEquals("2026-11-01", step(reloaded, 5).data().get("productionStart"));
     }
 
+    /**
+     * Step 5 is saved by two buttons, each sending its own part (dev audit 2026-11-12, #8): "Save workbook totals" sent the
+     * form and the totals but not the checklist, "Save draft" the form and the checklist but not the totals, and each save
+     * replaced the whole step. A save now keeps every field it does not name, clears a field it sends empty, and is still
+     * refused when the step changed since the screen loaded it.
+     */
+    @Test
+    void aStepSaveKeepsWhatItDoesNotNameAndClearsWhatItSendsEmpty() {
+        String order = create(false, 10L, OP_A);
+        advance(order, 1);
+        asOperator(OP_A, 10L);
+        TrackerView drafted = service.saveDraft(order, 5, Map.of("paperGsm", "70", "planningChecks", List.of(0, 2)),
+                step(service.view(order), 5).version());
+
+        TrackerView totals = service.saveDraft(order, 5, Map.of("paperGsm", "70", "workbookFileName", "order.xlsx",
+                "workbookTotalQuantity", 26), step(drafted, 5).version());
+        assertEquals(List.of(0L, 2L), longs(step(totals, 5).data().get("planningChecks")), "saving the workbook totals keeps the checklist");
+        assertEquals(26L, ((Number) step(totals, 5).data().get("workbookTotalQuantity")).longValue());
+
+        TrackerView redrafted = service.saveDraft(order, 5, Map.of("paperGsm", "80", "planningChecks", List.of(1)),
+                step(totals, 5).version());
+        assertEquals(26L, ((Number) step(redrafted, 5).data().get("workbookTotalQuantity")).longValue(), "saving the draft keeps the workbook totals");
+        assertEquals("order.xlsx", step(redrafted, 5).data().get("workbookFileName"));
+        assertEquals(List.of(1L), longs(step(redrafted, 5).data().get("planningChecks")));
+        assertEquals("80", step(redrafted, 5).data().get("paperGsm"));
+
+        Map<String, Object> cleared = new java.util.HashMap<>();
+        cleared.put("paperGsm", null);
+        cleared.put("planningNotes", "  ");
+        TrackerView emptied = service.saveDraft(order, 5, cleared, step(redrafted, 5).version());
+        assertFalse(step(emptied, 5).data().containsKey("paperGsm"), "a field sent empty is cleared");
+        assertEquals(26L, ((Number) step(emptied, 5).data().get("workbookTotalQuantity")).longValue());
+
+        assertEquals(409, http(() -> service.saveDraft(order, 5, Map.of("paperGsm", "90"), step(redrafted, 5).version())).status(),
+                "merging never bypasses the version check");
+        assertFalse(step(service.view(order), 5).data().containsKey("paperGsm"));
+    }
+
+    static List<Long> longs(Object list) {
+        return ((List<?>) list).stream().map(item -> ((Number) item).longValue()).toList();
+    }
+
     @Test
     void aLockedStepRefusesWorkAndUnknownStepsAreNotFound() {
         String order = create(true, 10L, OP_A);
@@ -1094,6 +1136,39 @@ class NotebookTrackerServiceIntegrationTest {
         assertNull(step(changed, 7).data().get("signOff"), "changed data needs a new sign-off");
         assertEquals("SIGN_OFF_REQUIRED", codeOf(() -> service.completeStep(order, 7, step(changed, 7).version())));
         TrackerView resigned = service.signOff(order, 7, step(changed, 7).version());
+        assertEquals(8, service.completeStep(order, 7, step(resigned, 7).version()).progress().currentStep());
+    }
+
+    /**
+     * The screen saves its whole form before a sign-off or a completion (dev audit 2026-11-12, #9): blank fields as empty
+     * and an untouched checklist as an empty list. Neither is a change, so neither takes the sign-off back; a save that
+     * leaves a field out keeps it rather than counting as a change either.
+     */
+    @Test
+    void anUnchangedFullFormSaveKeepsTheSignOff() {
+        String order = create(false, 10L, OP_A);
+        advance(order, 6);
+        asSuper();
+        TrackerView linked = service.saveDraft(order, 7, Map.of("sampleLink", "https://example.test/sample"), step(service.view(order), 7).version());
+        TrackerView signed = service.signOff(order, 7, step(linked, 7).version());
+
+        Map<String, Object> form = new java.util.HashMap<>();
+        form.put("checks", List.of());
+        form.put("sampleLink", "https://example.test/sample");
+        form.put("schoolVerification", "");
+        form.put("qcComments", null);
+        TrackerView same = service.saveDraft(order, 7, form, step(signed, 7).version());
+        assertNotNull(step(same, 7).data().get("signOff"), "an empty checklist and empty fields are not a change");
+
+        TrackerView partial = service.saveDraft(order, 7, Map.of("qcComments", ""), step(same, 7).version());
+        assertNotNull(step(partial, 7).data().get("signOff"), "a field left out is kept, so it is not a change");
+        assertEquals("https://example.test/sample", step(partial, 7).data().get("sampleLink"));
+
+        // Ticking the checks after the sign-off is a change: superadmin signs off again on what is now saved.
+        TrackerView ticked = service.saveDraft(order, 7, Map.of("checks", List.of(0, 1, 2, 3, 4, 5, 6, 7)), step(partial, 7).version());
+        assertNull(step(ticked, 7).data().get("signOff"));
+        assertEquals("https://example.test/sample", step(ticked, 7).data().get("sampleLink"));
+        TrackerView resigned = service.signOff(order, 7, step(ticked, 7).version());
         assertEquals(8, service.completeStep(order, 7, step(resigned, 7).version()).progress().currentStep());
     }
 

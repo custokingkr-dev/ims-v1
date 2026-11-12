@@ -330,7 +330,10 @@ public class NotebookTrackerRepository {
                 rs.getObject("data_saved_at", OffsetDateTime.class), rs.getString("stage_note"), rs.getLong("version"));
     }
 
-    /** Replaces the saved work-area data; returns 0 when the step changed since the caller read it. */
+    /**
+     * Writes the step's whole work-area data, which the caller has already merged from the row it read under the order's
+     * lock; returns 0 when the step changed since the caller read it.
+     */
     public int saveStepData(long instanceId, int stepOrder, Map<String, Object> data, long userId, long expectedVersion) {
         return jdbc.sql("UPDATE " + instanceSteps + " SET data = CAST(:data AS jsonb), data_saved_at = now(), data_saved_by = :user, version = version + 1 "
                         + "WHERE instance_id = :id AND step_order = :step AND version = :version")

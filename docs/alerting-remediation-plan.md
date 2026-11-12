@@ -158,6 +158,20 @@ because the uptime policies keep receiving `check_passed = 0`. What never fires 
 The three new spend policies in this PR set the field explicitly in both directions; every policy
 written from now on should, and the rule belongs in a Terraform `check` block or a review checklist.
 
+**Update 2026-11-12:** ACTIVE alone did not make `billing-export-stale` a dead-man switch. On
+2026-11-03 upstream removed python3 from the floating `google/cloud-sdk:slim` image, and every cost and
+liveness job started failing. `billing-export-stale` opened, then closed itself about two days later
+while the exporter was still failing: with missing data set to ACTIVE, an incident still closes after
+`auto_close` plus 24 hours. After that, nothing reported the outage. The fix:
+- The three script jobs now run a digest-pinned image.
+- The liveness job no longer ends in `|| true`, which had made every failed run report success.
+- `billing-export-stale` now has `auto_close` set to 7 days.
+- `daily-spend-jump` now counts missing data as firing.
+
+`tests/script_jobs_and_spend_alerts.tftest.hcl` covers all four changes. The product-liveness row above
+still needs its `condition_absent` policy: a failed execution now shows as failed, but no policy alerts
+on it.
+
 ### 4.2 Latching -- one incident swallows every later one
 
 `auto_close` is now on every policy (30 min for log-metric policies, 60 min for the rest), which

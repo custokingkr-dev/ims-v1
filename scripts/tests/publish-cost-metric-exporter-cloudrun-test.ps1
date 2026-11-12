@@ -65,7 +65,15 @@ $logPath = Join-Path $testRoot "gcloud.log"
 $env:MOCK_COST_METRIC_STATE = $statePath
 $env:MOCK_COST_METRIC_LOG = $logPath
 
-function Set-MockState([string]$ScriptBase64, [hashtable]$AdditionalEnvironment = @{}) {
+# The image Terraform pins for the job (local.cloud_sdk_job_image). The floating google/cloud-sdk:slim tag
+# lost python3 on 2026-11-03, so a job still on it is drift the publisher must refuse.
+$pinnedImageMatch = Select-String -LiteralPath (Join-Path $root "deploy/gcp/observability/cost_metric_job.tf") `
+    -Pattern '^\s*cloud_sdk_job_image\s*=\s*"([^"]+)"' | Select-Object -First 1
+if (-not $pinnedImageMatch) { throw "Terraform no longer defines local.cloud_sdk_job_image" }
+$pinnedImage = $pinnedImageMatch.Matches[0].Groups[1].Value
+if ($pinnedImage -notmatch '@sha256:[0-9a-f]{64}$') { throw "The cost-metric job image is not pinned by digest: $pinnedImage" }
+
+function Set-MockState([string]$ScriptBase64, [hashtable]$AdditionalEnvironment = @{}, [string]$Image = $pinnedImage) {
     $entries = [ordered]@{
         COST_METRIC_PROJECT = "custoking-prod"
         COST_METRIC_BQ_PROJECT = "custoking-prod"
@@ -82,7 +90,7 @@ function Set-MockState([string]$ScriptBase64, [hashtable]$AdditionalEnvironment 
                         spec = [ordered]@{
                             serviceAccountName = "cost-metric-exporter@custoking-prod.iam.gserviceaccount.com"
                             containers = @([ordered]@{
-                                image = "google/cloud-sdk:slim"
+                                image = $Image
                                 command = @("bash")
                                 args = @("-c", 'echo $SCRIPT_B64 | base64 -d > /tmp/exporter.sh && bash /tmp/exporter.sh')
                                 env = @($entries.GetEnumerator() | ForEach-Object {
@@ -101,6 +109,15 @@ function Set-MockState([string]$ScriptBase64, [hashtable]$AdditionalEnvironment 
 
 try {
     $oldScript = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes("old exporter"))
+    Set-MockState $oldScript -Image "google/cloud-sdk:slim"
+    $floatingImageRefused = $false
+    try {
+        & $publisherPath -Gcloud $mockGcloud 6>&1 | Out-Null
+    } catch {
+        $floatingImageRefused = $_.Exception.Message -eq "The production cost-metric job container contract has drifted."
+    }
+    if (-not $floatingImageRefused) { throw "Publisher accepted a job still on the floating google/cloud-sdk:slim tag" }
+
     Set-MockState $oldScript
     $dryRun = @(& $publisherPath -Gcloud $mockGcloud 6>&1 | ForEach-Object { [string]$_ })
     if ($dryRun -notcontains "Dry run only. No Cloud Run job was changed." `

@@ -20,6 +20,15 @@ locals {
   cost_metric_script = base64encode(
     replace(file("${path.module}/../../../scripts/cost-metric-exporter.sh"), "\r\n", "\n")
   )
+
+  # The image for all three script jobs (this one, cost_analysis_job.tf, product_liveness_job.tf). PINNED,
+  # never a floating tag: the jobs re-resolve the tag on every run, and on 2026-11-03 upstream's 592.0.0
+  # release dropped python3 from google/cloud-sdk:slim. Every run of all three jobs failed from then on
+  # (exit 127, "python3: command not found"), in dev and prod, with no change on our side.
+  # 591.0.0-slim is the last slim build that installs python3. The digest is what actually runs; the tag
+  # is there for people. To move it, check the new build still ships python3 first:
+  #   docker run --rm --entrypoint python3 google/cloud-sdk:<version>-slim --version
+  cloud_sdk_job_image = "google/cloud-sdk:591.0.0-slim@sha256:b38f2881552c3054d140c8eeb4ad88bdc0eb4deeeb38507c5dac1403adc3ee64"
 }
 
 resource "google_service_account" "cost_metric_exporter" {
@@ -62,8 +71,8 @@ resource "google_cloud_run_v2_job" "cost_metric_exporter" {
       containers {
         # A stock image with bq, gcloud, curl and python3 already present. Building and maintaining a
         # container for a script this small would cost more than it saves, and would add an image to keep
-        # patched for no benefit.
-        image   = "google/cloud-sdk:slim"
+        # patched for no benefit. Pinned; see local.cloud_sdk_job_image.
+        image   = local.cloud_sdk_job_image
         command = ["bash"]
         args    = ["-c", "echo $SCRIPT_B64 | base64 -d > /tmp/exporter.sh && bash /tmp/exporter.sh"]
 

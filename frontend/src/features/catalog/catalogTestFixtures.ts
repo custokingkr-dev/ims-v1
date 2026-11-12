@@ -38,6 +38,17 @@ export const flexDefinition: FormDefinition = {
   ],
 };
 
+/**
+ * A saved flex draft as the server returns it: the line's option codes in `optionSelections`, and its
+ * typed measurements, stored apart, in `attributes` (numbers, as the server keeps them).
+ */
+export function savedFlex(status = 'DRAFT'): FormOrderDetail {
+  return { order: { id: 'CK-1018', schoolId: 7, status, subtotal: 0, gst: 0, totalAmount: 0 }, formDefinition: flexDefinition, formVersion: 3, pricingStatus: 'PENDING_PRICING', version: 2,
+    orderSelections: {},
+    lines: [{ id: 201, lineNo: 1, optionSelections: { FLEX_TYPE: { code: 'STAR', label: 'Star flex' } }, attributes: { LENGTH_FT: 6, BREADTH_FT: 4.5 },
+      requestedBookCount: 4, bookCount: 4, requestedPageCount: 1, pageCount: 1, unitPricePaise: null, lineTotalPaise: null }], assets: [], quantityRuleResults: [] };
+}
+
 /** Ties: a line-scoped segmented choice plus a length matrix, with no order-scope group at all. */
 export const tieDefinition: FormDefinition = {
   enabled: true, dependencies: [], rules: [],
@@ -58,6 +69,14 @@ export const billBookDetailDefinition: FormDefinition = {
     { id: 44, categoryCode: 'BILLBOOKS', code: 'DESIGN_FILE_LINK', label: 'Design file link (optional)', render: 'FIELD', scope: 'ORDER', level: 90, required: false, active: true, selectionType: 'SINGLE', inputType: 'TEXT', unit: '', options: [] },
   ],
 };
+
+/** A saved bill book draft whose typed line values are a whole number and free text. */
+export function savedBillBook(): FormOrderDetail {
+  return { order: { id: 'CK-1020', schoolId: 7, status: 'DRAFT', subtotal: 0, gst: 0, totalAmount: 0 }, formDefinition: billBookDetailDefinition, formVersion: 1, pricingStatus: 'PENDING_PRICING', version: 0,
+    orderSelections: { DESIGN_FILE_LINK: 'https://drive.google.com/file/d/bill' },
+    lines: [{ id: 301, lineNo: 1, optionSelections: { SIZE: { code: 'A4', label: 'A4' } }, attributes: { PAGE_COPIES: 2, COLOR_FIRST_PAGE: 'Pink' },
+      requestedBookCount: 10, bookCount: 10, requestedPageCount: 1, pageCount: 1, unitPricePaise: null, lineTotalPaise: null }], assets: [], quantityRuleResults: [] };
+}
 
 /** Report cards: three segmented choices, a minimum of 50, and the only estimate in the catalog. */
 export const reportCardDefinition: FormDefinition = {

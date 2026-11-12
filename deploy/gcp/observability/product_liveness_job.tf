@@ -58,13 +58,17 @@ resource "google_cloud_run_v2_job" "product_liveness" {
       timeout         = "300s"
 
       containers {
-        image   = "google/cloud-sdk:slim"
+        # Pinned; see local.cloud_sdk_job_image in cost_metric_job.tf.
+        image   = local.cloud_sdk_job_image
         command = ["bash"]
-        # `|| true` on purpose. The script exits 1 when nobody is active, and that is the SIGNAL, not a
-        # job failure -- the ERROR log it wrote is what raises the alert. Letting the exit code fail the
-        # job as well would double-report the same event through Cloud Run job monitoring and make a
-        # real outage look like a broken cron.
-        args = ["-c", "echo $SCRIPT_B64 | base64 -d > /tmp/check.py && python3 /tmp/check.py || true"]
+        # No `|| true`. It used to be here so that "nobody is active" (exit 1) would not also fail the
+        # execution, but it hid every other failure too: from 2026-11-03 the image had no python3, the
+        # check never ran, and every execution still reported success. The script exits 0 when it sees
+        # activity or no signal at all, and 1 when nobody is active; the alert still comes from the ERROR
+        # log line, not from the exit code. A failed execution here therefore means either an outage
+        # (with that ERROR line) or a broken check (without it) -- both worth seeing, and nothing alerts
+        # on job execution status, so nothing double-reports.
+        args = ["-c", "echo $SCRIPT_B64 | base64 -d > /tmp/check.py && python3 /tmp/check.py"]
 
         env {
           name  = "LIVENESS_PROJECT"

@@ -1063,10 +1063,6 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
       <ClassPhotographyDrawer
         open={showClassPhotography}
         onClose={() => setShowClassPhotography(false)}
-        onMetricsRefresh={data => {
-          setCommandCenterMetrics(data);
-          setDataIssue('metrics', null);
-        }}
       />
 
       {/* Student Lifecycle Review drawer */}

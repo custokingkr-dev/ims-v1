@@ -42,10 +42,14 @@ export function formatLakh(value: any): string {
   return n >= 100000 ? `${(n / 100000).toFixed(1)}L` : formatMoney(n);
 }
 
-export function todayIso(): string {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+/** The calendar date of `date` where the user is, as YYYY-MM-DD. toISOString() alone gives the UTC date. */
+export function localIsoDate(date: Date): string {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
+}
+
+export function todayIso(): string {
+  return localIsoDate(new Date());
 }
 
 /**

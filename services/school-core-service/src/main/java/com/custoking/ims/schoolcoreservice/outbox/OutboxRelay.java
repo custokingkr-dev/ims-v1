@@ -30,6 +30,8 @@ public class OutboxRelay {
     private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
     private static final String SCHEMA_VERSION = "ims.event-envelope.v1";
     private static final String EVENT_VERSION = "v1";
+    /** How long one pass spends publishing: it runs in a transaction that holds a pooled connection and the rows' locks. */
+    private static final long BATCH_BUDGET_MS = 10_000;
 
     private final JdbcClient jdbc;
     private final DomainEventPublisher publisher;
@@ -95,7 +97,10 @@ public class OutboxRelay {
                 .list();
 
         int published = 0;
-        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(10);
+        // A pass publishes for 10 s at most, or for as long as the publisher's first publish after starting is allowed.
+        long budgetMs = publisher instanceof PubSubDomainEventPublisher pubSub
+                ? Math.max(BATCH_BUDGET_MS, pubSub.publishTimeoutMs()) : BATCH_BUDGET_MS;
+        long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(budgetMs);
         for (OutboxRow row : rows) {
             if (System.nanoTime() >= deadline || Thread.currentThread().isInterrupted()) break;
             try {

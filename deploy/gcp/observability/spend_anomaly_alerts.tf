@@ -20,8 +20,13 @@
 #                                   tiny); an instance that never scales to zero is 3,600 s/h.
 #
 # Every condition here sets evaluation_missing_data EXPLICITLY. The default (NO_OP) is the setting
-# under which a dead metric looks identical to a healthy one; (1) and (3) want INACTIVE because their
-# absence case is owned by (2), and (2) wants ACTIVE because absence IS its condition.
+# under which a dead metric looks identical to a healthy one. (1) and (2) want ACTIVE: both read the
+# exporter's feed, and a feed that stops is the failure they exist to catch. (3) wants INACTIVE, because
+# no instance time is what a scale-to-zero fleet reports every night.
+#
+# (1) used to be INACTIVE, leaving absence to (2) alone. That failed for real: the exporter broke on
+# 2026-11-03, (2) opened, then closed itself two days later while the exporter was still broken, and from
+# then on nothing said that spend was unwatched -- for the last two weeks of a free trial.
 #
 # Notifications use local.spend_notification_channel_ids -- the money channels, not the health
 # channels -- for the reason given in budget.tf: dev may not page about health and must still be able
@@ -66,7 +71,12 @@ resource "google_monitoring_alert_policy" "daily_spend_jump" {
       duration = "60s"
 
       aggregations {
-        alignment_period   = "3600s"
+        # Three hours, not one, because missing data now fires this policy. The gauge arrives roughly
+        # hourly and the runs drift by however long their BigQuery queries take, so a one-hour window
+        # would sometimes hold no sample for longer than the 60s duration and page about a late run. A
+        # three-hour window only goes empty when the exporter has actually stopped. The maximum over it
+        # still moves on the first sample over the line, so firing is no slower.
+        alignment_period   = "10800s"
         per_series_aligner = "ALIGN_MAX"
       }
 
@@ -74,9 +84,11 @@ resource "google_monitoring_alert_policy" "daily_spend_jump" {
         count = 1
       }
 
-      # No data means the exporter is not publishing, which billing-export-stale reports. Firing this
-      # one too would be two incidents for one fault.
-      evaluation_missing_data = "EVALUATION_MISSING_DATA_INACTIVE"
+      # No data means the exporter is not publishing, and while it is not publishing this policy cannot
+      # see a jump. That is an incident in its own right, not something to leave to billing-export-stale
+      # alone: that one closed itself two days into the 2026-11-03 outage. Two incidents for one fault
+      # is the lesser problem.
+      evaluation_missing_data = "EVALUATION_MISSING_DATA_ACTIVE"
     }
   }
 
@@ -102,6 +114,10 @@ resource "google_monitoring_alert_policy" "daily_spend_jump" {
 
       This account is on a free trial that ends at the earlier of ${var.trial_expiry_date} and credit
       exhaustion. Check the trial-runway budget's latest notification before deciding this can wait.
+
+      This also fires when the exporter has stopped publishing altogether (missing data counts as over
+      the line). If the chart shows no recent points rather than a high one, billing-export-stale will be
+      open too: follow its runbook, because nothing can see spend until the exporter is fixed.
     DOC
     mime_type = "text/markdown"
   }
@@ -196,12 +212,20 @@ resource "google_monitoring_alert_policy" "billing_export_stale" {
 
       Billing-export configuration is Console-only (no API, no gcloud). If the table has simply stopped
       receiving rows, the fix is Console -> Billing -> Billing export, and there is no scripted retry.
+
+      Do not wait for this to close by itself. With no data arriving it stays open for about eight days
+      and then closes even if nothing was fixed; only new points from the exporter prove it is working.
     DOC
     mime_type = "text/markdown"
   }
 
   alert_strategy {
-    auto_close = "86400s"
+    # How long an incident may stay open with NO data before Cloud Monitoring closes it anyway -- with
+    # missing data set to ACTIVE, the close comes after auto_close plus 24 hours. It does not affect a
+    # normal close, which happens as soon as a fresh sample is back under the line. At 86400s it closed
+    # two days into the 2026-11-03 exporter outage, while the exporter was still failing. Seven days
+    # (Google's default) keeps a dead feed open for about eight.
+    auto_close = "604800s"
   }
 
   user_labels = local.common_user_labels

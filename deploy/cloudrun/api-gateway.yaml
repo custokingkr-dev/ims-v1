@@ -17,7 +17,11 @@ spec:
         autoscaling.knative.dev/minScale: "0" # from-param: ${gateway_min_instances}
         autoscaling.knative.dev/maxScale: "4" # from-param: ${gateway_max_instances}
         run.googleapis.com/cpu-throttling: "true"
-        run.googleapis.com/startup-cpu-boost: "false" # from-param: ${startup_cpu_boost}
+        # Always on for the gateway, deliberately not taken from the startup_cpu_boost deploy parameter:
+        # dev's targets set that to "false", and every request that wakes this scale-to-zero gateway waits
+        # for Node to boot (4.4s measured on dev without the boost). The extra CPU is billed only for
+        # startup plus 10 seconds.
+        run.googleapis.com/startup-cpu-boost: "true"
     spec:
       serviceAccountName: PLACEHOLDER-REPLACED-BY-DEPLOY-PARAM # from-param: ${runtime_service_account}
       containerConcurrency: 80
@@ -33,13 +37,16 @@ spec:
             limits:
               cpu: "1"
               memory: 512Mi
+          # Probe every second: the first probe always lands before Node is listening, and at a 5s period
+          # that one miss added 5s to every request that woke an idle service. timeoutSeconds may not exceed
+          # periodSeconds; 60 x 1s keeps the same 60s startup allowance as before.
           startupProbe:
             httpGet:
               path: /gateway-health
               port: 8080
-            periodSeconds: 5
-            timeoutSeconds: 5
-            failureThreshold: 12
+            periodSeconds: 1
+            timeoutSeconds: 1
+            failureThreshold: 60
           livenessProbe:
             httpGet:
               path: /gateway-health

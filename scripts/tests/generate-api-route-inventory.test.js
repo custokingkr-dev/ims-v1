@@ -2,7 +2,11 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { mappingAnnotations } = require('../generate-api-route-inventory');
+const {
+  mappingAnnotations,
+  compatibilityMatchers,
+  compatibilityReferencesIn,
+} = require('../generate-api-route-inventory');
 
 test('pathless mappings keep their base URL instead of using media or header attributes as paths', () => {
   for (const declaration of [
@@ -57,4 +61,29 @@ test('provider callback mapping retains its class URL with a pathless JSON POST'
 
 test('an unterminated mapping annotation fails inventory generation', () => {
   assert.throws(() => mappingAnnotations('@PostMapping(path="/students"'), /Unclosed @PostMapping/);
+});
+
+test('browser calls to compatibility routes are found when the method is chained onto the next line', () => {
+  const matchers = compatibilityMatchers([
+    { method: 'GET', path: '/api/v1/sa/invoices/stats' },
+    { method: 'POST', path: '/api/v1/sa/invoices/{id}/send' },
+  ]);
+  const source = [
+    "api.get<InvStats>('/sa/invoices/stats');",
+    'api',
+    "  .get<InvStats>('/sa/invoices/stats')",
+    '  .then((res) => res.data);',
+    'api',
+    '  .post(',
+    '    `/sa/invoices/${invoiceId}/send`,',
+    '  );',
+    "api.get('/billing/sa/invoices/stats');",
+  ].join('\n');
+  const references = compatibilityReferencesIn(source, 'frontend/src/Example.tsx', matchers);
+  assert.deepEqual(references.map(({ method, pathExpression, compatibilityTemplate, line }) => (
+    [method, pathExpression, compatibilityTemplate, line])), [
+    ['GET', '/sa/invoices/stats', '/api/v1/sa/invoices/stats', 1],
+    ['GET', '/sa/invoices/stats', '/api/v1/sa/invoices/stats', 2],
+    ['POST', '/sa/invoices/${invoiceId}/send', '/api/v1/sa/invoices/{id}/send', 5],
+  ]);
 });
