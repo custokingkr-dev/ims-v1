@@ -12,10 +12,10 @@
   "summary": {
     "services": 5,
     "controllers": 59,
-    "endpoints": 502,
+    "endpoints": 500,
     "canonicalEndpoints": 389,
     "compatibilityEndpoints": 90,
-    "internalEndpoints": 23,
+    "internalEndpoints": 21,
     "diagnosticAliases": 12,
     "gatewayRoutes": 70,
     "frontendCompatibilityCalls": 0,
@@ -1140,7 +1140,7 @@
       "basePaths": [
         "/api/v1/internal"
       ],
-      "endpointCount": 4,
+      "endpointCount": 2,
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/OrderWorkflowMachineController.java"
     },
     {
@@ -2298,24 +2298,6 @@
       "service": "operations-service",
       "controller": "OrderWorkflowMachineController",
       "method": "POST",
-      "path": "/api/v1/internal/notebook-trackers",
-      "classification": "internal",
-      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/OrderWorkflowMachineController.java",
-      "line": 63
-    },
-    {
-      "service": "operations-service",
-      "controller": "OrderWorkflowMachineController",
-      "method": "POST",
-      "path": "/api/v1/internal/notebook-trackers/{orderId}/image-access",
-      "classification": "internal",
-      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/OrderWorkflowMachineController.java",
-      "line": 75
-    },
-    {
-      "service": "operations-service",
-      "controller": "OrderWorkflowMachineController",
-      "method": "POST",
       "path": "/api/v1/internal/order-workflows",
       "classification": "internal",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/OrderWorkflowMachineController.java",
@@ -2328,7 +2310,7 @@
       "path": "/api/v1/internal/order-workflows/{orderId}/design-file-access",
       "classification": "internal",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/OrderWorkflowMachineController.java",
-      "line": 69
+      "line": 63
     },
     {
       "service": "operations-service",

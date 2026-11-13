@@ -25,8 +25,8 @@ import java.util.Map;
  * the caller (only school-core's service account is on NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS); no shared token or user
  * context.
  *
- * <p>The notebook-tracker paths stay as aliases for one release (design D6), so a school-core deployed before this
- * service keeps creating workflows; each alias is its own exact route in the caller filter.
+ * <p>The notebook-tracker paths that served as aliases for one release (design D6) are gone: every school-core that can
+ * serve calls these paths, and a revision older than the item order workflows cannot run on the schema since catalog V40.
  */
 @RestController
 @RequestMapping("/api/v1/internal")
@@ -38,8 +38,8 @@ public class OrderWorkflowMachineController {
     }
 
     /**
-     * Today's notebook fields plus the template, item and number (all optional for an older school-core, which then
-     * creates a notebook workflow) and a retired production workflow's progress.
+     * Today's notebook fields plus the template, item and number, and a retired production workflow's progress. School-core
+     * always sends the template; the service still treats a create without one as a notebook order.
      */
     public record CreateRequest(String orderId, Long schoolId, Boolean customised, Integer orderedCount, OffsetDateTime placedAt,
                                 String timeZone, Long placedBy, Long assigneeUserId, String schoolName, String definitionId,
@@ -59,21 +59,9 @@ public class OrderWorkflowMachineController {
         return created(request);
     }
 
-    /** The old path, for one release (design D6). */
-    @PostMapping("/notebook-trackers")
-    public ResponseEntity<CreateResponse> createAlias(@RequestBody(required = false) CreateRequest request) {
-        return created(request);
-    }
-
     /** Asked by school-core before it stores or deletes a design file of any workflow order. */
     @PostMapping("/order-workflows/{orderId}/design-file-access")
     public DesignFileAccess designFileAccess(@PathVariable String orderId, @RequestBody(required = false) DesignFileAccessRequest request) {
-        return access(orderId, request);
-    }
-
-    /** The old path, for one release (design D6). */
-    @PostMapping("/notebook-trackers/{orderId}/image-access")
-    public DesignFileAccess imageAccess(@PathVariable String orderId, @RequestBody(required = false) DesignFileAccessRequest request) {
         return access(orderId, request);
     }
 
