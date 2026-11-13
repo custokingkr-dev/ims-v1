@@ -264,16 +264,18 @@ default-privilege grants, so tables Flyway later creates (incl. `billing.outbox_
 readable/writable by `app_rt`. Use the existing role script against `custoking-db-$ENV`:
 
 ```bash
-# Set the appuser password Cloud SQL expects, then run scripts/create-app-rt-role.sql as appuser.
-# Reuse the in-VPC one-off Cloud Run Job psql pattern (postgres:16-alpine) against the env instance,
-# passing PGHOST=<private IP of custoking-db-$ENV>, PGUSER=appuser, PGDATABASE=custoking_$ENV.
+# Set the appuser password Cloud SQL expects, then run scripts/create-app-rt-role.sql as appuser:
+#   scripts/invoke-create-app-rt-role-cloudsql.ps1 -Project $PROJECT -HostAddress <private IP of custoking-db-$ENV> \
+#     -Database custoking_$ENV   (an in-VPC one-off Cloud Run job, postgres:16-alpine; it runs the audit after)
 # The script CREATEs app_rt, GRANTs USAGE+DML on the 12 schemas that exist (minus its narrowing list), and
 # sets ALTER DEFAULT PRIVILEGES FOR ROLE appuser in them so future tables auto-grant to app_rt.
 # Verify with scripts/audit-app-rt-privileges.sql.
 ```
 
-> **Ordering matters:** run 1.3 *before* the first service deploy so `app_rt` exists when Flyway
-> (as `appuser`) creates the schemas and tables.
+> **Ordering:** run 1.3 *before* the first service deploy so `app_rt` exists when Flyway
+> (as `appuser`) creates the schemas and tables. Since 2026-11-14 a late 1.3 also ends right: the
+> migrations' column grants to `app_rt` (made only if it exists as they run) are on the script's list,
+> and the script grants them itself (`ProdShapeTests` in `scripts/tests/create_app_rt_role_migrated_test.py`).
 >
 > **And run it again after the first deploy.** On a database with no service schemas yet, the script
 > creates the role but sets no default privileges and grants nothing (each grant joins `pg_namespace`), so
