@@ -3,8 +3,12 @@
 This integration applies the open Dependabot proposals to dev base
 `ed8aeba5e7bc2609c3fb46d3d74b8cb0f5538ba3` (merge of #382) in one branch,
 `chore/deps-reconcile-2026-11-14`, the same way PR #360 did on 2026-10-20.
-Every target is exactly the version its Dependabot PR proposed. Nothing newer
-was taken, so the 7-day cooldown in `.github/dependabot.yml` still holds.
+Every target is exactly the version its Dependabot PR proposed, except #378's
+3.x part, which is replaced by an older 2.x release. Nothing newer was taken.
+One set is younger than the 7-day cooldown in
+`.github/dependabot.yml`: #378's OpenTelemetry 2.x patches, published
+2026-11-09. They are taken because `@opentelemetry/resources` 2.12.1 fixes a
+HIGH advisory that `npm audit` cannot see yet (see "GHSA-qrww-3xmv-qhgm").
 
 | Original PR | Integrated target |
 | --- | --- |
@@ -19,7 +23,7 @@ was taken, so the 7-day cooldown in `.github/dependabot.yml` still holds.
 | 374 | setup-java v6.1.0; CodeQL v4.39.2 for init, analyze and upload-sarif; reviewed-pin allowlist updated with them |
 | 377 | axios 1.21.0 (was 1.20.0) |
 | 379 | react-router-dom and react-router 7.18.5 (were 7.18.4), set-cookie-parser 2.7.3 (was 2.7.2) |
-| 378 | **Replaced, not integrated.** The gateway takes auto-instrumentations-node 0.81.2 on the SDK 2.x line and Dependabot stops proposing the 3.x set. See "OpenTelemetry decision". |
+| 378 | **Partly integrated.** Its 2.x patches are taken: resources and sdk-trace-base 2.12.1, sdk-node and exporter-trace-otlp-proto 0.223.1 (resources 2.12.1 fixes HIGH GHSA-qrww-3xmv-qhgm). Its 3.x part is replaced: the gateway takes auto-instrumentations-node 0.81.2 on the SDK 2.x line, and Dependabot stops proposing the 3.x set. See "OpenTelemetry decision". |
 | 373 | **Obsolete.** webauthn-server-core is no longer a dependency. Closed separately. |
 
 ## Why one branch
@@ -200,33 +204,149 @@ cannot install. It would do so every week.
   `@opentelemetry/exporter-trace-otlp-proto >= 0.300.0`,
   `@opentelemetry/api >= 1.10.0` and `@opentelemetry/resources >= 3.0.0`.
   `sdk-trace-base` has no 3.x; it is replaced by `@opentelemetry/sdk-trace`.
-  Patches on the 2.x line (for example sdk-node 0.223.2, resources 2.12.1) can
-  still be proposed. The edited file validates against the SchemaStore
+  Patches on the 2.x line (for example sdk-node 0.223.2) can still be
+  proposed. None of these entries blocks a security fix: the resources fix
+  is 2.12.1 on this line. The edited file validates against the SchemaStore
   `dependabot-2.0.json` schema, and a deliberately wrong key (`version:`) is
   rejected by the same check.
-- The 2.x patches #378 bundled (2.12.1 and 0.223.1, published 2026-11-09) fix
-  `host.id` on Darwin/BSD and fetch/XHR redaction, according to their release
-  notes as read in the triage. Neither matters on Linux Cloud Run, so they are
-  left for a later Dependabot run.
+- The 2.x patches #378 bundled are taken as #378 proposed them:
+  `@opentelemetry/resources` and `sdk-trace-base` 2.12.1,
+  `@opentelemetry/sdk-node` and `exporter-trace-otlp-proto` 0.223.1
+  (`services/api-gateway/package.json:19-22`). The reason is the next section.
 
-The gateway lockfile changes seven entries and adds or removes none. Every one
-stays on `@opentelemetry/instrumentation ^0.223.0` and `core ^2.9.0`, and
-`@opentelemetry/api` stays at 1.9.1:
+### GHSA-qrww-3xmv-qhgm (resources 2.12.0, HIGH)
 
-| Lock entry | Change |
-| --- | --- |
-| `@opentelemetry/auto-instrumentations-node` | 0.81.0 → 0.81.2 |
-| `@opentelemetry/instrumentation-express` | 0.71.0 → 0.71.1 |
-| `@opentelemetry/instrumentation-mysql` | 0.69.0 → 0.69.1 |
-| `@opentelemetry/instrumentation-nestjs-core` | 0.69.0 → 0.70.0 |
-| `@opentelemetry/instrumentation-pg` | 0.75.0 → 0.76.0 |
-| `@opentelemetry/instrumentation-runtime-node` | 0.36.0 → 0.36.1 |
-| `@opentelemetry/instrumentation-winston` | 0.67.0 → 0.68.1 |
+*Before.* The first version of this branch left the gateway on
+`@opentelemetry/resources` 2.12.0. It described #378's 2.x patches as a
+`host.id` fix that did not matter on Linux. In fact 2.12.0 is inside
+[GHSA-qrww-3xmv-qhgm](https://github.com/open-telemetry/opentelemetry-js/security/advisories/GHSA-qrww-3xmv-qhgm)
+(HIGH, published 2026-11-09):
 
-The six instrumentation entries move because auto-instrumentations 0.81.2
-raised their ranges. The gateway is a plain `http` server with no express,
-MySQL, NestJS, pg or winston, so none of them patch anything at runtime. The
-instrumentations that do (http, undici, dns, net) are unchanged.
+- The host detector runs `ioreg` (macOS) and `kenv` (BSD) through `PATH`. A
+  local attacker who controls `PATH` can run code as the service account.
+- Affected: `>= 1.10.0, <= 2.12.0` (fixed in 2.12.1) and `>= 3.0.0, <= 3.1.0`
+  (fixed in 3.1.1).
+- The fetch/XHR fix that the old text attributed to 0.223.1 is
+  GHSA-qmwq-c476-x7q2. It is in 0.223.2, not 0.223.1, and it affects
+  `instrumentation-fetch` and `instrumentation-xml-http-request`, which are in
+  neither the gateway nor the frontend lockfile.
+
+*Why it matters.* Live exposure on Cloud Run is nil, but CI is at risk.
+
+- The gateway runs on Linux, where `getMachineId-linux.js` only reads
+  `/etc/machine-id` and `/var/lib/dbus/machine-id`. sdk-node turns
+  `hostDetector` on by default (`sdk-node/build/src/utils.js:33`), and
+  `OTEL_NODE_RESOURCE_DETECTORS` is set nowhere in `deploy/`. A developer who
+  runs the gateway on macOS does reach the vulnerable path.
+- It is a repository advisory only. `gh api advisories/GHSA-qrww-3xmv-qhgm`
+  returns 404, so `npm audit` reports 0 vulnerabilities and Trivy does not
+  flag it. Dependabot alerts are disabled, so nothing else surfaces it.
+- Its sibling GHSA-3v2p-hm54-8qcq, published one minute later, entered the
+  global database on 2026-11-13. Once this one follows, Trivy will report
+  resources 2.12.0 as HIGH in the api-gateway image. The release gate
+  (`build-release.yml:803-812`, enforced at `:955`; severity HIGH,CRITICAL,
+  `ignore-unfixed: false`, exit code 1) would then fail every gateway build.
+  A stored verdict for an already-scanned digest is reused for at most 24
+  hours (`SCAN_EVIDENCE_TTL_HOURS`, `build-release.yml:55`), so the failure
+  can lag by up to a day.
+- The sibling itself does not apply. It covers `instrumentation-http
+  >= 0.204.0, < 0.222.0`, and every gateway lock since 2026-09-10 is on
+  0.222.0 or later.
+
+*Now.* The whole 2.12.1/0.223.1 release train is in the lock. Commands, run in
+`services/api-gateway/`:
+
+```
+npm install --package-lock-only --ignore-scripts --before=2026-11-10T08:34:37Z @opentelemetry/resources@2.12.1 @opentelemetry/sdk-trace-base@2.12.1 @opentelemetry/sdk-node@0.223.1 @opentelemetry/exporter-trace-otlp-proto@0.223.1
+npm update --package-lock-only --ignore-scripts --before=2026-11-10T08:34:37Z @opentelemetry/instrumentation-http @opentelemetry/instrumentation-grpc
+```
+
+- `--before` is #378's creation time. npm resolves what Dependabot saw and
+  cannot pick 0.223.2 (2026-11-12).
+- Replayed in a scratch copy, starting from the previous commit's
+  `package.json`, `package-lock.json` and `.npmrc`, the two commands produce
+  this branch's `package-lock.json` byte for byte (line endings aside). The
+  only other manifest change is the added test file in the `test` script.
+- Bumping `resources` alone is not enough. Nine OTel packages pin it exactly,
+  so 2.12.0 stays nested under sdk-node, sdk-trace-base, sdk-trace,
+  sdk-metrics, sdk-logs, otlp-transformer, exporter-metrics-otlp-http,
+  exporter-prometheus and exporter-zipkin. sdk-node 0.223.1 moves them all.
+- The `npm update` step dedupes `core`. auto-instrumentations-node pulls
+  `instrumentation-http` and `instrumentation-grpc` with `^0.223.0`. At 0.223.0
+  they pin core 2.12.0 exactly, which leaves core 2.12.0 on top and 16 nested
+  copies of core 2.12.1. At 0.223.1 (inside the same range, no manifest change)
+  every `@opentelemetry` package has exactly one copy.
+- The manifest floors now exclude the vulnerable versions: `resources ^2.12.1`,
+  `sdk-trace-base ^2.12.1`, `sdk-node ^0.223.1`,
+  `exporter-trace-otlp-proto ^0.223.1`.
+
+What changed upstream:
+
+- v2.12.1's only code change is "fix(resources): specify full path for ioreg
+  command on Darwin, and kenv command on BSD for `host.id`" (#7294). The other
+  commits in `v2.12.0...8795a06d` are two CI changes (the npm publish workflow
+  and the W3C trace-context harness) and the release commit.
+- experimental/v0.223.1 only moves its sibling pins to 2.12.1. On every
+  changed entry, no dependency, peer or engine field changes apart from
+  2.12.0 → 2.12.1 and 0.223.0 → 0.223.1.
+- Installed, `getMachineId-darwin.js:13` now calls
+  `execFileAsync('/usr/sbin/ioreg', …)` and `getMachineId-bsd.js:21` calls
+  `execFileAsync('/bin/kenv', …)`.
+
+Provenance was checked, because these are inside the cooldown:
+
+- `npm audit signatures` verifies registry signatures for all 158 packages,
+  and provenance attestations for 85 of them. Those include resources, core
+  and sdk-trace-base 2.12.1, and sdk-node, exporter-trace-otlp-proto and
+  instrumentation-http 0.223.1.
+- The decoded provenance of resources 2.12.1 and sdk-node 0.223.1 names
+  `open-telemetry/opentelemetry-js`, `refs/heads/v2.x`,
+  `.github/workflows/publish-to-npm.yml` and commit `8795a06d2c025d5dc454d85cec785849844cc5d9`
+  ("chore: prepare next v2.x release (#7296)", signature verified).
+
+The guard is `services/api-gateway/dependency-advisories.test.js`, run by
+`npm test` (`ci-pr.yml:318`, `build-release.yml:194`).
+
+- It lists advisories that are not yet in the global database, with their
+  affected ranges. It fails if any copy of the package in `package-lock.json`,
+  nested copies included, is inside a range.
+- Tests: `repository-only advisory ranges match their published affected and
+  patched versions` and `gateway lockfile holds no version named by an
+  advisory npm audit cannot see yet`.
+- Against the previous lockfile the second test fails with
+  `node_modules/@opentelemetry/resources@2.12.0 (fixed in 2.12.1)`. Against a
+  lockfile that bumps only `resources`, it lists the nine nested 2.12.0
+  copies.
+- Delete the entry once `gh api advisories/GHSA-qrww-3xmv-qhgm` stops
+  returning 404. From then on `npm audit` and Trivy enforce it.
+
+### Gateway lockfile
+
+Against the dev base `ed8aeba5`, the gateway lockfile changes 38 entries and
+adds or removes none. The GHSA fix accounts for 31 of them; the 0.81.2 bump
+accounts for the first seven rows. `@opentelemetry/api` stays at 1.9.1, and
+every `@opentelemetry` package has exactly one copy:
+
+| Lock entry | Change | Why |
+| --- | --- | --- |
+| `@opentelemetry/auto-instrumentations-node` | 0.81.0 → 0.81.2 | The 2.x-line bump above. |
+| `@opentelemetry/instrumentation-express` | 0.71.0 → 0.71.1 | Range raised by auto-instrumentations 0.81.2. |
+| `@opentelemetry/instrumentation-mysql` | 0.69.0 → 0.69.1 | Same. |
+| `@opentelemetry/instrumentation-nestjs-core` | 0.69.0 → 0.70.0 | Same. |
+| `@opentelemetry/instrumentation-pg` | 0.75.0 → 0.76.0 | Same. |
+| `@opentelemetry/instrumentation-runtime-node` | 0.36.0 → 0.36.1 | Same. |
+| `@opentelemetry/instrumentation-winston` | 0.67.0 → 0.68.1 | Same. |
+| `@opentelemetry/resources` | 2.12.0 → 2.12.1 | The GHSA-qrww-3xmv-qhgm fix. |
+| `@opentelemetry/sdk-trace-base`, `core`, `sdk-trace`, `sdk-trace-node`, `sdk-metrics`, `context-async-hooks`, `propagator-b3`, `propagator-jaeger`, `exporter-zipkin` | 2.12.0 → 2.12.1 | Stable release train: exact pins of sdk-node 0.223.1 and of each other. |
+| `@opentelemetry/sdk-node`, `exporter-trace-otlp-proto`, `exporter-trace-otlp-http`, `exporter-trace-otlp-grpc`, `exporter-metrics-otlp-proto`, `exporter-metrics-otlp-http`, `exporter-metrics-otlp-grpc`, `exporter-logs-otlp-proto`, `exporter-logs-otlp-http`, `exporter-logs-otlp-grpc`, `exporter-prometheus`, `sdk-logs`, `api-logs`, `configuration`, `instrumentation`, `otlp-exporter-base`, `otlp-grpc-exporter-base`, `otlp-transformer` | 0.223.0 → 0.223.1 | Experimental release train: sdk-node 0.223.1 and its exact pins. |
+| `@opentelemetry/instrumentation-http`, `instrumentation-grpc` | 0.223.0 → 0.223.1 | The `npm update` step, so `core` dedupes to one copy. |
+| `@grpc/grpc-js` | 1.14.6 → 1.14.7 | npm re-resolved it with the exporters. 1.14.7 (2026-10-29, outside the cooldown) fixes two retry bugs. Its only consumer is `otlp-grpc-exporter-base`; the gateway's own exporter is OTLP proto over HTTP (`tracing.js:4`). |
+
+The six instrumentation entries near the top move because
+auto-instrumentations 0.81.2 raised their ranges. The gateway is a plain `http`
+server with no express, MySQL, NestJS, pg or winston, so none of them patch
+anything at runtime. Of the instrumentations that do (http, undici, dns, net),
+only `instrumentation-http` changes, and 0.223.1 only moves its pins.
 
 ### OpenTelemetry JS 3.x follow-up
 
@@ -244,8 +364,10 @@ year from the 3.0.0 release (2026-10-20), so this is not urgent.
   `deploy/` today.
 - **Manifest.** `services/api-gateway/package.json:17-22`: api `^1.10.0`,
   auto-instrumentations-node 0.83.x or later, sdk-node and
-  exporter-trace-otlp-proto 0.30x, resources `^3`, and swap `sdk-trace-base`
-  for `sdk-trace ^3`. Regenerate the lockfile with exact versions.
+  exporter-trace-otlp-proto 0.30x, resources `^3.1.1` (3.0.0 to 3.1.0 are
+  inside GHSA-qrww-3xmv-qhgm, and `dependency-advisories.test.js` fails on
+  them), and swap `sdk-trace-base` for `sdk-trace ^3`. Regenerate the lockfile
+  with exact versions.
 - **Sampling.** `deploy/cloudrun/api-gateway.yaml:112-115` sets
   `OTEL_TRACES_SAMPLER=parentbased_traceidratio` and
   `OTEL_TRACES_SAMPLER_ARG` (0.05). The 3.x `TracerProvider` no longer reads
@@ -273,8 +395,8 @@ sections on sdk-trace-base, sdk-node and supported Node.js versions.
   #374, #377 and #379. Close them after this branch merges, or let Dependabot
   close them as "updatable in another way", as it did with #361, #364, #367 and
   #375.
-- **#378:** close it. Its 3.x proposal is replaced by the 0.81.2 bump and the
-  ignore entries above.
+- **#378:** close it. Its 2.x patches are integrated here. Its 3.x part is
+  replaced by the 0.81.2 bump and the ignore entries above.
 - **#373 (webauthn-server-core 2.9.0 → 2.10.1):** obsolete. The dependency was
   removed with passkeys (`b082e088`, `76631a1b`) and no `pom.xml` declares it.
   The leftover `IDENTITY_WEBAUTHN_*` parameters and the cookie-origin fallback
@@ -287,8 +409,10 @@ Each of these exists but was not proposed by a Dependabot PR, so it waits for
 the next Dependabot run: libraries-bom 26.93.0, google-auth 1.58.0,
 gcp-auth-extension 1.62.1-alpha, lucide-react 1.72.0, Playwright 1.65.0
 (2026-11-05), setup-java v6.2.0 (2026-11-04), CodeQL v4.39.3 (2026-11-04; the
-floating `v4` tag now points to it), axios 1.21.1 (2026-11-09) and nginx
-1.31.8-alpine3.24.
+floating `v4` tag now points to it), axios 1.21.1 (2026-11-09), nginx
+1.31.8-alpine3.24, and OpenTelemetry 0.223.2 (2026-11-12; its fix is
+GHSA-qmwq-c476-x7q2 for fetch/XHR instrumentation, which the gateway does not
+have).
 
 ## Validation checkpoint
 
@@ -304,10 +428,18 @@ Docker 29.6.2:
   needs the Windows symlink privilege. The Testcontainers PostgreSQL suites
   ran against Docker. Dependency convergence and the build-baseline enforcer
   rules passed in every module.
-- Gateway: `npm ci` clean, `npm ls --all` clean, `npm test` 117/117 passed.
-  A smoke run of `tracing.js` with tracing enabled started `NodeSDK`, patched
-  `http`, and produced recording spans for an incoming request. The export
-  itself failed for lack of local Google credentials, as it does on dev.
+- Gateway, re-run after the GHSA-qrww-3xmv-qhgm fix: `npm ci` clean,
+  `npm ls --all` clean, `npm test` 119/119 passed (117 before, plus the two
+  advisory-guard tests). `npm audit signatures`: 158 verified registry
+  signatures, 85 verified attestations. A smoke run of `tracing.js` with
+  tracing enabled loaded resources 2.12.1 and sdk-node 0.223.1, started
+  `NodeSDK`, patched `http`, and produced recording spans for an incoming
+  request. The export itself failed for lack of local Google credentials, as
+  it does on dev. `docker build` of `services/api-gateway` (Linux,
+  `npm ci --omit=dev` with `engine-strict`) succeeded, and inside the image
+  every `@opentelemetry` package is at the new version with no nested copy.
+  The fix touched only the gateway, so the Maven and frontend results here
+  are from the commit before it; those files did not change.
 - Frontend: `npm ci` clean; `tsc --noEmit` clean;
   `npm run test:coverage -- --maxWorkers=3` 793/793 tests in 109 files, all
   coverage floors passed; `npm run build` succeeded.
@@ -315,9 +447,13 @@ Docker 29.6.2:
   `PLAYWRIGHT_USE_PREBUILT=1` and 2 workers: 118/118 passed (116 against the
   production bundle, 2 source-security) with no retries.
   `password-reset.spec.ts` passed 4/4 under axe-core 4.14.
-- `npm audit`: 0 vulnerabilities in both frontend and gateway.
+- `npm audit`: 0 vulnerabilities in both frontend and gateway. That is not
+  proof of no advisories: `npm audit` cannot see GHSA-qrww-3xmv-qhgm yet, and
+  `dependency-advisories.test.js` covers it.
 - All eleven static architecture and security audits from
-  `ci-pr.yml` static-architecture-audits passed under Windows PowerShell 5.1.
+  `ci-pr.yml` static-architecture-audits passed under Windows PowerShell 5.1,
+  before and after the fix. So did the route-inventory and OpenAPI client
+  checks (`--check`) and their 29 tests.
 
 Not run locally: Linux CI, Trivy image scans of the rebuilt images and the
 Windows Maven bootstrap job. The old green checks on the Dependabot PRs are
@@ -329,6 +465,20 @@ stale (bases 25–29 commits behind dev), so the PR's own CI run is what counts.
   `GET /repos/custokingkr-dev/ims-v1/dependabot/alerts` returns 403
   "Dependabot alerts are disabled for this repository". Version updates still
   run. Turning alerts on needs the repository owner, `custokingkr-dev`.
+- **Repository-only advisories are invisible to CI.** `npm audit` and Trivy
+  read GitHub's global advisory database. GHSA-qrww-3xmv-qhgm (HIGH,
+  `@opentelemetry/resources >= 1.10.0, <= 2.12.0`) is not in it yet. This
+  branch takes the fix, and `services/api-gateway/dependency-advisories.test.js`
+  keeps it from regressing until GitHub reviews the advisory. Once it is
+  reviewed, every gateway build from a lockfile inside that range fails the
+  Trivy gate. That includes today's `dev` (`ed8aeba5`, 2.12.0) until this
+  branch is merged.
+  `origin/main` locks resources 2.11.0, as it has since 2026-09-10
+  (`dffa4d56`; 2.9.0 and 2.10.0 before that). So the production gateway is on
+  2.11.0 whichever release it serves. That is also in range, though not
+  exploitable on Linux, and the fix reaches production with the next
+  promotion. Until then, any rebuild of `main`'s gateway fails the Trivy gate
+  once the advisory is reviewed.
 - **The npm and Maven queues are frozen at five.** `/frontend` npm and `/`
   Maven each had exactly five open PRs, the default
   `open-pull-requests-limit`, which `.github/dependabot.yml` does not override.
