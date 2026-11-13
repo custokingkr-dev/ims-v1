@@ -1,16 +1,24 @@
 -- Regression audit for the app_rt runtime role. Exits non-zero on any violation.
 -- psql var: run_live_probes  -- if defined, also run the live DDL/RLS probes (needs a superuser connection)
--- Read-only apart from session temp objects (and the live probes' throwaway table in public).
+-- Read-only apart from session temp objects (and the live probes' throwaway table in public). The temp objects need the
+-- TEMP privilege on the database (PUBLIC has it by default; the database owner always has it).
 \set ON_ERROR_STOP on
 
 -- app_rt narrowing list: begin. Keep this block identical in scripts/create-app-rt-role.sql and
 -- scripts/audit-app-rt-privileges.sql: the Cloud Run job ships each file on its own, so they cannot share an include,
--- and scripts/tests/create_app_rt_role_migrated_test.py fails when the two copies differ.
+-- and scripts/tests/create_app_rt_role_migrated_test.py fails when the two copies differ. The check both files run,
+-- pg_temp.app_rt_check_narrowing(), is in the block too, so it cannot drift either.
 -- One row per relation, with the table-level privileges app_rt must not hold there: a versioned migration took them
 -- away once and never runs again, or (the Flyway history tables) nothing at runtime needs them. A relation that does
--- not exist yet is skipped (to_regclass is NULL), so the list is safe before the services migrate.
-CREATE TEMP TABLE app_rt_narrowing (relation text NOT NULL, privilege text NOT NULL, reason text NOT NULL,
-                                    PRIMARY KEY (relation, privilege));
+-- not exist yet is skipped (to_regclass is NULL), so the list is safe before the services migrate. The CHECK
+-- constraints reject a misspelt privilege or schema before anything is granted.
+CREATE TEMP TABLE app_rt_narrowing (
+  relation text NOT NULL CHECK (relation ~ '^[a-z0-9_]+\.[a-z0-9_]+$' AND split_part(relation, '.', 1) IN
+    ('identity', 'tenant_school', 'student', 'attendance', 'fee', 'catalog', 'workflow', 'firefighting', 'reporting',
+     'notification', 'audit', 'billing')),
+  privilege text NOT NULL CHECK (privilege IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')),
+  reason text NOT NULL,
+  PRIMARY KEY (relation, privilege));
 INSERT INTO app_rt_narrowing (relation, privilege, reason)
 SELECT r.relation, p.privilege, r.reason
 FROM (VALUES
@@ -52,11 +60,49 @@ FROM (VALUES
   ('billing.flyway_schema_history',                  'SELECT,INSERT,UPDATE,DELETE',   'Flyway history: owner only')
 ) AS r(relation, privileges, reason)
 CROSS JOIN LATERAL unnest(string_to_array(r.privileges, ',')) AS p(privilege);
+-- Column grants. Where the list bars a table-level privilege, these migrations grant it on the columns named here, but
+-- only if app_rt exists as they run (IF EXISTS app_rt). app_rt holds the privilege on these columns: the script grants
+-- any it lacks, and the check fails if one is missing. A column a migration has not added yet is skipped.
+CREATE TEMP TABLE app_rt_column_grants (
+  relation text NOT NULL,
+  privilege text NOT NULL CHECK (privilege IN ('SELECT', 'INSERT', 'UPDATE')),
+  column_name text NOT NULL CHECK (column_name ~ '^[a-z0-9_]+$'),
+  reason text NOT NULL,
+  PRIMARY KEY (relation, privilege, column_name),
+  FOREIGN KEY (relation, privilege) REFERENCES app_rt_narrowing (relation, privilege));
+INSERT INTO app_rt_column_grants (relation, privilege, column_name, reason)
+SELECT r.relation, r.privilege, c.column_name, r.reason
+FROM (VALUES
+  ('firefighting.quotation_documents',               'UPDATE', 'firefighting V12',
+   'status,uploaded_at,cleanup_attempts,next_cleanup_at'),
+  ('notification.notification_broadcast_recipients', 'UPDATE', 'notification V11',
+   'status,reason,attempts,next_attempt_at,last_attempt_at,provider,provider_message_id,dry_run,updated_at'),
+  ('notification.broadcast_live_submissions',        'UPDATE', 'notification V12',
+   'provider_message_id,submission_status,delivery_status,reason,updated_at'),
+  ('notification.generic_submissions',               'UPDATE', 'notification V15',
+   'status,updated_at'),
+  ('notification.generic_submissions',               'UPDATE', 'notification V16',
+   'correlation_id,provider_request_id,reason'),
+  ('notification.generic_delivery_results',          'INSERT', 'notification V17',
+   'event_id,school_id,request_sha256,correlation_id,provider_request_id,delivery_status'),
+  ('notification.generic_delivery_results',          'UPDATE', 'notification V17',
+   'delivery_status,updated_at'),
+  ('notification.generic_delivery_reports',          'INSERT', 'notification V17',
+   'report_sha256,event_id,school_id,evidence_sha256,status,provider_at'),
+  ('notification.generic_unknown_report_assertions', 'INSERT', 'notification V18',
+   'assertion_sha256,event_id,school_id,request_sha256,correlation_id,claimed_provider_request_id,evidence_sha256,asserted_at,reporter_service_account')
+) AS r(relation, privilege, reason, columns)
+CROSS JOIN LATERAL unnest(string_to_array(r.columns, ',')) AS c(column_name);
 -- Column rules. Where a relation and privilege are named here, app_rt holds that privilege on every other column of the
 -- relation, and never on the named columns or at table level (student V39: INSERT on every column but
 -- erasure_incarnation).
-CREATE TEMP TABLE app_rt_column_narrowing (relation text NOT NULL, column_name text NOT NULL, privilege text NOT NULL,
-                                           reason text NOT NULL, PRIMARY KEY (relation, column_name, privilege));
+CREATE TEMP TABLE app_rt_column_narrowing (
+  relation text NOT NULL,
+  column_name text NOT NULL CHECK (column_name ~ '^[a-z0-9_]+$'),
+  privilege text NOT NULL CHECK (privilege IN ('SELECT', 'INSERT', 'UPDATE')),
+  reason text NOT NULL,
+  PRIMARY KEY (relation, column_name, privilege),
+  FOREIGN KEY (relation, privilege) REFERENCES app_rt_narrowing (relation, privilege));
 INSERT INTO app_rt_column_narrowing (relation, column_name, privilege, reason) VALUES
   ('student.students', 'erasure_incarnation', 'INSERT', 'student V39: the database generates every incarnation');
 -- The rows that apply to this database now: the relation exists and so does every column its column rules name. A
@@ -72,6 +118,51 @@ WHERE to_regclass(a.relation) IS NOT NULL
                     AND NOT EXISTS (SELECT 1 FROM pg_attribute att
                                     WHERE att.attrelid = to_regclass(c.relation) AND att.attname = c.column_name
                                       AND NOT att.attisdropped));
+-- The check: what app_rt can actually do, from any grantor and through PUBLIC, against the rows that apply now. It
+-- raises naming relation, privilege and grantor (or the missing column).
+CREATE FUNCTION pg_temp.app_rt_check_narrowing() RETURNS void LANGUAGE plpgsql AS $check$
+DECLARE
+  held text;
+BEGIN
+  SELECT string_agg(format('%s %s (%s)', a.relation, a.privilege,
+           coalesce((SELECT string_agg(format('granted to %s by %s',
+                                              CASE WHEN x.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(x.grantee) END,
+                                              pg_get_userbyid(x.grantor)), ', ' ORDER BY x.grantee, x.grantor)
+                     FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) x
+                     WHERE c.oid = a.rel AND x.privilege_type = a.privilege
+                       AND x.grantee IN (0::oid, 'app_rt'::regrole::oid)),
+                    'held through a role')), '; ' ORDER BY a.relation, a.privilege)
+    INTO held
+  FROM app_rt_narrowing_active a
+  WHERE has_table_privilege('app_rt', a.rel, a.privilege);
+  IF held IS NOT NULL THEN
+    RAISE EXCEPTION 'app_rt holds table privileges the narrowing list bars: %', held;
+  END IF;
+  SELECT string_agg(format('%s.%s %s (%s)', c.relation, c.column_name, c.privilege,
+           coalesce((SELECT string_agg(format('column grant to %s by %s',
+                                              CASE WHEN x.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(x.grantee) END,
+                                              pg_get_userbyid(x.grantor)), ', ' ORDER BY x.grantee, x.grantor)
+                     FROM aclexplode(att.attacl) x
+                     WHERE x.privilege_type = c.privilege AND x.grantee IN (0::oid, 'app_rt'::regrole::oid)),
+                    'held at table level')), '; ' ORDER BY c.relation, c.column_name)
+    INTO held
+  FROM app_rt_column_narrowing c
+  JOIN pg_attribute att ON att.attrelid = to_regclass(c.relation) AND att.attname = c.column_name AND NOT att.attisdropped
+  WHERE has_column_privilege('app_rt', att.attrelid, att.attnum, c.privilege);
+  IF held IS NOT NULL THEN
+    RAISE EXCEPTION 'app_rt holds column privileges the narrowing list bars: %', held;
+  END IF;
+  SELECT string_agg(format('%s.%s %s', g.relation, g.column_name, g.privilege), '; '
+                    ORDER BY g.relation, g.privilege, g.column_name)
+    INTO held
+  FROM app_rt_column_grants g
+  JOIN pg_attribute att ON att.attrelid = to_regclass(g.relation) AND att.attname = g.column_name
+                       AND att.attnum > 0 AND NOT att.attisdropped
+  WHERE NOT has_column_privilege('app_rt', att.attrelid, att.attnum, g.privilege);
+  IF held IS NOT NULL THEN
+    RAISE EXCEPTION 'app_rt lacks column privileges a migration grants it: %', held;
+  END IF;
+END $check$;
 -- app_rt narrowing list: end
 
 -- 1) Role exists with the correct unprivileged attributes.
@@ -134,40 +225,13 @@ BEGIN
   END LOOP;
 END$$;
 
--- 5) app_rt holds none of the privileges the narrowing list bars: what it can actually do, from any grantor and
---    through PUBLIC, on the rows that apply now. Every violation is named with who granted it.
+-- 5) app_rt holds none of the privileges the narrowing list bars, and every column a migration grants it: what it can
+--    actually do, from any grantor and through PUBLIC, on the rows that apply now. The check is the one
+--    create-app-rt-role.sql runs (pg_temp.app_rt_check_narrowing, in the narrowing block); it names each violation
+--    with who granted it.
 DO $$
-DECLARE
-  held text;
 BEGIN
-  SELECT string_agg(format('%s %s (%s)', a.relation, a.privilege,
-           coalesce((SELECT string_agg(format('granted to %s by %s',
-                                              CASE WHEN x.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(x.grantee) END,
-                                              pg_get_userbyid(x.grantor)), ', ' ORDER BY x.grantee, x.grantor)
-                     FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) x
-                     WHERE c.oid = a.rel AND x.privilege_type = a.privilege
-                       AND x.grantee IN (0::oid, 'app_rt'::regrole::oid)),
-                    'held through a role')), '; ' ORDER BY a.relation, a.privilege)
-    INTO held
-  FROM app_rt_narrowing_active a
-  WHERE has_table_privilege('app_rt', a.rel, a.privilege);
-  IF held IS NOT NULL THEN
-    RAISE EXCEPTION 'app_rt holds table privileges the narrowing list bars: %', held;
-  END IF;
-  SELECT string_agg(format('%s.%s %s (%s)', c.relation, c.column_name, c.privilege,
-           coalesce((SELECT string_agg(format('column grant to %s by %s',
-                                              CASE WHEN x.grantee = 0 THEN 'PUBLIC' ELSE pg_get_userbyid(x.grantee) END,
-                                              pg_get_userbyid(x.grantor)), ', ' ORDER BY x.grantee, x.grantor)
-                     FROM aclexplode(att.attacl) x
-                     WHERE x.privilege_type = c.privilege AND x.grantee IN (0::oid, 'app_rt'::regrole::oid)),
-                    'held at table level')), '; ' ORDER BY c.relation, c.column_name)
-    INTO held
-  FROM app_rt_column_narrowing c
-  JOIN pg_attribute att ON att.attrelid = to_regclass(c.relation) AND att.attname = c.column_name AND NOT att.attisdropped
-  WHERE has_column_privilege('app_rt', att.attrelid, att.attnum, c.privilege);
-  IF held IS NOT NULL THEN
-    RAISE EXCEPTION 'app_rt holds column privileges the narrowing list bars: %', held;
-  END IF;
+  PERFORM pg_temp.app_rt_check_narrowing();
 END$$;
 
 -- Live probes (require a superuser connection; set -v run_live_probes=1).

@@ -148,12 +148,13 @@ jobs:
 
   # Re-runs scripts/create-app-rt-role.sql on every service's real migrations (Docker PostgreSQL 16, Flyway from a
   # service's own Maven classpath) and fails if the run changes an ACL a migration set, or if the create and audit
-  # narrowing lists drift. Runs on every PR: any migration can add a narrowing the script must keep. Without Docker the
-  # tests fail here rather than skip.
+  # narrowing lists drift. Also renders the Cloud Run job of invoke-create-app-rt-role-cloudsql.ps1 (pwsh, preinstalled
+  # on the runner) and runs its shell as a non-superuser owner over TLS. Runs on every PR: any migration can add a
+  # narrowing the script must keep. Without Docker or PowerShell the tests fail here rather than skip.
   app-rt-role-invariants:
     name: app-rt-role-invariants
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1

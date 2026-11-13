@@ -78,16 +78,24 @@ def require_docker():
 
 
 class PostgresContainer:
-    """A throwaway PostgreSQL. The superuser password is generated per run and never stored."""
+    """A throwaway PostgreSQL. The superuser password is generated per run and never stored.
 
-    def __init__(self, publish=False):
+    publish maps the port to 127.0.0.1 on the host (for JDBC). ssl turns TLS on with the image's snakeoil certificate,
+    so a client can connect with sslmode=require as the Cloud SQL jobs do.
+    """
+
+    def __init__(self, publish=False, ssl=False):
         self.name = 'ims-app-rt-role-' + uuid.uuid4().hex[:12]
         self.password = secrets.token_urlsafe(24)
         self.port = None
         command = ['docker', 'run', '--detach', '--rm', '--name', self.name, '-e', 'POSTGRES_PASSWORD=' + self.password]
         if publish:
             command += ['-p', '127.0.0.1::5432']
-        subprocess.run(command + [POSTGRES_IMAGE], capture_output=True, check=True, timeout=300)
+        command.append(POSTGRES_IMAGE)
+        if ssl:
+            command += ['postgres', '-c', 'ssl=on', '-c', 'ssl_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem',
+                        '-c', 'ssl_key_file=/etc/ssl/private/ssl-cert-snakeoil.key']
+        subprocess.run(command, capture_output=True, check=True, timeout=300)
         try:
             for _ in range(300):
                 # The image's bootstrap server listens on a Unix socket only and restarts; wait for the final TCP one.
@@ -109,15 +117,15 @@ class PostgresContainer:
     def stop(self):
         subprocess.run(['docker', 'stop', self.name], capture_output=True, timeout=60)
 
-    def psql(self, database, *args, stdin=None):
-        """psql inside the container as the superuser. Output is text."""
-        result = subprocess.run(['docker', 'exec', '-i', self.name, 'psql', '-X', '-U', 'postgres', '-d', database,
+    def psql(self, database, *args, stdin=None, user='postgres'):
+        """psql inside the container, over its Unix socket, as user (the superuser by default). Output is text."""
+        result = subprocess.run(['docker', 'exec', '-i', self.name, 'psql', '-X', '-U', user, '-d', database,
                                  *args], input=(stdin or '').encode('utf-8'), capture_output=True, timeout=300)
         return subprocess.CompletedProcess(result.args, result.returncode, result.stdout.decode('utf-8', 'replace'),
                                            result.stderr.decode('utf-8', 'replace'))
 
-    def sql(self, database, text):
-        result = self.psql(database, '-qAt', '-v', 'ON_ERROR_STOP=1', stdin=text)
+    def sql(self, database, text, user='postgres'):
+        result = self.psql(database, '-qAt', '-v', 'ON_ERROR_STOP=1', stdin=text, user=user)
         if result.returncode != 0:
             raise AssertionError(result.stderr)
         return result.stdout.strip()
