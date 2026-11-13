@@ -431,6 +431,42 @@ class ProductOrderWorkflowIntegrationTest {
         assertThat(owner.sql("SELECT last_value FROM catalog.order_number_counters WHERE item_code = 'FE'").query(Integer.class).single()).isEqualTo(1);
     }
 
+    /**
+     * The legacy catalog consolidation (catalog V8's apply_legacy_catalog_mappings(), run by an operator) inserts a legacy
+     * supply order in its legacy status and never numbers it. Since catalog V41 it queues a placed one of a coded category for
+     * repair, so the next drain numbers it by its legacy order date and tells reporting; a legacy order runs on no workflow.
+     */
+    @Test
+    void aPlacedLegacySupplyOrderTheConsolidationMigratesIsNumberedByTheNextDrain() {
+        owner.sql("""
+                INSERT INTO catalog.supply_orders (code, title, category, items, amount, status, order_date, action_label)
+                VALUES ('SUP-POW-NB', 'Notebooks', 'Notebooks', '1200 books', 54000, 'Placed', DATE '2026-03-02', 'View')
+                """).update();
+        owner.sql("""
+                INSERT INTO catalog.legacy_catalog_migration_map (source_table, source_id, school_id, mapped_by, mapped_at)
+                VALUES ('supply_orders', 'SUP-POW-NB', 1, 'test', now())
+                """).update();
+        owner.sql("SELECT * FROM catalog.apply_legacy_catalog_mappings()").query().singleRow();
+        String id = owner.sql("SELECT id FROM catalog.catalog_orders WHERE legacy_source_id = 'SUP-POW-NB'").query(String.class).single();
+        assertThat(row(id).get("order_number")).isNull();
+        assertThat(owner.sql("SELECT repair FROM catalog.order_workflow_creation_queue WHERE order_id = :id").param("id", id)
+                .query(Boolean.class).single()).as("queued for repair by the function").isTrue();
+        owner.sql("DELETE FROM tenant_school.outbox_events").update();
+
+        assertThat(queue.drain(10)).as("numbered, and on no workflow").isZero();
+
+        String number = String.valueOf(row(id).get("order_number"));
+        assertThat(number).as("dated by its placement").isEqualTo("NB-SA_IN-" + placementDay(id) + "-0001");
+        assertThat(owner.sql("SELECT placed_at = CAST(DATE '2026-03-02' AS timestamptz) FROM catalog.catalog_orders WHERE id = :id")
+                .param("id", id).query(Boolean.class).single()).as("which is the legacy order date").isTrue();
+        assertThat(queued(id)).isFalse();
+        assertThat(CREATED).isEmpty();
+        assertThat(owner.sql("""
+                SELECT payload ->> 'orderNumber' FROM tenant_school.outbox_events
+                WHERE event_type = 'catalog-order.upserted.v1' AND aggregate_id = :id
+                """).param("id", id).query(String.class).list()).as("reporting is told the number").containsExactly(number);
+    }
+
     /** A category label may be 80 characters, but the engine takes a noun of at most 40: a noun taken from the label is cut. */
     @Test
     void aNounTakenFromALongLabelFitsTheEngine() {
