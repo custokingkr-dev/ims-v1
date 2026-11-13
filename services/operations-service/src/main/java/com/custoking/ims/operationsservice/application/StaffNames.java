@@ -1,6 +1,5 @@
 package com.custoking.ims.operationsservice.application;
 
-import com.custoking.ims.operationsservice.application.tracker.TrackerView;
 import com.custoking.ims.operationsservice.infrastructure.StaffDirectory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +17,9 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
- * The names the tracker shows for step assignees and note authors. Identity owns them; this keeps each answer, per user
+ * The names the order workflows show for stage assignees, note authors and other staff. Identity owns them; this keeps each answer, per user
  * id, for {@link #TTL} in a cache of at most {@link #MAX_ENTRIES}, so a busy screen asks identity rarely. An id identity
  * leaves out (not staff) is remembered as unknown for as long.
  *
@@ -29,7 +27,7 @@ import java.util.Set;
  * connection or tracker row lock is held while it answers (the pattern of {@code TrackerStatusOutbox.attempt}). Asked
  * from inside one, the lookup serves what is cached, expired names included, and leaves the rest unknown.
  *
- * <p><b>Optional.</b> Names are a convenience: when identity cannot be asked the tracker still answers. A name already
+ * <p><b>Optional.</b> Names are a convenience: when identity cannot be asked the workflows still answer. A name already
  * known is kept past its ten minutes and served until a refresh succeeds; a name never known stays null. After a
  * failure identity is left alone for {@link #BACKOFF}, so a lasting outage or misconfiguration costs one call and one
  * warning a minute, not one per view.
@@ -58,15 +56,6 @@ public class StaffNames {
     public StaffNames(StaffDirectory directory, Clock clock) {
         this.directory = directory;
         this.clock = clock;
-    }
-
-    /** The view with every assignee's and note author's name that is known; the rest stay null. */
-    public TrackerView named(TrackerView view) {
-        if (view == null) return null;
-        Set<Long> ids = new LinkedHashSet<>();
-        for (TrackerView.Step step : view.steps()) if (step.assigneeUserId() != null) ids.add(step.assigneeUserId());
-        for (TrackerView.Note note : view.internalNotes()) ids.add(note.authorUserId());
-        return ids.isEmpty() ? view : view.withStaffNames(lookup(ids));
     }
 
     /**

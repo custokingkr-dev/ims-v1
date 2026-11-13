@@ -13,7 +13,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/** The tracker's calls to school-core use the internal catalogue routes and carry no shared token or user context. */
+/** The order workflow engine's calls to school-core use the internal catalogue routes and carry no shared token or user context. */
 class SchoolCoreCatalogClientTest {
     private HttpServer server;
     private final List<String> requests = new CopyOnWriteArrayList<>();
@@ -50,16 +50,26 @@ class SchoolCoreCatalogClientTest {
 
     @Test
     void theStatusIsPutOnTheInternalCatalogueRoute() throws Exception {
-        clientFor(204, "").pushStatus("CK-1", "PRINTING_PRESS", 7);
+        clientFor(204, "").pushStatus("CK-1", "PRINTING_PRESS", 7, null);
         assertEquals(List.of("PUT /api/v1/internal/catalog-orders/CK-1/tracker-status"), requests);
-        assertEquals("{\"status\":\"PRINTING_PRESS\",\"trackerVersion\":7}", bodies.get(0));
+        assertEquals("{\"status\":\"PRINTING_PRESS\",\"trackerVersion\":7,\"definitionId\":null,\"stepOrder\":null,"
+                + "\"stepTitle\":null,\"totalSteps\":null,\"completedSteps\":null}", bodies.get(0));
+    }
+
+    /** Design 3.5: the push names the step its status is, so school-core's order lists can show it (attributes.workflowStep). */
+    @Test
+    void theStatusCarriesTheStepItNames() throws Exception {
+        clientFor(204, "").pushStatus("CK-1", "PRE_PRINT_QUALITY_CHECK", 9,
+                new CatalogOrderGateway.WorkflowStep("FLIER_ORDER_WORKFLOW", 6, "Pre-Print Quality Check", 9, 5));
+        assertEquals("{\"status\":\"PRE_PRINT_QUALITY_CHECK\",\"trackerVersion\":9,\"definitionId\":\"FLIER_ORDER_WORKFLOW\","
+                + "\"stepOrder\":6,\"stepTitle\":\"Pre-Print Quality Check\",\"totalSteps\":9,\"completedSteps\":5}", bodies.get(0));
     }
 
     @Test
     void noCallCarriesASharedTokenOrForwardedUserContext() throws Exception {
         var client = clientFor(200, "[]");
         client.draftImages("CK-1");
-        client.pushStatus("CK-1", "PRINTING_PRESS", 7);
+        client.pushStatus("CK-1", "PRINTING_PRESS", 7, null);
         for (String name : headerNames) {
             String lower = name.toLowerCase(Locale.ROOT);
             assertFalse(lower.endsWith("-service-token") || lower.startsWith("x-authenticated-") || lower.equals("x-ims-principal-carrier-token"), name);
@@ -71,9 +81,9 @@ class SchoolCoreCatalogClientTest {
         var client = clientFor(500, "{}");
         assertThrows(IllegalStateException.class, () -> client.draftImages("CK-1"));
         assertEquals("the order catalogue answered HTTP 500",
-                assertThrows(IllegalStateException.class, () -> client.pushStatus("CK-1", "PRINTING_PRESS", 7)).getMessage());
+                assertThrows(IllegalStateException.class, () -> client.pushStatus("CK-1", "PRINTING_PRESS", 7, null)).getMessage());
         assertThrows(IllegalStateException.class, () -> new SchoolCoreCatalogClient("", "never", 300, 300).draftImages("CK-1"));
-        assertThrows(IllegalStateException.class, () -> new SchoolCoreCatalogClient(null, null, 300, 300).pushStatus("CK-1", "PRINTING_PRESS", 7));
+        assertThrows(IllegalStateException.class, () -> new SchoolCoreCatalogClient(null, null, 300, 300).pushStatus("CK-1", "PRINTING_PRESS", 7, null));
     }
 
     /**
@@ -83,12 +93,12 @@ class SchoolCoreCatalogClientTest {
     @Test
     void aClosedOrderIsToldApartFromAFailure() throws Exception {
         var closed = clientFor(409, "{\"message\":\"A cancelled order has no tracker status\"}");
-        var refused = assertThrows(CatalogOrderGateway.OrderClosedException.class, () -> closed.pushStatus("CK-1", "PRINTING_PRESS", 7));
+        var refused = assertThrows(CatalogOrderGateway.OrderClosedException.class, () -> closed.pushStatus("CK-1", "PRINTING_PRESS", 7, null));
         assertEquals("the order catalogue answered HTTP 409", refused.getMessage());
         for (int status : new int[]{400, 403, 500, 503}) {
             stop();
             var client = clientFor(status, "{}");
-            var failure = assertThrows(IllegalStateException.class, () -> client.pushStatus("CK-1", "PRINTING_PRESS", 7));
+            var failure = assertThrows(IllegalStateException.class, () -> client.pushStatus("CK-1", "PRINTING_PRESS", 7, null));
             assertFalse(failure instanceof CatalogOrderGateway.OrderClosedException, "status " + status);
         }
     }
@@ -97,7 +107,7 @@ class SchoolCoreCatalogClientTest {
     @Test
     void aMissingOrderIsDroppedLikeAClosedOne() throws Exception {
         var missing = clientFor(404, "{\"message\":\"Order not found\"}");
-        var refused = assertThrows(CatalogOrderGateway.OrderClosedException.class, () -> missing.pushStatus("CK-1", "PRINTING_PRESS", 7));
+        var refused = assertThrows(CatalogOrderGateway.OrderClosedException.class, () -> missing.pushStatus("CK-1", "PRINTING_PRESS", 7, null));
         assertEquals("the order catalogue answered HTTP 404", refused.getMessage());
         assertEquals(404, refused.httpStatus());
     }

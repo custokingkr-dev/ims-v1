@@ -1,5 +1,8 @@
 package com.custoking.ims.operationsservice.persistence;
 
+import com.custoking.ims.operationsservice.application.orderworkflow.template.StepSpec;
+import com.custoking.ims.operationsservice.application.orderworkflow.template.WorkflowTemplate;
+import com.custoking.ims.operationsservice.application.orderworkflow.template.WorkflowTemplates;
 import com.custoking.ims.operationsservice.infrastructure.CatalogOrderGateway;
 import com.custoking.ims.operationsservice.outbox.QueueBacklog;
 import org.slf4j.Logger;
@@ -18,9 +21,13 @@ import java.util.Optional;
 import static net.logstash.logback.argument.StructuredArguments.kv;
 
 /**
- * Delivers the tracker's status to the catalogue (school-core), which shows it as the order's status (review fix, spec
- * §3.3). A step change {@link #record records} the new status with the tracker's instance version in the transaction
- * that changed the step; once that commits the order is {@link #attempt attempted} once, and the relay trigger
+ * Delivers an order workflow's status to the catalogue (school-core), which shows it as the order's status (review fix,
+ * spec §3.3; design D5, §3.6). The push also carries the step the status names (template, step number and title, path
+ * length, steps done), which school-core keeps for its order lists. Steps complete strictly in order and an order's
+ * template and path never change, so that report follows from the status alone and is worked out at delivery from the
+ * order's template. A step change {@link #record records} the new status with the tracker's instance version in the
+ * transaction that changed the step (so does the order-number fill of a workflow created before numbers, which never
+ * pushed its step); once that commits the order is {@link #attempt attempted} once, and the relay trigger
  * {@link #drain drains} whatever is left with a doubling backoff capped at an hour.
  *
  * <p><b>Ordering.</b> One row per order: a newer version replaces the queued status and an older one never does. A
@@ -48,17 +55,21 @@ public class TrackerStatusOutbox implements QueueBacklog {
 
     private final JdbcClient jdbc;
     private final CatalogOrderGateway catalog;
+    private final WorkflowTemplates templates;
     private final String table;
+    private final String trackers;
     /** Suspends any surrounding transaction, so the peer call never runs inside one. */
     private final TransactionTemplate outsideTransaction;
     private final TransactionTemplate step;
 
-    public TrackerStatusOutbox(JdbcClient jdbc, CatalogOrderGateway catalog, PlatformTransactionManager manager,
+    public TrackerStatusOutbox(JdbcClient jdbc, CatalogOrderGateway catalog, WorkflowTemplates templates, PlatformTransactionManager manager,
                                @Value("${workflow.db.schema:workflow}") String schema) {
         if (!schema.matches("[A-Za-z_][A-Za-z0-9_]*")) throw new IllegalArgumentException("Invalid schema name");
         this.jdbc = jdbc;
         this.catalog = catalog;
+        this.templates = templates;
         this.table = schema + ".workflow_tracker_status_outbox";
+        this.trackers = schema + ".workflow_notebook_trackers";
         this.outsideTransaction = new TransactionTemplate(manager);
         this.outsideTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_NOT_SUPPORTED);
         this.step = new TransactionTemplate(manager);
@@ -152,14 +163,15 @@ public class TrackerStatusOutbox implements QueueBacklog {
             jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
             Optional<Claim> due;
             try {
-                var select = jdbc.sql("SELECT order_id, school_id, status, tracker_version FROM " + table
-                        + " WHERE next_attempt_at <= now() AND dead_lettered_at IS NULL"
-                        + (orderId == null ? "" : " AND order_id = :order") + (claimed.isEmpty() ? "" : " AND order_id NOT IN (:claimed)")
-                        + " ORDER BY next_attempt_at, order_id LIMIT 1 FOR UPDATE SKIP LOCKED");
+                var select = jdbc.sql("SELECT o.order_id, o.school_id, o.status, o.tracker_version, t.definition_id, t.customised FROM "
+                        + table + " o LEFT JOIN " + trackers + " t ON t.order_id = o.order_id"
+                        + " WHERE o.next_attempt_at <= now() AND o.dead_lettered_at IS NULL"
+                        + (orderId == null ? "" : " AND o.order_id = :order") + (claimed.isEmpty() ? "" : " AND o.order_id NOT IN (:claimed)")
+                        + " ORDER BY o.next_attempt_at, o.order_id LIMIT 1 FOR UPDATE OF o SKIP LOCKED");
                 if (orderId != null) select = select.param("order", orderId);
                 if (!claimed.isEmpty()) select = select.param("claimed", List.copyOf(claimed));
                 due = select.query((rs, n) -> new Claim(rs.getString("order_id"), rs.getLong("school_id"), rs.getString("status"),
-                        rs.getLong("tracker_version"), 0)).optional();
+                        rs.getLong("tracker_version"), 0, rs.getString("definition_id"), (Boolean) rs.getObject("customised"))).optional();
             } finally {
                 jdbc.sql("SELECT set_config('app.bypass_rls', 'off', true)").query(String.class).single();
             }
@@ -172,7 +184,8 @@ public class TrackerStatusOutbox implements QueueBacklog {
                             + "next_attempt_at = now() + make_interval(mins => LEAST(power(2, LEAST(attempts + 1, 6)), 60)::int) "
                             + "WHERE order_id = :order RETURNING attempts")
                     .param("order", picked.orderId()).query(Integer.class).single();
-            return Optional.of(new Claim(picked.orderId(), picked.schoolId(), picked.status(), picked.trackerVersion(), attempts));
+            return Optional.of(new Claim(picked.orderId(), picked.schoolId(), picked.status(), picked.trackerVersion(), attempts,
+                    picked.definitionId(), picked.customised()));
         });
         return result == null ? Optional.empty() : result;
     }
@@ -180,7 +193,7 @@ public class TrackerStatusOutbox implements QueueBacklog {
     /** The peer call for one claimed row, outside any transaction; then the row goes, unless a newer status replaced it. */
     private boolean deliver(Claim claim) {
         try {
-            catalog.pushStatus(claim.orderId(), claim.status(), claim.trackerVersion());
+            catalog.pushStatus(claim.orderId(), claim.status(), claim.trackerVersion(), stepOf(claim));
         } catch (CatalogOrderGateway.OrderClosedException closed) {
             return dropped(claim, closed);
         } catch (RuntimeException failure) {
@@ -240,5 +253,32 @@ public class TrackerStatusOutbox implements QueueBacklog {
                 .param("school", String.valueOf(schoolId)).query().singleRow();
     }
 
-    private record Claim(String orderId, long schoolId, String status, long trackerVersion, int attempts) { }
+    /**
+     * The step a claimed status names, from the order's template and path; null when the order or its template is unknown
+     * here (the status is still delivered, without the report).
+     */
+    CatalogOrderGateway.WorkflowStep stepOf(Claim claim) {
+        if (claim.definitionId() == null || claim.customised() == null) return null;
+        return stepOf(templates.find(claim.definitionId()).orElse(null), claim.customised(), claim.status());
+    }
+
+    /** The report for {@code status} on an order of {@code template}: COMPLETED names the last step, with every step done. */
+    public static CatalogOrderGateway.WorkflowStep stepOf(WorkflowTemplate template, boolean customised, String status) {
+        if (template == null || status == null) return null;
+        List<StepSpec> path = template.pathFor(customised);
+        if (path.isEmpty()) return null;
+        if ("COMPLETED".equals(status)) {
+            StepSpec last = path.get(path.size() - 1);
+            return new CatalogOrderGateway.WorkflowStep(template.definitionId(), last.order(), last.title(), path.size(), path.size());
+        }
+        for (int index = 0; index < path.size(); index++) {
+            StepSpec step = path.get(index);
+            if (step.code().equals(status)) {
+                return new CatalogOrderGateway.WorkflowStep(template.definitionId(), step.order(), step.title(), path.size(), index);
+            }
+        }
+        return null;
+    }
+
+    record Claim(String orderId, long schoolId, String status, long trackerVersion, int attempts, String definitionId, Boolean customised) { }
 }

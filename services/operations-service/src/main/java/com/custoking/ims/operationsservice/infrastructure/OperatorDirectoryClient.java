@@ -15,9 +15,10 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Asks identity-service's internal operator directory whether a user is an eligible operator, and for the names of the
- * staff the tracker shows. Identity's Cloud Run IAM and MachineCallerFilter admit only operations-service's service
- * account, proven by the identity token {@link PeerHttp} adds. Eligibility is never cached: an assignment must reflect
+ * Asks identity-service's internal operator directory whether a user is an eligible operator for an order's school and
+ * catalogue category (every item the order workflows serve, design D42), and for the names of the staff the workflows
+ * show. Identity's Cloud Run IAM and MachineCallerFilter admit only operations-service's service account, proven by the
+ * identity token {@link PeerHttp} adds. Eligibility is never cached: an assignment or a "Take this order" must reflect
  * the operator's current access. Names are cached by {@code StaffNames}, not here.
  */
 @Component
@@ -42,6 +43,8 @@ public class OperatorDirectoryClient implements OperatorEligibility, StaffDirect
 
     @Override
     public boolean eligible(long userId, long schoolId, String catalogCategory) {
+        // Every workflow order has a category, and eligibility is per category (D42): asking without one is a bug.
+        if (catalogCategory == null || catalogCategory.isBlank()) throw new IllegalArgumentException("An order's catalogue category is required");
         if (!http.configured()) throw new IllegalStateException("operator directory is not configured");
         try {
             Map<String, Object> body = http.client.get()

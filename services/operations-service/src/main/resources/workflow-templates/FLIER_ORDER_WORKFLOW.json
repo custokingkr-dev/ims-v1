@@ -1,0 +1,533 @@
+{
+  "definitionId": "FLIER_ORDER_WORKFLOW",
+  "title": "Flier order workflow",
+  "introMessage": "My name is {Name}, and I will be handling your flier order. Please reach out for any queries, updates, or follow-ups.",
+  "steps": [
+    {
+      "order": 1,
+      "code": "ORDER_DETAILS",
+      "title": "Order Details",
+      "description": "Verify order form, quantity, dimensions and flier specifications.",
+      "phase": "INTAKE",
+      "sla": {
+        "value": 2,
+        "unit": "HOURS"
+      },
+      "customisedOnly": false,
+      "superadminCompletes": false,
+      "icon": "ClipboardList",
+      "tabs": ["WORK", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {
+          "type": "ORDER_PDF_LINK",
+          "title": "School order PDF link",
+          "fields": ["orderPdfLink"],
+          "save": "Save PDF link"
+        },
+        {
+          "type": "INTRO_MESSAGE",
+          "title": "School Group Chat & Introduction Message",
+          "checklist": "introChecks",
+          "fields": ["introText"]
+        }
+      ],
+      "fields": {
+        "orderPdfLink": {
+          "kind": "URL",
+          "label": "School order PDF link",
+          "placeholder": "Paste link to the school order PDF"
+        },
+        "introText": {
+          "kind": "TEXT",
+          "label": "Introduction message as sent",
+          "max": 1000
+        }
+      },
+      "checklists": {
+        "introChecks": {
+          "items": ["Introduction message sent in the school group"],
+          "source": "ours"
+        }
+      },
+      "gates": [
+        {
+          "type": "FIELDS_PRESENT",
+          "fields": ["orderPdfLink"]
+        },
+        {
+          "type": "ALL_CHECKED",
+          "checklist": "introChecks"
+        }
+      ]
+    },
+    {
+      "order": 2,
+      "code": "DESIGNING_ACTIVITY",
+      "title": "Designing Activity",
+      "description": "Prepare and revise artwork for the printing item.",
+      "phase": "INTAKE",
+      "sla": {
+        "value": 72,
+        "unit": "HOURS"
+      },
+      "customisedOnly": false,
+      "superadminCompletes": false,
+      "icon": "PenTool",
+      "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {
+          "type": "SCHOOL_GROUP",
+          "title": "School Group Chat"
+        },
+        {
+          "type": "DESIGN_FILES",
+          "title": "Upload Design Files"
+        },
+        {
+          "type": "FIELDS",
+          "fields": ["designNotes"],
+          "save": "Save design details"
+        }
+      ],
+      "fields": {
+        "designNotes": {
+          "kind": "TEXT",
+          "label": "Design notes / version details",
+          "max": 1000
+        }
+      },
+      "checklists": {},
+      "gates": [
+        {
+          "type": "DESIGN_FILES_PRESENT"
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "code": "CDR_CONVERSION",
+      "title": "CDR Conversion",
+      "description": "Convert the approved design into production-ready CDR artwork.",
+      "phase": "INTAKE",
+      "sla": {
+        "value": 2,
+        "unit": "HOURS"
+      },
+      "customisedOnly": false,
+      "superadminCompletes": false,
+      "icon": "Layers",
+      "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {
+          "type": "FIELDS",
+          "fields": ["cdrLink", "cdrNotes"],
+          "save": "Save CDR details"
+        },
+        {
+          "type": "CHECKLIST",
+          "title": "Conversion checks",
+          "checklist": "cdrChecks"
+        }
+      ],
+      "fields": {
+        "cdrLink": {
+          "kind": "URL",
+          "label": "Controlled storage link",
+          "placeholder": "Paste SharePoint / Drive link"
+        },
+        "cdrNotes": {
+          "kind": "TEXT",
+          "label": "Conversion comments",
+          "placeholder": "Fonts outlined, colours checked, artwork matches approved version",
+          "max": 1000
+        }
+      },
+      "checklists": {
+        "cdrChecks": {
+          "items": ["Fonts outlined", "Colours checked", "Artwork matches approved version"],
+          "source": "note"
+        }
+      },
+      "gates": [
+        {
+          "type": "FIELDS_PRESENT",
+          "fields": ["cdrLink"]
+        },
+        {
+          "type": "ALL_CHECKED",
+          "checklist": "cdrChecks"
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "code": "HEAD_APPROVAL",
+      "title": "Head Approval",
+      "description": "Obtain approval for the exact artwork version before production.",
+      "phase": "INTAKE",
+      "sla": {
+        "value": 2,
+        "unit": "HOURS"
+      },
+      "customisedOnly": false,
+      "superadminCompletes": true,
+      "icon": "BadgeCheck",
+      "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {
+          "type": "CDR_FOR_APPROVAL",
+          "title": "CDR file submitted for approval"
+        },
+        {
+          "type": "HEAD_APPROVAL"
+        }
+      ],
+      "fields": {},
+      "checklists": {},
+      "gates": [
+        {
+          "type": "HEAD_APPROVED"
+        }
+      ]
+    },
+    {
+      "order": 5,
+      "code": "PRODUCTION_PLANNING",
+      "title": "Production Planning",
+      "description": "Confirm flier quantities from the order form and assign printers and vendors from the directory.",
+      "phase": "PLANNING",
+      "sla": {
+        "value": 24,
+        "unit": "HOURS"
+      },
+      "customisedOnly": false,
+      "superadminCompletes": false,
+      "icon": "ListChecks",
+      "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {
+          "type": "ORDER_FOLDER",
+          "title": "School order folder"
+        },
+        {
+          "type": "ITEM_QUANTITIES",
+          "title": "Flier quantities"
+        },
+        {
+          "type": "VENDOR_DIRECTORY",
+          "title": "Supplier Contact Groups"
+        },
+        {
+          "type": "VENDOR_SELECTION",
+          "title": "Select Vendors for This Order",
+          "suggestedByItem": {
+            "FE": ["DIGITAL_PRINTERS", "OFFSET_PRINTERS", "PHOTO_PAPER_PRINTERS"]
+          }
+        },
+        {
+          "type": "FIELDS",
+          "fields": ["targetCompletion"],
+          "save": "Save target date"
+        }
+      ],
+      "fields": {
+        "targetCompletion": {
+          "kind": "DATE",
+          "label": "Target completion date"
+        }
+      },
+      "checklists": {},
+      "gates": [
+        {
+          "type": "VENDORS_SELECTED"
+        }
+      ]
+    },
+    {
+      "order": 6,
+      "code": "PRE_PRINT_QUALITY_CHECK",
+      "title": "Pre-Print Quality Check",
+      "description": "Verify the flier artwork and print specifications before sending the job to print.",
+      "phase": "PRODUCTION",
+      "sla": {
+        "value": 24,
+        "unit": "HOURS"
+      },
+      "customisedOnly": false,
+      "superadminCompletes": false,
+      "icon": "ShieldCheck",
+      "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {
+          "type": "VENDOR_GROUPS",
+          "title": "Selected Vendor WhatsApp Groups"
+        },
+        {
+          "type": "INTERNAL_APPROVAL_GROUP",
+          "title": "Internal Approval Group"
+        },
+        {
+          "type": "FIELDS",
+          "fields": ["qcNotes"],
+          "save": "Save pre-print quality check"
+        },
+        {
+          "type": "CHECKLIST",
+          "title": "Pre-print quality checklist",
+          "checklist": "qcChecks"
+        }
+      ],
+      "fields": {
+        "qcNotes": {
+          "kind": "TEXT",
+          "label": "Quality check notes",
+          "placeholder": "Confirm artwork, size, paper GSM, quantity, bleed and spelling",
+          "max": 1000
+        }
+      },
+      "checklists": {
+        "qcChecks": {
+          "items": ["Flier artwork and print specifications checked and approved"],
+          "source": "prototype"
+        }
+      },
+      "gates": [
+        {
+          "type": "ALL_CHECKED",
+          "checklist": "qcChecks"
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "code": "PRODUCTION_FOLLOW_UP",
+      "title": "Production Follow-up",
+      "description": "Log calls, progress updates, blockers and revised completion dates.",
+      "phase": "PRODUCTION",
+      "sla": {
+        "value": 72,
+        "unit": "HOURS"
+      },
+      "customisedOnly": false,
+      "superadminCompletes": false,
+      "icon": "PhoneCall",
+      "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {
+          "type": "VENDOR_GROUPS",
+          "title": "Selected Vendor WhatsApp Groups"
+        },
+        {
+          "type": "CHECKLIST",
+          "title": "Production Follow-up Checklist",
+          "checklist": "followUpChecks"
+        },
+        {
+          "type": "FIELDS",
+          "fields": ["revisedCompletion"],
+          "save": "Save revised date"
+        }
+      ],
+      "fields": {
+        "revisedCompletion": {
+          "kind": "DATE",
+          "label": "Revised completion date"
+        }
+      },
+      "checklists": {
+        "followUpChecks": {
+          "items": [
+            "Print job confirmed with the vendor and schedule agreed",
+            "Printing completed",
+            "Finishing completed (cutting, lamination or binding as applicable)",
+            "Finished items counted, packed and ready for dispatch"
+          ],
+          "source": "ours"
+        }
+      },
+      "gates": [
+        {
+          "type": "ALL_CHECKED",
+          "checklist": "followUpChecks"
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "code": "FINAL_APPROVAL",
+      "title": "Final Approval",
+      "description": "Check finished items against approved specifications and obtain internal team approval.",
+      "phase": "VERIFICATION",
+      "sla": {
+        "value": 4,
+        "unit": "HOURS"
+      },
+      "customisedOnly": false,
+      "superadminCompletes": false,
+      "icon": "ClipboardCheck",
+      "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {
+          "type": "VENDOR_GROUPS",
+          "title": "Selected Vendor WhatsApp Groups"
+        },
+        {
+          "type": "INTERNAL_APPROVAL_GROUP",
+          "title": "Internal Approval Group"
+        },
+        {
+          "type": "CHECKLIST",
+          "title": "Final approval checklist",
+          "checklist": "finalChecks"
+        },
+        {
+          "type": "FIELDS",
+          "fields": ["finalValidationNotes"],
+          "save": "Save validation notes"
+        },
+        {
+          "type": "SIGN_OFF",
+          "title": "Internal team approval"
+        }
+      ],
+      "fields": {
+        "finalValidationNotes": {
+          "kind": "WORDS",
+          "label": "Final validation notes",
+          "placeholder": "Record what was checked and any exceptions",
+          "max": 100
+        }
+      },
+      "checklists": {
+        "finalChecks": {
+          "items": ["Finished items checked against approved specifications"],
+          "source": "note"
+        }
+      },
+      "gates": [
+        {
+          "type": "ALL_CHECKED",
+          "checklist": "finalChecks"
+        },
+        {
+          "type": "FIELDS_PRESENT",
+          "fields": ["finalValidationNotes"]
+        },
+        {
+          "type": "SIGNED_OFF"
+        }
+      ],
+      "signOff": {
+        "label": "Record internal approval",
+        "role": "SUPERADMIN",
+        "banner": "Get internal team approval in the Internal Approval Group, then record it here."
+      }
+    },
+    {
+      "order": 9,
+      "code": "DELIVERY_INVOICING",
+      "title": "Delivery & Invoicing",
+      "description": "Record delivery confirmation and invoice status.",
+      "phase": "DELIVERY",
+      "sla": {
+        "value": 4,
+        "unit": "HOURS"
+      },
+      "customisedOnly": false,
+      "superadminCompletes": false,
+      "icon": "Truck",
+      "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {
+          "type": "FIELDS",
+          "fields": [
+            "transporter",
+            "dispatchDate",
+            "lrNumber",
+            "proofLink",
+            "deliveryStatus",
+            "invoiceStatus",
+            "invoiceNumber"
+          ],
+          "save": "Save dispatch & invoice details"
+        },
+        {
+          "type": "SCHOOL_GROUP",
+          "title": "School Group Chat"
+        },
+        {
+          "type": "VENDOR_GROUPS",
+          "title": "Selected Vendor WhatsApp Groups"
+        },
+        {
+          "type": "SIGN_OFF",
+          "title": "Executive consignment sign-off"
+        }
+      ],
+      "fields": {
+        "transporter": {
+          "kind": "TEXT",
+          "label": "Transporter / vehicle",
+          "placeholder": "Vehicle / courier",
+          "max": 200
+        },
+        "dispatchDate": {
+          "kind": "DATE",
+          "label": "Dispatch date"
+        },
+        "lrNumber": {
+          "kind": "TEXT",
+          "label": "LR / docket number",
+          "max": 100
+        },
+        "proofLink": {
+          "kind": "URL",
+          "label": "Proof of delivery / invoice link",
+          "placeholder": "Controlled document link"
+        },
+        "deliveryStatus": {
+          "kind": "CHOICE",
+          "label": "Delivery status",
+          "choices": [
+            ["PENDING", "Pending"],
+            ["DELIVERED", "Delivered"]
+          ]
+        },
+        "invoiceStatus": {
+          "kind": "CHOICE",
+          "label": "Invoice status",
+          "choices": [
+            ["NOT_INITIATED", "Not initiated"],
+            ["INITIATED", "Initiated"],
+            ["SENT", "Sent"],
+            ["PAID", "Paid"]
+          ]
+        },
+        "invoiceNumber": {
+          "kind": "TEXT",
+          "label": "Invoice number",
+          "max": 100
+        }
+      },
+      "checklists": {},
+      "gates": [
+        {
+          "type": "FIELDS_PRESENT",
+          "fields": ["transporter", "dispatchDate", "proofLink"]
+        },
+        {
+          "type": "CHOICE_IN",
+          "field": "deliveryStatus",
+          "values": ["DELIVERED"]
+        },
+        {
+          "type": "SIGNED_OFF"
+        }
+      ],
+      "signOff": {
+        "label": "Record consignment sign-off",
+        "role": "SUPERADMIN"
+      }
+    }
+  ]
+}

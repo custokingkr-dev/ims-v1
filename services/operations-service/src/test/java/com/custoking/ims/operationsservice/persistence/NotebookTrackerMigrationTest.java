@@ -1,7 +1,10 @@
 package com.custoking.ims.operationsservice.persistence;
 
-import com.custoking.ims.operationsservice.application.tracker.Sla;
-import com.custoking.ims.operationsservice.application.tracker.TrackerStep;
+import com.custoking.ims.operationsservice.application.orderworkflow.rules.Sla;
+import com.custoking.ims.operationsservice.application.orderworkflow.template.ClasspathWorkflowTemplates;
+import com.custoking.ims.operationsservice.application.orderworkflow.template.StepSpec;
+import com.custoking.ims.operationsservice.application.orderworkflow.template.WorkflowTemplate;
+import com.custoking.ims.operationsservice.application.orderworkflow.template.WorkflowTemplates;
 import com.custoking.ims.operationsservice.security.TenantAwareDataSource;
 import com.custoking.ims.operationsservice.security.TenantContext;
 import com.zaxxer.hikari.HikariDataSource;
@@ -107,20 +110,23 @@ class NotebookTrackerMigrationTest {
     private static final String[] TENANT_TABLES = {"workflow_notebook_trackers", "workflow_instance_steps", "workflow_instances", "workflow_actions",
             "workflow_tracker_status_outbox"};
 
+    /** The notebook rows the migrations leave are the notebook template's stages (design D2): the engine runs from both. */
     @Test
-    void theSeededStepsMatchTheJavaCatalogue() throws Exception {
+    void theSeededStepsMatchTheNotebookTemplate() throws Exception {
+        WorkflowTemplate template = new ClasspathWorkflowTemplates().get(WorkflowTemplates.NOTEBOOK);
         try (Connection c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
              Statement st = c.createStatement();
-             ResultSet rs = st.executeQuery("SELECT step_order, step_name, required_role, customised_only, default_sla_value, default_sla_unit "
+             ResultSet rs = st.executeQuery("SELECT step_order, step_code, step_name, required_role, customised_only, default_sla_value, default_sla_unit "
                      + "FROM workflow.workflow_steps WHERE definition_id='NOTEBOOK_ORDER_TRACKER' ORDER BY step_order")) {
             int rows = 0;
             while (rs.next()) {
                 rows++;
-                TrackerStep step = TrackerStep.ofNumber(rs.getInt("step_order")).orElseThrow();
+                StepSpec step = template.step(rs.getInt("step_order")).orElseThrow();
+                assertEquals(step.code(), rs.getString("step_code"));
                 assertEquals(step.title(), rs.getString("step_name"));
                 assertEquals(step.customisedOnly(), rs.getBoolean("customised_only"));
-                assertEquals(step == TrackerStep.HEAD_APPROVAL ? "SUPERADMIN" : null, rs.getString("required_role"));
-                Sla expected = step.defaultSla().orElse(null);
+                assertEquals(step.superadminCompletes() ? "SUPERADMIN" : null, rs.getString("required_role"));
+                Sla expected = step.defaultSla();
                 if (expected == null) {
                     assertNull(rs.getObject("default_sla_value"));
                     assertNull(rs.getString("default_sla_unit"));

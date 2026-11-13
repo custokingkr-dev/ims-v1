@@ -1,0 +1,26 @@
+{
+  "definitionId": "MINIMAL_WORKFLOW",
+  "title": "Minimal workflow",
+  "introMessage": "My name is {Name}.",
+  "steps": [
+    {
+      "order": 1, "code": "FIRST_STEP", "title": "First step", "description": "The first step.", "phase": "INTAKE",
+      "sla": {"value": 2, "unit": "HOURS"}, "icon": "ClipboardList", "tabs": ["WORK", "ACTIVITY"],
+      "blocks": [{"type": "FIELDS", "fields": ["link", "notes", "copies", "weight"], "save": "Save details"}, {"type": "CHECKLIST", "checklist": "checks"}],
+      "fields": {
+        "link": {"kind": "URL", "label": "Evidence link"},
+        "notes": {"kind": "WORDS", "label": "Notes"},
+        "copies": {"kind": "WHOLE", "label": "Copies", "max": 500},
+        "weight": {"kind": "NUMBER", "label": "Weight", "min": 1, "max": 50},
+        "colour": {"kind": "CHOICE", "label": "Colour", "choices": [["RED", "Red"], ["BLUE", "Blue"]]},
+        "oldNote": {"kind": "TEXT", "label": "Old note", "legacy": true}
+      },
+      "checklists": {"checks": {"items": ["One", "Two"], "source": "ours"}},
+      "gates": [{"type": "FIELDS_PRESENT", "fields": ["link"]}, {"type": "ALL_CHECKED", "checklist": "checks"}]
+    },
+    {
+      "order": 2, "code": "SECOND_STEP", "title": "Second step", "description": "The second step.", "phase": "DELIVERY",
+      "icon": "Truck", "tabs": ["WORK"], "customisedOnly": true
+    }
+  ]
+}
