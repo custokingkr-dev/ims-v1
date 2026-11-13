@@ -20,12 +20,12 @@
     "test:visual": "playwright test visual.spec.ts"
   },
   "dependencies": {
-    "axios": "^1.20.0",
+    "axios": "^1.21.0",
     "exceljs": "^4.4.0",
-    "lucide-react": "^1.47.0",
+    "lucide-react": "^1.60.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "7.18.4",
+    "react-router-dom": "7.18.5",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "overrides": {
@@ -34,8 +34,8 @@
     }
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.13.0",
-    "@playwright/test": "^1.64.0",
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
