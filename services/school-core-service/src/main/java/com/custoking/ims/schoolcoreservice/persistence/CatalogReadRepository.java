@@ -435,9 +435,12 @@ public class CatalogReadRepository {
     }
 
     /**
-     * Superadmin's direct status write. On an order of the older form it can take a draft out of DRAFT, which places it, so
-     * the order's number is minted here, in this transaction, exactly as {@link #placeOrder} mints it (design D11, D13), and
-     * the event below carries it. Minting does nothing for a draft, a category without an order code or a numbered order.
+     * Superadmin's direct status write. On an order of the older form, taking a draft out of DRAFT places it: the write then
+     * records the placement as {@link #placeOrder} does (when, and by whom, unless one is recorded already) and mints the
+     * order's number in this transaction (design D11), so the event below carries it and catalog V38's commit-time trigger
+     * has nothing to repair. A category without an order code gets no number. Any other override changes the status only
+     * and numbers nothing: an order that left DRAFT earlier without a number keeps none here (one placed before its category
+     * had an order code stays unnumbered, as D8 and D11 have it; one the previous revision placed is numbered by its repair).
      */
     @Transactional
     public CatalogOrderRow updateOrderStatus(String id, String status) {
@@ -448,11 +451,31 @@ public class CatalogReadRepository {
             return updated;
         }
         requiredOrder(id);
-        jdbc.sql("UPDATE catalog.catalog_orders SET status = :status, version = version + 1 WHERE id = :id")
+        String newStatus = normalize(status, "");
+        // Read under the order's row lock, so of two concurrent overrides only the first finds the draft and places it.
+        String before = jdbc.sql("SELECT status FROM catalog.catalog_orders WHERE id = :id FOR UPDATE")
                 .param("id", id)
-                .param("status", normalize(status, ""))
-                .update();
-        OrderNumberAllocator.mint(jdbc, id);
+                .query(String.class)
+                .single();
+        if (DRAFT.equals(before) && !DRAFT.equals(newStatus)) {
+            jdbc.sql("""
+                    UPDATE catalog.catalog_orders
+                    SET status = :status, version = version + 1,
+                        placed_at = COALESCE(placed_at, :placedAt), placed_by = COALESCE(placed_by, CAST(:placedBy AS BIGINT))
+                    WHERE id = :id
+                    """)
+                    .param("id", id)
+                    .param("status", newStatus)
+                    .param("placedAt", OffsetDateTime.now())
+                    .param("placedBy", TenantContext.get().userId())
+                    .update();
+            OrderNumberAllocator.mint(jdbc, id);
+        } else {
+            jdbc.sql("UPDATE catalog.catalog_orders SET status = :status, version = version + 1 WHERE id = :id")
+                    .param("id", id)
+                    .param("status", newStatus)
+                    .update();
+        }
         CatalogOrderRow updated = requiredOrder(id);
         emitOrderUpserted(updated);
         return updated;
