@@ -356,6 +356,9 @@ public class CatalogReadRepository {
                 .param("eventDate", localDate(firstPresent(orderData, "eventDate")))
                 .param("createdAt", now)
                 .update();
+        // The controllers always create drafts, but this method accepts any status: an order created already placed is
+        // numbered now, as a placement is (catalog V38's commit-time trigger only sees an update out of DRAFT). A draft is not.
+        OrderNumberAllocator.mint(jdbc, id);
         CatalogOrderRow created = orderQuery(id).orElseThrow();
         emitOrderUpserted(created);
         return created;
@@ -431,6 +434,11 @@ public class CatalogReadRepository {
                 org.springframework.http.HttpStatus.BAD_REQUEST, "This action is unavailable while the order is " + status);
     }
 
+    /**
+     * Superadmin's direct status write. On an order of the older form it can take a draft out of DRAFT, which places it, so
+     * the order's number is minted here, in this transaction, exactly as {@link #placeOrder} mints it (design D11, D13), and
+     * the event below carries it. Minting does nothing for a draft, a category without an order code or a numbered order.
+     */
     @Transactional
     public CatalogOrderRow updateOrderStatus(String id, String status) {
         if (forms != null && forms.isStructured(id)) {
@@ -444,6 +452,7 @@ public class CatalogReadRepository {
                 .param("id", id)
                 .param("status", normalize(status, ""))
                 .update();
+        OrderNumberAllocator.mint(jdbc, id);
         CatalogOrderRow updated = requiredOrder(id);
         emitOrderUpserted(updated);
         return updated;

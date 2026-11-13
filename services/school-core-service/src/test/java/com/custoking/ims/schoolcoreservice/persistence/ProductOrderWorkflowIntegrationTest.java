@@ -284,6 +284,48 @@ class ProductOrderWorkflowIntegrationTest {
         }
     }
 
+    /**
+     * Superadmin's status override on an order of the older form (PATCH /orders/{id}/status, the All orders "Update status"
+     * select) can take a draft out of DRAFT, which places it. It mints the number in that transaction, as placing does, and
+     * the event carries it, so catalog V38's commit-time trigger has nothing to repair. A category without an order code gets
+     * no number; an order already numbered keeps its number and takes no new one.
+     */
+    @Test
+    void aLegacyStatusOverrideOutOfDraftMintsTheNumberInThatTransaction() {
+        String tie = legacyDraft("TIES");
+        String uniforms = legacyDraft("UNIFORMS");
+        String notebook = legacyDraft("NOTEBOOKS");
+        owner.sql("DELETE FROM tenant_school.outbox_events").update();
+        String placedNumber;
+        TenantContext.set(context(SUPERADMIN));
+        try {
+            var overridden = orders.updateOrderStatus(tie, "in_progress");
+            assertThat(overridden.status()).isEqualTo("IN_PROGRESS");
+            assertThat(overridden.orderNumber()).as("returned with the number").matches("TIE-SA_IN-\\d\\d-\\d\\d-\\d\\d-0001");
+            assertThat(orders.updateOrderStatus(uniforms, "IN_PROGRESS").orderNumber()).as("a category without an order code").isNull();
+            placedNumber = orders.placeOrder(notebook, 7L).orderNumber();
+            assertThat(placedNumber).matches("NB-SA_IN-\\d\\d-\\d\\d-\\d\\d-0001");
+            assertThat(orders.updateOrderStatus(notebook, "APPROVED").orderNumber()).as("an order already numbered").isEqualTo(placedNumber);
+        } finally {
+            TenantContext.clear();
+        }
+        String tieNumber = String.valueOf(row(tie).get("order_number"));
+        assertThat(tieNumber).matches("TIE-SA_IN-\\d\\d-\\d\\d-\\d\\d-0001");
+        assertThat(row(uniforms).get("order_number")).isNull();
+        assertThat(row(notebook).get("order_number")).isEqualTo(placedNumber);
+        for (String id : List.of(tie, uniforms, notebook)) {
+            assertThat(queued(id)).as(id + ": numbered before commit, so V38's trigger queues no repair").isFalse();
+        }
+        assertThat(owner.sql("SELECT item_code || '=' || last_value FROM catalog.order_number_counters ORDER BY item_code")
+                .query(String.class).list()).as("one number each, none taken twice").containsExactly("NB=1", "TIE=1");
+        assertThat(owner.sql("""
+                SELECT aggregate_id || ' ' || coalesce(payload ->> 'orderNumber', '-') || ' ' || (payload ->> 'status') FROM tenant_school.outbox_events
+                WHERE event_type = 'catalog-order.upserted.v1' ORDER BY id
+                """).query(String.class).list()).as("reporting is told each number with the status that carried it")
+                .containsExactly(tie + " " + tieNumber + " IN_PROGRESS", uniforms + " - IN_PROGRESS",
+                        notebook + " " + placedNumber + " DESIGN_APPROVAL", notebook + " " + placedNumber + " APPROVED");
+    }
+
     // ---- the creation queue -------------------------------------------------------------------------------------------------
 
     /**
@@ -658,6 +700,17 @@ class ProductOrderWorkflowIntegrationTest {
     }
 
     /** An order of a category with no structured form, created and placed through the legacy order flow. */
+    /** A draft on the older, unstructured order form (form_version 1), as orders created before the order forms are. */
+    private static String legacyDraft(String category) {
+        return owner.sql("""
+                INSERT INTO catalog.catalog_orders (id, school_id, category, order_data, subtotal, gst, total_amount, status,
+                    design_status, superadmin_approval_status, created_at, form_version, version)
+                VALUES ('CK-' || nextval('catalog.seq_catalog_order_id'), 1, :category, '{}', 0, 0, 0, 'DRAFT', 'NOT_REQUIRED',
+                    'NOT_REQUIRED', now(), 1, 0)
+                RETURNING id
+                """).param("category", category).query(String.class).single();
+    }
+
     private static String placedLegacy(String category) {
         TenantContext.set(context(SCHOOL_ADMIN));
         try {

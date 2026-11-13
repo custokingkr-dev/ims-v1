@@ -199,4 +199,24 @@ class CatalogOrderEventEmissionIntegrationTest {
         var stationery = repo.createOrder(Map.of("schoolId", 1, "category", "STATIONERY", "totalAmount", 0, "status", "DRAFT"));
         assertThat(repo.placeOrder(stationery.id(), 7L).orderNumber()).as("a category without a code").isNull();
     }
+
+    /**
+     * The repository still creates a legacy order in the status it is given (the controllers always ask for DRAFT). An order
+     * created already placed is numbered when it is created, as a placement is, and the event carries the number: catalog
+     * V38's commit-time trigger fires only when an existing order leaves DRAFT, so nothing else would ever number it.
+     */
+    @Test
+    void aLegacyOrderCreatedAlreadyPlacedIsNumberedAtOnceAndTheEventCarriesIt() {
+        var tie = repo.createOrder(Map.of("schoolId", 1, "category", "TIES", "totalAmount", 0, "status", "PROCESSING"));
+
+        assertThat(tie.orderNumber()).matches("TIE-TS_IN-\\d\\d-\\d\\d-\\d\\d-0001");
+        var payload = jdbc.sql("""
+                SELECT payload ->> 'orderNumber' FROM tenant_school.outbox_events WHERE aggregate_id = :id ORDER BY id DESC LIMIT 1
+                """).param("id", tie.id()).query(String.class).single();
+        assertThat(payload).isEqualTo(tie.orderNumber());
+        assertThat(repo.createOrder(Map.of("schoolId", 1, "category", "TIES", "totalAmount", 0, "status", "DRAFT")).orderNumber())
+                .as("a draft").isNull();
+        assertThat(repo.createOrder(Map.of("schoolId", 1, "category", "STATIONERY", "totalAmount", 0, "status", "PROCESSING")).orderNumber())
+                .as("a category without a code").isNull();
+    }
 }
