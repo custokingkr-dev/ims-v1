@@ -203,4 +203,134 @@ class CatalogOrderAssetStorageTest {
         java.nio.file.Files.write(directory.resolve("legacy.pdf"), output.toByteArray());
         assertThatThrownBy(() -> storage.read("legacy.pdf")).isInstanceOf(ResponseStatusException.class).hasMessageContaining("permitted");
     }
+
+    // ---- design files (item order workflows D26, D27) -----------------------------------------------------------------
+
+    /** A CorelDRAW X3-and-earlier drawing: a RIFF container whose form type begins CDR (CDRD is X3, CDR9 is version 9). */
+    static byte[] riffCorelDraw(String form) {
+        byte[] bytes = new byte[64];
+        System.arraycopy("RIFF".getBytes(StandardCharsets.US_ASCII), 0, bytes, 0, 4);
+        bytes[4] = 56;
+        System.arraycopy(form.getBytes(StandardCharsets.US_ASCII), 0, bytes, 8, 4);
+        System.arraycopy("vrsn".getBytes(StandardCharsets.US_ASCII), 0, bytes, 12, 4);
+        return bytes;
+    }
+
+    /** A ZIP container with the given entries, laid out as CorelDRAW X4 and later save a drawing. */
+    static byte[] zip(String... entries) throws Exception {
+        var output = new ByteArrayOutputStream();
+        try (var zip = new java.util.zip.ZipOutputStream(output)) {
+            for (String entry : entries) {
+                zip.putNextEntry(new java.util.zip.ZipEntry(entry));
+                zip.write(("data of " + entry).getBytes(StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+        }
+        return output.toByteArray();
+    }
+
+    @Test
+    void corelDrawFilesOfBothGenerationsAreDesignFilesStoredAsCorelDraw() throws Exception {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        for (String form : new String[]{"CDRD", "CDR9", "cdr6"}) {
+            var asset = storage.validate(riffCorelDraw(form), "artwork.cdr", "DESIGN_DRAFT", 25L * 1024 * 1024);
+            assertThat(asset.contentType()).as(form).isEqualTo("application/vnd.corel-draw");
+        }
+        byte[] x7 = zip("mimetype", "META-INF/manifest.xml", "content/riffData.cdr", "content/data/colors.xml", "previews/thumbnail.png");
+        var asset = storage.validate(x7, "Artwork Final.CDR", "DESIGN_DRAFT", 25L * 1024 * 1024);
+        assertThat(asset.contentType()).isEqualTo("application/vnd.corel-draw");
+        assertThat(asset.bytes()).isEqualTo(x7);
+        String key = storage.store(1, "CK-9", asset);
+        assertThat(storage.read(key)).as("stored and served as is, never rendered").isEqualTo(x7);
+    }
+
+    /**
+     * A CorelDRAW file is checked by its header only (D27), so whatever follows the header is never looked at. Its stored
+     * name must therefore end in .cdr: a RIFF/CDR header followed by a script, named .hta, .html or .bat, would otherwise be
+     * saved under that name by whoever downloads it. The same holds for every detected type.
+     */
+    @Test
+    void aStoredFileAlwaysCarriesTheExtensionOfItsDetectedType() throws Exception {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        long cap = 25L * 1024 * 1024;
+        byte[] scripted = java.util.Arrays.copyOf(riffCorelDraw("CDR "), 200);
+        byte[] script = "\r\n<script>alert(1)</script>\r\n".getBytes(StandardCharsets.US_ASCII);
+        System.arraycopy(script, 0, scripted, 20, script.length);
+        for (String[] named : new String[][]{{"Final_Artwork.exe", "Final_Artwork.exe.cdr"}, {"Final_Artwork.html", "Final_Artwork.html.cdr"},
+                {"x.hta", "x.hta.cdr"}, {"invoice.pdf.bat", "invoice.pdf.bat.cdr"}, {"artwork.cdr.", "artwork.cdr"}, {"Artwork.CDR", "Artwork.CDR"},
+                {"artwork", "artwork.cdr"}, {"..", "attachment.cdr"}}) {
+            var asset = storage.validate(scripted, named[0], "DESIGN_DRAFT", cap);
+            assertThat(asset.contentType()).isEqualTo(CatalogOrderAssetStorage.CORELDRAW);
+            assertThat(asset.filename()).as(named[0]).isEqualTo(named[1]);
+        }
+        byte[] x7 = zip("content/riffData.cdr");
+        assertThat(storage.validate(x7, "Artwork Final.cdr", "DESIGN_DRAFT", cap).filename()).isEqualTo("Artwork_Final.cdr");
+
+        var png = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(3, 2, BufferedImage.TYPE_INT_RGB), "png", png);
+        assertThat(storage.validate(png.toByteArray(), "proof.svg", "DESIGN_DRAFT", cap).filename()).isEqualTo("proof.svg.png");
+        assertThat(storage.validate(png.toByteArray(), "proof.PNG", "DESIGN").filename()).isEqualTo("proof.PNG");
+        assertThat(storage.validate(png.toByteArray(), null, "PRINT_REFERENCE").filename()).isEqualTo("attachment.png");
+        var jpeg = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(3, 2, BufferedImage.TYPE_INT_RGB), "jpg", jpeg);
+        assertThat(storage.validate(jpeg.toByteArray(), "photo.jpeg", "DESIGN").filename()).isEqualTo("photo.jpeg");
+        assertThat(storage.validate(jpeg.toByteArray(), "photo.html", "DESIGN").filename()).isEqualTo("photo.html.jpg");
+        String longName = "a".repeat(300) + ".exe";
+        assertThat(storage.validate(scripted, longName, "DESIGN_DRAFT", cap).filename()).hasSize(200).endsWith(".exe.cdr");
+
+        assertThat(CatalogOrderAssetStorage.typedFilename("legacy.html", "application/pdf")).as("served too").isEqualTo("legacy.html.pdf");
+        assertThat(CatalogOrderAssetStorage.typedFilename("legacy.pdf", "application/pdf")).isEqualTo("legacy.pdf");
+        assertThat(CatalogOrderAssetStorage.typedFilename(null, CatalogOrderAssetStorage.CORELDRAW)).isEqualTo("attachment.cdr");
+    }
+
+    @Test
+    void aRenamedZipOrAFakeCdrIsRefusedWithAWayForward() throws Exception {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        long cap = 25L * 1024 * 1024;
+        byte[] corelZip = zip("content/riffData.cdr");
+        assertThatThrownBy(() -> storage.validate(corelZip, "artwork.zip", "DESIGN_DRAFT", cap))
+                .as("a CorelDRAW-shaped ZIP not named .cdr").isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("PDF export");
+        byte[] plainZip = zip("readme.txt", "contents.txt");
+        assertThatThrownBy(() -> storage.validate(plainZip, "artwork.cdr", "DESIGN_DRAFT", cap))
+                .as("a ZIP renamed .cdr without content/").isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> storage.validate("not a drawing at all".getBytes(StandardCharsets.UTF_8), "artwork.cdr", "DESIGN_DRAFT", cap))
+                .as("a fake .cdr").isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> storage.validate(riffCorelDraw("AVI "), "artwork.cdr", "DESIGN_DRAFT", cap))
+                .as("another RIFF form").isInstanceOf(ResponseStatusException.class);
+        byte[] truncated = java.util.Arrays.copyOf(corelZip, corelZip.length - 30);
+        assertThatThrownBy(() -> storage.validate(truncated, "artwork.cdr", "DESIGN_DRAFT", cap))
+                .as("a ZIP whose central directory is cut off").isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void webpIsNoLongerADesignFileButStaysAnArtworkUpload() {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        byte[] webp = java.util.Base64.getDecoder().decode("UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA");
+        assertThatThrownBy(() -> storage.validate(webp, "draft.webp", "DESIGN_DRAFT", 25L * 1024 * 1024))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("PDF, CorelDRAW (.cdr), PNG or JPEG");
+        assertThat(storage.validate(webp, "artwork.webp", "DESIGN").contentType()).isEqualTo("image/webp");
+    }
+
+    @Test
+    void corelDrawIsOnlyADesignFile() {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        assertThatThrownBy(() -> storage.validate(riffCorelDraw("CDRD"), "artwork.cdr", "DESIGN"))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("PNG, JPEG, WEBP, or PDF");
+    }
+
+    @Test
+    void pngJpegAndPdfRemainDesignFiles() throws Exception {
+        var storage = new CatalogOrderAssetStorage("", "local", directory.toString());
+        var png = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(3, 2, BufferedImage.TYPE_INT_RGB), "png", png);
+        assertThat(storage.validate(png.toByteArray(), "draft.png", "DESIGN_DRAFT", 25L * 1024 * 1024).contentType()).isEqualTo("image/png");
+        var pdf = new ByteArrayOutputStream();
+        try (Document document = new Document()) {
+            PdfWriter.getInstance(document, pdf);
+            document.open();
+            document.add(new Paragraph("Flier design"));
+        }
+        assertThat(storage.validate(pdf.toByteArray(), "draft.pdf", "DESIGN_DRAFT", 25L * 1024 * 1024).contentType()).isEqualTo("application/pdf");
+    }
 }

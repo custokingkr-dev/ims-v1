@@ -3,6 +3,7 @@ package com.custoking.ims.schoolcoreservice.api.dto;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 import java.util.Map;
 
@@ -11,12 +12,22 @@ public final class CatalogDefinitionRequests {
     private static final String CODE = "^[A-Z][A-Z0-9_]{1,59}$";
     private static final String LABEL = ".*\\S.*";
 
+    /**
+     * {@code orderCode}, {@code itemNoun} and {@code workflowDefinition} (item order workflows design D3, D8) can be
+     * cleared: omitted (null here) keeps the stored value; an explicit JSON null reads as blank
+     * ({@link ClearableTextDeserializer}), and a blank clears it. Validated when given.
+     */
     public record Category(
             @Pattern(regexp = CODE) @Size(max = 40) String code,
             @Pattern(regexp = LABEL) @Size(max = 80) String label,
             @Size(max = 16) String emoji, @Size(max = 200) String description,
             @Pattern(regexp = "Recurring|One-time|Service") String orderType,
-            Boolean formEnabled, Integer sortOrder, Boolean active) {}
+            Boolean formEnabled, Integer sortOrder, Boolean active,
+            @JsonDeserialize(using = ClearableTextDeserializer.class)
+            @Pattern(regexp = "^\\s*$|^\\s*[A-Za-z]{2,4}\\s*$") String orderCode,
+            @JsonDeserialize(using = ClearableTextDeserializer.class) @Size(max = 40) String itemNoun,
+            @JsonDeserialize(using = ClearableTextDeserializer.class)
+            @Pattern(regexp = "^\\s*$|NOTEBOOK_ORDER_TRACKER|FLIER_ORDER_WORKFLOW|FLEX_ORDER_WORKFLOW|BILL_BOOK_ORDER_WORKFLOW|GENERAL_ITEM_ORDER_WORKFLOW") String workflowDefinition) {}
 
     public record Group(
             @Pattern(regexp = CODE) @Size(max = 40) String categoryCode,

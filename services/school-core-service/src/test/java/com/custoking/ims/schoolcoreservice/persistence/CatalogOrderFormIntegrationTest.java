@@ -270,7 +270,7 @@ class CatalogOrderFormIntegrationTest {
             assertThatThrownBy(() -> upload(draft.id(), "PRE_DELIVERY_PHOTO", 1), "customised " + custom)
                     .isInstanceOfSatisfying(ResponseStatusException.class, refused -> {
                         assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                        assertThat(refused.getReason()).isEqualTo("Notebook orders on the tracker record delivery in the tracker");
+                        assertThat(refused.getReason()).isEqualTo("Orders on an order workflow record delivery in the workflow");
                     });
             assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_order_assets WHERE order_id = :id").param("id", draft.id())
                     .query(Long.class).single()).isZero();

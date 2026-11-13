@@ -133,15 +133,16 @@ class ProductOrderWorkflowRouteExceptionHandlerTest {
 
     @Test
     void handledWorkflowRequestsAreUnchanged() throws Exception {
-        when(workflows.view("CK-1")).thenReturn(new WorkflowView("CK-1", "FLEX", "ACTIVE", "ORDER_DETAILS", 2, true, true,
+        when(workflows.view("CK-1")).thenReturn(new WorkflowView("CK-1", "FLEX", "ACTIVE", "ORDER_DETAILS", 2, false, false,
                 List.of(new StageView("ORDER_DETAILS", 1, "Order Details", "ACTIVE", Map.of(), null, null))));
         mvc.perform(superadmin(get("/api/v1/catalog/orders/CK-1/production-workflow")))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.version").value(2));
-        when(workflows.completeStage("CK-1", "ORDER_DETAILS", 1L))
-                .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Workflow changed; refresh and try again"));
+        when(workflows.view("CK-3")).thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "This order has no production workflow record"));
+        mvc.perform(superadmin(get("/api/v1/catalog/orders/CK-3/production-workflow")))
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.message").value("This order has no production workflow record"));
         mvc.perform(superadmin(post("/api/v1/catalog/orders/CK-1/production-workflow/stages/ORDER_DETAILS/complete"))
                         .contentType("application/json").content("{\"expectedVersion\":1}"))
-                .andExpect(status().isConflict()).andExpect(jsonPath("$.message").value("Workflow changed; refresh and try again"));
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("WORKFLOW_MOVED"));
         mvc.perform(get("/api/v1/catalog/orders/CK-1/production-workflow"))
                 .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.message").value("invalid catalog service token"));
     }

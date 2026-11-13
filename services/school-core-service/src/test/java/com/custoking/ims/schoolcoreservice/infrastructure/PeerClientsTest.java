@@ -86,14 +86,37 @@ class PeerClientsTest {
     // ---- tracker -------------------------------------------------------------------------------------------------------
 
     @Test
-    void createSendsTheOrderFactsToTheInternalTrackerRoute() throws Exception {
+    void createSendsTheOrderFactsToTheInternalOrderWorkflowRoute() throws Exception {
         String base = serve(201, "{\"instanceId\":1,\"created\":true}");
         new OperationsTrackerClient(base, "never", 1000, 2000).create(tracker());
         assertEquals(1, seen.size());
-        assertEquals("POST /api/v1/internal/notebook-trackers", seen.get(0).method() + " " + seen.get(0).uri());
+        assertEquals("POST /api/v1/internal/order-workflows", seen.get(0).method() + " " + seen.get(0).uri());
         for (String expected : new String[]{"\"orderId\":\"CK-1\"", "\"schoolId\":4", "\"customised\":true", "\"orderedCount\":2000",
-                "\"timeZone\":\"Asia/Kolkata\"", "\"placedBy\":7", "\"assigneeUserId\":42", "\"schoolName\":\"School A\""}) {
+                "\"timeZone\":\"Asia/Kolkata\"", "\"placedBy\":7", "\"assigneeUserId\":42", "\"schoolName\":\"School A\"",
+                "\"definitionId\":\"NOTEBOOK_ORDER_TRACKER\"", "\"categoryCode\":\"NOTEBOOKS\"", "\"itemCode\":\"NB\"",
+                "\"itemNoun\":\"notebook\"", "\"orderNumber\":null", "\"importedProgress\":[]"}) {
             assertTrue(seen.get(0).body().contains(expected), expected + " in " + seen.get(0).body());
+        }
+    }
+
+    /** Design D4: a retired product workflow's stages travel with the create, mapped onto the engine's codes. */
+    @Test
+    void createCarriesTheItemTheNumberAndImportedProgress() throws Exception {
+        String base = serve(201, "{}");
+        var imported = java.util.List.of(
+                new TrackerGateway.ImportedStep("DESIGNING_ACTIVITY", "DESIGN_ACTIVITY", 2, "COMPLETED",
+                        OffsetDateTime.parse("2026-11-12T10:00:00+05:30"), 99L, "Drafts shared", null),
+                new TrackerGateway.ImportedStep("CDR_CONVERSION", "CDR_CONVERSION", 3, "ACTIVE", null, null, "Fonts outlined", "Waiting"));
+        var flier = new TrackerGateway.NewTracker("CK-2", 4L, true, 3000, OffsetDateTime.parse("2026-11-13T09:30:00+05:30"),
+                "Asia/Kolkata", 7L, null, "School A", "FLIER_ORDER_WORKFLOW", "FLIERS", "FE", "flier", "FE-SA_IN-26-11-13-0001", imported);
+        new OperationsTrackerClient(base, "never", 1000, 2000).create(flier);
+        String body = seen.get(0).body();
+        for (String expected : new String[]{"\"definitionId\":\"FLIER_ORDER_WORKFLOW\"", "\"categoryCode\":\"FLIERS\"",
+                "\"itemCode\":\"FE\"", "\"itemNoun\":\"flier\"", "\"orderNumber\":\"FE-SA_IN-26-11-13-0001\"",
+                "\"stepCode\":\"DESIGNING_ACTIVITY\"", "\"sourceStageCode\":\"DESIGN_ACTIVITY\"", "\"stepOrder\":2",
+                "\"completedAt\":\"2026-11-12T10:00+05:30\"", "\"completedBy\":99", "\"details\":\"Drafts shared\"",
+                "\"status\":\"ACTIVE\"", "\"note\":\"Waiting\""}) {
+            assertTrue(body.contains(expected), expected + " in " + body);
         }
     }
 
@@ -103,8 +126,65 @@ class PeerClientsTest {
         var access = new OperationsTrackerClient(base, "never", 1000, 2000).imageAccess("CK-1", 8, "OPERATIONS");
         assertFalse(access.allowed());
         assertEquals("locked", access.reason());
-        assertEquals("POST /api/v1/internal/notebook-trackers/CK-1/image-access", seen.get(0).method() + " " + seen.get(0).uri());
+        assertEquals("POST /api/v1/internal/order-workflows/CK-1/design-file-access", seen.get(0).method() + " " + seen.get(0).uri());
         assertTrue(seen.get(0).body().contains("\"userId\":8") && seen.get(0).body().contains("\"role\":\"OPERATIONS\""), seen.get(0).body());
+    }
+
+    /**
+     * Design D6, deploy skew: an engine deployed before the item order workflows has only the notebook-tracker route, and its
+     * MachineCallerFilter refuses the unknown internal route with a bare 403 (no body) before any controller runs. The new
+     * engine never answers 403 or 404 for a registered caller (an order without a workflow is {@code allowed: false}), so
+     * that answer, or a 404, means the older engine and the question is asked again on its alias, which answers alike.
+     */
+    @Test
+    void imageAccessAsksTheNotebookTrackerAliasWhenTheEngineIsOlder() throws Exception {
+        for (Object[] older : new Object[][]{{403, ""}, {404, "{\"message\":\"Not Found\"}"}}) {
+            String base = serve((Integer) older[0], (String) older[1]);
+            server.createContext("/api/v1/internal/notebook-trackers/", exchange -> {
+                seen.add(new Seen(exchange.getRequestMethod(), exchange.getRequestURI().toString(), Map.copyOf(exchange.getRequestHeaders()),
+                        new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
+                respond(exchange, 200, "{\"allowed\":true,\"reason\":null}");
+            });
+            var access = new OperationsTrackerClient(base, "never", 1000, 2000).imageAccess("CK-1", 8, "OPERATIONS");
+            assertTrue(access.allowed(), "after " + older[0]);
+            assertEquals(List.of("POST /api/v1/internal/order-workflows/CK-1/design-file-access", "POST /api/v1/internal/notebook-trackers/CK-1/image-access"),
+                    seen.stream().map(request -> request.method() + " " + request.uri()).toList(), "after " + older[0]);
+            assertTrue(seen.get(1).body().contains("\"userId\":8") && seen.get(1).body().contains("\"role\":\"OPERATIONS\""), seen.get(1).body());
+        }
+    }
+
+    /**
+     * Only the older engine's answers are retried on the alias. A 403 that says why (the engine's MACHINE_CALLER_REJECTED, or
+     * Cloud Run IAM's page) is a real refusal, and like a 5xx it fails closed; so does a missing route on both.
+     */
+    @Test
+    void imageAccessFailsClosedWithoutTheAliasOnOtherRefusals() throws Exception {
+        for (Object[] refusal : new Object[][]{{403, "{\"code\":\"MACHINE_CALLER_REJECTED\",\"message\":\"Caller not authorized\"}"},
+                {403, "<html><body>Your client does not have permission</body></html>"}, {403, "{}"}, {500, ""}, {503, "{}"}}) {
+            var client = new OperationsTrackerClient(serve((Integer) refusal[0], (String) refusal[1]), "never", 1000, 2000);
+            assertThrows(IllegalStateException.class, () -> client.imageAccess("CK-1", 8, "OPERATIONS"), "access " + refusal[0] + " " + refusal[1]);
+            assertEquals(1, seen.size(), "no alias after " + refusal[0] + " " + refusal[1]);
+        }
+        var bothMissing = new OperationsTrackerClient(serve(404, "{}"), "never", 1000, 2000);
+        assertThrows(IllegalStateException.class, () -> bothMissing.imageAccess("CK-1", 8, "OPERATIONS"));
+        assertEquals(2, seen.size());
+        var bothBare = new OperationsTrackerClient(serve(403, ""), "never", 1000, 2000);
+        assertThrows(IllegalStateException.class, () -> bothBare.imageAccess("CK-1", 8, "OPERATIONS"), "the alias refused too");
+        assertEquals(2, seen.size());
+    }
+
+    /**
+     * A create is never retried on the alias: an engine that predates the item order workflows would make every item a
+     * notebook workflow. The queue keeps the order and retries once the new engine is deployed.
+     */
+    @Test
+    void createIsNotRetriedOnTheNotebookTrackerAlias() throws Exception {
+        for (Object[] older : new Object[][]{{404, "{}"}, {403, ""}}) {
+            var client = new OperationsTrackerClient(serve((Integer) older[0], (String) older[1]), "never", 1000, 2000);
+            assertThrows(IllegalStateException.class, () -> client.create(tracker()));
+            assertEquals(1, seen.size(), "after " + older[0]);
+            assertEquals("POST /api/v1/internal/order-workflows", seen.get(0).method() + " " + seen.get(0).uri());
+        }
     }
 
     @Test

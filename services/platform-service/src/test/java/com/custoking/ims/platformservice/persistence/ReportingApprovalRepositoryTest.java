@@ -111,6 +111,31 @@ class ReportingApprovalRepositoryTest {
     }
 
     @Test
+    void anApprovalShowsTheOrderNumberAsItsInvoiceNumberAndFallsBackToTheCkId() {
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_catalog_order
+                    (id, school_id, category, status, total_amount, superadmin_approval_status,
+                     form_version, pricing_status, order_number, created_at)
+                VALUES ('CK-FE-1', 7, 'FLIERS', 'PROCESSING', 500, 'PENDING', 2, 'QUOTED',
+                        'FE-DPS_GUR-26-11-13-0001', now()),
+                       ('CK-UNI-1', 7, 'UNIFORMS', 'PROCESSING', 900, 'PENDING', 1, 'NOT_APPLICABLE',
+                        NULL, now() - interval '1 hour')
+                """).update();
+
+        assertThat(approvals.approvals(20)).satisfiesExactly(
+                numbered -> {
+                    assertThat(numbered).containsEntry("sourceId", "CK-FE-1");
+                    assertThat(numbered).containsEntry("invoiceNo", "FE-DPS_GUR-26-11-13-0001");
+                    assertThat(numbered).containsEntry("orderNumber", "FE-DPS_GUR-26-11-13-0001");
+                },
+                unnumbered -> {
+                    assertThat(unnumbered).containsEntry("sourceId", "CK-UNI-1");
+                    assertThat(unnumbered).containsEntry("invoiceNo", "CK-UNI-1");
+                    assertThat(unnumbered).containsEntry("orderNumber", null);
+                });
+    }
+
+    @Test
     void decideCatalogApproveCallsSchoolCoreApproveEndpoint() {
         when(commandClient.approveCatalog("CK-1")).thenReturn(Map.of());
 

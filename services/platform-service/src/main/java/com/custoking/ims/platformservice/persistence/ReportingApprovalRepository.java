@@ -64,7 +64,7 @@ public class ReportingApprovalRepository {
     private List<Map<String, Object>> catalogApprovals(int limit) {
         return jdbc.sql("""
                 SELECT co.id, co.category, co.total_amount, co.status, co.notes, co.created_at,
-                       co.school_id, s.name AS school_name, co.form_version, co.pricing_status
+                       co.school_id, s.name AS school_name, co.form_version, co.pricing_status, co.order_number
                 FROM reporting.fact_catalog_order co
                 LEFT JOIN reporting.dim_school s ON s.id = co.school_id
                 WHERE UPPER(co.status) IN ('DESIGN_APPROVED_PROCESSING', 'PROCESSING')
@@ -77,7 +77,9 @@ public class ReportingApprovalRepository {
                         "id", "catalog:" + rs.getString("id"),
                         "sourceType", "CATALOG",
                         "sourceId", rs.getString("id"),
-                        "invoiceNo", rs.getString("id"),
+                        // People know an order by its number (design D14); an order without one shows its CK id.
+                        "invoiceNo", rs.getString("order_number") == null ? rs.getString("id") : rs.getString("order_number"),
+                        "orderNumber", rs.getString("order_number"),
                         "requestType", "Supply order",
                         "status", "PENDING",
                         "reason", "Supply order approval for " + nullSafe(rs.getString("category")),

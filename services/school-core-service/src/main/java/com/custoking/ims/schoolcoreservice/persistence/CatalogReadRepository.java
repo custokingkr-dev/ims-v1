@@ -69,8 +69,8 @@ public class CatalogReadRepository {
 
     public List<CatalogOrderRow> orders(Long schoolId, String status, int limit) {
         StringBuilder sql = new StringBuilder(orderSelect()).append(" WHERE 1=1");
-        if (schoolId != null) sql.append(" AND school_id = :schoolId");
-        if (status != null && !status.isBlank()) sql.append(" AND status = :status");
+        if (schoolId != null) sql.append(" AND co.school_id = :schoolId");
+        if (status != null && !status.isBlank()) sql.append(" AND co.status = :status");
         sql.append(" ORDER BY co.created_at DESC NULLS LAST LIMIT :limit");
 
         var spec = jdbc.sql(sql.toString()).param("limit", Math.max(1, Math.min(limit, 500)));
@@ -81,17 +81,32 @@ public class CatalogReadRepository {
 
     @Transactional(readOnly = true)
     public Map<String, Object> ordersPage(Long schoolId, String status, int page, int size) {
+        return ordersPage(schoolId, status, null, page, size);
+    }
+
+    /**
+     * One page of orders. {@code q} (design D14) is a case-insensitive substring of the order number, the CK id or the
+     * school name; blank means no search. LIKE wildcards in it match themselves.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, Object> ordersPage(Long schoolId, String status, String q, int page, int size) {
         allowCrossSchoolReadForOperations();
         int safePage = Math.max(0, page);
         int safeSize = Math.max(1, Math.min(size, 200));
+        String search = q == null || q.isBlank() ? null : "%" + likeEscaped(q.strip()) + "%";
+        if (search != null && q.strip().length() > 100) throw new IllegalArgumentException("Search for at most 100 characters");
 
         StringBuilder filter = new StringBuilder(" WHERE 1=1");
-        if (schoolId != null) filter.append(" AND school_id = :schoolId");
-        if (status != null && !status.isBlank()) filter.append(" AND status = :status");
+        if (schoolId != null) filter.append(" AND co.school_id = :schoolId");
+        if (status != null && !status.isBlank()) filter.append(" AND co.status = :status");
+        if (search != null) {
+            filter.append(" AND (co.order_number ILIKE :q ESCAPE '!' OR co.id ILIKE :q ESCAPE '!' OR s.name ILIKE :q ESCAPE '!')");
+        }
 
-        var countSpec = jdbc.sql("SELECT count(*) FROM catalog.catalog_orders" + filter);
+        var countSpec = jdbc.sql("SELECT count(*) FROM catalog.catalog_orders co LEFT JOIN tenant_school.schools s ON s.id = co.school_id" + filter);
         if (schoolId != null) countSpec = countSpec.param("schoolId", schoolId);
         if (status != null && !status.isBlank()) countSpec = countSpec.param("status", status);
+        if (search != null) countSpec = countSpec.param("q", search);
         long totalElements = countSpec.query(Long.class).single();
 
         StringBuilder sql = new StringBuilder(orderSelect()).append(filter)
@@ -101,6 +116,7 @@ public class CatalogReadRepository {
                 .param("offset", (long) safePage * safeSize);
         if (schoolId != null) itemSpec = itemSpec.param("schoolId", schoolId);
         if (status != null && !status.isBlank()) itemSpec = itemSpec.param("status", status);
+        if (search != null) itemSpec = itemSpec.param("q", search);
         List<CatalogOrderRow> content = itemSpec.query(CatalogOrderRow.class).list();
 
         int totalPages = (int) Math.ceil(totalElements / (double) safeSize);
@@ -152,7 +168,7 @@ public class CatalogReadRepository {
                        co.design_status, co.superadmin_approval_status, co.required_by_date,
                        co.estimated_delivery, co.placed_by, co.placed_at, co.notes, co.created_at, co.school_id,
                        co.version, co.created_by, co.updated_by, co.vendor_paid_at, co.vendor_paid_by,
-                       co.vendor_payment_notes, s.name AS school_name, co.form_version, co.pricing_status
+                       co.vendor_payment_notes, s.name AS school_name, co.form_version, co.pricing_status, co.order_number
                 FROM catalog.catalog_orders co
                 LEFT JOIN tenant_school.schools s ON s.id = co.school_id
                 WHERE UPPER(co.status) IN ('DESIGN_APPROVED_PROCESSING', 'PROCESSING')
@@ -401,6 +417,7 @@ public class CatalogReadRepository {
                 .param("placedBy", actorId)
                 .update();
         if (changed == 0) throw notPlaceable(requiredOrder(id).status());
+        OrderNumberAllocator.mint(jdbc, id);
         CatalogOrderRow placed = requiredOrder(id);
         emitOrderUpserted(placed);
         return placed;
@@ -649,10 +666,17 @@ public class CatalogReadRepository {
                        co.estimated_delivery, co.placed_by, co.placed_at, co.notes, co.created_at, co.school_id,
                        co.version, co.created_by, co.updated_by, co.vendor_paid_at, co.vendor_paid_by,
                        co.vendor_payment_notes, s.name AS school_name, co.form_version, co.pricing_status,
-                       co.attributes @> jsonb_build_object('trackerManaged', true) AS tracker_managed
+                       co.attributes @> jsonb_build_object('trackerManaged', true) AS tracker_managed,
+                       co.order_number, pc.order_code AS item_code, (co.attributes -> 'workflowStep')::text AS workflow_step
                 FROM catalog.catalog_orders co
                 LEFT JOIN tenant_school.schools s ON s.id = co.school_id
+                LEFT JOIN catalog.product_categories pc ON pc.code = co.category
                 """;
+    }
+
+    /** {@code value} for a LIKE pattern with ESCAPE '!', in which %, _ and ! match themselves. */
+    static String likeEscaped(String value) {
+        return value.replace("!", "!!").replace("%", "!%").replace("_", "!_");
     }
 
     /**
@@ -721,6 +745,8 @@ public class CatalogReadRepository {
         payload.put("formVersion", order.formVersion());
         payload.put("pricingStatus", order.pricingStatus());
         payload.put("version", order.version());
+        payload.put("orderNumber", order.orderNumber());
+        payload.put("itemCode", order.itemCode());
         outbox.append("catalog-order.upserted.v1", "CatalogOrderUpserted:" + order.id(), "CatalogOrder",
                 order.id(), order.schoolId(), payload);
     }
@@ -894,8 +920,29 @@ public class CatalogReadRepository {
             String schoolName,
             Integer formVersion,
             String pricingStatus,
-            /* True for a notebook order placed on the notebook order tracker; one placed before it keeps the approval flow. */
-            Boolean trackerManaged) {
+            /* True for an order placed on its order workflow; one placed before (or of a category without one) keeps the approval flow. */
+            Boolean trackerManaged,
+            /* The SOP order number (design D10), null for drafts and categories without an order code. */
+            String orderNumber,
+            /* The category's item code in order numbers (NB, FE ...), null without one. */
+            String itemCode,
+            /* attributes.workflowStep as JSON, {order, title, total, completed}; null without a workflow report (design D5). */
+            @com.fasterxml.jackson.annotation.JsonRawValue String workflowStep) {
+        public CatalogOrderRow(String id, String category, String orderData, Long subtotal, Long gst,
+                Long totalAmount, String status, String classGroup, String logoOnUniform, String notebookCoverLogo,
+                String notebookDeliveryMode, String notebookSpineName, String stationeryPackType, String eventName,
+                LocalDate eventDate, String designStatus, String superadminApprovalStatus, LocalDate requiredByDate,
+                String estimatedDelivery, Long placedBy, OffsetDateTime placedAt, String notes, OffsetDateTime createdAt,
+                Long schoolId, Long version, String createdBy, String updatedBy, OffsetDateTime vendorPaidAt,
+                Long vendorPaidBy, String vendorPaymentNotes, String schoolName, Integer formVersion, String pricingStatus,
+                Boolean trackerManaged) {
+            this(id, category, orderData, subtotal, gst, totalAmount, status, classGroup, logoOnUniform, notebookCoverLogo,
+                    notebookDeliveryMode, notebookSpineName, stationeryPackType, eventName, eventDate, designStatus,
+                    superadminApprovalStatus, requiredByDate, estimatedDelivery, placedBy, placedAt, notes, createdAt,
+                    schoolId, version, createdBy, updatedBy, vendorPaidAt, vendorPaidBy, vendorPaymentNotes, schoolName,
+                    formVersion, pricingStatus, trackerManaged, null, null, null);
+        }
+
         public CatalogOrderRow(String id, String category, String orderData, Long subtotal, Long gst,
                 Long totalAmount, String status, String classGroup, String logoOnUniform, String notebookCoverLogo,
                 String notebookDeliveryMode, String notebookSpineName, String stationeryPackType, String eventName,
@@ -944,7 +991,22 @@ public class CatalogReadRepository {
             String vendorPaymentNotes,
             String schoolName,
             Integer formVersion,
-            String pricingStatus) {
+            String pricingStatus,
+            String orderNumber) {
+        public PendingCatalogOrderRow(String id, String category, String orderData, Long subtotal, Long gst,
+                Long totalAmount, String status, String classGroup, String logoOnUniform, String notebookCoverLogo,
+                String notebookDeliveryMode, String notebookSpineName, String stationeryPackType, String eventName,
+                LocalDate eventDate, String designStatus, String superadminApprovalStatus, LocalDate requiredByDate,
+                String estimatedDelivery, Long placedBy, OffsetDateTime placedAt, String notes, OffsetDateTime createdAt,
+                Long schoolId, Long version, String createdBy, String updatedBy, OffsetDateTime vendorPaidAt,
+                Long vendorPaidBy, String vendorPaymentNotes, String schoolName, Integer formVersion, String pricingStatus) {
+            this(id, category, orderData, subtotal, gst, totalAmount, status, classGroup, logoOnUniform, notebookCoverLogo,
+                    notebookDeliveryMode, notebookSpineName, stationeryPackType, eventName, eventDate, designStatus,
+                    superadminApprovalStatus, requiredByDate, estimatedDelivery, placedBy, placedAt, notes, createdAt,
+                    schoolId, version, createdBy, updatedBy, vendorPaidAt, vendorPaidBy, vendorPaymentNotes, schoolName,
+                    formVersion, pricingStatus, null);
+        }
+
         public PendingCatalogOrderRow(String id, String category, String orderData, Long subtotal, Long gst,
                 Long totalAmount, String status, String classGroup, String logoOnUniform, String notebookCoverLogo,
                 String notebookDeliveryMode, String notebookSpineName, String stationeryPackType, String eventName,

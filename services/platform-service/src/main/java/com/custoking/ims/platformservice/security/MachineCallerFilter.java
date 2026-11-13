@@ -54,6 +54,8 @@ public class MachineCallerFilter extends OncePerRequestFilter {
         if(path.equals("/api/v1/internal/notifications/broadcast-recipients") || path.equals("/api/v1/internal/notifications/broadcast-recipients/fee-reminders") || path.equals("/api/v1/internal/notifications/broadcast-recipients/absentees")) return "BROADCAST_POLICY_CALLER_SERVICE_ACCOUNTS";
         if(path.equals("/api/v1/internal/password-reset/drain")) return "PASSWORD_RESET_DRAIN_CALLER_SERVICE_ACCOUNTS";
         if(path.matches("/api/v1/internal/identity-directory/(schools|zones)/[0-9]+")) return "IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS";
+        if(path.equals("/api/v1/internal/order-workflows")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";
+        if(path.matches("/api/v1/internal/order-workflows/[A-Za-z0-9_-]{1,255}/design-file-access")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";
         if(path.equals("/api/v1/internal/notebook-trackers")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";
         if(path.matches("/api/v1/internal/notebook-trackers/[A-Za-z0-9_-]{1,255}/image-access")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";
         if(path.matches("/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/draft-images")) return "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS";

@@ -26,6 +26,18 @@ class NotebookOrderWorkbookParserTest {
     void rejectsEmbeddedOrderIdThatDoesNotMatchTheOpenOrder() throws Exception {
         assertThrows(IllegalArgumentException.class,
                 () -> parser.parse(workbook("ORD-OTHER", false, false), "order.xlsx", "ORD-42"));
+        assertThrows(IllegalArgumentException.class,
+                () -> parser.parse(workbook("NB-DPS_GUR-26-11-13-0041", false, false), "order.xlsx", "CK-42", "NB-DPS_GUR-26-11-13-0042"));
+    }
+
+    /** Design §3.6: the client's sheets carry the SOP order number, which names the open order as well as its CK id does. */
+    @Test
+    void acceptsAWorkbookNamingTheOrderByItsNumber() throws Exception {
+        var preview = parser.parse(workbook("nb-dps_gur-26-11-13-0042", false, false), "order.xlsx", "CK-42", "NB-DPS_GUR-26-11-13-0042");
+        assertEquals("CK-42", preview.orderId());
+        assertEquals("nb-dps_gur-26-11-13-0042", preview.workbookOrderId());
+        assertEquals(26, preview.total());
+        assertEquals("CK-42", parser.parse(workbook("CK-42", false, false), "order.xlsx", "CK-42", "NB-DPS_GUR-26-11-13-0042").orderId());
     }
 
     @Test

@@ -179,4 +179,24 @@ class CatalogOrderEventEmissionIntegrationTest {
                 .single();
         assertThat(latestType).isEqualTo("catalog-order.upserted.v1");
     }
+
+    /** Design D11 and §3.6: the legacy placement mints the number too, and the event carries it with the item code. */
+    @Test
+    void aLegacyPlacementMintsTheOrderNumberAndTheEventCarriesIt() {
+        var created = repo.createOrder(Map.of("schoolId", 1, "category", "NOTEBOOKS", "totalAmount", 0, "status", "DRAFT"));
+        assertThat(created.orderNumber()).as("a draft has no number").isNull();
+
+        var placed = repo.placeOrder(created.id(), 7L);
+
+        assertThat(placed.orderNumber()).matches("NB-TS_IN-\\d\\d-\\d\\d-\\d\\d-\\d{4}");
+        assertThat(placed.itemCode()).isEqualTo("NB");
+        var payload = jdbc.sql("""
+                SELECT payload ->> 'orderNumber' || ' ' || (payload ->> 'itemCode') FROM tenant_school.outbox_events
+                WHERE aggregate_id = :id ORDER BY id DESC LIMIT 1
+                """).param("id", created.id()).query(String.class).single();
+        assertThat(payload).isEqualTo(placed.orderNumber() + " NB");
+
+        var stationery = repo.createOrder(Map.of("schoolId", 1, "category", "STATIONERY", "totalAmount", 0, "status", "DRAFT"));
+        assertThat(repo.placeOrder(stationery.id(), 7L).orderNumber()).as("a category without a code").isNull();
+    }
 }

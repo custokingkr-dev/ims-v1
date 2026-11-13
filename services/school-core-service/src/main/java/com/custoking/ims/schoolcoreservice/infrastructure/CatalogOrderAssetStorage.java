@@ -3,6 +3,7 @@ package com.custoking.ims.schoolcoreservice.infrastructure;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
+import com.custoking.ims.schoolcoreservice.catalog.domain.DesignDraftRules;
 import com.lowagie.text.pdf.PdfReader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,10 @@ public class CatalogOrderAssetStorage {
     /** No seeded rule may raise the cap past what the assets table itself accepts. */
     public static final long DESIGN_DRAFT_MAX_BYTES = 25L * 1024 * 1024;
     public static final long ABSOLUTE_MAX_BYTES = DESIGN_DRAFT_MAX_BYTES;
+    /** How a CorelDRAW design file is stored and served: never previewed, always downloaded (design D27). */
+    public static final String CORELDRAW = "application/vnd.corel-draw";
+    static final String NOT_A_DESIGN_FILE = "Design files must be PDF, CorelDRAW (.cdr), PNG or JPEG. If a .cdr file is refused, "
+            + "upload a PDF export of the design, or save a link to it in CDR Conversion";
     private final String bucket;
     private final boolean local;
     private final Path localDirectory;
@@ -60,27 +65,58 @@ public class CatalogOrderAssetStorage {
         if (bytes == null || bytes.length == 0 || bytes.length > cap) {
             throw bad("Upload a nonempty file of " + (cap / (1024 * 1024)) + " MB or smaller");
         }
+        boolean designFile = DesignDraftRules.KIND.equals(assetKind);
         String contentType;
         if (starts(bytes, new byte[]{(byte) 0x89, 'P', 'N', 'G', 13, 10, 26, 10})) contentType = "image/png";
         else if (starts(bytes, new byte[]{(byte) 0xff, (byte) 0xd8, (byte) 0xff})) contentType = "image/jpeg";
         else if (bytes.length >= 12 && starts(bytes, "RIFF".getBytes(StandardCharsets.US_ASCII))
                 && "WEBP".equals(new String(bytes, 8, 4, StandardCharsets.US_ASCII))) contentType = "image/webp";
         else if (starts(bytes, "%PDF-".getBytes(StandardCharsets.US_ASCII))) contentType = "application/pdf";
+        else if (designFile && corelDraw(bytes, originalFilename)) contentType = CORELDRAW;
+        else if (designFile) throw bad(NOT_A_DESIGN_FILE);
         else throw bad("Only valid PNG, JPEG, WEBP, or PDF files are accepted");
+        if (designFile && !DesignDraftRules.acceptedType(contentType)) throw bad(NOT_A_DESIGN_FILE);
         if ("PRE_DELIVERY_PHOTO".equals(assetKind) && "application/pdf".equals(contentType)) {
             throw bad("Pre-delivery evidence must be a PNG, JPEG, or WEBP photo");
         }
         if ("application/pdf".equals(contentType)) validatePdf(bytes);
-        else validateImage(bytes);
+        else if (!CORELDRAW.equals(contentType)) validateImage(bytes);
         String filename = originalFilename == null ? "attachment" : originalFilename.replaceAll("[^A-Za-z0-9._-]", "_");
-        if (filename.length() > 200) filename = filename.substring(filename.length() - 200);
         if (filename.isBlank() || filename.equals(".") || filename.equals("..")) filename = "attachment";
+        filename = typedFilename(filename, contentType);
+        if (filename.length() > 200) filename = filename.substring(filename.length() - 200);
         try {
             return new ValidatedAsset(bytes, contentType, filename,
                     HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)));
         } catch (java.security.NoSuchAlgorithmException ex) {
             throw new IllegalStateException(ex);
         }
+    }
+
+    /** The extensions a stored file of each detected type may carry; the first is the one added when the name has none. */
+    private static final java.util.Map<String, List<String>> EXTENSIONS = java.util.Map.of(
+            "image/png", List.of("png"),
+            "image/jpeg", List.of("jpg", "jpeg"),
+            "image/webp", List.of("webp"),
+            "application/pdf", List.of("pdf"),
+            CORELDRAW, List.of("cdr"));
+
+    /**
+     * The name a file is stored and served under ends in an extension of its detected type: the uploader's own extension when
+     * it is one of those, otherwise the type's extension is appended ("Final_Artwork.html" holding a CorelDRAW drawing becomes
+     * "Final_Artwork.html.cdr"). The type is detected from the content, so a name can never make a browser or desktop treat
+     * the download as something else: a CorelDRAW file is checked only by its header (design D27), and without this a RIFF
+     * header followed by a script, named .hta or .bat, would be saved and opened as one.
+     */
+    public static String typedFilename(String filename, String contentType) {
+        String name = filename == null ? "" : filename.strip();
+        while (name.endsWith(".")) name = name.substring(0, name.length() - 1);
+        if (name.isEmpty()) name = "attachment";
+        List<String> accepted = EXTENSIONS.get(contentType);
+        if (accepted == null) return name;
+        int dot = name.lastIndexOf('.');
+        String extension = dot < 0 ? "" : name.substring(dot + 1).toLowerCase(java.util.Locale.ROOT);
+        return accepted.contains(extension) ? name : name + "." + accepted.getFirst();
     }
 
     public String store(long schoolId, String orderId, ValidatedAsset asset) {
@@ -222,6 +258,56 @@ public class CatalogOrderAssetStorage {
         } else if (object instanceof com.lowagie.text.pdf.PdfArray array) {
             for (int index = 0; index < array.size(); index++) inspectPdfObject(array.getPdfObject(index), visited, depth + 1);
         }
+    }
+
+    /**
+     * A CorelDRAW drawing, by content (design D27): a RIFF container whose form type begins "CDR" or "cdr" (CorelDRAW X3
+     * and earlier), or a ZIP container named .cdr that holds an entry under content/ (X4 and later). Only the header and the
+     * ZIP's central directory are read; nothing is inflated, rendered or parsed beyond that.
+     */
+    static boolean corelDraw(byte[] bytes, String filename) {
+        if (bytes.length >= 12 && starts(bytes, "RIFF".getBytes(StandardCharsets.US_ASCII))) {
+            String form = new String(bytes, 8, 3, StandardCharsets.US_ASCII);
+            return "CDR".equals(form) || "cdr".equals(form);
+        }
+        if (!starts(bytes, new byte[]{'P', 'K', 3, 4})) return false;
+        if (filename == null || !filename.strip().toLowerCase(java.util.Locale.ROOT).endsWith(".cdr")) return false;
+        return zipEntryNames(bytes).stream().anyMatch(name -> name.startsWith("content/") && name.length() > "content/".length());
+    }
+
+    /**
+     * The entry names in a ZIP's central directory, or none when the directory cannot be found or is malformed. Bounded:
+     * the end record is searched for only in the last 64 KiB plus its own size, and at most 10,000 entries are read.
+     */
+    private static List<String> zipEntryNames(byte[] zip) {
+        int end = -1;
+        for (int i = zip.length - 22; i >= Math.max(0, zip.length - 22 - 65_535); i--) {
+            if (littleInt(zip, i) == 0x06054b50) { end = i; break; }
+        }
+        if (end < 0) return List.of();
+        int entries = littleShort(zip, end + 10);
+        long offset = Integer.toUnsignedLong(littleInt(zip, end + 16));
+        if (entries > 10_000 || offset >= zip.length) return List.of();
+        List<String> names = new java.util.ArrayList<>();
+        int at = (int) offset;
+        for (int entry = 0; entry < entries; entry++) {
+            if (at + 46 > zip.length || littleInt(zip, at) != 0x02014b50) return List.of();
+            int nameLength = littleShort(zip, at + 28);
+            int extraLength = littleShort(zip, at + 30);
+            int commentLength = littleShort(zip, at + 32);
+            if (at + 46 + nameLength > zip.length) return List.of();
+            names.add(new String(zip, at + 46, nameLength, StandardCharsets.UTF_8));
+            at += 46 + nameLength + extraLength + commentLength;
+        }
+        return names;
+    }
+
+    private static int littleShort(byte[] bytes, int at) {
+        return (bytes[at] & 0xff) | (bytes[at + 1] & 0xff) << 8;
+    }
+
+    private static int littleInt(byte[] bytes, int at) {
+        return littleShort(bytes, at) | littleShort(bytes, at + 2) << 16;
     }
 
     private static boolean starts(byte[] input, byte[] signature) {

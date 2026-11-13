@@ -2,9 +2,7 @@ package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.CatalogOrderFormService;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository;
-import com.custoking.ims.schoolcoreservice.persistence.ProductOrderWorkflowService;
 import com.custoking.ims.schoolcoreservice.photoimport.NotebookOrderWorkbookParser;
-import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,7 +36,6 @@ public class CatalogOrderFormController {
     private final CatalogReadRepository orders;
     private final String token;
     private final NotebookOrderWorkbookParser workbookParser;
-    private ProductOrderWorkflowService workflows;
 
     @Autowired
     public CatalogOrderFormController(CatalogOrderFormService forms, CatalogReadRepository orders,
@@ -90,7 +87,10 @@ public class CatalogOrderFormController {
         return Map.of("trackerPending", forms.trackerPending(id));
     }
 
-    /** Header data for the notebook order tracker: lines, quantity, delivery date and the school's notes. */
+    /**
+     * Header data for the order workflow of any item: the order and its number, the item, the school, the placed lines and
+     * their quantities, and the title-card quantities of a notebook order.
+     */
     @GetMapping("/{id}/tracker-summary")
     public Map<String, Object> trackerSummary(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
                                               @PathVariable String id) {
@@ -103,12 +103,12 @@ public class CatalogOrderFormController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @PathVariable String id, @RequestParam MultipartFile file) throws IOException {
         requireToken(token, "order:update");
-        forms.trackerSummary(id);
+        Object orderNumber = forms.trackerSummary(id).get("orderNumber");
         if (file.getSize() > NotebookOrderWorkbookParser.MAX_WORKBOOK_BYTES) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The workbook must be 10 MB or smaller");
         }
         try {
-            return workbookParser.parse(file.getBytes(), file.getOriginalFilename(), id);
+            return workbookParser.parse(file.getBytes(), file.getOriginalFilename(), id, orderNumber == null ? null : String.valueOf(orderNumber));
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
@@ -154,24 +154,23 @@ public class CatalogOrderFormController {
                 .body(content.bytes());
     }
 
-    /** Optional: without it (unit tests) no order offers a production workflow. */
-    @Autowired(required = false)
-    public void configureWorkflows(ProductOrderWorkflowService workflows) {
-        this.workflows = workflows;
+    /**
+     * The CK id of an order people know by its number (design D14), for a pasted number. Matched case-insensitively, and
+     * only among the orders the caller may read: any other number is not found.
+     */
+    @GetMapping("/by-number/{orderNumber}")
+    public Map<String, Object> byNumber(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+                                        @PathVariable String orderNumber) {
+        requireToken(token, "order:read");
+        return forms.orderByNumber(orderNumber);
     }
 
-    /**
-     * The order as the order screen reads it, plus {@code productionWorkflowAvailable}: whether
-     * {@code GET /api/v1/catalog/orders/{id}/production-workflow} would answer this caller with a workflow. The server
-     * owns which categories have one, so the screen never keeps its own list.
-     */
-    public record OrderDetail(@JsonUnwrapped CatalogReadRepository.CatalogOrderRow order, boolean productionWorkflowAvailable) { }
-
+    /** The order as the order screen reads it, with its order number and current workflow step for the headline. */
     private Map<String, Object> detailResponse(String id) {
         Map<String, Object> result = forms.detail(id);
         CatalogReadRepository.CatalogOrderRow order = orders.order(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        result.put("order", new OrderDetail(order, workflows != null && workflows.available(order)));
+        result.put("order", order);
         return result;
     }
 

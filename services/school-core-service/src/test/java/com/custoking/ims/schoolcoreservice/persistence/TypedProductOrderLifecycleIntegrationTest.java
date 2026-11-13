@@ -56,6 +56,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * typed values are stored apart from the option selections, and every lifecycle step that re-checks the saved order (place,
  * final approval, delivery) must check what was saved. Until 2026-11-12 none of these could be placed ("Enter Length"), and
  * fliers and bill books could not even be saved, because a whole number typed as text was refused.
+ *
+ * <p>Every one of these categories now runs an order workflow (item order workflows design D3, D8): placing the order starts
+ * it, and approval and delivery belong to it. The approval flow is still what a category follows when superadmin switches its
+ * template off, which is how the whole lifecycle below is driven.
  */
 class TypedProductOrderLifecycleIntegrationTest {
     private static final String TOKEN = "test-token";
@@ -64,6 +68,8 @@ class TypedProductOrderLifecycleIntegrationTest {
 
     static PostgreSQLContainer<?> pg;
     static JdbcClient owner;
+    /** Each typed category's template as catalog V37 seeded it, restored before every test. */
+    static final Map<String, String> TEMPLATES = new LinkedHashMap<>();
     static AnnotationConfigApplicationContext context;
     static MockMvc mvc;
     @TempDir static Path assets;
@@ -86,6 +92,10 @@ class TypedProductOrderLifecycleIntegrationTest {
         owner.sql("INSERT INTO tenant_school.schools(id, name, short_code, active, created_at) VALUES (1,'School A','SCA',true,now())").update();
         owner.sql("INSERT INTO tenant_school.school_module_entitlements(school_id,module_code,enabled) VALUES (1,'ORDERS',true)").update();
         owner.sql("CREATE ROLE app_rt LOGIN PASSWORD 'app_rt' NOINHERIT NOCREATEROLE NOCREATEDB NOBYPASSRLS").update();
+        for (String category : TYPED) {
+            TEMPLATES.put(category, owner.sql("SELECT workflow_definition FROM catalog.product_categories WHERE code = :code")
+                    .param("code", category).query(String.class).single());
+        }
         owner.sql("GRANT USAGE ON SCHEMA catalog, tenant_school TO app_rt").update();
         owner.sql("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA catalog, tenant_school TO app_rt").update();
         owner.sql("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA catalog, tenant_school TO app_rt").update();
@@ -116,6 +126,9 @@ class TypedProductOrderLifecycleIntegrationTest {
     @BeforeEach
     void clear() {
         owner.sql("DELETE FROM catalog.catalog_orders").update();
+        owner.sql("DELETE FROM catalog.order_number_counters").update();
+        TEMPLATES.forEach((category, template) -> owner.sql("UPDATE catalog.product_categories SET workflow_definition = :template WHERE code = :code")
+                .param("template", template).param("code", category).update());
     }
 
     @AfterEach void clearContext() { TenantContext.clear(); }
@@ -126,10 +139,14 @@ class TypedProductOrderLifecycleIntegrationTest {
         if (pg != null) pg.stop();
     }
 
-    /** Saved, re-saved as a draft, placed, quoted, finally approved and delivered, with the typed values kept throughout. */
+    /**
+     * Saved, re-saved as a draft, placed, quoted, finally approved and delivered, with the typed values kept throughout: the
+     * approval flow, which the category follows with its workflow template switched off (design D3).
+     */
     @ParameterizedTest
     @FieldSource("TYPED")
     void aTypedOrderRunsTheWholeOrderLifecycle(String category) throws Exception {
+        withoutWorkflow(category);
         var expected = ProductOrderFixtures.storedAttributes(category);
         String id = create(category);
         var draft = form(id, SCHOOL_ADMIN);
@@ -161,6 +178,38 @@ class TypedProductOrderLifecycleIntegrationTest {
         assertThat(attributes(form(id, SCHOOL_ADMIN))).as(category).isEqualTo(expected);
     }
 
+    /**
+     * With its template (design D3, D5): placing the order starts its workflow at Order Details and gives it a number. The
+     * typed values are kept, the quote stays a commercial record superadmin may save, and approval and delivery are the
+     * workflow's, so the approval flow's actions are refused with the reason.
+     */
+    @ParameterizedTest
+    @FieldSource("TYPED")
+    void aTypedOrderPlacedWithItsTemplateStartsItsWorkflowAndKeepsItsTypedValues(String category) throws Exception {
+        var expected = ProductOrderFixtures.storedAttributes(category);
+        String id = create(category);
+        mvc.perform(as(post("/api/v1/catalog/orders/" + id + "/place"), SCHOOL_ADMIN))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("ORDER_DETAILS"))
+                .andExpect(jsonPath("$.trackerManaged").value(true));
+
+        var placed = form(id, SUPERADMIN);
+        assertThat(attributes(placed)).as(category).isEqualTo(expected);
+        assertThat(String.valueOf(((Map<?, ?>) placed.get("order")).get("orderNumber"))).as(category)
+                .matches("[A-Z]{2,4}-SA_IN-\\d\\d-\\d\\d-\\d\\d-0001");
+        var quote = new LinkedHashMap<String, Object>();
+        quote.put("version", placed.get("version"));
+        quote.put("gstPaise", 1800);
+        quote.put("lines", lines(placed).stream().map(line -> Map.of("id", line.get("id"), "unitPricePaise", 1000)).toList());
+        mvc.perform(as(put("/api/v1/supply/orders/" + id + "/quote"), SUPERADMIN).contentType("application/json")
+                .content(JSON.writeValueAsString(quote))).andExpect(status().isOk()).andExpect(jsonPath("$.pricingStatus").value("QUOTED"));
+
+        for (String action : List.of("superadmin-approve", "deliver")) {
+            mvc.perform(as(post("/api/v1/catalog/orders/" + id + "/" + action), SUPERADMIN)).andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("This order moves through its order workflow, not through approval or delivery"));
+        }
+        assertThat(attributes(form(id, SCHOOL_ADMIN))).as(category).isEqualTo(expected);
+    }
+
     /** What placement checks is the saved order: a required typed value that is missing from it is still refused. */
     @Test
     void placementChecksTheTypedValuesThatWereSaved() throws Exception {
@@ -180,6 +229,7 @@ class TypedProductOrderLifecycleIntegrationTest {
     /** A refused lifecycle step tells the screen why, rather than leaving it to say "Request failed with status code 400". */
     @Test
     void aRefusedLifecycleStepCarriesItsReason() throws Exception {
+        withoutWorkflow("FLIERS");
         String id = create("FLIERS");
         mvc.perform(as(post("/api/v1/catalog/orders/" + id + "/superadmin-approve"), SUPERADMIN))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("This action is unavailable while the order is DRAFT"));
@@ -190,6 +240,11 @@ class TypedProductOrderLifecycleIntegrationTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("Save the superadmin quote before final approval"));
         mvc.perform(as(post("/api/v1/catalog/orders/" + id + "/deliver"), SCHOOL_ADMIN))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.message").value("Only superadmin or operations can mark orders delivered"));
+    }
+
+    /** Design D3: superadmin's off switch. New placements of the category follow the approval flow. */
+    private static void withoutWorkflow(String category) {
+        owner.sql("UPDATE catalog.product_categories SET workflow_definition = NULL WHERE code = :code").param("code", category).update();
     }
 
     private static String create(String category) throws Exception {

@@ -26,7 +26,7 @@ import static com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormRule
 public class ProductCatalogRepository {
     private record Entity(String table, String key, Map<String, String> columns) {}
     private static final Map<String, Entity> ENTITIES = Map.of(
-            "categories", new Entity("product_categories", "code", columns("code", "label", "emoji", "description", "orderType", "formEnabled", "paged", "notesEnabled", "sortOrder", "active")),
+            "categories", new Entity("product_categories", "code", columns("code", "label", "emoji", "description", "orderType", "formEnabled", "paged", "notesEnabled", "sortOrder", "active", "orderCode", "itemNoun", "workflowDefinition")),
             "groups", new Entity("product_option_groups", "id", columns("categoryCode", "code", "label", "level", "selectionType", "inputType", "unit", "render", "required", "scope", "active")),
             "options", new Entity("product_options", "id", columns("groupId", "code", "label", "specText", "widthMm", "heightMm", "specStatus", "sortOrder", "active")),
             "rules", new Entity("product_form_rules", "id", columns("categoryCode", "ruleType", "targetField", "matchOptions", "params", "priority", "message", "active")));
@@ -161,7 +161,12 @@ public class ProductCatalogRepository {
             dbValues.put("actor", TenantContext.get().userId());
         }
         dbValues.put("entryId", id);
-        jdbc.sql("UPDATE catalog." + entity.table() + " SET " + assignments + " WHERE " + entity.key() + " = :entryId").params(dbValues).update();
+        try {
+            jdbc.sql("UPDATE catalog." + entity.table() + " SET " + assignments + " WHERE " + entity.key() + " = :entryId").params(dbValues).update();
+        } catch (DataIntegrityViolationException exception) {
+            if (!"categories".equals(resource)) throw exception;
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This order code is already used by another item");
+        }
         var saved = get(resource, id);
         audit(resource, id, "UPDATE", before, saved);
         return saved;
@@ -205,6 +210,7 @@ public class ProductCatalogRepository {
                 text(value, "emoji", 16, false);
                 text(value, "description", 200, false);
                 enumValue(value, "orderType", Set.of("Recurring", "One-time", "Service"));
+                orderNumberingAndWorkflow(value);
             }
             case "groups" -> {
                 get("categories", required(value, "categoryCode"));
@@ -247,6 +253,37 @@ public class ProductCatalogRepository {
             }
             default -> throw missing();
         }
+    }
+
+    /** The templates a category may start (design D3); catalog V37's CHECK lists the same five. */
+    public static final Set<String> WORKFLOW_DEFINITIONS = Set.of("NOTEBOOK_ORDER_TRACKER", "FLIER_ORDER_WORKFLOW",
+            "FLEX_ORDER_WORKFLOW", "BILL_BOOK_ORDER_WORKFLOW", "GENERAL_ITEM_ORDER_WORKFLOW");
+
+    /**
+     * A category's item code in order numbers, its noun in the introduction message, and the order workflow template its
+     * placements start (design D3, D8). Blank clears each. A template needs an item code; codes are unique (the database
+     * refuses a duplicate). Changing the code affects only numbers minted afterwards.
+     */
+    private static void orderNumberingAndWorkflow(Map<String, Object> value) {
+        String code = blankToNull(value.get("orderCode"));
+        if (code != null) {
+            code = code.toUpperCase(Locale.ROOT);
+            if (!code.matches("^[A-Z]{2,4}$")) throw error("orderCode", "Use 2 to 4 capital letters, such as NB or BBK");
+        }
+        value.put("orderCode", code);
+        String noun = blankToNull(value.get("itemNoun"));
+        if (noun != null && noun.length() > 40) throw error("itemNoun", "Enter text up to 40 characters");
+        value.put("itemNoun", noun);
+        String definition = blankToNull(value.get("workflowDefinition"));
+        if (definition != null && !WORKFLOW_DEFINITIONS.contains(definition)) throw error("workflowDefinition", "Unsupported value");
+        if (definition != null && code == null) throw error("workflowDefinition", "Give the item an order code before choosing its workflow");
+        value.put("workflowDefinition", definition);
+    }
+
+    private static String blankToNull(Object value) {
+        if (value == null) return null;
+        if (!(value instanceof String text)) throw error("value", "Enter text");
+        return text.isBlank() ? null : text.strip();
     }
 
     private long referencedOrderCount(String resource, Map<String, Object> value) {

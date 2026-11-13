@@ -61,8 +61,10 @@ public class CatalogFactProjector implements ReportingEventProjector {
         Long formVersion = PayloadJson.longOrNull(payload, "formVersion");
         String pricingStatus = PayloadJson.textOrNull(payload, "pricingStatus");
         Long sourceVersion = PayloadJson.longOrNull(payload, "version");
+        // Additive since the item order workflows (design §3.6): absent from older events, which keep a stored number.
+        String orderNumber = PayloadJson.textOrNull(payload, "orderNumber");
         catalogFactRead.upsert(id, schoolId, category, status, totalAmount, superadminApprovalStatus,
                 vendorPaidAt, createdAt, requiredByDate, designStatus, notes,
-                formVersion == null ? 1 : Math.toIntExact(formVersion), pricingStatus, sourceVersion);
+                formVersion == null ? 1 : Math.toIntExact(formVersion), pricingStatus, sourceVersion, orderNumber);
     }
 }

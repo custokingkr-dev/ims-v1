@@ -55,8 +55,10 @@ class MachineCallerFilterTest {
   }
  }
 
- // ---- notebook order tracker machine routes (spec 3.1) ----
+ // ---- order workflow machine routes (spec 3.1; design 3.5: the notebook-tracker paths are aliases for one release) ----
  private static final java.util.Map<String,String> TRACKER_ROUTES=java.util.Map.of(
+   "POST /api/v1/internal/order-workflows","school-core",
+   "POST /api/v1/internal/order-workflows/CK-2026_0001/design-file-access","school-core",
    "POST /api/v1/internal/notebook-trackers","school-core",
    "POST /api/v1/internal/notebook-trackers/CK-2026_0001/image-access","school-core",
    "GET /api/v1/internal/catalog-orders/CK-2026_0001/draft-images","operations",
@@ -96,6 +98,9 @@ class MachineCallerFilterTest {
   for(String route:java.util.List.of("POST /api/v1/internal/notebook-trackers/a.b/image-access","POST /api/v1/internal/notebook-trackers/a%2Eb/image-access",
     "POST /api/v1/internal/notebook-trackers/a/b/image-access","POST /api/v1/internal/notebook-trackers//image-access",
     "POST /api/v1/internal/notebook-trackers/"+"x".repeat(256)+"/image-access","POST /api/v1/internal/notebook-trackers/CK-1",
+    "POST /api/v1/internal/order-workflows/a.b/design-file-access","POST /api/v1/internal/order-workflows/a/b/design-file-access",
+    "POST /api/v1/internal/order-workflows/"+"x".repeat(256)+"/design-file-access","POST /api/v1/internal/order-workflows/CK-1",
+    "POST /api/v1/internal/order-workflows/CK-1/image-access","POST /api/v1/internal/notebook-trackers/CK-1/design-file-access",
     "GET /api/v1/internal/catalog-orders/a.b/draft-images","PUT /api/v1/internal/catalog-orders/a%20b/tracker-status",
     "GET /api/v1/internal/operator-directory/resolve/extra","GET /api/v1/internal/operator-directory",
     "POST /api/v1/internal/operator-directory/names/extra","POST /api/v1/internal/operator-directory/names/")) {
@@ -103,6 +108,7 @@ class MachineCallerFilterTest {
    assertFalse(admitted(filter,route,"operations"),route);
   }
   assertTrue(admitted(filter,"POST /api/v1/internal/notebook-trackers/"+"x".repeat(255)+"/image-access","school-core"));
+  assertTrue(admitted(filter,"POST /api/v1/internal/order-workflows/"+"x".repeat(255)+"/design-file-access","school-core"));
  }
  @Test void localTrustAdmitsRegisteredRoutesWithoutATokenOnlyOffCloudRun() throws Exception {
   var local=new MachineCallerFilter(new MockEnvironment().withProperty("MACHINE_CALLER_LOCAL_TRUST","true"),token->Optional.empty());
