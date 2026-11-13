@@ -64,7 +64,7 @@ class CreationQueueRetirementMigrationTest {
             st.executeQuery("SELECT count(*) FROM catalog.catalog_orders").close();
             long started = System.nanoTime();
             try {
-                flyway("catalog", null).migrate();
+                flyway("catalog", "40").migrate();
                 busyFailure = "migrated";
             } catch (FlywayException failure) {
                 busyFailure = String.valueOf(failure.getMessage());
@@ -75,7 +75,7 @@ class CreationQueueRetirementMigrationTest {
         oldRowsAfterBusyFailure = admin.sql("SELECT count(*) FROM catalog.notebook_tracker_creation_queue").query(Long.class).single();
         versionAfterBusyFailure = latestVersion();
 
-        flyway("catalog", null).migrate();
+        flyway("catalog", "40").migrate();
     }
 
     @AfterAll
@@ -101,6 +101,7 @@ class CreationQueueRetirementMigrationTest {
         order("CK-503", 1, "FLIERS", "DRAFT", "{}", null);
         order("CK-504", 1, "UNIFORMS", "DRAFT", "{}", null);
         order("CK-505", 1, "FLIERS", "DRAFT", "{}", null);
+        order("CK-506", 1, "FLIERS", "DRAFT", "{}", null);
         // CK-502 was queued in the new queue, given up on after its retries, and is a repair row.
         admin.sql("""
                 INSERT INTO catalog.order_workflow_creation_queue (order_id, school_id, attempts, next_attempt_at, last_error, created_at,
@@ -116,8 +117,13 @@ class CreationQueueRetirementMigrationTest {
                     VALUES ('CK-501', 1, 7, now() + interval '1 day', 'stale error', '2020-06-01T05:00:00Z'),
                            ('CK-502', 2, 3, now() + interval '1 day', 'other stale error', '2020-06-01T05:00:00Z')
                     """);
+            // Replica mode skips the old table's foreign key as well: rows for an order that does not exist, or not at that school.
+            st.execute("""
+                    INSERT INTO catalog.notebook_tracker_creation_queue (order_id, school_id)
+                    VALUES ('CK-999', 1), ('CK-506', 2)
+                    """);
         }
-        assertThat(admin.sql("SELECT count(*) FROM catalog.notebook_tracker_creation_queue").query(Long.class).single()).isEqualTo(2L);
+        assertThat(admin.sql("SELECT count(*) FROM catalog.notebook_tracker_creation_queue").query(Long.class).single()).isEqualTo(4L);
     }
 
     @Test
@@ -125,7 +131,7 @@ class CreationQueueRetirementMigrationTest {
         assertThat(busyFailure).contains("V40: catalog_orders and notebook_tracker_creation_queue stayed busy for 15 seconds; "
                 + "nothing was changed, re-run the migration job");
         assertThat(busySeconds).as("retried, not failed at once, and not queued for long").isBetween(14L, 30L);
-        assertThat(oldRowsAfterBusyFailure).as("the old queue and its rows were still there").isEqualTo(2L);
+        assertThat(oldRowsAfterBusyFailure).as("the old queue and its rows were still there").isEqualTo(4L);
         assertThat(versionAfterBusyFailure).isEqualTo(39);
     }
 
@@ -152,6 +158,18 @@ class CreationQueueRetirementMigrationTest {
                 """).query(String.class).list()).containsExactly(
                 "CK-501 1 0 true true - false new",
                 "CK-502 2 0 true true order workflow engine answered HTTP 503 true kept");
+    }
+
+    /**
+     * A leftover row whose order does not exist (or not at that school) could never have been forwarded: the new queue's
+     * foreign key refuses it, as it refused the trigger. V40 drops it with the table instead of failing on it at every re-run.
+     */
+    @Test
+    void rowsLeftInTheOldQueueForAnOrderThatDoesNotExistAreDroppedNotForwarded() {
+        assertThat(admin.sql("SELECT count(*) FROM catalog.order_workflow_creation_queue WHERE order_id IN ('CK-999', 'CK-506')")
+                .query(Long.class).single()).isZero();
+        assertThat(admin.sql("SELECT count(*) FROM catalog.catalog_orders WHERE id = 'CK-506' AND school_id = 1 AND status = 'DRAFT'")
+                .query(Long.class).single()).as("the order a mismatched row named is untouched").isEqualTo(1L);
     }
 
     /**

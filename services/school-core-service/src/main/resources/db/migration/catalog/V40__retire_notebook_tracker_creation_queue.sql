@@ -32,18 +32,29 @@ END $$;
 -- 1. The old table holds no row unless a writer bypassed its forwarding trigger (session_replication_role = replica, a
 --    disabled trigger, a data load). Any such row is forwarded now exactly as the trigger would have forwarded it
 --    (V38's catalog.forward_to_order_workflow_creation_queue(): fresh retries; a row already queued is due again now).
+--    Replica mode skips the old table's foreign key too, so a leftover row may name an order that does not exist (or not
+--    at that school). The trigger could never have forwarded such a row (the new queue's foreign key refuses it), and its
+--    order would have taken it with it (ON DELETE CASCADE): it is dropped with the table, and named in a warning.
 DO $$
-DECLARE moved TEXT;
+DECLARE moved TEXT; dropped TEXT;
 BEGIN
-    WITH leftover AS (DELETE FROM catalog.notebook_tracker_creation_queue RETURNING order_id, school_id),
+    WITH leftover AS (
+            DELETE FROM catalog.notebook_tracker_creation_queue q
+            RETURNING q.order_id, q.school_id,
+                EXISTS (SELECT 1 FROM catalog.catalog_orders co WHERE co.id = q.order_id AND co.school_id = q.school_id) AS order_exists),
          forwarded AS (
             INSERT INTO catalog.order_workflow_creation_queue (order_id, school_id)
-            SELECT order_id, school_id FROM leftover
+            SELECT order_id, school_id FROM leftover WHERE order_exists
             ON CONFLICT (order_id) DO UPDATE SET next_attempt_at = now(), attempts = 0, dead_lettered_at = NULL
             RETURNING order_id)
-    SELECT string_agg(order_id, ', ' ORDER BY order_id) INTO moved FROM forwarded;
+    SELECT (SELECT string_agg(order_id, ', ' ORDER BY order_id) FROM forwarded),
+           (SELECT string_agg(format('%s (school %s)', order_id, school_id), ', ' ORDER BY order_id) FROM leftover WHERE NOT order_exists)
+    INTO moved, dropped;
     IF moved IS NOT NULL THEN
         RAISE NOTICE 'V40: forwarded rows left in catalog.notebook_tracker_creation_queue into order_workflow_creation_queue: %', moved;
+    END IF;
+    IF dropped IS NOT NULL THEN
+        RAISE WARNING 'V40: dropped rows left in catalog.notebook_tracker_creation_queue whose order does not exist at that school: %', dropped;
     END IF;
 END $$;
 
