@@ -187,11 +187,22 @@ The other schemas are the same on `main` and dev. See [Production](#production) 
 
 Both release paths deploy in this order: gateway → identity → frontend → school-core → operations → billing → platform
 (`scripts/invoke-direct-cloudrun-release.ps1`, `scripts/invoke-clouddeploy-release.ps1`). Each Java service's
-migration job runs just before that service deploys, while its previous revision still serves. Flyway commits each
-version on its own, then runs `afterMigrate__dedicated_runtime_acl.sql` once.
+migration job runs just before that service deploys, while its previous revision still serves. The job migrates the
+service's schemas one after another, each with a Flyway run of its own (`MigrationOnlyMain`). Flyway commits each
+version on its own, then runs that schema's `afterMigrate__dedicated_runtime_acl.sql`. So afterMigrate runs once per
+schema: five times in school-core's job, twice in operations' and three times in platform's.
 
 - **Dev, direct path.** `gcloud run deploy` moves all traffic once the new revision is ready, and only then does the
-  next service start. Each window lasts minutes.
+  next service start. In a run that completes, each window lasts minutes.
+  - A run that stops leaves its window open. Dev's release runs are cancel-in-progress
+    (`.github/workflows/build-release.yml:28-30`), so a merge to `dev` during a release cancels the run partway, and a
+    later service's failure stops it too. Either can leave, say, school-core new and operations previous.
+  - The next push does not close it by itself: it deploys only the services that push changed, since its base is the
+    push's `before` (`build-release.yml:93-99`). A service the stopped run did not reach stays previous until a run
+    includes it. To close the window, dispatch the workflow for `dev` with the dev head as `commit_sha`, which includes
+    every service ([release operator runbook](release-operator.md)). Do not re-run the stopped run after a later run
+    has deployed: it would put its older image back on any service both runs changed.
+  - Do not merge to `dev` while a release rolls out.
 - **Prod, Cloud Deploy** (`-WaitForRollout -AutoAdvanceCanary`, at most two rollouts at once). Each service goes through
   5, 25 and 50 % before stable, and a group starts only when the one before it has completed. The groups run in this
   order: gateway; identity; frontend; school-core; operations with billing; platform. During a canary, browser calls
@@ -336,16 +347,31 @@ same deterministic `https://custoking-<service>-<env>-<project number>.<region>.
   the `true` in `set_config` ends it at `COMMIT`. Never disable row security instead.
 - **Read-only.** Read-only checks start with `SET default_transaction_read_only = on;`, so a mistake cannot write.
 
-The SQL in this file was run on 2026-11-13 against PostgreSQL 16 holding the real catalog, workflow and reporting
-migrations (V39, V21 and V36), applied as a NOSUPERUSER, NOBYPASSRLS owner. Without the bypass, that owner saw 0 of 7
-orders.
+**How the SQL here was tested.** On 2026-11-14 every SQL block in this file ran on scratch PostgreSQL 16 databases.
+The migrations were applied as a NOSUPERUSER, NOBYPASSRLS owner, with `app_rt`'s grants from
+`scripts/create-app-rt-role.sql` and each schema's afterMigrate.
+
+- *Dev's path.* The real tenant_school V1–V31, catalog V1–V39, workflow V1–V21 and reporting V1–V36. Then the contract
+  release's catalog V40 and workflow V22, as committed for review (`cc85c058`). Then the final clean-up. Without the
+  bypass, the owner saw 0 of 7 orders.
+- *Prod's path.* `main`'s heads (tenant_school V30, catalog V26, workflow V7, reporting V35), where the prod pre-count
+  ran. Then every later version, through V40 and V22, in one run per schema. For these four schemas, the versions
+  applied matched the prod column of the table under [Migration job results](#migration-job-results).
+- *Locks.* A reader held `catalog_orders`, then `workflow_instance_steps`, for 20 s. In two runs, V40 and V22 each
+  stopped after 16–21 s (150 tries 0.1 s apart, slower on a busy machine) with its `stayed busy` message, and its
+  version was not applied. A new reader with a 1 s statement timeout, started during the retries, was answered each
+  time, so it never waited on the lock. With a 3 s reader, each finished in 3–5 s.
+- *What was not real.* psql applied each version in one transaction, as Flyway does, but Flyway itself did not run:
+  its history tables were created in Flyway's shape and filled by the test. The legacy status update was its SQL
+  statement, run as `ims_school_core_rt` in a request scoped to one school, not the Java code.
 
 ## Migration job results
 
 `scripts/invoke-service-migration-job.ps1` runs each Java service's migrations before that service deploys:
 
-- It creates a Cloud Run job `ims-migrate-<service>-<env>-<yyyyMMddHHmmss>-<8 hex>` that runs `MigrationOnlyMain` as
-  `ims-db-migration-<env>`, with `FLYWAY_USERNAME=appuser`, a 300 s timeout and no retries.
+- It creates a Cloud Run job `ims-migrate-<service without -service>-<env>-<yyyyMMddHHmmss>-<8 hex>`, for example
+  `ims-migrate-school-core-dev-…` (`scripts/invoke-service-migration-job.ps1:58`). The job runs `MigrationOnlyMain`
+  as `ims-db-migration-<env>`, with `FLYWAY_USERNAME=appuser`, a 300 s timeout and no retries.
 - It waits for the job, then deletes it. The job's logs stay.
 - Deployed services never migrate (`APP_MIGRATIONS_ENABLED: "false"`).
 
@@ -384,8 +410,8 @@ tenant_school V30, catalog V26, workflow V7, reporting V35). Read prod's heads b
 - **Where the reason is.** The Actions log says only `Migration CLI failed; credentials and database diagnostics are
   intentionally omitted.` The job's own log (stderr) says only `Owner migration failed; deployment must remain blocked.
   Consult restricted database logs.` `MigrationOnlyMain` swallows the exception because it may carry credentials.
-- **The reason is only in the Cloud SQL instance's PostgreSQL log.** That covers V38's 15-second message, the
-  stop-and-name lists, and lock timeouts. Set `JOB_START` to just before the job ran:
+- **The reason is only in the Cloud SQL instance's PostgreSQL log.** That covers the 15-second `stayed busy` messages
+  of V38, V40 and V22, the stop-and-name lists, and lock timeouts. Set `JOB_START` to just before the job ran:
 
   ```bash
   JOB_START=2026-11-13T11:30:00Z   # replace
@@ -397,19 +423,46 @@ tenant_school V30, catalog V26, workflow V7, reporting V35). Read prod's heads b
 - **What a failure leaves.** Each version is one transaction, so the version that failed changed nothing, and the
   versions before it stay applied. That service and every later one are not deployed; the previous revisions keep
   serving.
-- **A lock failure** is safe to re-run. It reads `V38: catalog_orders and notebook_tracker_creation_queue stayed busy
-  for 15 seconds; nothing was changed, re-run the migration job`, V40's message of the same kind, or `canceling
-  statement due to lock timeout` (V21, V22, or any later wait). Re-run the failed release job. The dev direct path
-  skips each service that already serves the new image, then runs the failed service's job again, which starts at the
-  version that failed. For prod, follow [the release operator runbook](release-operator.md).
+  - *One exception: billing in the Cloud Deploy path.* That path serves prod always, and dev only when the push
+    changed the deployment configuration (`scripts/resolve-affected-ci-targets.ps1:118-128`) or the run forces a full
+    deploy. Neither the SOP nor the contract release changes it, so on dev both use the direct path.
+  - Operations and billing run in one wave of two. Operations' migration job, release and rollout all come before
+    billing's migration job (`scripts/invoke-clouddeploy-release.ps1:95-170`). The wait that advances the canary runs
+    only after the whole wave (`:176-187`).
+  - So if billing's migration job or release fails, operations' rollout already exists. In prod it stays at its first
+    canary phase, 5 %: nothing advances it, and the workflow skips its *Confirm Cloud Deploy rollouts* step after the
+    failure. On dev's standard pipeline it completes on its own.
+  - Billing has no pending migration in the SOP or the contract release, so this is unlikely here. If it happens,
+    settle operations' rollout before re-running the release job. Find it, then advance it one phase at a time as the
+    release script does (`scripts/wait-clouddeploy-rollout-group.ps1:61-64`), or roll operations back
+    ([rollback](rollback.md)):
+
+    ```bash
+    gcloud deploy rollouts list --delivery-pipeline=custoking-operations-service-prod --release=<rel-prod-…> --project=custoking-prod --region=asia-south2 --format="table(name.basename(),state)"
+    gcloud deploy rollouts describe <rollout> --delivery-pipeline=custoking-operations-service-prod --release=<rel-prod-…> --project=custoking-prod --region=asia-south2 --format="yaml(state,phases)"
+    gcloud deploy rollouts advance <rollout> --delivery-pipeline=custoking-operations-service-prod --release=<rel-prod-…> --phase-id=<next pending phase> --project=custoking-prod --region=asia-south2
+    ```
+
+- **A lock failure** is safe to re-run. It reads one of these:
+  - `V38: catalog_orders and notebook_tracker_creation_queue stayed busy for 15 seconds; nothing was changed, re-run
+    the migration job`;
+  - `V40: catalog_orders and notebook_tracker_creation_queue stayed busy for 15 seconds; nothing was changed, re-run
+    the migration job`;
+  - `V22: workflow_instance_steps stayed busy for 15 seconds; nothing was changed, re-run the migration job`;
+  - `canceling statement due to lock timeout`, from V21's plain lock or any other wait.
+
+  Re-run the failed release job. The dev direct path skips each service that already serves the new image, then runs
+  the failed service's job again, which starts at the version that failed. For prod, follow
+  [the release operator runbook](release-operator.md).
 - **A stop-and-name failure** is a data problem, and re-running alone fails again:
   - `V19: vendor selections that match no directory vendor: …` or `V21: vendor selections saved since V19 that match no
     directory vendor: …` names each order and selection. Decide with the owner which directory vendor each one means,
     then fix the rows. Silently dropping a selection is worse than a failed deploy.
   - `V17: NOTEBOOK_ORDER_TRACKER must have exactly steps 1-12 before codes are assigned` means the `workflow_steps` rows
     were edited by hand. Restore them.
-  - V22 stops and names each stage note it cannot copy, such as a note with no recorded author. Copy or discard each
-    one with the owner, then re-run.
+  - `V22: stage notes that are in no stage entry (no recorded author, so V20 and V21 did not copy them): instance <id>
+    (order <id>) step <n>; …` names each stage note it cannot copy. With the owner, copy each into
+    `workflow.workflow_internal_notes` with the author it should carry, or clear its `stage_note`, then re-run.
 
 ## Post-deploy checks
 
@@ -501,9 +554,11 @@ gcloud logging read "resource.type=\"cloud_run_revision\" AND resource.labels.se
 gcloud logging read "resource.type=\"cloudsql_database\" AND resource.labels.database_id=\"$P:custoking-db-$E\" AND (\"could not be queued for repair\" OR \"could not be copied to reporting\") AND timestamp>=\"$SINCE\"" --project=$P --limit=20 --format="value(timestamp,textPayload,jsonPayload.message)"
 ```
 
-- These are worth seeing, not failures: INFO `Order <id> was placed without an order number and is repaired: number
-  <n>` (school-core) while a revision that does not mint still serves, or after a legacy status update (see
-  [The creation queue](#the-creation-queue-since-catalog-v38)).
+- INFO `Order <id> was placed without an order number and is repaired: number <n>` (school-core) is expected while a
+  revision that does not mint still serves, and on the SOP release after a legacy status update (see
+  [The creation queue](#the-creation-queue-since-catalog-v38)). Once the contract release's mint fix serves on every
+  school-core revision, each such line names a placement path that still does not mint: report it. It is the only
+  lasting trace of a repair, and the final clean-up's pre-check reads it.
 - WARN `Tracker for order <id> not created on attempt <n>: <reason>` is expected in window 4, before SINCE.
 - Each service logs INFO `outbox.async.health` every minute. `jsonPayload.health.outbox` holds `pendingCount`,
   `deadLetterCount` and `oldestPendingAgeSeconds`. School-core's figure includes the creation queue, and operations'
@@ -570,6 +625,9 @@ SELECT to_regclass('catalog.notebook_tracker_creation_queue') AS old_queue,
            AS stage_note_columns;
 ```
 
+The contract release also brings the mint fix. Record `MINT_FIX_FROM` for the final clean-up's log read, as under
+*Record when the mint fix serves* in [What stays, and when it can go](#what-stays-and-when-it-can-go).
+
 ### Signed in as superadmin
 
 Sign in to the frontend as a superadmin. On dev, use a test account, and never write its credentials anywhere. If dev
@@ -596,8 +654,9 @@ To call an API path with the session, open the order's workflow, then use the br
    - `/dashboard?panel=nb-work&order=<orderNumber>` opens the order.
 4. **Another item gets its own template.** A new flier (FE) or certificate (CF) order opens with 9 steps on
    `FLIER_ORDER_WORKFLOW` or `GENERAL_ITEM_ORDER_WORKFLOW` (the view's `definitionId`).
-5. **The step reaches the order.** Complete step 1 of the notebook order: save the order folder link and tick the
-   checks. Within a minute the order's `status` moves from `ORDER_DETAILS` to `DESIGNING_ACTIVITY`
+5. **The step reaches the order.** Complete step 1 of the notebook order: save the School order PDF link and tick
+   "Introduction message sent in the school group" (`NOTEBOOK_ORDER_TRACKER.json`, step 1's `orderPdfLink` and
+   `introChecks`). Within a minute the order's `status` moves from `ORDER_DETAILS` to `DESIGNING_ACTIVITY`
    (`PRODUCTION_PLANNING` for a wholesale notebook). Its `workflowStep` reads `{"order": 2, …, "total": 12, "completed":
    1}`, and All orders shows the step.
 6. **Staff names resolve.** An order with assigned stages shows the assignee's and note authors' **names**, not "User
@@ -621,9 +680,12 @@ hold, and the seven signed-in checks pass. In prod, place orders only with the o
   - Superadmin, or one of the order's operators, can retry an open workflow order at once with `POST
     /api/v1/supply/orders/{orderId}/tracker/ensure`. It revives a dead-lettered row with fresh retries and keeps its
     `repair` flag.
-  - `ensure` refuses an order that is not on a workflow: `Only a placed order on an order workflow has one; this order
-    follows order approval`. A `repair` row's order can be one, because a flier the previous revision placed moves onto
-    its workflow only through the repair, and a tie never does. Revive such a row with SQL (below).
+  - `ensure` refuses an order that is not on a workflow, with 400 (`CatalogOrderFormService.ensureTracker`). For a
+    legacy (form v1) order it answers `This order uses the legacy form`. For a structured one it answers `Only a placed
+    order on an order workflow has one; this order follows order approval`. A `repair` row's order can be either. On
+    the SOP release the legacy status update leaves form v1 orders unnumbered, and the trigger queues them. A flier the
+    previous revision placed moves onto its workflow only through the repair, and a tie never does. Revive such a row
+    with SQL (below).
   - A creation that fails 48 times (about two days) is given up. School-core logs an ERROR with
     `event=tracker_creation_dead_lettered`, and the row counts in the outbox dead-letter alert.
 - **A status is not delivered.** The reason is in `workflow.workflow_tracker_status_outbox.last_error`.
@@ -795,13 +857,16 @@ it. The retired V36 tables stay too; school-core still reads them.
   - V40 locks the old queue and `catalog_orders` in ACCESS EXCLUSIVE mode with the `NOWAIT` loop. It moves any leftover
     row into the new queue under the bypass, then drops the table (the trigger goes with it), then the function. The
     function cannot be dropped while the trigger exists.
-  - V22 copies the last stage notes under the bypass, and stops, naming each note it cannot copy. It drops the trigger
-    before the columns, which cannot be dropped while the trigger exists.
+  - V22 first locks `workflow_instance_steps` in ACCESS EXCLUSIVE mode with the same `NOWAIT` loop, so nothing writes
+    a note between its copy and its check. It copies the last stage notes under the bypass, and stops, naming each
+    note it cannot copy. It drops the trigger before the columns, which cannot be dropped while the trigger exists.
   - A guard written without the bypass sees no rows, passes, and then drops data.
 - **Locks.** Dropping the old queue drops its foreign key into `catalog_orders`, which takes ACCESS EXCLUSIVE on
-  `catalog_orders`. While V40 holds it, order reads and writes wait. The `NOWAIT` loop never queues behind a reader, so
-  readers are not stalled while it retries, and it stops after about 15 seconds having changed nothing. V22 needs
-  ACCESS EXCLUSIVE on `workflow_instance_steps` to drop its trigger and columns; if it reports a lock timeout, re-run.
+  `catalog_orders`. While V40 holds it, order reads and writes wait. V22 needs ACCESS EXCLUSIVE on
+  `workflow_instance_steps`, which every workflow list and detail read touches. Both take their lock with the `NOWAIT`
+  loop, which never queues behind a reader, so readers are not stalled while it retries. Each stops after about 15
+  seconds with its own `stayed busy` message, having changed nothing; re-run the job
+  ([When a migration job fails](#when-a-migration-job-fails)).
 - **Safe on dev.** Every dev service serves the SOP release, so each previous revision during the contract release is
   an SOP one, which uses none of the three. On 2026-11-13 dev had 0 rows in the old queue and 0 non-blank stage notes.
   Confirm before the release, read-only:
@@ -827,8 +892,10 @@ it. The retired V36 tables stay too; school-core still reads them.
 
 - **Safe in prod's single job.** Prod's previous revisions are `main` or older, which predate the tracker. They have no
   `notebook_tracker_creation_queue` (catalog V28) and no `workflow_instance_steps` (workflow V8), and never call the
-  aliases. Both tables are created and dropped inside the same migration job, and `workflow_instance_steps` is still
-  empty when V22 runs.
+  aliases.
+  - `notebook_tracker_creation_queue` is created (V28) and dropped (V40) inside school-core's one migration job.
+  - `workflow_instance_steps` is created (V8) inside operations' one job, and is still empty when V22 drops its
+    `stage_note` columns. The table stays.
 - **Rollback floor.** After the contract release, dev's school-core and operations must not go back below the SOP
   release. A tracker-release school-core inserts into the dropped table inside the placing transaction, so every
   notebook placement fails. A tracker-release operations selects `stage_note`, so every workflow read fails. A one-step
@@ -843,8 +910,8 @@ it. The retired V36 tables stay too; school-core still reads them.
 
 The `repair` column stays as long as the code reads it. The placement trigger is load-bearing on dev today:
 
-- On the scratch database above, the legacy branch of `updateOrderStatus`, run verbatim as a request scoped to one
-  school, moved a FLEX draft out of DRAFT with no number.
+- On the scratch database above, the legacy branch of `updateOrderStatus`, its UPDATE run verbatim as
+  `ims_school_core_rt` in a request scoped to one school, moved a FLEX draft out of DRAFT with no number.
 - The trigger alone queued it, with `repair = true`, at commit.
 - The clean-up SQL this runbook carried before, which started with `DROP TRIGGER IF EXISTS
   trg_catalog_orders_queue_unnumbered_placement`, would have left such orders unnumbered for good. Do not use it.
@@ -858,7 +925,8 @@ The `repair` column stays as long as the code reads it. The placement trigger is
    release, never on `main`: prod's `gcloud deploy targets rollback` picks the last successful release, and dev moves to
    the immediately older revision. Migrations are shared, so merge the clean-up to `dev` only after condition 2 holds
    in prod. Merged earlier, it would reach prod in the same promotion as V38.
-4. The read-only pre-check below is clean in dev and in prod.
+4. The read-only pre-check below is clean in dev and in prod: both its SQL and its log reads. The log reads are what
+   show that no placement path still leaves DRAFT without a number.
 
 To see what serves in prod, check each service's traffic and its last rollout:
 
@@ -870,7 +938,30 @@ gcloud deploy rollouts list --delivery-pipeline=custoking-school-core-service-pr
 Run the same for `platform-service`. The release names are in the release run's `release-evidence-prod-<sha>`
 (`deployment.json`).
 
-**Pre-check** (read-only, in dev and again in prod):
+**Record when the mint fix serves.** The pre-check's log read needs `MINT_FIX_FROM`: the first time at which the mint
+fix serves on every school-core revision and the release's own repair rows have drained. Record it after the release
+that brings the mint fix (the contract release on dev; in prod, the release that carries it):
+
+1. Wait until the fix serves everywhere. On dev, that is when the new school-core revision is Ready (found as for
+   `SINCE`). In prod, it is when school-core's rollout completes. `main`'s placements during the canary log the repair
+   line legitimately, and are repaired within minutes.
+2. Then run pre-check query 2 until it returns no rows, and record that time (UTC) in the release notes.
+
+If it was not recorded, use school-core's Ready or rollout-completion time plus one hour. A line just after that may
+still be a release leftover whose repair kept failing: look its order up before acting on it.
+
+**Pre-check** (read-only, in dev and again in prod). It has two parts: SQL for what is queued now, and a log read for
+what was repaired before. The SQL alone cannot show that a placement path stopped skipping the number:
+
+- A repair row lasts about a minute. The next claim repairs the order and clears `repair`
+  (`NotebookTrackerCreationQueue.repair`). The row is then deleted, at once for an order on no workflow, or when its
+  workflow is created. So a path that skipped minting days before the pre-check leaves no row.
+- A row's `created_at` cannot date the placement either. The trigger's `ON CONFLICT (order_id) DO UPDATE SET repair =
+  true` keeps an existing row's older `created_at`.
+- The lasting trace of a repair is school-core's INFO line `Order <id> was placed without an order number and is
+  repaired: number <n>`. It is logged whenever a repair changes its order, by numbering it or moving it onto its
+  workflow (`NotebookTrackerCreationQueue.repair`). The trigger queues a repair only for an order that left DRAFT with
+  no number, so after the mint fix every such line names one.
 
 ```sql
 -- Read-only. Before the final clean-up, in dev and again in prod.
@@ -884,12 +975,10 @@ JOIN catalog.product_categories pc ON pc.code = co.category AND pc.order_code IS
 LEFT JOIN catalog.order_workflow_creation_queue q ON q.order_id = co.id
 WHERE co.status <> 'DRAFT' AND co.order_number IS NULL
 ORDER BY co.id;
--- 2. Repair rows still queued. A pending one is fine (the code keeps repairing); a dead-lettered one must be revived first.
---    Replace the timestamp with the moment the legacy mint fix began serving: a repair row queued after it means a
---    placement path that still does not mint, and the trigger must stay.
-SELECT order_id, attempts, next_attempt_at, dead_lettered_at, last_error, created_at,
-       created_at >= timestamptz '2026-11-20 00:00:00+00' AS queued_after_mint_fix
-FROM catalog.order_workflow_creation_queue WHERE repair ORDER BY created_at;
+-- 2. Repair rows still queued (expect none). A dead-lettered one must be revived first. A pending one is an order placed
+--    without a number moments ago, or a repair that keeps failing (see last_error). Neither is clean.
+SELECT order_id, attempts, next_attempt_at, dead_lettered_at, last_error
+FROM catalog.order_workflow_creation_queue WHERE repair ORDER BY order_id;
 -- 3. Reporting facts that lack a number their order has (expect 0).
 SELECT count(*) AS facts_missing_number FROM reporting.fact_catalog_order f
 JOIN catalog.catalog_orders co ON co.id = f.id
@@ -901,8 +990,35 @@ WHERE p.oid IN (to_regprocedure('catalog.queue_unnumbered_placement()'), to_regp
 COMMIT;
 ```
 
-Clean means: no rows from 1; no dead-lettered repair row and none queued after the mint fix in 2; 0 from 3; both
-bridges listed in 4.
+The log read. `MINT_FIX_FROM` is the time recorded after the release that brought the mint fix to that environment
+(see *Record when the mint fix serves*, above):
+
+```bash
+E=dev   # or prod
+P=custoking-$E
+MINT_FIX_FROM=2026-11-20T00:00:00Z   # replace with the recorded time (UTC)
+# How many days the _Default bucket keeps.
+gcloud logging buckets describe _Default --location=global --project=$P --format="value(retentionDays)"
+# Every repair since the mint fix served everywhere. Expect none.
+gcloud logging read "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"custoking-school-core-service-$E\" AND jsonPayload.message:\"was placed without an order number and is repaired\" AND timestamp>=\"$MINT_FIX_FROM\"" --project=$P --limit=50 --format="value(timestamp,resource.labels.revision_name,jsonPayload.message)"
+```
+
+- **Where the line is kept.** The line is INFO, so it lands only in the `_Default` bucket. The compliance sink keeps
+  only request logs, errors, and audit or security events (`deploy/gcp/observability/compliance_logging.tf`).
+- **How far back it reaches.** A new project's `_Default` keeps 30 days unless changed. The old `custoking` project's
+  was set to 7 to save cost (`docs/PLANNED-CHANGES-EXECUTION-2026-08-11.md:206`). The first command prints the real
+  figure. If `MINT_FIX_FROM` is older than that, the read covers only the retained days, and a line from before them is
+  gone. So run the read once per retention period from `MINT_FIX_FROM` until the clean-up ships (weekly if it keeps 7
+  days), and record each result with its window in the release notes. The pre-check counts as clean only when those
+  windows cover the whole time since `MINT_FIX_FROM`.
+- **What it cannot show.** It sees only placements that happened in its window. A path nobody used then is not
+  covered. For the legacy status update, the evidence is the contract release's own test
+  (`ProductOrderWorkflowIntegrationTest.aLegacyStatusOverrideOutOfDraftMintsTheNumberInThatTransaction`, `b2186ea9`).
+
+Clean means: no rows from 1 or 2; 0 from 3; both bridges listed in 4; and no line from the log reads, whose windows
+together cover the time since `MINT_FIX_FROM`. Each line names an order placed without a number after the mint fix
+served. Find the path that placed it, from the order's request logs just before the line, and keep the trigger until
+that path mints.
 
 **The migrations.** These are migrations, not steps to run by hand. Each takes its own lock with the `NOWAIT` loop, as
 V38 does: Flyway commits every version separately, so no earlier version's lock is still held. Each sweeps under the
@@ -988,6 +1104,9 @@ Evidence from the scratch database of 2026-11-13 (the migrations as V41 and V37)
 - The sweep queued both placed, unnumbered orders (a flier and a tie) for repair, and the trigger and function were
   gone.
 - The reporting migration filled the one fact that lacked its number, then dropped its trigger and function.
+- On 2026-11-14 both ran again, after the contract release's real V40 and V22. The catalog one's sweep reached the
+  three placed, unnumbered orders, each already queued for repair (`INSERT 0 3`). The reporting one filled the one
+  fact. Pre-check query 4 then listed neither pair.
 
 ## Production
 
@@ -1094,6 +1213,9 @@ release. Follow [the release operator runbook](release-operator.md) and do the f
 
    `UPDATE 0` with rows still waiting means the bypass was not on. A dead-lettered row is left alone; revive it as
    under [When it fails](#when-it-fails).
+4. If the release carries the contract release's mint fix, record `MINT_FIX_FROM` once school-core's rollout has
+   completed, as under *Record when the mint fix serves* in
+   [What stays, and when it can go](#what-stays-and-when-it-can-go). The final clean-up's log read starts there.
 
 ## Rollback
 
