@@ -267,12 +267,21 @@ readable/writable by `app_rt`. Use the existing role script against `custoking-d
 # Set the appuser password Cloud SQL expects, then run scripts/create-app-rt-role.sql as appuser.
 # Reuse the in-VPC one-off Cloud Run Job psql pattern (postgres:16-alpine) against the env instance,
 # passing PGHOST=<private IP of custoking-db-$ENV>, PGUSER=appuser, PGDATABASE=custoking_$ENV.
-# The script CREATEs app_rt, GRANTs USAGE+DML on all 12 schemas, and sets ALTER DEFAULT PRIVILEGES
-# FOR ROLE appuser so future tables auto-grant to app_rt.  Verify with scripts/audit-app-rt-privileges.sql.
+# The script CREATEs app_rt, GRANTs USAGE+DML on the 12 schemas that exist (minus its narrowing list), and
+# sets ALTER DEFAULT PRIVILEGES FOR ROLE appuser in them so future tables auto-grant to app_rt.
+# Verify with scripts/audit-app-rt-privileges.sql.
 ```
 
-> **Ordering matters:** run 1.3 *before* the first service deploy so `app_rt` and the default
-> privileges exist when Flyway (as `appuser`) creates the schemas and tables.
+> **Ordering matters:** run 1.3 *before* the first service deploy so `app_rt` exists when Flyway
+> (as `appuser`) creates the schemas and tables.
+>
+> **And run it again after the first deploy.** On a database with no service schemas yet, the script
+> creates the role but sets no default privileges and grants nothing (each grant joins `pg_namespace`), so
+> `app_rt` holds only what the migrations grant it by name. The second run grants the rest. Since 2026-11-14 it
+> grants exactly what an environment whose schemas existed first ends with: the narrowing list is kept,
+> and `student.students` gets INSERT on every column but `erasure_incarnation`
+> (`test_a_build_that_ran_the_script_before_any_schema_existed_ends_in_the_same_acls` in
+> `scripts/tests/create_app_rt_role_migrated_test.py`). See `docs/MICROSERVICE-APP-RT-PROVISIONING-RUNBOOK.md`.
 
 **1.4 Pub/Sub topics** — one per env (subscriptions come after first deploy, in Phase 3):
 

@@ -146,7 +146,10 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-local-dev.ps1 -ComposePro
 ```
 
 When a compose profile is started, the setup script also runs `ensure-app-rt-local.ps1`
-after migrations so the local runtime DB role has schema/table/sequence grants.
+after migrations so the local runtime DB role has schema/table/sequence grants. It runs
+`scripts/create-app-rt-role.sql`, which never undoes a narrowing a migration made, even when it
+runs while the services are still migrating (its narrowing list; see
+`docs/MICROSERVICE-APP-RT-PROVISIONING-RUNBOOK.md`).
 
 For a laptop that already has stale Custoking containers or an old local database volume,
 reset the local compose state first:
