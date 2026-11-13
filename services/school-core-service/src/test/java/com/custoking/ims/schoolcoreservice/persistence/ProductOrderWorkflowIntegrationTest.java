@@ -291,8 +291,9 @@ class ProductOrderWorkflowIntegrationTest {
      * prod beside this one through the canary. That revision places orders without a number, and places a flier on approve,
      * quote and deliver. Its placement is queued for repair when it commits; the next drain numbers the order by its
      * placement, moves an open flier onto its template as V38 moved the open ones, tells reporting, and creates the workflow.
-     * An order on no workflow only gets its number. The previous revision's notebook, which it queued itself, lands in the
-     * new queue and is created here, with its number, under its own template.
+     * An order on no workflow only gets its number. A notebook placed tracker-managed without a number (as the notebook
+     * tracker's revision placed it) is created here, with its number, under its own template. Catalog V40 dropped the old
+     * queue that revision also wrote, so its forwarding is covered at catalog V39 by ItemOrderNumberMigrationTest.
      */
     @Test
     void anOrderThePreviousRevisionPlacedIsNumberedMovedOntoItsWorkflowAndCreated() {
@@ -309,14 +310,10 @@ class ProductOrderWorkflowIntegrationTest {
                     pricing_status = 'NOT_APPLICABLE', attributes = attributes || jsonb_build_object('trackerManaged', true, 'trackerPending', true)
                 WHERE id = :id
                 """).param("id", notebook).update();
-        owner.sql("""
-                INSERT INTO catalog.notebook_tracker_creation_queue (order_id, school_id) VALUES (:id, 1)
-                ON CONFLICT (order_id) DO UPDATE SET next_attempt_at = now(), attempts = 0, dead_lettered_at = NULL
-                """).param("id", notebook).update();
-        assertThat(owner.sql("SELECT count(*) FROM catalog.notebook_tracker_creation_queue").query(Long.class).single())
-                .as("forwarded: the previous revision's drain finds nothing").isZero();
+        assertThat(owner.sql("SELECT to_regclass('catalog.notebook_tracker_creation_queue') IS NULL").query(Boolean.class).single())
+                .as("catalog V40 dropped the old queue").isTrue();
         assertThat(owner.sql("SELECT order_id FROM catalog.order_workflow_creation_queue WHERE repair ORDER BY order_id").query(String.class).list())
-                .containsExactlyInAnyOrder(flier, tie, notebook);
+                .as("V38's placement trigger, which V40 keeps, queued each for repair").containsExactlyInAnyOrder(flier, tie, notebook);
         owner.sql("DELETE FROM tenant_school.outbox_events").update();
 
         assertThat(queue.drain(10)).as("the flier and the notebook; the tie runs on no workflow").isEqualTo(2);
