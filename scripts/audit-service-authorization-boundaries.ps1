@@ -68,14 +68,19 @@ $iamOnlyControllerContracts["services/school-core-service/src/main/java/com/cust
     GatewayRoute = "/api/v1/internal/identity-directory"; CallerEnv = "IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS"; DirectoryPeer = $true; Scheduler = $false
 }
 
-# Notebook order tracker peer calls (spec 3.1): seven exact routes, each its own contract with its caller allow-list.
+# Order workflow peer calls (notebook tracker spec 3.1; item order workflows design 3.5): exact routes, each its own
+# contract with its caller allow-list. The notebook-tracker paths are one-release aliases of the order-workflow paths.
 # A controller that serves several routes lists one contract per route; together they must account for every mapping.
 # Route is the exact text MachineCallerFilter registers (path.equals for a literal, path.matches for a regex). A regex
 # can never appear verbatim in a gateway file, so a regex Route also names the literal GatewayRoute prefix to keep out.
-$iamOnlyControllerContracts["services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/NotebookTrackerMachineController.java"] = @(
-    @{ MethodMappings = @('@PostMapping("")'); Route = "/api/v1/internal/notebook-trackers"; Service = "operations-service"
+$iamOnlyControllerContracts["services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/OrderWorkflowMachineController.java"] = @(
+    @{ MethodMappings = @('@PostMapping("/order-workflows")'); Route = "/api/v1/internal/order-workflows"; Service = "operations-service"
        CallerEnv = "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false },
-    @{ MethodMappings = @('@PostMapping("/{orderId}/image-access")'); Route = '/api/v1/internal/notebook-trackers/[A-Za-z0-9_-]{1,255}/image-access'; Service = "operations-service"
+    @{ MethodMappings = @('@PostMapping("/order-workflows/{orderId}/design-file-access")'); Route = '/api/v1/internal/order-workflows/[A-Za-z0-9_-]{1,255}/design-file-access'; Service = "operations-service"
+       GatewayRoute = "/api/v1/internal/order-workflows"; CallerEnv = "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false },
+    @{ MethodMappings = @('@PostMapping("/notebook-trackers")'); Route = "/api/v1/internal/notebook-trackers"; Service = "operations-service"
+       CallerEnv = "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false },
+    @{ MethodMappings = @('@PostMapping("/notebook-trackers/{orderId}/image-access")'); Route = '/api/v1/internal/notebook-trackers/[A-Za-z0-9_-]{1,255}/image-access'; Service = "operations-service"
        GatewayRoute = "/api/v1/internal/notebook-trackers"; CallerEnv = "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS"; Scheduler = $false }
 )
 $iamOnlyControllerContracts["services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/CatalogTrackerMachineController.java"] = @(

@@ -58,6 +58,105 @@
           }
         }
       }
+    },
+    "/api/v1/schools": {
+      "post": {
+        "operationId": "createSchool",
+        "summary": "Superadmin: onboard a school, with an optional order code (derived when blank)",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/schools/{id}": {
+      "patch": {
+        "operationId": "updateSchool",
+        "summary": "Superadmin: change a school, including its order code",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SchoolUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchoolDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -106,12 +205,407 @@
               "string",
               "null"
             ]
+          },
+          "orderCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "School order code, <Initials>_<Location> (e.g. DPS_GUR), used in order numbers"
           }
         },
         "required": [
           "id",
           "name"
         ]
+      },
+      "PhotoImportProvisioning": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schoolId",
+          "schoolUid",
+          "schoolName",
+          "shortCode",
+          "academicYearId",
+          "academicYearLabel",
+          "status",
+          "folderId",
+          "folderName",
+          "folderUrl",
+          "error"
+        ],
+        "properties": {
+          "schoolId": {
+            "type": "integer"
+          },
+          "schoolUid": {
+            "type": "string"
+          },
+          "schoolName": {
+            "type": "string"
+          },
+          "shortCode": {
+            "type": "string"
+          },
+          "academicYearId": {
+            "type": "string"
+          },
+          "academicYearLabel": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "folderId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "folderName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "folderUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/photoimport/DriveFolderProvisioningService.java",
+          "name": "ProvisioningResult",
+          "requireAll": true
+        }
+      },
+      "SchoolDetails": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "A school as school-core returns it after a create or an update (SchoolStructureReadRepository.schoolDetails).",
+        "required": [
+          "id",
+          "schoolUid",
+          "name",
+          "shortCode",
+          "orderCode",
+          "city",
+          "state",
+          "active",
+          "configuredClassCount",
+          "configuredSectionCount",
+          "academicYearStartMonth",
+          "financialYearStartMonth",
+          "timeZone",
+          "countryCode",
+          "locale",
+          "currencyCode",
+          "phoneRegion"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "schoolUid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "shortCode": {
+            "type": "string"
+          },
+          "orderCode": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{2,8}_[A-Z0-9]{2,6}$",
+            "description": "Used in order numbers like NB-DPS_GUR-26-11-13-0001; a change affects only new orders"
+          },
+          "city": {
+            "type": "string",
+            "description": "Empty when none"
+          },
+          "state": {
+            "type": "string",
+            "description": "Empty when none"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "configuredClassCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "configuredSectionCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "academicYearStartMonth": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "financialYearStartMonth": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "timeZone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "IANA zone; order-number dates and deadlines use it"
+          },
+          "countryCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "locale": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "currencyCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phoneRegion": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photoImportFolder": {
+            "$ref": "#/components/schemas/PhotoImportProvisioning",
+            "description": "Create only: the school's Drive photo-import folder"
+          }
+        }
+      },
+      "SchoolCreateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Superadmin onboarding. Omitted settings take the India defaults.",
+        "required": [
+          "name",
+          "shortCode"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "shortCode": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique; upper-cased; fixed once created"
+          },
+          "orderCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 16,
+            "description": "<Initials>_<Location>, upper-cased and unique. Omitted, null or blank: derived from the name and city (D12), with a 2-9 suffix on a collision"
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contactEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contactPhone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "classCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "sectionCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 26
+          },
+          "academicYearStartMonth": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 12
+          },
+          "financialYearStartMonth": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 12
+          },
+          "timeZone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "IANA zone"
+          },
+          "countryCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2"
+          },
+          "locale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "BCP 47, e.g. en-IN"
+          },
+          "currencyCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 4217, e.g. INR"
+          },
+          "phoneRegion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2"
+          }
+        }
+      },
+      "SchoolUpdateRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Superadmin edit: only the fields sent change.",
+        "required": [],
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Omitted, null or blank keeps the name"
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Omitted keeps the city; null or blank clears it"
+          },
+          "orderCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 16,
+            "description": "Omitted, null or blank keeps the code. Upper-cased, validated against <Initials>_<Location> and unique (409 when taken); numbers already minted never change"
+          },
+          "academicYearStartMonth": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 12
+          },
+          "financialYearStartMonth": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 12
+          },
+          "timeZone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "IANA zone"
+          },
+          "countryCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2"
+          },
+          "locale": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "BCP 47, e.g. en-IN"
+          },
+          "currencyCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 4217, e.g. INR"
+          },
+          "phoneRegion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2"
+          },
+          "active": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
       }
     }
   }

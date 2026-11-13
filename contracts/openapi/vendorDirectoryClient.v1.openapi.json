@@ -1,0 +1,573 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking vendor directory",
+    "version": "1.0.0",
+    "description": "The 18 SOP vendor categories and their vendors (D31-D33). Global: not per school. A schema with x-ims-java-record names the Java record that serializes or binds it (source file and record name, nested records by their simple name). Its properties are listed in record-component order and must stay so; a nullable property is a Java reference type, an enum property a Java enum or a String holding one of the listed values. The generator refuses a schema whose record components drift."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "operations-service",
+  "x-ims-gateway-service": "workflow",
+  "x-ims-controller": "VendorDirectoryController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "VendorDirectoryClient",
+  "x-ims-client-file": "vendorDirectoryClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/workflows/vendor-categories": {
+      "get": {
+        "operationId": "listVendorCategories",
+        "summary": "Every category in sort order (inactive ones included)",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VendorCategoryView"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid vendor or category (INVALID_INVITE: \"Paste a WhatsApp group invite link (https://chat.whatsapp.com/…)\")"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Writes are superadmin only; reads need notebook-tracker:read"
+          },
+          "404": {
+            "description": "Unknown vendor or category"
+          },
+          "409": {
+            "description": "Duplicate vendor or a concurrent change"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/vendor-categories/{code}": {
+      "put": {
+        "operationId": "updateVendorCategory",
+        "summary": "Superadmin: rename, reorder, deactivate or activate",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{1,39}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VendorCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorCategoryView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid vendor or category (INVALID_INVITE: \"Paste a WhatsApp group invite link (https://chat.whatsapp.com/…)\")"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Writes are superadmin only; reads need notebook-tracker:read"
+          },
+          "404": {
+            "description": "Unknown vendor or category"
+          },
+          "409": {
+            "description": "Duplicate vendor or a concurrent change"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/vendors": {
+      "get": {
+        "operationId": "listVendors",
+        "summary": "Vendors by name; operators see active vendors only",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Only vendors in this category",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{1,39}$"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Case-insensitive substring of name, contact person, phone or city",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "required": false,
+            "description": "Superadmin only; operators always get active vendors",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VendorView"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid vendor or category (INVALID_INVITE: \"Paste a WhatsApp group invite link (https://chat.whatsapp.com/…)\")"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Writes are superadmin only; reads need notebook-tracker:read"
+          },
+          "404": {
+            "description": "Unknown vendor or category"
+          },
+          "409": {
+            "description": "Duplicate vendor or a concurrent change"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createVendor",
+        "summary": "Superadmin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VendorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid vendor or category (INVALID_INVITE: \"Paste a WhatsApp group invite link (https://chat.whatsapp.com/…)\")"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Writes are superadmin only; reads need notebook-tracker:read"
+          },
+          "404": {
+            "description": "Unknown vendor or category"
+          },
+          "409": {
+            "description": "Duplicate vendor or a concurrent change"
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/vendors/{id}": {
+      "put": {
+        "operationId": "updateVendor",
+        "summary": "Superadmin: replaces every field; deactivating keeps existing order selections (\"Inactive\")",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VendorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid vendor or category (INVALID_INVITE: \"Paste a WhatsApp group invite link (https://chat.whatsapp.com/…)\")"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Writes are superadmin only; reads need notebook-tracker:read"
+          },
+          "404": {
+            "description": "Unknown vendor or category"
+          },
+          "409": {
+            "description": "Duplicate vendor or a concurrent change"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "VendorCategoryView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "name",
+          "sortOrder",
+          "active",
+          "vendorCount",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{1,39}$"
+          },
+          "name": {
+            "type": "string",
+            "description": "SOP name; superadmin may rename it"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "vendorCount": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Active vendors in this category"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/VendorDirectoryService.java",
+          "name": "VendorCategoryView",
+          "requireAll": true
+        }
+      },
+      "VendorCategoryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100,
+            "description": "Null keeps the name; at most 100 characters"
+          },
+          "active": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Null keeps the state"
+          },
+          "sortOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Null keeps the position"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/VendorDirectoryController.java",
+          "name": "VendorCategoryRequest",
+          "requireAll": false
+        }
+      },
+      "VendorView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "categories",
+          "contactPerson",
+          "phone",
+          "altPhone",
+          "email",
+          "city",
+          "whatsappGroupUrl",
+          "notes",
+          "sample",
+          "active",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{1,39}$"
+            }
+          },
+          "contactPerson": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Null only on sample vendors"
+          },
+          "altPhone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "whatsappGroupUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "https://chat.whatsapp.com/<10-64 characters>"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "At most 500 characters"
+          },
+          "sample": {
+            "type": "boolean",
+            "description": "Seeded prototype vendor (\"Sample\")"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Null on seeded rows"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/VendorDirectoryService.java",
+          "name": "VendorView",
+          "requireAll": true
+        }
+      },
+      "VendorRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "categories"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Not blank; at most 200 characters"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{1,39}$"
+            },
+            "minItems": 1,
+            "description": "At least one category code"
+          },
+          "contactPerson": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32,
+            "description": "Required (sample vendors excepted); at most 32 characters"
+          },
+          "altPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 254
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 100
+          },
+          "whatsappGroupUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2048,
+            "description": "https://chat.whatsapp.com/<10-64 characters>"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 500,
+            "description": "At most 500 characters"
+          },
+          "active": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Omitted or null keeps it active"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/VendorDirectoryController.java",
+          "name": "VendorRequest",
+          "requireAll": false
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,5292 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking item order workflows",
+    "version": "1.0.0",
+    "description": "One workflow engine for every item (design: docs/product/item-order-workflows-sop-v1.md section 3.5). A schema with x-ims-java-record names the Java record that serializes or binds it (source file and record name, nested records by their simple name). Its properties are listed in record-component order and must stay so; a nullable property is a Java reference type, an enum property a Java enum or a String holding one of the listed values. The generator refuses a schema whose record components drift."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "operations-service",
+  "x-ims-gateway-service": "workflow",
+  "x-ims-controller": "OrderWorkflowController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "OrderWorkflowClient",
+  "x-ims-client-file": "orderWorkflowClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/workflows/item-orders": {
+      "get": {
+        "operationId": "listOrderWorkflows",
+        "summary": "Order workflow list and board (superadmin, or operators with notebook-tracker:read in their school and item scope)",
+        "parameters": [
+          {
+            "name": "item",
+            "in": "query",
+            "required": false,
+            "description": "Comma-separated item codes, e.g. NB,FE; omitted means every item",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{2,4}(,[A-Z]{2,4})*$",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "step",
+            "in": "query",
+            "required": false,
+            "description": "Current step code",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+            }
+          },
+          {
+            "name": "phase",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "INTAKE",
+                "PLANNING",
+                "PRODUCTION",
+                "VERIFICATION",
+                "DELIVERY"
+              ]
+            }
+          },
+          {
+            "name": "assignee",
+            "in": "query",
+            "required": false,
+            "description": "me, unassigned, or a user id (superadmin)",
+            "schema": {
+              "type": "string",
+              "pattern": "^(me|unassigned|[1-9][0-9]{0,18})$"
+            }
+          },
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "sla",
+            "in": "query",
+            "required": false,
+            "description": "The active step's SLA state (SlaState), or DUE_TODAY: due on today's date in the school's time zone, overdue or not (the dueToday count)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "OVERDUE",
+                "DUE_SOON",
+                "ON_TRACK",
+                "NO_TIMER",
+                "DUE_TODAY"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Case-insensitive substring of the order number, CK id or school name",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "includeFinished",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "due (default; overdue first), placed (newest first) or number",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "due",
+                "placed",
+                "number"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Default 50",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/templates": {
+      "get": {
+        "operationId": "listWorkflowTemplates",
+        "summary": "Every template with its current default SLAs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkflowTemplate"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/templates/{definitionId}": {
+      "get": {
+        "operationId": "getWorkflowTemplate",
+        "summary": "One template (section 3.3) with its current default SLAs",
+        "parameters": [
+          {
+            "name": "definitionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NOTEBOOK_ORDER_TRACKER",
+                "FLIER_ORDER_WORKFLOW",
+                "FLEX_ORDER_WORKFLOW",
+                "BILL_BOOK_ORDER_WORKFLOW",
+                "GENERAL_ITEM_ORDER_WORKFLOW"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/templates/{definitionId}/steps/{step}/sla": {
+      "put": {
+        "operationId": "setTemplateStepSla",
+        "summary": "Superadmin: change a template step's default SLA; applies to stages that start afterwards",
+        "parameters": [
+          {
+            "name": "definitionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NOTEBOOK_ORDER_TRACKER",
+                "FLIER_ORDER_WORKFLOW",
+                "FLEX_ORDER_WORKFLOW",
+                "BILL_BOOK_ORDER_WORKFLOW",
+                "GENERAL_ITEM_ORDER_WORKFLOW"
+              ]
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "description": "The step's order within its template",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowTemplate"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}": {
+      "get": {
+        "operationId": "getOrderWorkflow",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/steps/{step}/data": {
+      "put": {
+        "operationId": "saveStepData",
+        "summary": "Partial save of a step's fields and checklists (the ACTIVE step by its assignee or superadmin; COMPLETED steps by superadmin)",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "description": "The step's order within its template",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StepDataRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/steps/{step}/complete": {
+      "post": {
+        "operationId": "completeStep",
+        "summary": "Complete the active step; 409 GATE_UNMET lists every unmet requirement",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "description": "The step's order within its template",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StepVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/steps/{step}/reopen": {
+      "post": {
+        "operationId": "reopenStep",
+        "summary": "Superadmin: reopen a completed step (also \"Send back to Designing Activity\"); later steps lock, data is kept",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "description": "The step's order within its template",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StepReopenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/steps/{step}/sign-off": {
+      "post": {
+        "operationId": "signOffStep",
+        "summary": "Superadmin: record the step template's sign-off (QC reviewer, internal approval, consignment)",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "description": "The step's order within its template",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StepVersionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/head-approval/approve": {
+      "post": {
+        "operationId": "approveDesign",
+        "summary": "Superadmin: approve the CDR link saved in CDR Conversion, with a required comment",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadApprovalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/head-approval/request-changes": {
+      "post": {
+        "operationId": "requestDesignChanges",
+        "summary": "Superadmin: request changes, which reopens Designing Activity",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeadApprovalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/steps/{step}/assignee": {
+      "put": {
+        "operationId": "assignStep",
+        "summary": "Superadmin: assign one step that is not completed",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "description": "The step's order within its template",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssigneeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/assignee": {
+      "put": {
+        "operationId": "assignOrder",
+        "summary": "Superadmin: assign every open step of the order",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssigneeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/claim": {
+      "post": {
+        "operationId": "claimOrder",
+        "summary": "An eligible operator takes an unassigned order (\"Take this order\")",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/vendor-selections": {
+      "put": {
+        "operationId": "setVendorSelections",
+        "summary": "Production Planning assignee while it is active, or superadmin",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VendorSelectionsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/designer": {
+      "put": {
+        "operationId": "setDesigner",
+        "summary": "Current-step assignee or superadmin",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignerChoiceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/contacts": {
+      "put": {
+        "operationId": "setContacts",
+        "summary": "Current-step assignee or superadmin",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderContactsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/notes": {
+      "post": {
+        "operationId": "addNote",
+        "summary": "Append a stage note (with stepOrder) or an internal note; anyone who can work the order",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderNoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoteEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/calls": {
+      "get": {
+        "operationId": "listCalls",
+        "x-ims-controller": "OrderCallLogController",
+        "summary": "The order's call log, newest first",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Default 100",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CallLogEntry"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "logCall",
+        "x-ims-controller": "OrderCallLogController",
+        "summary": "Append a call; anyone who can work the order",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CallLogRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallLogEntry"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/activity": {
+      "get": {
+        "operationId": "getOrderActivity",
+        "x-ims-controller": "OrderActivityController",
+        "summary": "Merged timeline of actions, notes, calls and legacy follow-ups, newest first",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "description": "Only entries strictly older than this (the previous page's nextBefore)",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Default 50",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "step",
+            "in": "query",
+            "required": false,
+            "description": "Only this stage's entries",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/whatsapp-groups": {
+      "get": {
+        "operationId": "getOrderWhatsAppGroups",
+        "x-ims-controller": "WorkflowSettingsController",
+        "summary": "Resolved groups: school (item -> school -> none), internal approval (school -> global) and selected vendors",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedGroups"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/item-orders/{orderId}/whatsapp-groups/school": {
+      "put": {
+        "operationId": "setOrderSchoolGroup",
+        "x-ims-controller": "WorkflowSettingsController",
+        "summary": "Set or clear the item-level school group link (current-step assignee or superadmin)",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "description": "The order's CK id (never the order number)",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255,
+              "pattern": "^[A-Za-z0-9_-]{1,255}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedGroups"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/settings/internal-approval-group": {
+      "get": {
+        "operationId": "getInternalApprovalGroup",
+        "x-ims-controller": "WorkflowSettingsController",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalApprovalGroupView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "setInternalApprovalGroup",
+        "x-ims-controller": "WorkflowSettingsController",
+        "summary": "Superadmin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalApprovalGroupView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/designers": {
+      "get": {
+        "operationId": "listDesigners",
+        "summary": "Operators see active designers only",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DesignerRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDesigner",
+        "summary": "Superadmin",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignerRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/designers/{id}": {
+      "put": {
+        "operationId": "updateDesigner",
+        "summary": "Superadmin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DesignerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DesignerRow"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/time-slots/{schoolId}": {
+      "get": {
+        "operationId": "listTimeSlots",
+        "summary": "Per-school SLA of every step of one template",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "definitionId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NOTEBOOK_ORDER_TRACKER",
+                "FLIER_ORDER_WORKFLOW",
+                "FLEX_ORDER_WORKFLOW",
+                "BILL_BOOK_ORDER_WORKFLOW",
+                "GENERAL_ITEM_ORDER_WORKFLOW"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeSlotRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/time-slots/{schoolId}/{definitionId}/{step}": {
+      "put": {
+        "operationId": "setTimeSlot",
+        "summary": "Superadmin: a school override; both null means no timer",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "definitionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NOTEBOOK_ORDER_TRACKER",
+                "FLIER_ORDER_WORKFLOW",
+                "FLEX_ORDER_WORKFLOW",
+                "BILL_BOOK_ORDER_WORKFLOW",
+                "GENERAL_ITEM_ORDER_WORKFLOW"
+              ]
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "description": "The step's order within its template",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SlaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "clearTimeSlot",
+        "summary": "Superadmin: drop the school override (\"Use default\")",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "definitionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NOTEBOOK_ORDER_TRACKER",
+                "FLIER_ORDER_WORKFLOW",
+                "FLEX_ORDER_WORKFLOW",
+                "BILL_BOOK_ORDER_WORKFLOW",
+                "GENERAL_ITEM_ORDER_WORKFLOW"
+              ]
+            }
+          },
+          {
+            "name": "step",
+            "in": "path",
+            "required": true,
+            "description": "The step's order within its template",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 99
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done"
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/school-whatsapp-groups/{schoolId}": {
+      "get": {
+        "operationId": "getSchoolWhatsAppGroupLinks",
+        "x-ims-controller": "SchoolWhatsAppGroupController",
+        "summary": "The school's group links as target -> invite URL (SCHOOL_GROUP, INTERNAL_APPROVAL)",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/school-whatsapp-groups/{schoolId}/{target}": {
+      "put": {
+        "operationId": "saveSchoolWhatsAppGroupLink",
+        "x-ims-controller": "SchoolWhatsAppGroupController",
+        "summary": "Superadmin: set or (blank url) remove one of the school's group links",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "target",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SCHOOL_GROUP",
+                "INTERNAL_APPROVAL"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppGroupLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request (INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, or a plain message); the message says what to change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller may not do this: SUPERADMIN_ONLY, NOT_ASSIGNEE, or outside the caller's school and item scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, or not visible to the caller"
+          },
+          "409": {
+            "description": "A workflow rule or a stale expectedVersion refused it. GATE_UNMET carries every unmet requirement in unmet[]; others: STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, STEP_NOT_ON_PATH, HEAD_APPROVAL_STALE, ALREADY_ASSIGNED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "OrderWorkflowError": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "The body of a refused request. Plain refusals carry only message.",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable code: GATE_UNMET, STEP_NOT_EDITABLE, STEP_NOT_ACTIVE, HEAD_APPROVAL_STALE, NOT_ASSIGNEE, SUPERADMIN_ONLY, INVALID_STEP_DATA, NOTE_TOO_LONG, INVALID_INVITE, ..."
+          },
+          "message": {
+            "type": "string",
+            "description": "A sentence for the user"
+          },
+          "unmet": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GateFailure"
+            },
+            "description": "Present with GATE_UNMET: every requirement still missing"
+          }
+        }
+      },
+      "WorkflowDefinitionId": {
+        "type": "string",
+        "enum": [
+          "NOTEBOOK_ORDER_TRACKER",
+          "FLIER_ORDER_WORKFLOW",
+          "FLEX_ORDER_WORKFLOW",
+          "BILL_BOOK_ORDER_WORKFLOW",
+          "GENERAL_ITEM_ORDER_WORKFLOW"
+        ],
+        "description": "The five order-workflow templates (catalog.product_categories.workflow_definition)"
+      },
+      "Phase": {
+        "type": "string",
+        "enum": [
+          "INTAKE",
+          "PLANNING",
+          "PRODUCTION",
+          "VERIFICATION",
+          "DELIVERY"
+        ],
+        "description": "Board column / stage group: Intake & design, Planning, Production, Verification, Delivery"
+      },
+      "StepStatus": {
+        "type": "string",
+        "enum": [
+          "LOCKED",
+          "ACTIVE",
+          "COMPLETED"
+        ]
+      },
+      "SlaState": {
+        "type": "string",
+        "enum": [
+          "OVERDUE",
+          "DUE_SOON",
+          "ON_TRACK",
+          "NO_TIMER"
+        ],
+        "description": "OVERDUE: past due; DUE_SOON: due within 4 hours; ON_TRACK: has a deadline further away; NO_TIMER: no deadline (no SLA, or finished)"
+      },
+      "Tab": {
+        "type": "string",
+        "enum": [
+          "WORK",
+          "SCHOOL_VENDOR",
+          "CHECKLIST",
+          "ACTIVITY"
+        ],
+        "description": "Stage tabs: Work area, School & vendor, Checklist, Activity history"
+      },
+      "BlockType": {
+        "type": "string",
+        "enum": [
+          "ORDER_PDF_LINK",
+          "INTRO_MESSAGE",
+          "SCHOOL_GROUP",
+          "DESIGN_FILES",
+          "FIELDS",
+          "CHECKLIST",
+          "CDR_FOR_APPROVAL",
+          "HEAD_APPROVAL",
+          "ORDER_FOLDER",
+          "TITLE_CARD_QUANTITIES",
+          "SAVED_TITLE_CARDS",
+          "ITEM_QUANTITIES",
+          "VENDOR_DIRECTORY",
+          "VENDOR_SELECTION",
+          "VENDOR_GROUPS",
+          "INTERNAL_APPROVAL_GROUP",
+          "SIGN_OFF",
+          "SEND_BACK",
+          "LEGACY_DETAILS"
+        ],
+        "description": "Closed set of stage cards (section 3.3)"
+      },
+      "FieldKind": {
+        "type": "string",
+        "enum": [
+          "TEXT",
+          "WORDS",
+          "URL",
+          "DATE",
+          "WHOLE",
+          "NUMBER",
+          "CHOICE"
+        ],
+        "description": "TEXT (max characters), WORDS (max words, 4,000-character cap), URL (https only, <= 1,000), DATE (yyyy-mm-dd), WHOLE (integer), NUMBER, CHOICE"
+      },
+      "GateType": {
+        "type": "string",
+        "enum": [
+          "FIELDS_PRESENT",
+          "ALL_CHECKED",
+          "CHOICE_IN",
+          "DESIGN_FILES_PRESENT",
+          "VENDORS_SELECTED",
+          "HEAD_APPROVED",
+          "SIGNED_OFF",
+          "COUNTS_CONSISTENT"
+        ],
+        "description": "Closed set of completion rules (D19)"
+      },
+      "CallContacted": {
+        "type": "string",
+        "enum": [
+          "SCHOOL",
+          "DESIGNER",
+          "PRINTING_PRESS",
+          "MANUFACTURING_FACTORY",
+          "INTERNAL_APPROVER"
+        ],
+        "description": "SOP call entities"
+      },
+      "CallOutcome": {
+        "type": "string",
+        "enum": [
+          "CONNECTED",
+          "NO_ANSWER",
+          "BUSY",
+          "CALLBACK_REQUESTED",
+          "DELAY_REPORTED",
+          "CHANGES_REQUESTED",
+          "APPROVAL_RECEIVED"
+        ],
+        "description": "SOP call outcomes"
+      },
+      "OrderWorkflowListItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "orderId",
+          "orderNumber",
+          "definitionId",
+          "categoryCode",
+          "itemCode",
+          "schoolId",
+          "schoolName",
+          "customised",
+          "orderedCount",
+          "placedAt",
+          "timeZone",
+          "status",
+          "phase",
+          "currentStep",
+          "currentTitle",
+          "assigneeUserId",
+          "assigneeName",
+          "dueAt",
+          "overdue",
+          "slaState",
+          "completed",
+          "total"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "description": "CK id; the key in every path"
+          },
+          "orderNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "SOP order number, e.g. NB-DPS_GUR-26-11-13-0042; null until school-core has minted it"
+          },
+          "definitionId": {
+            "type": "string",
+            "enum": [
+              "NOTEBOOK_ORDER_TRACKER",
+              "FLIER_ORDER_WORKFLOW",
+              "FLEX_ORDER_WORKFLOW",
+              "BILL_BOOK_ORDER_WORKFLOW",
+              "GENERAL_ITEM_ORDER_WORKFLOW"
+            ]
+          },
+          "categoryCode": {
+            "type": "string",
+            "description": "Catalog category, e.g. NOTEBOOKS, FLIERS"
+          },
+          "itemCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{2,4}$",
+            "description": "Item code, e.g. NB, FE, BBK"
+          },
+          "schoolId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "schoolName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customised": {
+            "type": "boolean",
+            "description": "False for a wholesale notebook order (Steps 2-4 skipped)"
+          },
+          "orderedCount": {
+            "type": "integer",
+            "description": "Total quantity ordered (sum of the placed lines)"
+          },
+          "placedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timeZone": {
+            "type": "string",
+            "description": "The school's IANA zone; deadlines and dates are shown in it"
+          },
+          "status": {
+            "type": "string",
+            "description": "Current step code, or COMPLETED"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "INTAKE",
+              "PLANNING",
+              "PRODUCTION",
+              "VERIFICATION",
+              "DELIVERY"
+            ],
+            "description": "Phase of the current step; the last step's phase once finished"
+          },
+          "currentStep": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Order of the active step; null once finished"
+          },
+          "currentTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "assigneeUserId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Assignee of the active step (the point of contact); null when unassigned or finished"
+          },
+          "assigneeName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Full name from identity; null when unknown"
+          },
+          "dueAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Deadline of the active step; null without a timer"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "slaState": {
+            "type": "string",
+            "enum": [
+              "OVERDUE",
+              "DUE_SOON",
+              "ON_TRACK",
+              "NO_TIMER"
+            ]
+          },
+          "completed": {
+            "type": "integer",
+            "description": "Completed steps"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Steps on this order's path (12, 9 for wholesale notebooks, or 9)"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "OrderWorkflowListItem",
+          "requireAll": true
+        }
+      },
+      "OrderWorkflowCounts": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Summary chips. Counted over every unfinished order in the caller's scope that matches the item and schoolId filters; the other filters and paging do not change them.",
+        "required": [
+          "open",
+          "overdue",
+          "dueToday",
+          "unassigned",
+          "mine"
+        ],
+        "properties": {
+          "open": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unfinished orders the caller may see"
+          },
+          "overdue": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dueToday": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Active step due today in the school's time zone, overdue or not; sla=DUE_TODAY lists them"
+          },
+          "unassigned": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "mine": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Active step assigned to the caller"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "OrderWorkflowCounts",
+          "requireAll": true
+        }
+      },
+      "OrderWorkflowPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "total",
+          "counts",
+          "now"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderWorkflowListItem"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Rows matching every filter, before paging"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/OrderWorkflowCounts"
+          },
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Server time, for clock-skew correction"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "OrderWorkflowPage",
+          "requireAll": true
+        }
+      },
+      "Sla": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "A time slot: 24/7 calendar hours, or Monday-Friday working days.",
+        "required": [
+          "value",
+          "unit"
+        ],
+        "properties": {
+          "value": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 1
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "HOURS",
+              "WORKING_DAYS"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/rules/Sla.java",
+          "name": "Sla",
+          "requireAll": true
+        }
+      },
+      "SignOffSpec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "role",
+          "banner"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Button label, e.g. \"Record reviewer sign-off\""
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "SUPERADMIN"
+            ]
+          },
+          "banner": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Amber banner shown until the sign-off exists"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/template/SignOffSpec.java",
+          "name": "SignOffSpec",
+          "requireAll": true
+        }
+      },
+      "ChecklistSpec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "signOffItem",
+          "source"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Verbatim item labels; saved data stores ticked zero-based indexes"
+          },
+          "signOffItem": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Zero-based index of the item only the sign-off ticks (NB Step 7 item 8 = 7); null otherwise"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "prototype",
+              "sop",
+              "note",
+              "ours"
+            ],
+            "description": "Where the wording comes from (D17)"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/template/ChecklistSpec.java",
+          "name": "ChecklistSpec",
+          "requireAll": true
+        }
+      },
+      "FieldSpec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "label",
+          "placeholder",
+          "min",
+          "max",
+          "choices",
+          "legacy"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/FieldKind"
+          },
+          "label": {
+            "type": "string"
+          },
+          "placeholder": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "min": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "WHOLE/NUMBER: smallest value; null otherwise"
+          },
+          "max": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "TEXT: max characters; WORDS: max words; WHOLE/NUMBER: largest value; null for no limit beyond the kind's own"
+          },
+          "choices": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "description": "CHOICE: [value, label] pairs in display order; null otherwise"
+          },
+          "legacy": {
+            "type": "boolean",
+            "description": "Accepted on save and kept, but only shown read-only under \"Earlier details\""
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/template/FieldSpec.java",
+          "name": "FieldSpec",
+          "requireAll": true
+        }
+      },
+      "GateSpec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "fields",
+          "field",
+          "values",
+          "checklist",
+          "except",
+          "categories"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/GateType"
+          },
+          "fields": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "FIELDS_PRESENT: the fields that must be saved"
+          },
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "CHOICE_IN: the field"
+          },
+          "values": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "CHOICE_IN: accepted values"
+          },
+          "checklist": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ALL_CHECKED: the checklist key"
+          },
+          "except": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "description": "ALL_CHECKED: zero-based items not required (e.g. the sign-off item)"
+          },
+          "categories": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "VENDORS_SELECTED: each listed category needs a vendor; null means any one category"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/template/GateSpec.java",
+          "name": "GateSpec",
+          "requireAll": true
+        }
+      },
+      "BlockSpec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "title",
+          "fields",
+          "checklist",
+          "save",
+          "categories",
+          "suggestedByItem"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/BlockType"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Card title; null uses the block type's default"
+          },
+          "fields": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "FIELDS / ORDER_PDF_LINK / LEGACY_DETAILS: the step fields the card shows, in order; INTRO_MESSAGE: the one TEXT field the tick saves the message as sent into"
+          },
+          "checklist": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "CHECKLIST / INTRO_MESSAGE: the checklist key"
+          },
+          "save": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Card-level save button label, e.g. \"Save QC evidence\""
+          },
+          "categories": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "VENDOR_DIRECTORY / VENDOR_SELECTION / VENDOR_GROUPS: vendor categories shown; null means all (selection: all 18; groups: every selected vendor)"
+          },
+          "suggestedByItem": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "VENDOR_SELECTION: item code -> categories listed first and expanded"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/template/BlockSpec.java",
+          "name": "BlockSpec",
+          "requireAll": true
+        }
+      },
+      "StepSpec": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "order",
+          "code",
+          "title",
+          "description",
+          "phase",
+          "defaultSla",
+          "customisedOnly",
+          "icon",
+          "tabs",
+          "blocks",
+          "fields",
+          "checklists",
+          "gates",
+          "signOff",
+          "superadminCompletes"
+        ],
+        "properties": {
+          "order": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "code": {
+            "type": "string",
+            "description": "Also the order status while this step is active"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/Phase"
+          },
+          "defaultSla": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Sla"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Current default time slot (superadmin-editable); null means no SLA. The template file may spell it \"sla\"."
+          },
+          "customisedOnly": {
+            "type": "boolean",
+            "description": "Skipped for wholesale notebook orders"
+          },
+          "icon": {
+            "type": "string",
+            "description": "lucide-react icon name for the stage tile, e.g. \"ShieldCheck\""
+          },
+          "tabs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tab"
+            }
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BlockSpec"
+            }
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSpec"
+            },
+            "description": "Typed fields by key"
+          },
+          "checklists": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ChecklistSpec"
+            },
+            "description": "Checklists by key"
+          },
+          "gates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GateSpec"
+            }
+          },
+          "signOff": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SignOffSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "superadminCompletes": {
+            "type": "boolean",
+            "description": "Only superadmin may complete this step (Head Approval)"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/template/StepSpec.java",
+          "name": "StepSpec",
+          "requireAll": true
+        }
+      },
+      "WorkflowTemplate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "definitionId",
+          "title",
+          "introMessage",
+          "steps"
+        ],
+        "properties": {
+          "definitionId": {
+            "type": "string",
+            "enum": [
+              "NOTEBOOK_ORDER_TRACKER",
+              "FLIER_ORDER_WORKFLOW",
+              "FLEX_ORDER_WORKFLOW",
+              "BILL_BOOK_ORDER_WORKFLOW",
+              "GENERAL_ITEM_ORDER_WORKFLOW"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "introMessage": {
+            "type": "string",
+            "description": "SOP introduction text with {Name} (and {Item} in the General template), filled by the browser"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepSpec"
+            },
+            "description": "Every step of the template; a wholesale order's path omits customisedOnly steps"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/template/WorkflowTemplate.java",
+          "name": "WorkflowTemplate",
+          "requireAll": true
+        }
+      },
+      "TimeSlotRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step",
+          "code",
+          "title",
+          "defaultSla",
+          "effective"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "defaultSla": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Sla"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The template step's default; null means no SLA"
+          },
+          "effective": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EffectiveSla"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What this school's orders use: the school override (source SCHOOL) or the default (DEFAULT); null means no timer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/OrderWorkflowService.java",
+          "name": "TimeSlotRow",
+          "requireAll": true
+        }
+      },
+      "DesignerRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "phone",
+          "active"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/persistence/OrderWorkflowRepository.java",
+          "name": "DesignerRow",
+          "requireAll": true
+        }
+      },
+      "GateFailure": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "The failing gate's type (FIELDS_PRESENT, ALL_CHECKED, ...)"
+          },
+          "message": {
+            "type": "string",
+            "description": "What is missing, e.g. \"Save the controlled storage link\""
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/rules/GateFailure.java",
+          "name": "GateFailure",
+          "requireAll": true
+        }
+      },
+      "EffectiveSla": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "unit",
+          "source"
+        ],
+        "properties": {
+          "value": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "HOURS",
+              "WORKING_DAYS"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "DEFAULT",
+              "SCHOOL"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "EffectiveSla",
+          "requireAll": true
+        }
+      },
+      "StepCapabilities": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "canEdit",
+          "canComplete",
+          "canReopen",
+          "canSignOff",
+          "canAddNote"
+        ],
+        "properties": {
+          "canEdit": {
+            "type": "boolean",
+            "description": "May save data and tick checklists on this step now (D18)"
+          },
+          "canComplete": {
+            "type": "boolean",
+            "description": "May complete now; the screen also needs unmet to be empty"
+          },
+          "canReopen": {
+            "type": "boolean"
+          },
+          "canSignOff": {
+            "type": "boolean"
+          },
+          "canAddNote": {
+            "type": "boolean"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "StepCapabilities",
+          "requireAll": true
+        }
+      },
+      "SignOffRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "by",
+          "byName",
+          "at"
+        ],
+        "properties": {
+          "by": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "byName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "SignOffRecord",
+          "requireAll": true
+        }
+      },
+      "NoteEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "stepOrder",
+          "authorUserId",
+          "authorName",
+          "body",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "stepOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Set for a stage note; null for an order-level internal note"
+          },
+          "authorUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "authorName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "NoteEntry",
+          "requireAll": true
+        }
+      },
+      "StepView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step",
+          "code",
+          "title",
+          "phase",
+          "customisedOnly",
+          "status",
+          "assigneeUserId",
+          "assigneeName",
+          "startedAt",
+          "dueAt",
+          "overdue",
+          "sla",
+          "completedAt",
+          "completedBy",
+          "completedByName",
+          "data",
+          "dataSavedAt",
+          "dataSavedBy",
+          "dataSavedByName",
+          "signOff",
+          "notes",
+          "unmet",
+          "version",
+          "can"
+        ],
+        "properties": {
+          "step": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "INTAKE",
+              "PLANNING",
+              "PRODUCTION",
+              "VERIFICATION",
+              "DELIVERY"
+            ]
+          },
+          "customisedOnly": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "LOCKED",
+              "ACTIVE",
+              "COMPLETED"
+            ]
+          },
+          "assigneeUserId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "assigneeName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the clock started: placement for Step 1, else when the previous step completed or the step was reopened"
+          },
+          "dueAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "sla": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EffectiveSla"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null means no timer"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "completedBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "completedByName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Saved field values and checklist index lists, keyed as in the template; never holds the sign-off record"
+          },
+          "dataSavedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "dataSavedBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "dataSavedByName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "signOff": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SignOffRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NoteEntry"
+            },
+            "description": "This stage's notes, newest first"
+          },
+          "unmet": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GateFailure"
+            },
+            "description": "On the ACTIVE step: every requirement Complete still needs; empty otherwise"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Send back as expectedVersion on step actions"
+          },
+          "can": {
+            "$ref": "#/components/schemas/StepCapabilities"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "StepView",
+          "requireAll": true
+        }
+      },
+      "WorkflowProgressView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "completed",
+          "total",
+          "currentStep",
+          "currentCode",
+          "currentTitle",
+          "finished"
+        ],
+        "properties": {
+          "completed": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "currentStep": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "currentCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "currentTitle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finished": {
+            "type": "boolean"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "WorkflowProgressView",
+          "requireAll": true
+        }
+      },
+      "OrderCapabilities": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "canAssign",
+          "canClaim",
+          "canSelectVendors",
+          "canSetDesigner",
+          "canSetContacts",
+          "canSetSchoolGroup",
+          "canLogCall",
+          "canAddNote",
+          "canManageDesignFiles",
+          "canApproveDesign"
+        ],
+        "properties": {
+          "canAssign": {
+            "type": "boolean",
+            "description": "Superadmin"
+          },
+          "canClaim": {
+            "type": "boolean",
+            "description": "An eligible operator and the order is unassigned (\"Take this order\")"
+          },
+          "canSelectVendors": {
+            "type": "boolean",
+            "description": "Superadmin, or the Production Planning assignee while it is active"
+          },
+          "canSetDesigner": {
+            "type": "boolean",
+            "description": "Superadmin or the current-step assignee"
+          },
+          "canSetContacts": {
+            "type": "boolean",
+            "description": "Superadmin or the current-step assignee"
+          },
+          "canSetSchoolGroup": {
+            "type": "boolean",
+            "description": "Superadmin or the current-step assignee (item-level group link)"
+          },
+          "canLogCall": {
+            "type": "boolean",
+            "description": "Anyone who can work the order"
+          },
+          "canAddNote": {
+            "type": "boolean",
+            "description": "Anyone who can work the order"
+          },
+          "canManageDesignFiles": {
+            "type": "boolean",
+            "description": "Upload/delete design files now (D26, D42)"
+          },
+          "canApproveDesign": {
+            "type": "boolean",
+            "description": "Superadmin, while Head Approval is active"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "OrderCapabilities",
+          "requireAll": true
+        }
+      },
+      "DesignDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "comment",
+          "decidedAt",
+          "decidedBy",
+          "decidedByName",
+          "approvedCdrLink"
+        ],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "NOT_SENT",
+              "SENT",
+              "CHANGES_REQUESTED",
+              "APPROVED"
+            ]
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The Head Approval comment (approve or request changes)"
+          },
+          "decidedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "decidedBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "decidedByName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "approvedCdrLink": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The CDR Conversion link the approval binds to; a different saved link makes the approval stale"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "DesignDecision",
+          "requireAll": true
+        }
+      },
+      "OrderContacts": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schoolContactName",
+          "schoolContactPhone",
+          "factoryContactName",
+          "factoryContactPhone"
+        ],
+        "properties": {
+          "schoolContactName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schoolContactPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Null until saved; the screen prefills the school record's phone"
+          },
+          "factoryContactName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Vendor / factory contact (stored in vendor_name)"
+          },
+          "factoryContactPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Stored in vendor_phone"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "OrderContacts",
+          "requireAll": true
+        }
+      },
+      "UpcomingAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "A derived \"Live list\" row (D39); at most 6 per order.",
+        "required": [
+          "kind",
+          "title",
+          "stepOrder",
+          "dueAt",
+          "dueState",
+          "done"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "LAST_COMPLETED",
+              "STAGE_DEADLINE",
+              "UNMET_GATE",
+              "CALLBACK"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "stepOrder": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "dueAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "dueState": {
+            "type": "string",
+            "enum": [
+              "OVERDUE",
+              "DUE_TODAY",
+              "DUE_TOMORROW",
+              "LATER",
+              "NONE"
+            ],
+            "description": "In the school's time zone"
+          },
+          "done": {
+            "type": "boolean",
+            "description": "Ticked row (the last completed stage)"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/rules/UpcomingActions.java",
+          "name": "UpcomingAction",
+          "requireAll": true
+        }
+      },
+      "GroupLink": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "url",
+          "source"
+        ],
+        "properties": {
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "https://chat.whatsapp.com/... invite, or null when none is saved"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "ITEM",
+              "SCHOOL",
+              "GLOBAL",
+              "NONE"
+            ],
+            "description": "School group: ITEM override, else SCHOOL. Internal approval: SCHOOL (per-school), else GLOBAL"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/GroupLinkResolver.java",
+          "name": "GroupLink",
+          "requireAll": true
+        }
+      },
+      "ResolvedGroups": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "school",
+          "internalApproval",
+          "vendors"
+        ],
+        "properties": {
+          "school": {
+            "$ref": "#/components/schemas/GroupLink"
+          },
+          "internalApproval": {
+            "$ref": "#/components/schemas/GroupLink"
+          },
+          "vendors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VendorSummary"
+            },
+            "description": "The order's selected vendors (any category, inactive ones included), each with its own group link"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/GroupLinkResolver.java",
+          "name": "ResolvedGroups",
+          "requireAll": true
+        }
+      },
+      "VendorSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "A vendor as stage cards and the call log show it. Declared in VendorLookup.java (seam of section 3.4).",
+        "required": [
+          "id",
+          "name",
+          "categories",
+          "contactPerson",
+          "phone",
+          "city",
+          "whatsappGroupUrl",
+          "sample",
+          "active"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{1,39}$"
+            },
+            "description": "Vendor category codes this vendor belongs to"
+          },
+          "contactPerson": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Required for real vendors; null only on sample vendors"
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "whatsappGroupUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The vendor's own WhatsApp group invite (https://chat.whatsapp.com/...), or null"
+          },
+          "sample": {
+            "type": "boolean",
+            "description": "A seeded prototype vendor with no phone (\"Sample\")"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "False for a deactivated vendor an order selected before; shown as \"Inactive\""
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/VendorLookup.java",
+          "name": "VendorSummary",
+          "requireAll": true
+        }
+      },
+      "OrderWorkflowView": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Everything the order workflow screen needs for one order, filtered to what the caller may see and do.",
+        "required": [
+          "orderId",
+          "orderNumber",
+          "definitionId",
+          "categoryCode",
+          "itemCode",
+          "itemNoun",
+          "schoolId",
+          "schoolName",
+          "customised",
+          "orderedCount",
+          "placedAt",
+          "timeZone",
+          "instanceStatus",
+          "status",
+          "progress",
+          "assigneeUserId",
+          "assigneeName",
+          "design",
+          "vendorSelections",
+          "groups",
+          "designer",
+          "contacts",
+          "internalNotes",
+          "upcomingActions",
+          "can",
+          "now",
+          "version",
+          "steps"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "orderNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "definitionId": {
+            "type": "string",
+            "enum": [
+              "NOTEBOOK_ORDER_TRACKER",
+              "FLIER_ORDER_WORKFLOW",
+              "FLEX_ORDER_WORKFLOW",
+              "BILL_BOOK_ORDER_WORKFLOW",
+              "GENERAL_ITEM_ORDER_WORKFLOW"
+            ]
+          },
+          "categoryCode": {
+            "type": "string"
+          },
+          "itemCode": {
+            "type": "string",
+            "pattern": "^[A-Z]{2,4}$"
+          },
+          "itemNoun": {
+            "type": "string",
+            "description": "e.g. notebook, flier, bill book"
+          },
+          "schoolId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "schoolName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customised": {
+            "type": "boolean"
+          },
+          "orderedCount": {
+            "type": "integer"
+          },
+          "placedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "instanceStatus": {
+            "type": "string",
+            "description": "workflow_instances.status"
+          },
+          "status": {
+            "type": "string",
+            "description": "Current step code, or COMPLETED"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/WorkflowProgressView"
+          },
+          "assigneeUserId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Point of contact: the active step's assignee"
+          },
+          "assigneeName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "design": {
+            "$ref": "#/components/schemas/DesignDecision"
+          },
+          "vendorSelections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            },
+            "description": "Vendor category code -> selected vendor ids"
+          },
+          "groups": {
+            "$ref": "#/components/schemas/ResolvedGroups"
+          },
+          "designer": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DesignerRow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contacts": {
+            "$ref": "#/components/schemas/OrderContacts"
+          },
+          "internalNotes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NoteEntry"
+            },
+            "description": "Order-level internal notes, newest first, at most the latest 3; Activity history has all"
+          },
+          "upcomingActions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpcomingAction"
+            }
+          },
+          "can": {
+            "$ref": "#/components/schemas/OrderCapabilities"
+          },
+          "now": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Server time, for clock-skew correction of live timers"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Order-level version: expectedVersion of vendor selections"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StepView"
+            },
+            "description": "The steps on this order's path, in order"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/orderworkflow/OrderWorkflowView.java",
+          "name": "OrderWorkflowView",
+          "requireAll": true
+        }
+      },
+      "StepDataRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data",
+          "expectedVersion"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "A partial save: fields sent replace, null or blank clears, fields left out keep their value. Checklists are lists of zero-based indexes"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The step's version as loaded"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "StepDataRequest",
+          "requireAll": false
+        }
+      },
+      "StepVersionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expectedVersion"
+        ],
+        "properties": {
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The step's version as loaded"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "StepVersionRequest",
+          "requireAll": false
+        }
+      },
+      "StepReopenRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "reason",
+          "expectedVersion"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Required; at most 1,000 characters"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The version of the step being reopened"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "StepReopenRequest",
+          "requireAll": false
+        }
+      },
+      "HeadApprovalRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "comment",
+          "expectedVersion"
+        ],
+        "properties": {
+          "comment": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "description": "Required justification; at most 100 words and 1,000 characters (workflow_notebook_trackers.design_comment)"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The Head Approval step's version as loaded"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "HeadApprovalRequest",
+          "requireAll": false
+        }
+      },
+      "AssigneeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "userId"
+        ],
+        "properties": {
+          "userId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "An operator eligible for the order's school and category"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "AssigneeRequest",
+          "requireAll": false
+        }
+      },
+      "VendorSelectionsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "selections",
+          "expectedVersion"
+        ],
+        "properties": {
+          "selections": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              }
+            },
+            "description": "Vendor category code -> vendor ids; replaces every selection; empty lists are dropped"
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "format": "int64",
+            "description": "OrderWorkflowView.version as loaded"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "VendorSelectionsRequest",
+          "requireAll": false
+        }
+      },
+      "DesignerChoiceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "designerId"
+        ],
+        "properties": {
+          "designerId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "A designer from the directory; null clears it"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "DesignerChoiceRequest",
+          "requireAll": false
+        }
+      },
+      "OrderContactsRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Replaces all four contact fields.",
+        "required": [],
+        "properties": {
+          "schoolContactName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "At most 200 characters; blank clears"
+          },
+          "schoolContactPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32,
+            "description": "At most 32 characters; blank clears"
+          },
+          "factoryContactName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "At most 200 characters; blank clears"
+          },
+          "factoryContactPhone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32,
+            "description": "At most 32 characters; blank clears"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "OrderContactsRequest",
+          "requireAll": false
+        }
+      },
+      "OrderNoteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "body"
+        ],
+        "properties": {
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000,
+            "description": "At most 100 words and 4,000 characters"
+          },
+          "stepOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 99,
+            "description": "Set for a stage note (\"Save activity note\"); omit for an order-level internal note"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "OrderNoteRequest",
+          "requireAll": false
+        }
+      },
+      "DesignerRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 32
+          },
+          "active": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Omitted or null keeps the designer active"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "DesignerRequest",
+          "requireAll": false
+        }
+      },
+      "SlaRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "value and unit go together. For a school override both null means \"no timer for this school and step\"; a template default needs both.",
+        "required": [],
+        "properties": {
+          "value": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "HOURS",
+              "WORKING_DAYS",
+              null
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderWorkflowController.java",
+          "name": "SlaRequest",
+          "requireAll": false
+        }
+      },
+      "WhatsAppGroupLinkRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2048,
+            "description": "https://chat.whatsapp.com/... invite; blank or null removes the link"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/SchoolWhatsAppGroupController.java",
+          "name": "WhatsAppGroupLinkRequest",
+          "requireAll": false
+        }
+      },
+      "CallLogRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "contacted",
+          "outcome"
+        ],
+        "properties": {
+          "contacted": {
+            "type": "string",
+            "enum": [
+              "SCHOOL",
+              "DESIGNER",
+              "PRINTING_PRESS",
+              "MANUFACTURING_FACTORY",
+              "INTERNAL_APPROVER"
+            ],
+            "description": "SOP call entity (CallContacted)"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "CONNECTED",
+              "NO_ANSWER",
+              "BUSY",
+              "CALLBACK_REQUESTED",
+              "DELAY_REPORTED",
+              "CHANGES_REQUESTED",
+              "APPROVAL_RECEIVED"
+            ],
+            "description": "SOP call outcome (CallOutcome)"
+          },
+          "contactLabel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "Who was called, at most 200 characters; filled from the vendor or designer when one is picked and this is blank"
+          },
+          "vendorId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "A vendor selected on this order"
+          },
+          "designerId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "stepOrder": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 99,
+            "description": "Defaults to the current step"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1000,
+            "description": "At most 100 words; required for DELAY_REPORTED, CHANGES_REQUESTED and CALLBACK_REQUESTED"
+          },
+          "nextFollowUpAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Required for CALLBACK_REQUESTED"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/OrderCallLogController.java",
+          "name": "CallLogRequest",
+          "requireAll": false
+        }
+      },
+      "CallLogEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "An append-only call log entry.",
+        "required": [
+          "id",
+          "stepOrder",
+          "contacted",
+          "outcome",
+          "contactLabel",
+          "vendorId",
+          "designerId",
+          "notes",
+          "nextFollowUpAt",
+          "createdBy",
+          "createdByName",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "stepOrder": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "contacted": {
+            "type": "string",
+            "enum": [
+              "SCHOOL",
+              "DESIGNER",
+              "PRINTING_PRESS",
+              "MANUFACTURING_FACTORY",
+              "INTERNAL_APPROVER"
+            ]
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "CONNECTED",
+              "NO_ANSWER",
+              "BUSY",
+              "CALLBACK_REQUESTED",
+              "DELAY_REPORTED",
+              "CHANGES_REQUESTED",
+              "APPROVAL_RECEIVED"
+            ]
+          },
+          "contactLabel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vendorId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "designerId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nextFollowUpAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "createdByName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/CallLogService.java",
+          "name": "CallLogEntry",
+          "requireAll": true
+        }
+      },
+      "ActivityEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "action",
+          "stepOrder",
+          "actorUserId",
+          "actorName",
+          "at",
+          "text",
+          "details",
+          "count"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique across kinds, e.g. \"action:12\", \"note:5\", \"call:3\", \"follow-up:2\""
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "ACTION",
+              "NOTE",
+              "CALL",
+              "FOLLOW_UP"
+            ]
+          },
+          "action": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ACTION: the workflow_actions code (STEP_COMPLETED, STEP_DATA_SAVED, HEAD_APPROVED, VENDORS_SELECTED, ...); null otherwise"
+          },
+          "stepOrder": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "actorUserId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "actorName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When it happened; for a group, the latest entry"
+          },
+          "text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Note body, call notes, or the action's reason/comment"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Kind-specific facts: changed field names and checklist counts, call contacted/outcome/contactLabel/nextFollowUpAt, follow-up percentComplete/nextFollowUpOn, ..."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Grouped consecutive saves by one person on one stage within 10 minutes; 1 otherwise"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/ActivityService.java",
+          "name": "ActivityEntry",
+          "requireAll": true
+        }
+      },
+      "ActivityPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "entries",
+          "nextBefore"
+        ],
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActivityEntry"
+            },
+            "description": "Newest first"
+          },
+          "nextBefore": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Pass as before to read older entries; null when there are none"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/ActivityService.java",
+          "name": "ActivityPage",
+          "requireAll": true
+        }
+      },
+      "InviteLinkRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "inviteUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2048,
+            "description": "https://chat.whatsapp.com/<10-64 characters>; blank or null removes the link"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/WorkflowSettingsController.java",
+          "name": "InviteLinkRequest",
+          "requireAll": false
+        }
+      },
+      "InternalApprovalGroupView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "inviteUrl",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "properties": {
+          "inviteUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The global internal approval group; null when not set"
+          },
+          "updatedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/WorkflowSettingsService.java",
+          "name": "InternalApprovalGroupView",
+          "requireAll": true
+        }
+      }
+    }
+  }
+}

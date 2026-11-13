@@ -56,6 +56,16 @@
             "schema": {
               "type": "integer"
             }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Case-insensitive substring of the order number, the CK id or the school name",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
           }
         ],
         "responses": {
@@ -325,8 +335,8 @@
     },
     "/api/v1/catalog/orders/{id}/tracker-summary": {
       "get": {
-        "operationId": "getNotebookTrackerSummary",
-        "summary": "Header data for the notebook order tracker",
+        "operationId": "getOrderWorkflowSummary",
+        "summary": "Order workflow header: lines, quantities, title cards (notebooks), school and number",
         "parameters": [
           {
             "name": "id",
@@ -344,7 +354,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NotebookTrackerSummary"
+                  "$ref": "#/components/schemas/OrderWorkflowSummary"
                 }
               }
             }
@@ -420,8 +430,8 @@
     },
     "/api/v1/catalog/orders/{id}/tracker/ensure": {
       "post": {
-        "operationId": "ensureNotebookTracker",
-        "summary": "Start the tracker of a placed notebook order whose tracker is not created yet",
+        "operationId": "ensureOrderWorkflow",
+        "summary": "Start the workflow of a placed order of a workflow category whose workflow is not created yet",
         "parameters": [
           {
             "name": "id",
@@ -439,7 +449,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TrackerEnsureResult"
+                  "$ref": "#/components/schemas/OrderWorkflowEnsureResult"
                 }
               }
             }
@@ -506,7 +516,8 @@
           "409": {
             "description": "A rule refused it; the message says which"
           }
-        }
+        },
+        "description": "Every asset of the order, oldest first, removed ones included (supersededAt set): the design revision history numbers them v1, v2, ... in this order. DESIGN_DRAFT files are listed to superadmin and operators only."
       },
       "post": {
         "operationId": "uploadOrderAsset",
@@ -558,7 +569,8 @@
           "409": {
             "description": "A rule refused it; the message says which"
           }
-        }
+        },
+        "description": "DESIGN_DRAFT: any workflow order, at most 4 current files and 25 MB in total, PDF, CDR, PNG or JPEG (WEBP refused). Allowed while Designing Activity is active or after Head Approval requested changes; school-core asks operations first. 409 when a limit would be exceeded."
       }
     },
     "/api/v1/catalog/orders/{id}/assets/{assetId}": {
@@ -604,7 +616,8 @@
           "409": {
             "description": "A rule refused it; the message says which"
           }
-        }
+        },
+        "description": "Removing a DESIGN_DRAFT follows the same access rule as uploading one."
       }
     },
     "/api/v1/catalog/orders/{id}/assets/{assetId}/content": {
@@ -658,7 +671,8 @@
           "409": {
             "description": "A rule refused it; the message says which"
           }
-        }
+        },
+        "description": "CDR files (application/vnd.corel-draw) are always served as an attachment download, never previewed."
       }
     },
     "/api/v1/supply/product-catalog/categories": {
@@ -677,6 +691,289 @@
                   "items": {
                     "$ref": "#/components/schemas/ProductCategory"
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProductCategory",
+        "summary": "Superadmin: add a catalogue item",
+        "x-ims-controller": "CatalogProductFormController",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductCategory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/orders/by-number/{orderNumber}": {
+      "get": {
+        "operationId": "getOrderByNumber",
+        "summary": "Resolve a pasted order number to its CK id (order:read)",
+        "x-ims-controller": "CatalogOrderFormController",
+        "parameters": [
+          {
+            "name": "orderNumber",
+            "in": "path",
+            "required": true,
+            "description": "Matched case-insensitively",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40,
+              "pattern": "^[A-Za-z0-9_-]{1,40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderNumberLookup"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/orders/{id}/quote": {
+      "put": {
+        "operationId": "quoteOrder",
+        "summary": "Superadmin: price every placed line (catalog:quote)",
+        "x-ims-controller": "CatalogOrderFormController",
+        "description": "Refused for notebook orders. A non-notebook workflow order may be quoted until its workflow completes.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderQuoteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogOrderFormDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/orders/{id}/production-workflow": {
+      "get": {
+        "operationId": "getProductionWorkflow",
+        "x-ims-controller": "ProductOrderWorkflowController",
+        "summary": "Read-only record of a retired PR #380 product workflow; its writes answer 409 WORKFLOW_MOVED",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowView"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/supply/product-catalog/admin/categories": {
+      "get": {
+        "operationId": "listAdminProductCategories",
+        "summary": "Every catalogue item, inactive ones included (superadmin builder view)",
+        "x-ims-controller": "CatalogProductFormController",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductCategory"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request; the message says what to change"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "The caller's role or assignment does not allow this"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "409": {
+            "description": "A rule refused it; the message says which"
+          }
+        }
+      }
+    },
+    "/api/v1/supply/product-catalog/categories/{code}": {
+      "patch": {
+        "operationId": "updateProductCategory",
+        "summary": "Superadmin: change a catalogue item, including its order code, noun and workflow template",
+        "x-ims-controller": "CatalogProductFormController",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductCategory"
                 }
               }
             }
@@ -732,6 +1029,24 @@
               "null"
             ],
             "description": "True for a notebook order placed on the notebook order tracker; one placed before it keeps the approval flow."
+          },
+          "orderNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "SOP order number (<Item>-<School>-<YY-MM-DD>-<NNNN>); null for drafts and categories without an order code. Show it as the headline with \"Ref <id>\" beneath."
+          },
+          "workflowStep": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/OrderWorkflowStep"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The order workflow's current step, for lists; null when the order has no workflow or none has reported yet"
           }
         },
         "required": [
@@ -965,150 +1280,6 @@
         ],
         "additionalProperties": true
       },
-      "NotebookTrackerSummary": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "orderId": {
-            "type": "string"
-          },
-          "schoolId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "schoolName": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "schoolContactEmail": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "schoolContactPhone": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "status": {
-            "type": "string"
-          },
-          "customised": {
-            "type": "boolean"
-          },
-          "requiredByDate": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "placedAt": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "schoolNotes": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "orderedCount": {
-            "type": "integer"
-          },
-          "lines": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "lineNo": {
-                  "type": "integer"
-                },
-                "selections": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "oneOf": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "properties": {
-                          "code": {
-                            "type": "string"
-                          },
-                          "label": {
-                            "type": "string"
-                          },
-                          "spec": {
-                            "type": "string"
-                          },
-                          "specText": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "code",
-                          "label"
-                        ]
-                      }
-                    ]
-                  }
-                },
-                "bookCount": {
-                  "type": "integer"
-                },
-                "pageCount": {
-                  "type": "integer"
-                }
-              },
-              "required": [
-                "lineNo",
-                "selections",
-                "bookCount",
-                "pageCount"
-              ]
-            }
-          },
-          "trackerPending": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "orderId",
-          "schoolId",
-          "schoolName",
-          "schoolContactEmail",
-          "schoolContactPhone",
-          "status",
-          "customised",
-          "requiredByDate",
-          "placedAt",
-          "schoolNotes",
-          "orderedCount",
-          "lines",
-          "trackerPending"
-        ]
-      },
-      "TrackerEnsureResult": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-          "trackerPending": {
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "trackerPending"
-        ]
-      },
       "OrderAsset": {
         "type": "object",
         "additionalProperties": true,
@@ -1138,9 +1309,11 @@
           },
           "uploadedBy": {
             "type": [
-              "string",
+              "integer",
               "null"
-            ]
+            ],
+            "format": "int64",
+            "description": "User id of the uploader (catalog_order_assets.uploaded_by); null when no user is recorded"
           },
           "uploadedAt": {
             "type": "string"
@@ -1150,6 +1323,14 @@
               "string",
               "null"
             ]
+          },
+          "supersededBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "User id of whoever removed or replaced the file (catalog V39); null while current, and for removals recorded before V39"
           }
         },
         "required": [
@@ -1193,21 +1374,55 @@
       "NotebookWorkbookPreview": {
         "type": "object",
         "properties": {
-          "orderId": { "type": "string" },
-          "fileName": { "type": "string" },
-          "sheetName": { "type": "string" },
-          "workbookOrderId": { "type": ["string", "null"] },
-          "total": { "type": "integer" },
-          "king": { "type": "integer" },
-          "longBooks": { "type": "integer" },
-          "jumboKing": { "type": "integer" },
-          "jumboLong": { "type": "integer" },
-          "fa": { "type": "integer" },
-          "validRows": { "type": "integer" }
+          "orderId": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "sheetName": {
+            "type": "string"
+          },
+          "workbookOrderId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "king": {
+            "type": "integer"
+          },
+          "longBooks": {
+            "type": "integer"
+          },
+          "jumboKing": {
+            "type": "integer"
+          },
+          "jumboLong": {
+            "type": "integer"
+          },
+          "fa": {
+            "type": "integer"
+          },
+          "validRows": {
+            "type": "integer"
+          }
         },
         "required": [
-          "orderId", "fileName", "sheetName", "workbookOrderId", "total", "king", "longBooks",
-          "jumboKing", "jumboLong", "fa", "validRows"
+          "orderId",
+          "fileName",
+          "sheetName",
+          "workbookOrderId",
+          "total",
+          "king",
+          "longBooks",
+          "jumboKing",
+          "jumboLong",
+          "fa",
+          "validRows"
         ],
         "additionalProperties": false
       },
@@ -1238,6 +1453,43 @@
           },
           "active": {
             "type": "boolean"
+          },
+          "paged": {
+            "type": "boolean",
+            "description": "Notebooks only: lines collect a printed-page count"
+          },
+          "notesEnabled": {
+            "type": "boolean",
+            "description": "The order form collects a free-text note"
+          },
+          "orderCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Item code in order numbers (^[A-Z]{2,4}$, unique); null means no order number"
+          },
+          "itemNoun": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Noun used in the introduction message, e.g. \"bill book\""
+          },
+          "workflowDefinition": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "NOTEBOOK_ORDER_TRACKER",
+              "FLIER_ORDER_WORKFLOW",
+              "FLEX_ORDER_WORKFLOW",
+              "BILL_BOOK_ORDER_WORKFLOW",
+              "GENERAL_ITEM_ORDER_WORKFLOW",
+              null
+            ],
+            "description": "Template new placements start; null means no order workflow. Needs orderCode."
           }
         },
         "required": [
@@ -1250,6 +1502,695 @@
           "sortOrder",
           "active"
         ]
+      },
+      "OrderWorkflowStep": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Stored in catalog_orders.attributes.workflowStep by the tracker status push (D5).",
+        "required": [
+          "order",
+          "title",
+          "total",
+          "completed"
+        ],
+        "properties": {
+          "order": {
+            "type": "integer",
+            "description": "Current step order; for a completed workflow, the last step"
+          },
+          "title": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Steps on the order's path"
+          },
+          "completed": {
+            "type": "integer",
+            "description": "Completed steps"
+          }
+        }
+      },
+      "OrderQuantityLine": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lineNo",
+          "label",
+          "details",
+          "quantity"
+        ],
+        "properties": {
+          "lineNo": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string",
+            "description": "Label of the line's main selection (size, type or product)"
+          },
+          "details": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The line's other selection labels joined with \" · \"; null when there are none"
+          },
+          "quantity": {
+            "type": "integer",
+            "description": "The line quantity (book_count)"
+          }
+        }
+      },
+      "OrderQuantities": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "D25: quantities from the school's order form, for every item.",
+        "required": [
+          "total",
+          "lines"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderQuantityLine"
+            },
+            "description": "Placed lines in line order"
+          }
+        }
+      },
+      "TitleCardCounts": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Notebooks ordered per size (KPI tiles).",
+        "required": [
+          "king",
+          "long",
+          "jumboKing",
+          "jumboLong",
+          "fa",
+          "other"
+        ],
+        "properties": {
+          "king": {
+            "type": "integer"
+          },
+          "long": {
+            "type": "integer"
+          },
+          "jumboKing": {
+            "type": "integer"
+          },
+          "jumboLong": {
+            "type": "integer"
+          },
+          "fa": {
+            "type": "integer"
+          },
+          "other": {
+            "type": "integer",
+            "description": "Notebooks on lines that match no title-card size"
+          }
+        }
+      },
+      "TitleCardRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "label",
+          "size",
+          "notebooks",
+          "sheets"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "KING_JUMBO_KING",
+              "LONG",
+              "JUMBO_LONG",
+              "FA"
+            ],
+            "description": "Row key"
+          },
+          "label": {
+            "type": "string",
+            "description": "e.g. \"KING/JUMBO KING\""
+          },
+          "size": {
+            "type": "string",
+            "description": "e.g. \"80*105\""
+          },
+          "notebooks": {
+            "type": "integer",
+            "description": "Notebooks in the order for this row"
+          },
+          "sheets": {
+            "type": "integer",
+            "description": "Print sheets needed: ceil(n/8)+13 (King+Jumbo King, Long) or ceil(n/4)+25 (Jumbo Long, FA); 0 when n is 0"
+          }
+        }
+      },
+      "UnmatchedTitleCardLine": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lineNo",
+          "label",
+          "notebooks"
+        ],
+        "properties": {
+          "lineNo": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          },
+          "notebooks": {
+            "type": "integer"
+          }
+        }
+      },
+      "TitleCards": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "D24: notebook title-card quantities computed from the placed lines.",
+        "required": [
+          "counts",
+          "rows",
+          "unmatched"
+        ],
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/TitleCardCounts"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TitleCardRow"
+            },
+            "description": "Always the four rows, in table order"
+          },
+          "unmatched": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnmatchedTitleCardLine"
+            },
+            "description": "\"Not on a title card\" lines (for example Drawing books)"
+          }
+        }
+      },
+      "OrderWorkflowSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Header data for the order workflow screen, for every workflow category (superadmin and operators in scope).",
+        "required": [
+          "orderId",
+          "orderNumber",
+          "category",
+          "itemCode",
+          "itemLabel",
+          "schoolId",
+          "schoolName",
+          "schoolCity",
+          "schoolContactEmail",
+          "schoolContactPhone",
+          "status",
+          "customised",
+          "requiredByDate",
+          "placedAt",
+          "schoolNotes",
+          "orderedCount",
+          "lines",
+          "quantities",
+          "titleCards",
+          "trackerPending"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "orderNumber": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "description": "Catalog category code"
+          },
+          "itemCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The category's order code (NB, FE, ...); null without one"
+          },
+          "itemLabel": {
+            "type": "string",
+            "description": "The category label, e.g. \"Notebooks\""
+          },
+          "schoolId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "schoolName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schoolCity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schoolContactEmail": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "schoolContactPhone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "customised": {
+            "type": "boolean"
+          },
+          "requiredByDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "yyyy-mm-dd"
+          },
+          "placedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO date-time"
+          },
+          "schoolNotes": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The school's order-form notes (\"From the order form\")"
+          },
+          "orderedCount": {
+            "type": "integer"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "lineNo",
+                "selections",
+                "bookCount",
+                "pageCount"
+              ],
+              "properties": {
+                "lineNo": {
+                  "type": "integer"
+                },
+                "selections": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "spec": {
+                            "type": "string"
+                          },
+                          "specText": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "label"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "bookCount": {
+                  "type": "integer"
+                },
+                "pageCount": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "quantities": {
+            "$ref": "#/components/schemas/OrderQuantities"
+          },
+          "titleCards": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TitleCards"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Notebook orders only; null for other items"
+          },
+          "trackerPending": {
+            "type": "boolean",
+            "description": "The workflow is queued but operations has not created it yet"
+          }
+        }
+      },
+      "OrderWorkflowEnsureResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "trackerPending"
+        ],
+        "properties": {
+          "trackerPending": {
+            "type": "boolean"
+          }
+        }
+      },
+      "OrderNumberLookup": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "orderNumber"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "CK id"
+          },
+          "orderNumber": {
+            "type": "string",
+            "description": "The number as stored"
+          }
+        }
+      },
+      "OrderQuoteLine": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "unitPricePaise"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Order line id"
+          },
+          "unitPricePaise": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "OrderQuoteRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "lines",
+          "gstPaise"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The order's version as loaded"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderQuoteLine"
+            },
+            "description": "Every persisted line exactly once"
+          },
+          "gstPaise": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "CatalogOrderFormDetail": {
+        "type": "object",
+        "additionalProperties": true,
+        "description": "The order-form detail (GET /supply/orders/{id}/form); further keys are form-specific.",
+        "required": [
+          "order",
+          "pricingStatus",
+          "version"
+        ],
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/CatalogOrder"
+          },
+          "pricingStatus": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "formVersion": {
+            "type": "integer"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "StageView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "order",
+          "title",
+          "status",
+          "data",
+          "note",
+          "completedAt"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "LOCKED",
+              "ACTIVE",
+              "COMPLETED"
+            ]
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Empty for school users"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/ProductOrderWorkflowService.java",
+          "name": "StageView",
+          "requireAll": true
+        }
+      },
+      "WorkflowView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "orderId",
+          "category",
+          "status",
+          "currentStage",
+          "version",
+          "canEdit",
+          "canComplete",
+          "stages"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "currentStage": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "canEdit": {
+            "type": "boolean",
+            "description": "Always false since V38"
+          },
+          "canComplete": {
+            "type": "boolean",
+            "description": "Always false since V38"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageView"
+            }
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/persistence/ProductOrderWorkflowService.java",
+          "name": "WorkflowView",
+          "requireAll": true
+        }
+      },
+      "ProductCategoryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Category create/update body (CatalogDefinitionRequests.Category). Superadmin with catalog builder permissions.",
+        "required": [],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]{1,59}$",
+            "maxLength": 40
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "emoji": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 16
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "orderType": {
+            "type": "string",
+            "enum": [
+              "Recurring",
+              "One-time",
+              "Service"
+            ]
+          },
+          "formEnabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "sortOrder": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "active": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "orderCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 4,
+            "description": "^[A-Z]{2,4}$, unique; null or blank clears it"
+          },
+          "itemNoun": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 40
+          },
+          "workflowDefinition": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "NOTEBOOK_ORDER_TRACKER",
+              "FLIER_ORDER_WORKFLOW",
+              "FLEX_ORDER_WORKFLOW",
+              "BILL_BOOK_ORDER_WORKFLOW",
+              "GENERAL_ITEM_ORDER_WORKFLOW",
+              null
+            ]
+          }
+        }
       }
     }
   },

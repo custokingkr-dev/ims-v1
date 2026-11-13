@@ -21,7 +21,7 @@ class MachineProofAuditTest(unittest.TestCase):
         for path in ROOT.glob("services/*-service/src/main/java/**/MachineCallerFilter.java"):
             self.copy(path)
         names = {"OutboxRelayTriggerController.java", "AsyncWorkTriggerController.java", "PasswordResetDrainController.java", "IdentityDirectoryController.java", "TenantSchoolClient.java", "GenericNotificationReportController.java", "NotificationReportAuthority.java", "GoogleIdentityTokenVerifier.java",
-                 "NotebookTrackerMachineController.java", "CatalogTrackerMachineController.java", "OperatorDirectoryController.java"}
+                 "OrderWorkflowMachineController.java", "CatalogTrackerMachineController.java", "OperatorDirectoryController.java"}
         for path in ROOT.glob("services/*-service/src/main/java/**/*.java"):
             if path.name in names: self.copy(path)
     def tearDown(self): self.temp.cleanup()
@@ -50,6 +50,7 @@ class MachineProofAuditTest(unittest.TestCase):
             # Regex routes can never appear verbatim in a gateway file; each is guarded through its literal prefix.
             ("/api/v1/internal/catalog-orders", "exposed through the API gateway"),
             ("/api/v1/internal/notebook-trackers", "exposed through the API gateway"),
+            ("/api/v1/internal/order-workflows", "exposed through the API gateway"),
             ("/api/v1/internal/identity-directory", "exposed through the API gateway"),
         ]:
             with self.subTest(route=route):
@@ -84,7 +85,7 @@ class MachineProofAuditTest(unittest.TestCase):
         # Every caller list stays present in the filter, so only an exact route -> list check can catch these.
         resolve = '"/api/v1/internal/operator-directory/resolve")) return "OPERATOR_DIRECTORY_RESOLVE_CALLER_SERVICE_ACCOUNTS";'
         eligible = '"/api/v1/internal/operator-directory/eligible")) return "OPERATOR_DIRECTORY_ELIGIBILITY_CALLER_SERVICE_ACCOUNTS";'
-        create = '"/api/v1/internal/notebook-trackers")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'
+        create = '"/api/v1/internal/order-workflows")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'
         for label, service, edits in [
             ("resolve and eligible swapped", "identity-service", [(resolve, resolve.replace("_RESOLVE_", "_ELIGIBILITY_")), (eligible, eligible.replace("_ELIGIBILITY_", "_RESOLVE_"))]),
             ("create on the catalog list", "operations-service", [(create, create.replace("NOTEBOOK_TRACKER_", "CATALOG_TRACKER_"))]),
@@ -96,6 +97,8 @@ class MachineProofAuditTest(unittest.TestCase):
                 self.assertNotEqual(0, result.returncode, result.stdout); self.assertIn("lacks exact signed caller filter", result.stdout)
     def test_each_machine_route_needs_its_own_registry_line(self):
         for service, line in [
+            ("operations-service", 'if(path.equals("/api/v1/internal/order-workflows")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
+            ("operations-service", 'if(path.matches("/api/v1/internal/order-workflows/[A-Za-z0-9_-]{1,255}/design-file-access")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
             ("operations-service", 'if(path.equals("/api/v1/internal/notebook-trackers")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
             ("operations-service", 'if(path.matches("/api/v1/internal/notebook-trackers/[A-Za-z0-9_-]{1,255}/image-access")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
             ("school-core-service", 'if(path.matches("/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/draft-images")) return "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
@@ -115,9 +118,9 @@ class MachineProofAuditTest(unittest.TestCase):
         self.assertIn(before, source)
         script = self.root / "audit-fixture.ps1"; script.write_bytes(source.replace(before, b"", 1))
         result = self.audit(script); self.assertNotEqual(0, result.returncode, result.stdout); self.assertIn("needs a literal GatewayRoute", result.stdout)
-    CREATE = r'(@PostMapping\(""\))\s+(public ResponseEntity<CreateResponse> create\()'
+    CREATE = r'(@PostMapping\("/order-workflows"\))\s+(public ResponseEntity<CreateResponse> create\()'
     def test_create_mapping_contract_does_not_depend_on_line_layout(self):
-        path = next(self.root.glob("services/operations-service/src/main/java/**/NotebookTrackerMachineController.java")); original = path.read_text()
+        path = next(self.root.glob("services/operations-service/src/main/java/**/OrderWorkflowMachineController.java")); original = path.read_text()
         for layout in ("\n    ", " "):
             with self.subTest(layout=repr(layout)):
                 text, count = re.subn(self.CREATE, lambda m: m.group(1) + layout + m.group(2), original); self.assertEqual(1, count)
@@ -125,7 +128,7 @@ class MachineProofAuditTest(unittest.TestCase):
                 result = self.audit(); self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         path.write_text(original)
     def test_create_mapping_cannot_move_to_another_path(self):
-        path = next(self.root.glob("services/operations-service/src/main/java/**/NotebookTrackerMachineController.java"))
+        path = next(self.root.glob("services/operations-service/src/main/java/**/OrderWorkflowMachineController.java"))
         text, count = re.subn(self.CREATE, lambda m: '@PostMapping("/extra")\n    ' + m.group(2), path.read_text()); self.assertEqual(1, count)
         path.write_text(text)
         result = self.audit(); self.assertNotEqual(0, result.returncode); self.assertIn("mapping drifted", result.stdout)
