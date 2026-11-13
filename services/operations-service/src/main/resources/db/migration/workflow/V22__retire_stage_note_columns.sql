@@ -60,8 +60,10 @@ BEGIN
           WHERE n.instance_id = s.instance_id AND n.step_order = s.step_order AND n.body = s.stage_note);
     IF uncopied IS NOT NULL THEN
         RAISE EXCEPTION 'V22: stage notes that are in no stage entry (no recorded author, so V20 and V21 did not copy them): %. '
-            'Nothing was changed. Copy each into workflow.workflow_internal_notes (same instance_id, school_id, step_order and body, '
-            'with the author it should carry) or clear its stage_note, then re-run the migration job', uncopied;
+            'Nothing was changed. As the migration owner, in a transaction that first runs SET LOCAL app.bypass_rls = ''on'' '
+            '(both tables force row-level security: without it the owner sees no row, so a clear updates nothing and a copy is '
+            'refused), copy each into workflow.workflow_internal_notes (same instance_id, school_id, step_order and body, with '
+            'the author it should carry) or clear its stage_note; commit, then re-run the migration job', uncopied;
     END IF;
 END $$;
 

@@ -44,6 +44,9 @@ class StageNoteRetirementMigrationTest {
     static String uncopiedFailure;
     static List<String> stateAfterFailures;
     static String versionAfterFailures;
+    /** The message's remedy tried as the migration owner without the bypass it names: rows cleared, and the copy's refusal. */
+    static int clearedWithoutBypass;
+    static String copyWithoutBypass;
 
     @BeforeAll
     static void migrateToV21WriteNotesThenMigrateToV22() throws Exception {
@@ -93,10 +96,23 @@ class StageNoteRetirementMigrationTest {
         stateAfterFailures = state();
         versionAfterFailures = rows("SELECT max(version::int) FROM workflow.flyway_schema_history WHERE success AND version IS NOT NULL").getFirst();
 
-        // The operator gives the note its author, as the message asks, and re-runs the job.
-        try (Connection c = admin(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO workflow.workflow_internal_notes (instance_id, school_id, author_user_id, body, created_at, step_order) "
-                    + "VALUES (" + INSTANCE.get("CK-403") + ", 20, 9, 'Call the printer on Friday', '2026-11-13T07:00:00Z', 3)");
+        // The operator gives the note its author as the message asks: as the migration owner, in a transaction that first turns
+        // the bypass on. Without it, forced row-level security hides the step (a clear changes nothing) and refuses the copy.
+        String copy = "INSERT INTO workflow.workflow_internal_notes (instance_id, school_id, author_user_id, body, created_at, step_order) "
+                + "VALUES (" + INSTANCE.get("CK-403") + ", 20, 9, 'Call the printer on Friday', '2026-11-13T07:00:00Z', 3)";
+        try (Connection c = owner(); Statement st = c.createStatement()) {
+            clearedWithoutBypass = st.executeUpdate("UPDATE workflow.workflow_instance_steps SET stage_note = NULL WHERE instance_id = "
+                    + INSTANCE.get("CK-403") + " AND step_order = 3");
+            try {
+                st.execute(copy);
+                copyWithoutBypass = "copied";
+            } catch (SQLException refused) {
+                copyWithoutBypass = refused.getMessage();
+            }
+            c.setAutoCommit(false);
+            st.execute("SET LOCAL app.bypass_rls = 'on'");
+            st.execute(copy);
+            c.commit();
         }
         migrate("22");
     }
@@ -118,12 +134,21 @@ class StageNoteRetirementMigrationTest {
         assertTrue(uncopiedFailure.contains("V22: stage notes that are in no stage entry"), uncopiedFailure);
         assertTrue(uncopiedFailure.contains("instance " + INSTANCE.get("CK-403") + " (order CK-403) step 3"), uncopiedFailure);
         assertTrue(uncopiedFailure.contains("Nothing was changed"), uncopiedFailure);
+        assertTrue(uncopiedFailure.contains("As the migration owner, in a transaction that first runs SET LOCAL app.bypass_rls = 'on'"),
+                uncopiedFailure);
         for (String order : List.of("CK-401", "CK-402", "CK-404")) {
             assertFalse(uncopiedFailure.contains("(order " + order + ")"), order + " is copied or already an entry: " + uncopiedFailure);
         }
         assertEquals(List.of("columns=3", "trigger=1", "function=1", "CK-401 entries=0"), stateAfterFailures,
                 "the copy rolled back with the rest");
         assertEquals("21", versionAfterFailures);
+    }
+
+    /** Why the message names the bypass: without it the owner's remedy silently changes nothing, or is refused. */
+    @Test
+    void theRemedyTheMessageGivesNeedsTheBypassItNames() {
+        assertEquals(0, clearedWithoutBypass, "without the bypass the owner's clear finds no row");
+        assertTrue(copyWithoutBypass.contains("row-level security"), copyWithoutBypass);
     }
 
     @Test
@@ -231,6 +256,11 @@ class StageNoteRetirementMigrationTest {
 
     private static Connection admin() throws SQLException {
         return DriverManager.getConnection(PG.getJdbcUrl(), "admin", "admin");
+    }
+
+    /** The migration owner: neither superuser nor BYPASSRLS, so forced row-level security applies to it. */
+    private static Connection owner() throws SQLException {
+        return DriverManager.getConnection(PG.getJdbcUrl(), OWNER, OWNER);
     }
 
     /** Rows as "a|b|c" strings, read by the superuser (which row-level security does not filter). */
