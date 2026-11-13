@@ -34,7 +34,7 @@ function NavItems({ granted, itemOnlyOperator }: { granted: string[]; itemOnlyOp
 }
 const navLabels = () => within(screen.getByRole('list', { name: 'Navigation' })).queryAllByRole('listitem').map(item => item.textContent);
 
-describe('notebook order navigation', () => {
+describe('order workflow navigation', () => {
   // Exactly what identity grants an operator whose only assignment is one catalogue item at a school (owner decision D2).
   const itemOnly = ['workspace:access', 'notebook-tracker:read', 'notebook-tracker:act', 'order:read', 'order:update'];
 
@@ -46,20 +46,41 @@ describe('notebook order navigation', () => {
     expect(isItemOnlyOperator(null)).toBe(false);
   });
 
-  it('gives an item-only operator with no school the notebook orders and nothing else, and opens them', async () => {
+  it('gives an item-only operator with no school the order workflows and nothing else, and opens them', async () => {
     render(<MemoryRouter initialEntries={['/dashboard']}><NavItems granted={itemOnly} itemOnlyOperator /></MemoryRouter>);
-    expect(navLabels()).toEqual(['Notebook orders']);
+    expect(navLabels()).toEqual(['Order workflows']);
     await waitFor(() => expect(screen.getByLabelText('Task URL')).toHaveTextContent('?panel=nb-work'));
   });
 
-  it('shows notebook orders to a school-wide operator who holds the tracker permission, beside their other work', () => {
+  it('shows order workflows to a school-wide operator who holds the tracker permission, beside their other work', () => {
     render(<MemoryRouter initialEntries={['/dashboard']}><NavItems granted={['notebook-tracker:read', 'order:read']} itemOnlyOperator={false} /></MemoryRouter>);
-    expect(navLabels()).toEqual(expect.arrayContaining(['Supply Details', 'School Orders', 'Notebook orders']));
+    expect(navLabels()).toEqual(expect.arrayContaining(['Supply Details', 'School Orders', 'Order workflows']));
   });
 
-  it('hides notebook orders from an operator without the tracker permission', () => {
+  it('hides order workflows from an operator without the tracker permission', () => {
     render(<MemoryRouter initialEntries={['/dashboard']}><NavItems granted={['workflow:read', 'order:read']} itemOnlyOperator={false} /></MemoryRouter>);
-    expect(navLabels()).not.toContain('Notebook orders');
+    expect(navLabels()).not.toContain('Order workflows');
+  });
+
+  it('keeps a deep link to an order, and drops the order and the list filters when another panel is chosen', async () => {
+    function Workflows() {
+      const state = useWorkspaceNavigation({
+        role: 'OPERATIONS', activeModules: withDerivedModuleGroups(['ORDERS']), itemOnlyOperator: false,
+        can: code => ['notebook-tracker:read', 'order:read'].includes(code), canAny: codes => codes.some(code => ['notebook-tracker:read', 'order:read'].includes(code)),
+      });
+      const location = useLocation();
+      return <>
+        <output aria-label="Task URL">{location.search}</output>
+        <button onClick={() => state.setPanel('nb-work')}>Open order workflows</button>
+        <button onClick={() => state.setPanel('orders')}>Open school orders</button>
+      </>;
+    }
+    render(<MemoryRouter initialEntries={['/dashboard?panel=nb-work&order=CK-1015&sla=OVERDUE&item=NB&source=mail']}><Workflows /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByLabelText('Task URL')).toHaveTextContent('order=CK-1015'));
+    fireEvent.click(screen.getByRole('button', { name: 'Open order workflows' }));
+    expect(screen.getByLabelText('Task URL')).toHaveTextContent('?panel=nb-work&sla=OVERDUE&item=NB&source=mail');
+    fireEvent.click(screen.getByRole('button', { name: 'Open school orders' }));
+    expect(screen.getByLabelText('Task URL')).toHaveTextContent('?panel=orders&source=mail');
   });
 });
 

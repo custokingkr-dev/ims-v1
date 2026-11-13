@@ -3,6 +3,7 @@ import { formatIsoDay, formatMoney } from '../utils';
 import { useState } from 'react';
 import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 import { useCategoryLabel } from '../../../features/catalog/useCategoryLabel';
+import { orderHeadline, orderLabel } from '../../../features/orders/shared/orderLabel';
 
 interface Props {
   orders: any[];
@@ -57,19 +58,23 @@ export function SaOrderApprovalsPanel({
           <div className="ck-table-wrap"><table className="ck-table">
             <thead>
               <tr>
-                <th>Order ID</th><th>School</th><th>Category</th>
+                <th>Order</th><th>School</th><th>Category</th>
                 <th className="ck-num">Amount</th><th>Placed on</th><th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {orders.map((row: any) => (
+              {orders.map((row: any) => {
+                const label = orderLabel({ orderId: row.id, orderNumber: row.orderNumber });
+                return (
                 <tr key={row.id}>
                   {/* The Description column repeated the Category verbatim: the order row carries no
                       description, title or items field, so the whole column could only ever echo its
                       neighbour. An order awaiting pricing also has no placedAt, and falling through to
                       an em dash hid how long it had been waiting; createdAt is always present. */}
                   <td>
-                    <div className="tb">{row.id}</div>
+                    {/* The order number heads the row with "Ref CK-…" beneath (design D14); an unnumbered order shows its id. */}
+                    <div className="tb">{label.headline}</div>
+                    {label.reference ? <div className="ts">{label.reference}</div> : null}
                     {row.estimatedDelivery ? <div className="ts">{row.estimatedDelivery}</div> : null}
                   </td>
                   <td><div className="tb">{row.schoolName}</div></td>
@@ -89,7 +94,8 @@ export function SaOrderApprovalsPanel({
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table></div>
         )}
@@ -104,7 +110,7 @@ export function SaOrderApprovalsPanel({
             </div>
             <div className="ck-modal-body">
               <p style={{ marginBottom: 12, color: 'var(--ink2)', fontSize: 13 }}>
-                Order <strong>{rejectModalOrderId}</strong> will be returned for revision and the admin will be notified.
+                Order <strong>{orderHeadline({ orderId: rejectModalOrderId, orderNumber: orders.find((row: any) => row.id === rejectModalOrderId)?.orderNumber })}</strong> will be returned for revision and the admin will be notified.
               </p>
               <div className="field">
                 <label>Reason for returning (shown to school admin)</label>

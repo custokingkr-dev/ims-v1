@@ -1,0 +1,35 @@
+/*
+ * Call log (design section 4.6). Tokens only; nothing below the 12px floor, so the global 11.5px field labels and 11px
+ * supporting text are raised inside this scope. Outcome chips carry a word as well as a colour.
+ */
+
+.ck-call { display: grid; gap: var(--ck-space-4); min-width: 0; color: var(--ck-text-primary); font-size: var(--ck-text-base); }
+.ck-call-card { display: grid; gap: var(--ck-space-3); min-width: 0; padding: var(--ck-space-4); border: 1px solid var(--ck-border-subtle); border-radius: var(--ck-radius-md); background: var(--ck-bg-surface); }
+.ck-call-card h3 { margin: 0; display: flex; align-items: center; gap: var(--ck-space-2); font-family: var(--ck-font-body); font-size: var(--ck-text-base); letter-spacing: 0; }
+.ck-call :is(input, select, textarea) { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--ck-border-default); border-radius: var(--ck-radius-xs); padding: 9px 10px; font: inherit; color: var(--ck-text-primary); background: var(--ck-bg-surface); }
+.ck-call textarea { resize: vertical; min-height: 96px; }
+.ck-call :is(input, select, textarea, button):focus-visible { outline: 2px solid var(--ck-color-primary); outline-offset: 3px; }
+.ck-call :is(input, select, textarea):disabled { background: var(--ck-bg-app); color: var(--ck-text-muted); }
+.ck-call .ck-field label { font-size: var(--ck-text-xs); }
+.ck-call .ts { font-size: var(--ck-text-xs); }
+.ck-call .ck-alert { margin: 0; }
+.ck-call .ck-btn { display: inline-flex; align-items: center; gap: var(--ck-space-2); min-height: 36px; }
+
+.ck-call-notes { display: grid; gap: var(--ck-space-1); }
+.ck-call-counter { justify-self: end; font-size: var(--ck-text-xs); color: var(--ck-text-secondary); font-variant-numeric: tabular-nums; }
+.ck-call-counter.is-over { color: var(--ck-color-danger); font-weight: 700; }
+.ck-call-muted { margin: 0; color: var(--ck-text-secondary); font-size: var(--ck-text-sm); }
+
+.ck-call-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.ck-call-entry { display: grid; gap: var(--ck-space-1); padding-block: var(--ck-space-3); border-top: 1px solid var(--ck-border-subtle); min-width: 0; }
+.ck-call-entry:first-child { border-top: 0; padding-top: 0; }
+.ck-call-entry-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ck-space-2); }
+.ck-call-entry-head strong { font-size: var(--ck-text-sm); overflow-wrap: anywhere; }
+.ck-call-meta { font-size: var(--ck-text-xs); color: var(--ck-text-secondary); }
+.ck-call-text { margin: 0; font-size: var(--ck-text-sm); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.ck-call-chip { display: inline-flex; padding: 2px 8px; border-radius: var(--ck-radius-pill); font-size: var(--ck-text-xs); font-weight: 700; white-space: nowrap; }
+.ck-call-chip.is-success { background: var(--ck-color-primary-soft); color: var(--ck-color-primary); }
+.ck-call-chip.is-neutral { background: var(--ck-status-neutral-bg); color: var(--ck-text-secondary); }
+.ck-call-chip.is-warning { background: var(--ck-color-warning-soft); color: var(--ck-color-warning); }
+.ck-call-chip.is-danger { background: var(--ck-color-danger-soft); color: var(--ck-color-danger); }

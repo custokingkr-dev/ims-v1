@@ -1,6 +1,7 @@
 import { catalogClient } from '../../services/catalogApi';
-import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Check, RefreshCw, Save, Truck } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Link, useInRouterContext } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Check, RefreshCw, Save, Truck } from 'lucide-react';
 import api from '../../services/api';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,14 +9,26 @@ import { formatMoney, prettyOrderStatus } from '../../pages/workspace/utils';
 import { errorMessage, getFormOrder } from './api';
 import { ProductFormBuilder } from './ProductFormBuilder';
 import { OrderAssetField } from './OrderAssetField';
-import { ProductOrderWorkflow } from './ProductOrderWorkflow';
-import { selectionCodes, selectionLabel, selectionSpec, type AssetKind, type FormOrderDetail } from './types';
+import { orderLabel } from '../orders/shared/orderLabel';
+import {
+  schoolWorkflowStatus, selectionCodes, selectionLabel, selectionSpec, workflowStepText, type AssetKind, type FormOrderDetail,
+} from './types';
 import { matches } from './productFormRules';
 import './product-form.css';
 
+/** The deep link to an order's workflow screen (design section 4.1); inside the app it navigates without a reload. */
+function OrderWorkflowLink({ orderId }: { orderId: string }) {
+  const inRouter = useInRouterContext();
+  const search = `?panel=nb-work&order=${encodeURIComponent(orderId)}`;
+  const content = <>Open order workflow <ArrowRight size={16} aria-hidden="true" /></>;
+  return inRouter
+    ? <Link className="ck-btn ck-btn-g" to={{ search }}>{content}</Link>
+    : <a className="ck-btn ck-btn-g" href={search}>{content}</a>;
+}
+
 /**
- * `onTrackerManaged` is called whenever the loaded order says the notebook order tracker runs it, so a host that opened this
- * screen from a stale list row (an order placed after the list loaded, or placed here) can open the tracker instead.
+ * `onTrackerManaged` is called whenever the loaded order says an order workflow runs it, so a host that opened this screen
+ * from a stale list row (an order placed after the list loaded, or placed here) can open the workflow instead.
  */
 export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManaged }: {
   orderId: string; onBack: () => void; onChanged?: () => void; onTrackerManaged?: () => void;
@@ -31,14 +44,12 @@ export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManage
   const [busy, setBusy] = useState(false);
   const [prices, setPrices] = useState<Record<number, string>>({});
   const [gst, setGst] = useState('0');
-  // Counts reloads of this order (after any action or an explicit refresh). It changes in the same render as the reloaded
-  // order, so the production workflow refetches exactly once per reload, or unmounts if the server stopped offering it.
-  const [reloads, setReloads] = useState(0);
+  const workflowHeadingId = useId();
   const reportTracker = useRef(onTrackerManaged);
   reportTracker.current = onTrackerManaged;
   useEffect(() => { if (detail?.order.trackerManaged === true) reportTracker.current?.(); }, [detail?.order.trackerManaged]);
   const load = async () => {
-    const next = await getFormOrder(orderId); setDetail(next); setReloads((value) => value + 1);
+    const next = await getFormOrder(orderId); setDetail(next);
     setPrices(Object.fromEntries(next.lines.map((line) => [line.id, line.unitPricePaise === null ? '' : String(line.unitPricePaise / 100)])));
     setGst(String(Number(next.order.gst || 0) / 100)); return next;
   };
@@ -64,12 +75,19 @@ export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManage
   const currentAssets = detail?.assets.filter((a) => !a.supersededAt) || [];
   const design = currentAssets.find((asset) => asset.assetKind === 'DESIGN');
   const designApproved = customization !== 'CUSTOMIZED' || (!!detail?.approvedDesignAssetId && detail.approvedDesignAssetId === design?.id);
-  // A notebook order placed on the order tracker is run there: it is never quoted, design-approved or delivered from this
-  // screen. One placed before the tracker keeps this flow to the end (owner decision D1).
+  // An order an order workflow runs is never design-approved, approved or delivered from this screen: the workflow owns
+  // those steps. One placed before its workflow existed keeps this flow to the end (owner decision D1).
   const onTracker = detail?.order.trackerManaged === true;
-  const quoted = !onTracker && detail?.pricingStatus === 'QUOTED';
-  const final = ['APPROVED', 'CUSTOKING_APPROVED', 'DELIVERED', 'FULFILLED', 'CANCELLED'].includes(status);
-  const canQuote = !onTracker && superadmin && can('catalog:quote') && status !== 'DRAFT' && !final;
+  // Design D5: a notebook on a workflow is never priced; every other workflow item keeps its quote as a commercial record,
+  // which superadmin may still save until the workflow completes.
+  const unpriced = onTracker && (detail?.pricingStatus === 'NOT_APPLICABLE' || detail?.formDefinition.category.code === 'NOTEBOOKS');
+  const quoted = !unpriced && detail?.pricingStatus === 'QUOTED';
+  const final = ['APPROVED', 'CUSTOKING_APPROVED', 'DELIVERED', 'FULFILLED', 'CANCELLED', 'COMPLETED'].includes(status);
+  const canQuote = !unpriced && superadmin && can('catalog:quote') && status !== 'DRAFT' && !final;
+  const label = orderLabel({ orderId, orderNumber: detail?.order.orderNumber });
+  const workflowStep = detail ? workflowStepText(status, detail.order.workflowStep, prettyOrderStatus) : null;
+  // Staff see the workflow's step; a school sees only Processing or Delivered (design D5).
+  const statusText = !onTracker ? prettyOrderStatus(status) : canOperate ? workflowStep?.stage ?? '' : schoolWorkflowStatus(status);
   const waitingDesign = !onTracker && status === 'DESIGN_APPROVAL';
   const readyForApproval = !onTracker && ['DESIGN_APPROVED_PROCESSING', 'PROCESSING', 'IN_PROGRESS', 'AWAITING_APPROVAL'].includes(status);
   // Spec v4: a notebook order on the tracker leaves the delivery flow (its delivery proof is tracker step 12), so the school is
@@ -88,11 +106,13 @@ export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManage
   };
   return <div className="ck-content"><div className="ck-product-detail ck-product-form">
     <div className="ck-product-section-head"><button className="ck-btn ck-btn-ghost" onClick={onBack} disabled={busy}><ArrowLeft size={16} />Back to orders</button><button className="ck-btn ck-btn-ghost ck-product-icon" title="Refresh order" aria-label="Refresh order" disabled={busy} onClick={() => void mutate(async () => undefined, '')}><RefreshCw size={16} /></button></div>
-    <div className="ck-product-section-head"><h1 className="ck-page-title">Order {orderId}</h1>{detail && <span className="ck-status">{prettyOrderStatus(status)}</span>}</div>
+    <div className="ck-product-section-head"><div><h1 className="ck-page-title">{detail?.order.orderNumber ? label.headline : `Order ${orderId}`}</h1>
+      {label.reference && detail?.order.orderNumber && <p className="ck-product-muted ck-product-order-ref">{label.reference}</p>}</div>
+      {detail && <span className="ck-status">{statusText}</span>}</div>
     {error && <div className="ck-alert ck-alert-re" role="alert">{error}</div>}
     {notice && <div className="ck-alert ck-alert-g" role="status">{notice}</div>}
     {loading ? <p role="status">Loading order...</p> : detail && (status === 'DRAFT' ? <ProductFormBuilder key={`${orderId}-${detail.version}`} definition={detail.formDefinition} initialOrder={detail} onSaved={(next, placed) => { setDetail(next); onChanged?.(); if (placed) void load(); }} /> : <>
-      <div className="ck-product-section-head"><h2>{detail.formDefinition.category.label}</h2>{!onTracker && <span className={`ck-status ${quoted ? 'sg' : 'sam'}`}>{quoted ? 'Quoted' : 'Pending pricing'}</span>}</div>
+      <div className="ck-product-section-head"><h2>{detail.formDefinition.category.label}</h2>{!unpriced && <span className={`ck-status ${quoted ? 'sg' : 'sam'}`}>{quoted ? 'Quoted' : 'Pending pricing'}</span>}</div>
       <p>{selectionLabel(detail.orderSelections, 'CUSTOMIZATION')}{detail.order.requiredByDate ? ` | Required by ${detail.order.requiredByDate}` : ''}</p>
       {orderGroups.some((group) => selectionLabel(detail.orderSelections, group.code)) && <dl className="ck-product-order-meta">
         {orderGroups.map((group) => {
@@ -125,11 +145,14 @@ export function ProductOrderDetail({ orderId, onBack, onChanged, onTrackerManage
         {superadmin && can('order:approve') && readyForApproval && <><span className="ck-product-muted">{quoted ? 'Pricing complete' : 'Quote required before approval'}{customization === 'CUSTOMIZED' ? designApproved ? ' | Design approval completed' : ' | Design approval required' : ''}</span><button className="ck-btn ck-btn-g" disabled={busy || !quoted || !designApproved} onClick={() => void mutate(() => api.post(`/catalog/orders/${orderId}/superadmin-approve`), 'Order approved.')}><Check size={16} />Approve order</button></>}
         {!onTracker && canOperate && (can('order:fulfill') || can('order:update')) && ['APPROVED', 'CUSTOKING_APPROVED'].includes(status) && <>{missingDeliveryAsset && <span className="ck-product-muted">Pre-delivery photo required</span>}<button className="ck-btn ck-btn-g" disabled={busy || missingDeliveryAsset} onClick={() => void mutate(() => catalogClient.markDelivered({ id: orderId }), 'Order marked delivered.')}><Truck size={16} />Mark delivered</button></>}
       </div>
-      {/* The server decides which orders run a production workflow (category, status, an existing workflow) and who may
-          act on it; this screen mounts the panel only when it says so, and refetches it whenever the order changes. */}
-      {detail.order.productionWorkflowAvailable === true && <ProductOrderWorkflow key={orderId}
-        orderId={orderId} schoolId={typeof detail.order.schoolId === 'number' ? detail.order.schoolId : null}
-        refreshKey={`${status}|${detail.version}|${reloads}`} staff={canOperate} superadmin={superadmin} />}
+      {/* Design D4: the free-text production workflow is retired; staff work a workflow order on its own screen. */}
+      {onTracker && canOperate && workflowStep && <section className="ck-order-workflow-link" aria-labelledby={workflowHeadingId}>
+        <div>
+          <h2 id={workflowHeadingId}>Order workflow</h2>
+          <p className="ck-product-muted">{[workflowStep.stage, workflowStep.progress].filter(Boolean).join(' · ')}</p>
+        </div>
+        <OrderWorkflowLink orderId={orderId} />
+      </section>}
     </>)}
   </div></div>;
 }

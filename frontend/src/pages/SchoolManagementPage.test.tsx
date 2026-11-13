@@ -15,6 +15,8 @@ vi.mock('../services/api', () => ({
   },
 }));
 
+const authRole = vi.hoisted(() => ({ role: 'SUPERADMIN' }));
+
 vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({
     user: {
@@ -22,7 +24,7 @@ vi.mock('../contexts/AuthContext', () => ({
       userId: 1,
       fullName: 'Local Superadmin',
       email: 'local-superadmin@custoking.local',
-      role: 'SUPERADMIN',
+      role: authRole.role,
       permissions: [
         'platform:admin',
         'school:read',
@@ -147,7 +149,7 @@ describe('SchoolManagementPage superadmin workflows', () => {
   });
 
   it('renders school health, operator scope, search, and setup filtering', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await loadedPage();
 
     const summary = screen.getByLabelText(/school management summary/i);
@@ -164,10 +166,10 @@ describe('SchoolManagementPage superadmin workflows', () => {
     await user.click(screen.getByRole('button', { name: /needs setup/i }));
     expect(screen.getByRole('button', { name: /select north star academy/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /select green valley school/i })).not.toBeInTheDocument();
-  });
+  }, 10000);
 
   it('creates a school and writes module entitlements from the modal', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await loadedPage();
 
     await user.click(screen.getByRole('button', { name: /add school/i }));
@@ -197,7 +199,7 @@ describe('SchoolManagementPage superadmin workflows', () => {
   }, 10000);
 
   it('adds an admin and edits the existing admin account', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await loadedPage();
 
     const northRow = screen.getByRole('button', { name: /select north star academy/i });
@@ -243,7 +245,7 @@ describe('SchoolManagementPage superadmin workflows', () => {
   }, 10000);
 
   it('creates, edits, and scopes operator accounts from the operator panel', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await loadedPage();
 
     await user.click(screen.getByRole('button', { name: /^create$/i }));
@@ -289,7 +291,7 @@ describe('SchoolManagementPage superadmin workflows', () => {
   }, 10000);
 
   it('loads and saves module groups for a school', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await loadedPage();
 
     const greenRow = screen.getByRole('button', { name: /select green valley school/i });
@@ -305,4 +307,105 @@ describe('SchoolManagementPage superadmin workflows', () => {
     await waitFor(() => expect(api.put).toHaveBeenCalledWith('/schools/10/modules/STUDENTS', { enabled: true }));
     expect(api.put).toHaveBeenCalledWith('/schools/10/modules/ORDERS', { enabled: true });
   });
+});
+
+// Design D12 and section 4.8: a school's order code starts every order number, so superadmin can set and change it.
+describe('SchoolManagementPage school order code', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authRole.role = 'SUPERADMIN';
+    mockApi();
+  });
+
+  it('shows the order code but offers its edit to superadmin only (D42)', async () => {
+    authRole.role = 'ZONE_ADMIN';
+    vi.mocked(api.get).mockImplementation((async (url: string) => {
+      if (url === '/schools') return { data: schools.map((school) => ({ ...school, orderCode: 'GVS_PUN' })) };
+      if (url === '/rbac/user-role-assignments') return { data: assignments };
+      if (url === '/users') return { data: operatorUsers };
+      throw new Error(`Unexpected GET ${url}`);
+    }) as any);
+    await loadedPage();
+    expect(screen.getByText(/Order code GVS_PUN/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Edit order code/ })).not.toBeInTheDocument();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('suggests an order code while a school is added, and sends a typed one in capitals', async () => {
+    const user = userEvent.setup({ delay: null });
+    await loadedPage();
+    await user.click(screen.getByRole('button', { name: /add school/i }));
+    const dialog = screen.getByRole('dialog', { name: /add school/i });
+    const code = within(dialog).getByRole('textbox', { name: 'Order Code' });
+    await user.click(within(dialog).getByRole('textbox', { name: /school name/i }));
+    await user.paste('Delhi Public School');
+    await user.click(within(dialog).getByRole('textbox', { name: /^city$/i }));
+    await user.paste('Gurugram');
+    expect(code).toHaveValue('DPS_GUR');
+    expect(code).toHaveAccessibleDescription(/Used in order numbers like NB-DPS_GUR-26-11-13-0001/);
+    await user.clear(code);
+    await user.type(code, 'dps-gur');
+    await user.type(within(dialog).getByRole('textbox', { name: /short code/i }), 'dps');
+    await user.click(within(dialog).getByRole('button', { name: /create school/i }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(/Use initials, an underscore and a location/);
+    expect(api.post).not.toHaveBeenCalledWith('/schools', expect.anything());
+    await user.clear(code);
+    await user.type(code, 'dps2_gur');
+    await user.click(within(dialog).getByRole('button', { name: /create school/i }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/schools', expect.objectContaining({ name: 'Delhi Public School', orderCode: 'DPS2_GUR' })));
+  }, 15000);
+
+  it('suggests the next free code when another school has it, and lets the server derive an untouched suggestion (D12)', async () => {
+    const user = userEvent.setup({ delay: null });
+    vi.mocked(api.get).mockImplementation((async (url: string) => {
+      if (url === '/schools') return { data: schools.map((school) => ({ ...school, orderCode: school.id === 10 ? 'GVS_PUN' : 'NSA_MUM' })) };
+      if (url === '/rbac/user-role-assignments') return { data: assignments };
+      if (url === '/users') return { data: operatorUsers };
+      throw new Error(`Unexpected GET ${url}`);
+    }) as any);
+    vi.mocked(api.post).mockImplementation((async (url: string) => (url === '/schools' ? { data: { id: 77, orderCode: 'GVS2_PUN' } } : { data: {} })) as any);
+    await loadedPage();
+    await user.click(screen.getByRole('button', { name: /add school/i }));
+    const dialog = screen.getByRole('dialog', { name: /add school/i });
+    await user.click(within(dialog).getByRole('textbox', { name: /school name/i }));
+    await user.paste('Green Valley School');
+    await user.click(within(dialog).getByRole('textbox', { name: /^city$/i }));
+    await user.paste('Pune');
+    expect(within(dialog).getByRole('textbox', { name: 'Order Code' })).toHaveValue('GVS2_PUN');
+    await user.type(within(dialog).getByRole('textbox', { name: /short code/i }), 'gvs2');
+    await user.click(within(dialog).getByRole('button', { name: /create school/i }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/schools', expect.objectContaining({ name: 'Green Valley School', orderCode: null })));
+    expect(await screen.findByText(/^School created with order code GVS2_PUN, but Drive setup needs attention/)).toBeInTheDocument();
+  }, 15000);
+
+  it('lets superadmin change the selected school\'s order code for new orders, and keeps a refusal beside it', async () => {
+    const user = userEvent.setup({ delay: null });
+    const coded = schools.map((school) => ({ ...school, orderCode: school.id === 10 ? 'GVS_PUN' : 'NSA_MUM' }));
+    vi.mocked(api.get).mockImplementation((async (url: string) => {
+      if (url === '/schools') return { data: coded };
+      if (url === '/rbac/user-role-assignments') return { data: assignments };
+      if (url === '/users') return { data: operatorUsers };
+      throw new Error(`Unexpected GET ${url}`);
+    }) as any);
+    vi.mocked(api.patch).mockRejectedValueOnce({ response: { status: 409, data: { message: 'Order code GVS_PNQ is already used by another school.' } } })
+      .mockResolvedValue({ data: {} });
+    await loadedPage();
+    expect(screen.getByText(/Order code GVS_PUN/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Edit order code for Green Valley School' }));
+    const code = screen.getByRole('textbox', { name: 'Order code' });
+    expect(code).toHaveAccessibleDescription(/Changing it affects only new orders/);
+    await user.clear(code);
+    await user.type(code, 'gvs_pnq');
+    await user.click(screen.getByRole('button', { name: 'Save order code' }));
+    expect(await screen.findByText('Order code GVS_PNQ is already used by another school.')).toHaveAttribute('role', 'alert');
+    expect(api.patch).toHaveBeenCalledWith('/schools/10', { orderCode: 'GVS_PNQ' });
+    await user.clear(code);
+    await user.type(code, 'gvs2_pun');
+    await user.click(screen.getByRole('button', { name: 'Save order code' }));
+    await waitFor(() => expect(api.patch).toHaveBeenLastCalledWith('/schools/10', { orderCode: 'GVS2_PUN' }));
+    expect(await screen.findByText(/now uses order code GVS2_PUN for new orders/)).toBeInTheDocument();
+  }, 15000);
 });

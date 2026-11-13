@@ -8,9 +8,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function hasStrings(value: Record<string, unknown>, keys: string[]): boolean {
   return keys.every((key) => typeof value[key] === 'string');
 }
+const WORKFLOW_DEFINITIONS = ['NOTEBOOK_ORDER_TRACKER', 'FLIER_ORDER_WORKFLOW', 'FLEX_ORDER_WORKFLOW', 'BILL_BOOK_ORDER_WORKFLOW', 'GENERAL_ITEM_ORDER_WORKFLOW'];
+const optionalString = (value: unknown) => value == null || typeof value === 'string';
 function isCategory(value: unknown): value is ProductCategory {
   return isRecord(value) && hasStrings(value, ['code', 'label', 'description', 'emoji', 'orderType'])
-    && typeof value.active === 'boolean' && typeof value.formEnabled === 'boolean' && typeof value.sortOrder === 'number';
+    && typeof value.active === 'boolean' && typeof value.formEnabled === 'boolean' && typeof value.sortOrder === 'number'
+    // Order numbers and workflows (design D8): absent on an older server, otherwise a string or null.
+    && optionalString(value.orderCode) && optionalString(value.itemNoun)
+    && (value.workflowDefinition == null || WORKFLOW_DEFINITIONS.includes(String(value.workflowDefinition)));
+}
+function isWorkflowStep(value: unknown): boolean {
+  return value == null || (isRecord(value) && typeof value.order === 'number' && typeof value.title === 'string'
+    && typeof value.total === 'number' && typeof value.completed === 'number');
 }
 export function parseProductCategories(value: unknown): ProductCategory[] {
   if (!Array.isArray(value) || !value.every(isCategory)) throw new Error('Catalog data could not be read. Please retry.');
@@ -43,7 +52,7 @@ function isSelections(value: unknown): boolean {
 export function parseFormOrderDetail(value: unknown): FormOrderDetail {
   if (!isRecord(value) || !isRecord(value.order) || !hasStrings(value.order, ['id', 'status'])
     || (value.order.schoolId != null && typeof value.order.schoolId !== 'number')
-    || (value.order.productionWorkflowAvailable != null && typeof value.order.productionWorkflowAvailable !== 'boolean')
+    || !optionalString(value.order.orderNumber) || !isWorkflowStep(value.order.workflowStep)
     || !isSelections(value.orderSelections) || !Array.isArray(value.lines) || !value.lines.every((line: unknown) => isRecord(line)
       && typeof line.id === 'number' && typeof line.bookCount === 'number' && typeof line.pageCount === 'number' && isSelections(line.optionSelections))
     || !Array.isArray(value.assets) || !value.assets.every((asset: unknown) => isRecord(asset)

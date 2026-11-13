@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import api from '../../services/api';
 import { ProductOrderDetail } from './ProductOrderDetail';
@@ -9,6 +10,7 @@ vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () 
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: auth }) }));
 beforeEach(() => { vi.clearAllMocks(); auth.role = 'SUPERADMIN'; URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
 afterEach(cleanup);
+function LocationProbe() { const location = useLocation(); return <p data-testid="location">{location.pathname}{location.search}</p>; }
 // The quote, approval and delivery screens serve every order except a notebook order on the order tracker, which the tracker runs.
 const legacy = (...args: Parameters<typeof savedNotebook>) => {
   const detail = savedNotebook(...args);
@@ -166,97 +168,91 @@ it('uploads the later pre-delivery photo on the same order and enables delivery 
   expect(body.get('assetKind')).toBe('PRE_DELIVERY_PHOTO');
 });
 
-// The production workflow: the server says which orders have one (order.productionWorkflowAvailable) and who may act on it.
-const WORKFLOW_URL = '/catalog/orders/ORD-42/production-workflow';
-const LINKS_URL = '/workflows/school-whatsapp-groups/7';
-const productionView = (canEdit: boolean) => ({
-  orderId: 'ORD-42', category: 'TROPHIES', status: 'ACTIVE', currentStage: 'ORDER_DETAILS', version: 0, canEdit, canComplete: canEdit,
-  stages: [
-    { code: 'ORDER_DETAILS', order: 1, title: 'Order Details', status: 'ACTIVE', data: canEdit ? { details: 'Brief received' } : {}, note: null, completedAt: null },
-    { code: 'DESIGN_ACTIVITY', order: 2, title: 'Designing Activity', status: 'LOCKED', data: {}, note: null, completedAt: null },
-  ],
-});
-const trophyOrder = (status: string, productionWorkflowAvailable?: boolean) => {
+// Design D4: the free-text production workflow is retired. A workflow order points staff to its order workflow screen.
+const flierOrder = (status: string, overrides: Record<string, unknown> = {}, pricingStatus = 'PENDING_PRICING') => {
   const base = savedNotebook(status, false);
-  return { ...base, formDefinition: trophyDefinition, orderSelections: {}, order: { ...base.order, productionWorkflowAvailable } };
+  return {
+    ...base, pricingStatus, formDefinition: { ...trophyDefinition, category: { ...trophyDefinition.category, code: 'FLIERS', label: 'Fliers' } }, orderSelections: {},
+    order: { ...base.order, id: 'CK-1015', trackerManaged: true, orderNumber: 'FE-DPS_GUR-26-11-13-0042', ...overrides },
+  };
 };
-function routeGets(detail: () => unknown, workflow: () => unknown = () => productionView(true)) {
-  vi.mocked(api.get).mockImplementation(async (url) => {
-    if (url === '/supply/orders/ORD-42/form') return { data: detail() };
-    if (url === WORKFLOW_URL) return { data: workflow() };
-    if (url === LINKS_URL) return { data: {} };
-    throw new Error(`Unexpected GET ${url}`);
-  });
-}
-const workflowGets = () => vi.mocked(api.get).mock.calls.filter(([url]) => url === WORKFLOW_URL).length;
+const STEP = { order: 5, title: 'Production Planning', total: 9, completed: 4 };
 
-it.each([['DELIVERED', false], ['REJECTED', false], ['PROCESSING', undefined]] as const)(
-  'never mounts or requests the production workflow for a %s order the server has not made available (%s)', async (status, available) => {
-    routeGets(() => trophyOrder(status, available));
-    render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
-    expect(await screen.findByRole('row', { name: 'Order line 1' })).toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Production workflow' })).not.toBeInTheDocument();
-    expect(workflowGets()).toBe(0);
-  });
-
-it('mounts the production workflow for whatever category the server makes available, with the school WhatsApp groups for a superadmin', async () => {
-  routeGets(() => trophyOrder('PROCESSING', true));
-  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
-  expect(await screen.findByRole('region', { name: 'Production workflow' })).toBeInTheDocument();
-  expect(await screen.findByRole('textbox', { name: 'Production update' })).toHaveValue('Brief received');
-  expect(await screen.findByRole('textbox', { name: 'School group invite URL' })).toBeInTheDocument();
-  expect(api.get).toHaveBeenCalledWith(LINKS_URL);
+it('heads an order with its number and keeps the CK id beneath it as a reference', async () => {
+  vi.mocked(api.get).mockResolvedValue({ data: flierOrder('PRODUCTION_PLANNING', { workflowStep: STEP }) });
+  render(<ProductOrderDetail orderId="CK-1015" onBack={vi.fn()} />);
+  expect(await screen.findByRole('heading', { level: 1, name: 'FE-DPS_GUR-26-11-13-0042' })).toBeInTheDocument();
+  expect(screen.getByText('Ref CK-1015')).toBeInTheDocument();
 });
 
-it('gives a school administrator a read-only workflow and no WhatsApp groups, whatever local permissions say', async () => {
-  auth.role = 'ADMIN';
-  routeGets(() => trophyOrder('PROCESSING', true), () => productionView(false));
+it('heads a draft or an uncoded order with its CK id alone', async () => {
+  vi.mocked(api.get).mockResolvedValue({ data: legacy('PROCESSING', false) });
   render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
-  expect(await screen.findByText('0 / 2 stages')).toBeInTheDocument();
-  expect(screen.queryByRole('textbox', { name: 'Production update' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Complete stage' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('region', { name: 'WhatsApp groups' })).not.toBeInTheDocument();
-  expect(api.get).not.toHaveBeenCalledWith(LINKS_URL);
+  expect(await screen.findByRole('heading', { level: 1, name: 'Order ORD-42' })).toBeInTheDocument();
+  expect(screen.queryByText(/^Ref /)).not.toBeInTheDocument();
 });
 
-it('refetches the production workflow when the order changes underneath it', async () => {
-  let detail = trophyOrder('PROCESSING', true);
-  routeGets(() => detail);
-  vi.mocked(api.put).mockImplementation(async (url) => {
-    if (url !== '/supply/orders/ORD-42/quote') throw new Error(`Unexpected PUT ${url}`);
-    detail = { ...detail, version: 1, pricingStatus: 'QUOTED' };
-    return { data: detail };
+it('shows staff where a workflow order is and links to its order workflow instead of a production workflow', async () => {
+  vi.mocked(api.get).mockResolvedValue({ data: flierOrder('PRODUCTION_PLANNING', { workflowStep: STEP }) });
+  render(<ProductOrderDetail orderId="CK-1015" onBack={vi.fn()} />);
+  const section = await screen.findByRole('region', { name: 'Order workflow' });
+  expect(section).toHaveTextContent('5 · Production Planning · 4 of 9 steps done');
+  expect(within(section).getByRole('link', { name: /Open order workflow/ })).toHaveAttribute('href', '?panel=nb-work&order=CK-1015');
+  expect(screen.getByText('5 · Production Planning', { selector: '.ck-status' })).toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Production workflow' })).not.toBeInTheDocument();
+  expect(api.get).not.toHaveBeenCalledWith('/catalog/orders/CK-1015/production-workflow');
+  for (const name of ['Approve order', 'Approve design', 'Mark delivered']) expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+});
+
+it('navigates to the order workflow inside the app when it has a router', async () => {
+  vi.mocked(api.get).mockResolvedValue({ data: flierOrder('PRODUCTION_PLANNING', { workflowStep: STEP }) });
+  render(<MemoryRouter initialEntries={['/dashboard?panel=sa-all-orders']}>
+    <ProductOrderDetail orderId="CK-1015" onBack={vi.fn()} />
+    <Routes><Route path="/dashboard" element={<LocationProbe />} /></Routes>
+  </MemoryRouter>);
+  fireEvent.click(await screen.findByRole('link', { name: /Open order workflow/ }));
+  expect(await screen.findByTestId('location')).toHaveTextContent('/dashboard?panel=nb-work&order=CK-1015');
+});
+
+it('says a workflow order is completed once its workflow finishes', async () => {
+  vi.mocked(api.get).mockResolvedValue({ data: flierOrder('COMPLETED', { workflowStep: { ...STEP, order: 9, title: 'Delivery & Invoicing', completed: 9 } }) });
+  render(<ProductOrderDetail orderId="CK-1015" onBack={vi.fn()} />);
+  expect(await screen.findByRole('region', { name: 'Order workflow' })).toHaveTextContent('Completed · 9 of 9 steps done');
+});
+
+it.each([['PRODUCTION_PLANNING', 'Processing'], ['COMPLETED', 'Delivered']])(
+  'gives a school only the coarse status of a %s workflow order, and no link to the workflow', async (status, coarse) => {
+    auth.role = 'ADMIN';
+    vi.mocked(api.get).mockResolvedValue({ data: flierOrder(status, { workflowStep: STEP }) });
+    render(<ProductOrderDetail orderId="CK-1015" onBack={vi.fn()} />);
+    expect(await screen.findByText(coarse, { selector: '.ck-status' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Order workflow' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Production Planning/)).not.toBeInTheDocument();
   });
-  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
-  await screen.findByRole('textbox', { name: 'Production update' });
-  expect(workflowGets()).toBe(1);
-  fireEvent.change(screen.getByLabelText('Unit price for line 1'), { target: { value: '45' } });
+
+it('keeps quoting a workflow order of a priced item until its workflow completes (D5)', async () => {
+  vi.mocked(api.get).mockResolvedValue({ data: flierOrder('PRE_PRINT_QUALITY_CHECK', { workflowStep: STEP }) });
+  vi.mocked(api.put).mockResolvedValue({ data: {} });
+  const { unmount } = render(<ProductOrderDetail orderId="CK-1015" onBack={vi.fn()} />);
+  expect(await screen.findByText('Pending pricing', { selector: '.ck-status' })).toBeInTheDocument();
+  fireEvent.change(await screen.findByLabelText('Unit price for line 1'), { target: { value: '2' } });
   fireEvent.change(screen.getByLabelText('GST amount in rupees'), { target: { value: '0' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save quote' }));
-  expect(await screen.findByText('Quote saved.')).toBeInTheDocument();
-  await waitFor(() => expect(workflowGets()).toBe(2));
-});
-
-it('refetches the production workflow on Refresh order, and drops it once the server no longer offers it', async () => {
-  let detail = trophyOrder('PROCESSING', true);
-  routeGets(() => detail);
-  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
-  await screen.findByRole('textbox', { name: 'Production update' });
-  fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
-  await waitFor(() => expect(workflowGets()).toBe(2));
-  detail = { ...trophyOrder('CANCELLED', false), version: 2 };
-  fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
-  await waitFor(() => expect(screen.queryByRole('region', { name: 'Production workflow' })).not.toBeInTheDocument());
-  expect(workflowGets()).toBe(2);
+  await waitFor(() => expect(api.put).toHaveBeenCalledWith('/supply/orders/CK-1015/quote', expect.objectContaining({ lines: [{ id: 101, unitPricePaise: 200 }] })));
+  unmount();
+  vi.mocked(api.get).mockResolvedValue({ data: flierOrder('COMPLETED', {}, 'QUOTED') });
+  render(<ProductOrderDetail orderId="CK-1015" onBack={vi.fn()} />);
+  expect(await screen.findByText('Quoted', { selector: '.ck-status' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Save quote' })).not.toBeInTheDocument();
 });
 
 it.each([
-  ['a non-boolean productionWorkflowAvailable', { productionWorkflowAvailable: 'yes' }],
+  ['a non-string order number', { orderNumber: 42 }],
+  ['a malformed workflow step', { workflowStep: { order: '5' } }],
   ['a non-numeric schoolId', { schoolId: '7' }],
 ])('refuses order details with %s rather than guessing', async (_label, order) => {
-  const detail = trophyOrder('PROCESSING');
+  const detail = flierOrder('PRODUCTION_PLANNING');
   vi.mocked(api.get).mockResolvedValue({ data: { ...detail, order: { ...detail.order, ...order } } });
-  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  render(<ProductOrderDetail orderId="CK-1015" onBack={vi.fn()} />);
   expect(await screen.findByRole('alert')).toHaveTextContent('Order details could not be read. Please refresh the order.');
-  expect(screen.queryByRole('region', { name: 'Production workflow' })).not.toBeInTheDocument();
 });

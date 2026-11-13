@@ -1,25 +1,45 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { ArrowDown, ArrowUp, Eye, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import api from '../../services/api';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuth } from '../../contexts/AuthContext';
 import { ProductFormBuilder } from './ProductFormBuilder';
 import { errorMessage, parseProductCategories, parseProductFormDefinition } from './api';
+import { ITEM_CODE_HINT, WORKFLOW_DEFINITIONS, isItemCode, normaliseItemCode, workflowDefinitionLabel } from '../orders/vendors/codes';
 import type { FormDefinition, ProductCategory, ProductGroup, ProductOption, ProductRule } from './types';
 import './product-form.css';
 
 type Tab = 'Products' | 'Form' | 'Conditions' | 'Preview';
 type Entity = ProductCategory | ProductGroup | ProductOption | ProductRule;
 type Editor = { kind: 'categories' | 'groups' | 'options' | 'rules'; original?: string | number; value: Entity };
-const emptyCategory: ProductCategory = { code: '', label: '', emoji: '', description: '', orderType: 'One-time', formEnabled: false, sortOrder: 0, active: true };
+const emptyCategory: ProductCategory = { code: '', label: '', emoji: '', description: '', orderType: 'One-time', formEnabled: false, sortOrder: 0, active: true, orderCode: null, itemNoun: null, workflowDefinition: null };
+const ITEM_NOUN_MAX = 40;
+
+/**
+ * What stops a category's order numbering and workflow from being saved (design D8): a code of 2 to 4 capital letters or
+ * none, a short noun, and a workflow only for a category whose orders get numbers. Empty when the category may be saved.
+ */
+export function categoryCodeErrors(category: Pick<ProductCategory, 'orderCode' | 'itemNoun' | 'workflowDefinition'>): { orderCode?: string; itemNoun?: string } {
+  const errors: { orderCode?: string; itemNoun?: string } = {};
+  const code = normaliseItemCode(category.orderCode ?? '');
+  if (code && !isItemCode(code)) errors.orderCode = ITEM_CODE_HINT;
+  else if (!code && category.workflowDefinition) errors.orderCode = 'A category with a workflow needs an order code, so its orders get numbers.';
+  if ((category.itemNoun ?? '').trim().length > ITEM_NOUN_MAX) errors.itemNoun = `Use at most ${ITEM_NOUN_MAX} characters.`;
+  return errors;
+}
 const defaultParams: Record<string, Record<string, string | number>> = {
   REQUIRE_QUANTITY_TOTAL: { value: 1000, comparison: 'EQ', scope: 'ORDER', stage: 'ON_PLACE' },
   FLOOR_VALUE: { value: 1000 },
   ROUND_TO_MULTIPLE: { multiple: 7, mode: 'NEAREST', minimum: 7 },
   MIN_VALUE: { value: 1 }, MAX_VALUE: { value: 10000 }, REQUIRE_ASSET: { assetKind: 'DESIGN', stage: 'ON_PLACE' },
 };
-function TextField({ label, value, onChange, disabled = false, type = 'text', min }: { label: string; value: string | number | null | undefined; onChange: (value: string) => void; disabled?: boolean; type?: string; min?: number }) {
-  return <label className="field"><span>{label}</span><input type={type} min={min} value={value ?? ''} disabled={disabled} onChange={(event) => onChange(event.target.value)} /></label>;
+function TextField({ label, value, onChange, disabled = false, type = 'text', min, hint, error }: { label: string; value: string | number | null | undefined; onChange: (value: string) => void; disabled?: boolean; type?: string; min?: number; hint?: string; error?: string }) {
+  const describedBy = useId();
+  const note = error || hint;
+  const field = <label className="field"><span>{label}</span><input type={type} min={min} value={value ?? ''} disabled={disabled} aria-invalid={error ? true : undefined}
+    aria-describedby={note ? describedBy : undefined} onChange={(event) => onChange(event.target.value)} /></label>;
+  // The note sits outside the label, so it describes the field without becoming part of its name.
+  return note ? <div className="ck-product-field-note">{field}<span id={describedBy} className={error ? 'ck-product-error' : 'ck-product-muted'} role={error ? 'alert' : undefined}>{note}</span></div> : field;
 }
 function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: [string, string][] }) {
   return <label className="field"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)}>{options.map(([code, name]) => <option key={code} value={code}>{name}</option>)}</select></label>;
@@ -38,6 +58,7 @@ export function ProductCatalogManager() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [codeErrors, setCodeErrors] = useState<{ orderCode?: string; itemNoun?: string }>({});
   const loadCategories = async () => { const response = await api.get<unknown>('/supply/product-catalog/admin/categories'); const data = parseProductCategories(response.data); setCategories(data); return data; };
   const loadDefinition = async () => { const { data } = await api.get<unknown>(`/supply/product-catalog/admin/forms/${selected}`); setDefinition(parseProductFormDefinition(data)); };
   useEffect(() => { setLoading(true); setError(''); void loadCategories().catch((e: unknown) => setError(errorMessage(e))).finally(() => setLoading(false)); }, [attempt]);
@@ -54,7 +75,7 @@ export function ProductCatalogManager() {
     }
     catch (e) { setError(errorMessage(e)); } finally { setBusy(false); }
   };
-  const edit = (kind: Editor['kind'], value: Entity, original?: string | number) => { setEditor({ kind, value: structuredClone(value), original }); setError(''); };
+  const edit = (kind: Editor['kind'], value: Entity, original?: string | number) => { setEditor({ kind, value: structuredClone(value), original }); setError(''); setCodeErrors({}); };
   const change = (values: Record<string, unknown>) => setEditor((current) => current ? { ...current, value: { ...current.value, ...values } as Entity } : current);
   const remove = (kind: Editor['kind'], id: string | number, label: string, hard: boolean) => {
     if (hard && !window.confirm(`Permanently delete ${label}? Referenced records cannot be deleted.`)) return;
@@ -62,7 +83,16 @@ export function ProductCatalogManager() {
   };
   const saveEditor = () => {
     if (!editor) return;
-    const { id: _id, options: _options, ...body } = editor.value as Entity & { id?: number; options?: ProductOption[] };
+    const { id: _id, options: _options, ...fields } = editor.value as Entity & { id?: number; options?: ProductOption[] };
+    let body: Record<string, unknown> = fields;
+    if (editor.kind === 'categories') {
+      const value = editor.value as ProductCategory;
+      const found = categoryCodeErrors(value);
+      setCodeErrors(found);
+      if (Object.keys(found).length > 0) return;
+      // Blank means none: no order numbers, no noun, no workflow.
+      body = { ...fields, orderCode: normaliseItemCode(value.orderCode ?? '') || null, itemNoun: value.itemNoun?.trim() || null, workflowDefinition: value.workflowDefinition || null };
+    }
     void mutate(() => editor.original !== undefined ? api.patch(`/supply/product-catalog/${editor.kind}/${editor.original}`, body) : api.post(`/supply/product-catalog/${editor.kind}`, body), 'Catalog changes saved.');
   };
   const category = editor?.kind === 'categories' ? editor.value as ProductCategory : null;
@@ -91,7 +121,13 @@ export function ProductCatalogManager() {
     {editor && <section className="ck-product-admin-editor" aria-label="Catalog editor"><div className="ck-product-section-head"><h2>{editor.original !== undefined ? 'Edit' : 'Add'} {editor.kind === 'categories' ? 'product' : editor.kind === 'groups' ? 'group' : editor.kind === 'options' ? 'option' : 'condition'}</h2><button className="ck-btn ck-btn-ghost ck-product-icon" aria-label="Close editor" title="Close editor" disabled={busy} onClick={() => setEditor(null)}><X size={16} /></button></div>
       <fieldset className="ck-product-fieldset" disabled={busy || !can('catalog:manage')}><div className="ck-product-fields">
         {(category || group || option) && <><TextField label="Code" value={(editor.value as ProductCategory).code} disabled={editor.original !== undefined} onChange={(code) => change({ code: code.toUpperCase().replace(/[^A-Z0-9_]/g, '_') })} /><TextField label="Label" value={(editor.value as ProductCategory).label} onChange={(label) => change({ label })} /></>}
-        {category && <><TextField label="Description" value={category.description} onChange={(description) => change({ description })} /><SelectField label="Order type" value={category.orderType} onChange={(orderType) => change({ orderType })} options={['Recurring', 'One-time', 'Service'].map((value) => [value, value])} /><TextField label="Sort order" type="number" value={category.sortOrder} onChange={(value) => change({ sortOrder: Number(value) })} /><label className="ck-product-check"><input type="checkbox" checked={category.formEnabled} onChange={(event) => change({ formEnabled: event.target.checked })} />Form enabled</label></>}
+        {category && <><TextField label="Description" value={category.description} onChange={(description) => change({ description })} /><SelectField label="Order type" value={category.orderType} onChange={(orderType) => change({ orderType })} options={['Recurring', 'One-time', 'Service'].map((value) => [value, value])} /><TextField label="Sort order" type="number" value={category.sortOrder} onChange={(value) => change({ sortOrder: Number(value) })} /><label className="ck-product-check"><input type="checkbox" checked={category.formEnabled} onChange={(event) => change({ formEnabled: event.target.checked })} />Form enabled</label>
+          <TextField label="Order code" value={category.orderCode} error={codeErrors.orderCode} hint="Starts each order number, like NB in NB-DPS_GUR-26-11-13-0042. Blank: no order numbers."
+            onChange={(orderCode) => { change({ orderCode: orderCode.toUpperCase() }); setCodeErrors((current) => ({ ...current, orderCode: undefined })); }} />
+          <TextField label="Item noun" value={category.itemNoun} error={codeErrors.itemNoun} hint="Used in the introduction message, like “bill book”."
+            onChange={(itemNoun) => { change({ itemNoun }); setCodeErrors((current) => ({ ...current, itemNoun: undefined })); }} />
+          <SelectField label="Workflow" value={category.workflowDefinition ?? ''} onChange={(workflowDefinition) => { change({ workflowDefinition: workflowDefinition || null }); setCodeErrors((current) => ({ ...current, orderCode: undefined })); }}
+            options={[['', 'None (approve, quote and deliver)'], ...WORKFLOW_DEFINITIONS.map((definition): [string, string] => [definition.id, definition.label])]} /></>}
         {group && <><TextField label="Group order" type="number" min={1} value={group.level} onChange={(value) => change({ level: Number(value) })} /><SelectField label="Selection scope" value={group.scope} onChange={(scope) => change({ scope })} options={[["ORDER", 'Once per order'], ['LINE', 'Each order line']]} /><label className="ck-product-check"><input type="checkbox" checked={group.required} onChange={(event) => change({ required: event.target.checked })} />Required</label></>}
         {option && <><TextField label="Specification" value={option.specText} onChange={(specText) => change({ specText })} /><SelectField label="Specification status" value={option.specStatus} onChange={(specStatus) => change({ specStatus })} options={[["CONFIRMED", 'Confirmed'], ['PENDING_SPEC', 'Pending specification']]} /><TextField label="Width (mm)" type="number" min={1} value={option.widthMm} onChange={(value) => change({ widthMm: value ? Number(value) : null })} /><TextField label="Height (mm)" type="number" min={1} value={option.heightMm} onChange={(value) => change({ heightMm: value ? Number(value) : null })} /><TextField label="Sort order" type="number" value={option.sortOrder} onChange={(value) => change({ sortOrder: Number(value) })} /></>}
         {rule && <><SelectField label="Condition" value={rule.ruleType} onChange={(ruleType) => change({ ruleType, params: { ...defaultParams[ruleType] }, targetField: ruleType === 'REQUIRE_ASSET' ? null : ruleType === 'REQUIRE_QUANTITY_TOTAL' ? 'BOOK_COUNT' : 'PAGE_COUNT' })} options={[["REQUIRE_QUANTITY_TOTAL", 'Exact total across all sizes'], ['FLOOR_VALUE', 'Raise each line to a minimum'], ['ROUND_TO_MULTIPLE', 'Round to multiple'], ['MIN_VALUE', 'Minimum value'], ['MAX_VALUE', 'Maximum value'], ['REQUIRE_ASSET', 'Required attachment']]} />
@@ -107,7 +143,7 @@ export function ProductCatalogManager() {
     </section>}
     {loading ? <p role="status">Loading catalog...</p> : <section role="tabpanel" id={`catalog-tab-${tab}`} aria-labelledby={`catalog-tab-button-${tab}`}>
       {tab === 'Products' && <><div className="ck-product-section-head"><h2>Products</h2><button className="ck-btn ck-btn-g" disabled={!can('catalog:manage') || busy} onClick={() => edit('categories', emptyCategory)}><Plus size={16} />Add product</button></div>
-        {categories.map((c) => <div className="ck-product-admin-row" key={c.code}>{actions('categories', c, c.code, c.label, c.active)}<p className="ck-product-muted">{c.description || c.code} | {c.formEnabled ? 'Form enabled' : 'Form disabled'}</p></div>)}
+        {categories.map((c) => <div className="ck-product-admin-row" key={c.code}>{actions('categories', c, c.code, c.label, c.active)}<p className="ck-product-muted">{c.description || c.code} | {c.formEnabled ? 'Form enabled' : 'Form disabled'} | {c.orderCode ? `Order code ${c.orderCode}` : 'No order numbers'}{c.itemNoun ? ` (${c.itemNoun})` : ''} | {c.workflowDefinition ? workflowDefinitionLabel(c.workflowDefinition) : 'No workflow'}</p></div>)}
       </>}
       {tab === 'Form' && definition && <><div className="ck-product-section-head"><h2>Option groups</h2><button className="ck-btn ck-btn-g" disabled={!can('catalog:manage') || busy} onClick={() => edit('groups', { id: 0, categoryCode: selected, code: '', label: '', level: definition.groups.length + 1, selectionType: 'SINGLE', required: true, scope: 'LINE', active: true, options: [] })}><Plus size={16} />Add group</button></div>
         {definition.groups.map((g) => <section className="ck-product-admin-row" key={g.id}>{actions('groups', g, g.id, g.label, g.active)}<p className="ck-product-muted">{g.scope === 'ORDER' ? 'Once per order' : 'Each order line'}{g.required ? ' | Required' : ' | Optional'}</p>
