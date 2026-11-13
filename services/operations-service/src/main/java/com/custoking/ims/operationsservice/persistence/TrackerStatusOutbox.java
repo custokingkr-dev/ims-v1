@@ -98,7 +98,7 @@ public class TrackerStatusOutbox implements QueueBacklog {
         try {
             return Boolean.TRUE.equals(outsideTransaction.execute(status -> claim(orderId, new ArrayList<>()).map(this::deliver).orElse(false)));
         } catch (RuntimeException failure) {
-            LOG.warn("Status of order {} stays queued for the relay: {}", orderId, failure.toString());
+            LOG.warn("Status of order {} stays queued for the relay: {}", loggable(orderId), loggable(failure.toString()));
             return false;
         }
     }
@@ -281,4 +281,9 @@ public class TrackerStatusOutbox implements QueueBacklog {
     }
 
     record Claim(String orderId, long schoolId, String status, long trackerVersion, int attempts, String definitionId, Boolean customised) { }
+
+    /** A value for a log line, with line breaks replaced so a caller-supplied id cannot forge log entries. */
+    private static String loggable(String value) {
+        return value == null ? null : value.replace('\r', '_').replace('\n', '_');
+    }
 }

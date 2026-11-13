@@ -38,7 +38,8 @@ public class VendorDirectoryService {
     private static final Pattern CATEGORY_CODE = Pattern.compile("[A-Z][A-Z0-9_]{1,39}");
     /** Digits with the separators people type: spaces, dots, dashes, brackets and a leading plus. */
     private static final Pattern PHONE = Pattern.compile("\\+?[0-9 ().-]+");
-    private static final Pattern EMAIL = Pattern.compile("[^@\\s]+@[^@\\s]+\\.[^@\\s]+");
+    /** local@domain.tld. The domain's labels exclude the dot, so no two parts can claim the same characters (no ReDoS). */
+    private static final Pattern EMAIL = Pattern.compile("[^@\\s]+@[^@\\s.]+(?:\\.[^@\\s.]+)+");
     private static final String SUPERADMIN_ONLY = "Only superadmin can maintain the vendor directory";
 
     private final VendorRepository repo;

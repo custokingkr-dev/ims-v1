@@ -113,13 +113,13 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
      */
     public boolean attempt(String orderId) {
         if (holdsAConnection()) {
-            LOG.warn("Tracker for order {} is left for the relay: an attempt must not run inside a transaction", orderId);
+            LOG.warn("Tracker for order {} is left for the relay: an attempt must not run inside a transaction", loggable(orderId));
             return false;
         }
         try {
             return claim(orderId, new ArrayList<>()).map(this::create).orElse(false);
         } catch (RuntimeException failure) {
-            LOG.warn("Tracker for order {} stays queued for the relay: {}", orderId, failure.toString());
+            LOG.warn("Tracker for order {} stays queued for the relay: {}", loggable(orderId), loggable(failure.toString()));
             return false;
         }
     }
@@ -473,4 +473,9 @@ public class NotebookTrackerCreationQueue implements QueueBacklog {
      * created. {@code drop}: why nothing is created, or null.
      */
     private record Claim(String orderId, long schoolId, int attempts, TrackerGateway.NewTracker tracker, Drop drop) { }
+
+    /** A value for a log line, with line breaks replaced so a caller-supplied id cannot forge log entries. */
+    private static String loggable(String value) {
+        return value == null ? null : value.replace('\r', '_').replace('\n', '_');
+    }
 }
