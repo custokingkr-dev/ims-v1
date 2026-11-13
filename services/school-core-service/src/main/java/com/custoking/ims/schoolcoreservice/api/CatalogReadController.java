@@ -93,18 +93,23 @@ public class CatalogReadController {
         return catalog.orders(scope, status, limit);
     }
 
-    /** Browser listing with stable page metadata and the existing Operations RLS scope. */
+    /**
+     * Browser listing with stable page metadata and the existing Operations RLS scope. {@code q} searches the order number,
+     * the CK id and the school name (case-insensitive substring, design D14).
+     */
     @GetMapping("/orders/page")
     public Map<String, Object> ordersPage(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "catalog:read");
         Long scope = TenantScope.resolvePlatformReadScope(schoolId);
         requireOrderRead(scope != null ? scope : TenantContext.get().schoolId());
-        return catalog.ordersPage(scope, status, page, size);
+        if (q != null && q.strip().length() > 100) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Search for at most 100 characters");
+        return q == null || q.isBlank() ? catalog.ordersPage(scope, status, page, size) : catalog.ordersPage(scope, status, q, page, size);
     }
 
     @GetMapping("/orders/summary")

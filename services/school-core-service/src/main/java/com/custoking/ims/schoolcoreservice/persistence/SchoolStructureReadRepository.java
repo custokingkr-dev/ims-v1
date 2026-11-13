@@ -1,9 +1,13 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.catalog.domain.SchoolOrderCode;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -222,7 +226,7 @@ public class SchoolStructureReadRepository {
 
     public List<SuperadminSchoolStatsRow> schoolStats() {
         return jdbc.sql("""
-                        SELECT s.id, s.school_uid, s.name, s.short_code, s.city, s.active, s.created_at, s.time_zone,
+                        SELECT s.id, s.school_uid, s.name, s.short_code, s.order_code, s.city, s.active, s.created_at, s.time_zone,
                                s.country_code, s.locale, s.currency_code, s.phone_region,
                                s.academic_year_start_month, s.financial_year_start_month,
                                '' AS admin_email,
@@ -248,7 +252,8 @@ public class SchoolStructureReadRepository {
                         rs.getString("locale"),
                         rs.getString("currency_code"),
                         rs.getString("phone_region"),
-                        erpSince(rs.getObject("created_at", OffsetDateTime.class))))
+                        erpSince(rs.getObject("created_at", OffsetDateTime.class)),
+                        rs.getString("order_code")))
                 .list();
     }
 
@@ -274,17 +279,26 @@ public class SchoolStructureReadRepository {
         int financialYearStartMonth = boundedInt(
                 request.get("financialYearStartMonth"), AcademicCalendar.DEFAULT_FINANCIAL_YEAR_START_MONTH, 1, 12);
         String timeZone = validTimeZone(request.get("timeZone"), DEFAULT_TIME_ZONE);
+        String city = trimToNull(str(request.get("city"), ""));
+        String state = trimToNull(str(request.get("state"), ""));
+        // Design D12: the order code given at onboarding, or the derived suggestion when it is left blank, made unique.
+        String orderCode = SchoolOrderCode.normalise(request.get("orderCode") == null ? null : String.valueOf(request.get("orderCode")));
+        if (orderCode == null) {
+            orderCode = SchoolOrderCode.firstFree(SchoolOrderCode.derive(name, city, state), code -> orderCodeTaken(code, null));
+        } else if (orderCodeTaken(orderCode, null)) {
+            throw orderCodeConflict(orderCode);
+        }
         String countryCode = validCountryCode(request.get("countryCode"), "IN", "countryCode");
         String locale = validLocale(request.get("locale"), "en-IN");
         String currencyCode = validCurrencyCode(request.get("currencyCode"), "INR");
         String phoneRegion = validCountryCode(request.get("phoneRegion"), countryCode, "phoneRegion");
-        Long id = jdbc.sql("""
+        var insert = jdbc.sql("""
                 INSERT INTO tenant_school.schools (
-                    name, short_code, city, state, contact_email, contact_phone, active,
+                    name, short_code, order_code, city, state, contact_email, contact_phone, active,
                     configured_class_count, configured_section_count, academic_year_start_month,
                     financial_year_start_month, time_zone, country_code, locale, currency_code, phone_region, created_at
                 ) VALUES (
-                    :name, :shortCode, :city, :state, :contactEmail, :contactPhone, true,
+                    :name, :shortCode, :orderCode, :city, :state, :contactEmail, :contactPhone, true,
                     :classCount, :sectionCount, :academicYearStartMonth, :financialYearStartMonth, :timeZone,
                     :countryCode, :locale, :currencyCode, :phoneRegion, :createdAt
                 )
@@ -292,8 +306,9 @@ public class SchoolStructureReadRepository {
                 """)
                 .param("name", name)
                 .param("shortCode", shortCode)
-                .param("city", trimToNull(str(request.get("city"), "")))
-                .param("state", trimToNull(str(request.get("state"), "")))
+                .param("orderCode", orderCode)
+                .param("city", city)
+                .param("state", state)
                 .param("contactEmail", trimToNull(str(request.get("contactEmail"), "")))
                 .param("contactPhone", trimToNull(str(request.get("contactPhone"), "")))
                 .param("classCount", classCount)
@@ -305,9 +320,8 @@ public class SchoolStructureReadRepository {
                 .param("locale", locale)
                 .param("currencyCode", currencyCode)
                 .param("phoneRegion", phoneRegion)
-                .param("createdAt", OffsetDateTime.now())
-                .query(Long.class)
-                .single();
+                .param("createdAt", OffsetDateTime.now());
+        Long id = refusingATakenOrderCode(orderCode, () -> insert.query(Long.class).single());
         ensureSchoolSections(id, classCount, sectionCount);
         Map<String, Object> details = schoolDetails(id);
         emitSchoolUpserted(details);
@@ -317,9 +331,13 @@ public class SchoolStructureReadRepository {
     @Transactional
     public Map<String, Object> updateSchool(Long schoolId, Map<String, Object> request) {
         requireSchool(schoolId);
-        jdbc.sql("""
+        // Design D12: superadmin may change the order code at any time; only numbers minted afterwards use it.
+        String orderCode = SchoolOrderCode.normalise(request.get("orderCode") == null ? null : String.valueOf(request.get("orderCode")));
+        if (orderCode != null && orderCodeTaken(orderCode, schoolId)) throw orderCodeConflict(orderCode);
+        var update = jdbc.sql("""
                 UPDATE tenant_school.schools
                 SET name = COALESCE(:name, name),
+                    order_code = COALESCE(:orderCode, order_code),
                     city = :city,
                     academic_year_start_month = COALESCE(:academicYearStartMonth, academic_year_start_month),
                     financial_year_start_month = COALESCE(:financialYearStartMonth, financial_year_start_month),
@@ -351,10 +369,36 @@ public class SchoolStructureReadRepository {
                 .param("phoneRegion", request.containsKey("phoneRegion")
                         ? validCountryCode(request.get("phoneRegion"), null, "phoneRegion") : null)
                 .param("active", request.get("active"))
-                .update();
+                .param("orderCode", orderCode);
+        refusingATakenOrderCode(orderCode, update::update);
         Map<String, Object> details = schoolDetails(schoolId);
         emitSchoolUpserted(details);
         return details;
+    }
+
+    /** Whether another school than {@code schoolId} holds this order code. Superadmin only, so every school is visible. */
+    private boolean orderCodeTaken(String orderCode, Long schoolId) {
+        return jdbc.sql("SELECT count(*) FROM tenant_school.schools WHERE order_code = :code AND id IS DISTINCT FROM :id")
+                .param("code", orderCode).param("id", schoolId).query(Long.class).single() > 0;
+    }
+
+    /**
+     * Runs a write that sets {@code orderCode}; a concurrent onboarding or edit that took the same code between the check
+     * and this write makes the unique index refuse it, which is the same 409 as the check's.
+     */
+    private static <T> T refusingATakenOrderCode(String orderCode, java.util.function.Supplier<T> write) {
+        try {
+            return write.get();
+        } catch (DataIntegrityViolationException raced) {
+            if (String.valueOf(raced.getMostSpecificCause().getMessage()).contains("uk_schools_order_code")) {
+                throw orderCodeConflict(orderCode);
+            }
+            throw raced;
+        }
+    }
+
+    private static ResponseStatusException orderCodeConflict(String orderCode) {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "Order code " + orderCode + " is already used by another school");
     }
 
     private void emitSchoolUpserted(Map<String, Object> details) {
@@ -364,6 +408,7 @@ public class SchoolStructureReadRepository {
         payload.put("schoolUid", details.get("schoolUid"));
         payload.put("name", details.get("name"));
         payload.put("shortCode", details.get("shortCode"));
+        payload.put("orderCode", details.get("orderCode"));
         payload.put("city", details.get("city"));
         payload.put("state", details.get("state"));
         payload.put("active", details.get("active"));
@@ -598,7 +643,7 @@ public class SchoolStructureReadRepository {
 
     private Map<String, Object> schoolDetails(Long schoolId) {
         return jdbc.sql("""
-                SELECT id, school_uid, name, short_code, city, state, active,
+                SELECT id, school_uid, name, short_code, order_code, city, state, active,
                        configured_class_count, configured_section_count,
                        academic_year_start_month, financial_year_start_month, time_zone,
                        country_code, locale, currency_code, phone_region
@@ -611,6 +656,7 @@ public class SchoolStructureReadRepository {
                         "schoolUid", rs.getObject("school_uid", UUID.class),
                         "name", rs.getString("name"),
                         "shortCode", rs.getString("short_code"),
+                        "orderCode", rs.getString("order_code"),
                         "city", rs.getString("city") == null ? "" : rs.getString("city"),
                         "state", rs.getString("state") == null ? "" : rs.getString("state"),
                         "active", rs.getBoolean("active"),
@@ -864,7 +910,19 @@ public class SchoolStructureReadRepository {
             String locale,
             String currencyCode,
             String phoneRegion,
-            String erpSince) {
+            String erpSince,
+            /* The school's order code (design D12), the school part of its order numbers. */
+            String orderCode) {
+        public SuperadminSchoolStatsRow(
+                Long id, UUID schoolUid, String name, String shortCode, String city, Boolean active,
+                String adminEmail, Long ordersYTD, Long gmvYTD, Integer academicYearStartMonth,
+                Integer financialYearStartMonth, String timeZone, String countryCode, String locale,
+                String currencyCode, String phoneRegion, String erpSince) {
+            this(id, schoolUid, name, shortCode, city, active, adminEmail, ordersYTD, gmvYTD,
+                    academicYearStartMonth, financialYearStartMonth, timeZone, countryCode, locale, currencyCode,
+                    phoneRegion, erpSince, null);
+        }
+
         public SuperadminSchoolStatsRow(
                 Long id, UUID schoolUid, String name, String shortCode, String city, Boolean active,
                 String adminEmail, Long ordersYTD, Long gmvYTD, Integer academicYearStartMonth,

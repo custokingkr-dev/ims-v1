@@ -79,6 +79,43 @@ public final class TenantContext {
         return schools;
     }
 
+    /** A well-formed item scope: a positive school id, a colon and a catalogue category code (school-core's rule). */
+    private static final java.util.regex.Pattern ITEM_SCOPE = java.util.regex.Pattern.compile("([1-9][0-9]{0,18}):([A-Z][A-Z0-9_]{1,59})");
+
+    /**
+     * Whether this operator may work orders of {@code catalogCategory} at {@code schoolId} (design D42): a school-wide
+     * assignment there covers every item, an item scope only its own category. False for everyone who is not an operator
+     * with such an assignment; superadmin is decided by the caller.
+     */
+    public boolean operatorMayWork(long schoolId, String catalogCategory) {
+        if (catalogCategory == null || catalogCategory.isBlank()) return operatorSchools.contains(schoolId);
+        return operatorSchoolsFor(catalogCategory).contains(schoolId);
+    }
+
+    /**
+     * Every school where this operator may work some item: the school-wide assignments plus the school of every
+     * well-formed item scope. This is the transaction's {@code app.operator_schools} for the order workflows, which serve
+     * every item; reads then also filter each row on its own (school, category) pair, since an item scope at a school
+     * does not open that school's other items.
+     */
+    public Set<Long> operatorSchoolsForAnyItem() {
+        java.util.Set<Long> schools = new java.util.LinkedHashSet<>(operatorSchools);
+        for (String scope : operatorScopes) {
+            java.util.regex.Matcher matcher = ITEM_SCOPE.matcher(scope);
+            if (matcher.matches()) schools.add(Long.parseLong(matcher.group(1)));
+        }
+        return schools;
+    }
+
+    /** The well-formed item scopes, as {@code schoolId:CATEGORY}; malformed ones grant nothing and are left out. */
+    public Set<String> operatorItemScopes() {
+        java.util.Set<String> scopes = new java.util.LinkedHashSet<>();
+        for (String scope : operatorScopes) {
+            if (ITEM_SCOPE.matcher(scope).matches()) scopes.add(scope);
+        }
+        return scopes;
+    }
+
     public boolean isSuperAdmin() { return role != null && role.equalsIgnoreCase("SUPERADMIN"); }
 
     public boolean isOperations() { return role != null && role.equalsIgnoreCase("OPERATIONS"); }

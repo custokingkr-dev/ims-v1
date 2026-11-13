@@ -37,6 +37,7 @@ export function SupplyOrdersPanels({ panel, panelAllowed, isPlatformAdmin, isOpe
         onReject={orders.rejectOrder}
       />
     )}
+    {/* Order workflows: superadmin and operators, school-wide or item-only (section 4.1). */}
     {panel === 'nb-work' && (isPlatformAdmin || (panelAllowed && isOperations)) && <NotebookWorklistPanel />}
     {panelAllowed && panel === 'orders' && isOperations && (
       <SaAllOrdersPanel onNewOrder={() => setPanel('catalog')} canManage={false} />

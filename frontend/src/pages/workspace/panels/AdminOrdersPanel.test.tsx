@@ -30,16 +30,34 @@ function cellsOf(id: string) {
 describe('AdminOrdersPanel, the school admin\'s order list', () => {
   afterEach(cleanup);
 
-  it('shows a notebook order on the tracker without a price or the old pipeline, only its tracker step', () => {
+  // Design D5: a school sees only Processing while an order's workflow runs and Delivered once it completes.
+  it('shows a notebook order on a workflow without a price, the old pipeline or its internal step, only Processing or Delivered', () => {
     render(<AdminOrdersPanel {...PROPS} orders={[rowFor({}), rowFor({ id: 'CK-2', status: 'COMPLETED' })]} />);
     const { amount, workflow } = cellsOf('CK-1');
     expect(amount).toHaveTextContent(/^—$/);
     expect(amount).not.toHaveTextContent('₹');
-    expect(workflow).toHaveTextContent('Head approval');
-    for (const stage of STAGES) expect(within(workflow).queryByText(stage)).toBeNull();
+    expect(workflow).toHaveTextContent('Order statusProcessing');
+    for (const stage of STAGES.filter((stage) => stage !== 'Processing')) expect(within(workflow).queryByText(stage)).toBeNull();
     expect(within(workflow).queryByText('✓')).toBeNull();
-    expect(cellsOf('CK-2').workflow).toHaveTextContent('Completed');
+    const row = screen.getByRole('row', { name: /CK-1/ });
+    expect(row).not.toHaveTextContent(/Head approval/i);
+    expect(within(row).getAllByText('Processing')).toHaveLength(2);
+    expect(cellsOf('CK-2').workflow).toHaveTextContent('Order statusDelivered');
     expect(cellsOf('CK-2').amount).toHaveTextContent(/^—$/);
+  });
+
+  it('keeps the quote of a workflow order for a priced item (D5)', () => {
+    render(<AdminOrdersPanel {...PROPS} orders={[rowFor({ id: 'CK-9', category: 'FLIERS', pricingStatus: 'QUOTED', totalAmount: 250000, status: 'PRE_PRINT_QUALITY_CHECK' })]} />);
+    expect(cellsOf('CK-9').amount).toHaveTextContent('₹2,500.00');
+    expect(cellsOf('CK-9').workflow).toHaveTextContent('Processing');
+  });
+
+  it('heads an order with its number and the CK id beneath it', () => {
+    render(<AdminOrdersPanel {...PROPS} orders={[rowFor({ id: 'CK-1015', orderNumber: 'NB-DPS_GUR-26-11-13-0042' }), rowFor({ id: 'CK-1016', orderNumber: null })]} />);
+    const numbered = screen.getByRole('row', { name: /NB-DPS_GUR-26-11-13-0042/ });
+    expect(within(numbered).getByText('NB-DPS_GUR-26-11-13-0042')).toHaveClass('tb');
+    expect(within(numbered).getByText('Ref CK-1015')).toBeInTheDocument();
+    expect(within(screen.getByRole('row', { name: /CK-1016/ })).getByText('CK-1016')).toHaveClass('tb');
   });
 
   it('keeps the price and the five-stage pipeline for a notebook order placed before the tracker (D1)', () => {

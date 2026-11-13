@@ -162,9 +162,9 @@ test('bold inside a flowing alert stays in the sentence', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await openPortal(page);
   await openPanel(page, 'Approve & fulfill');
-  // Without this the loop below has nothing to iterate and the test asserts nothing.
-  expect(await page.locator('.ck-alert .ck-alert-flow').count(),
-    'no flowing alert on this panel to measure').toBeGreaterThan(0);
+  // Without this the loop below has nothing to iterate and the test asserts nothing. The panel is a lazy chunk, so wait
+  // for it: under a loaded run the count was read while the workspace still said "Loading module...".
+  await expect(page.locator('.ck-alert .ck-alert-flow').first(), 'no flowing alert on this panel to measure').toBeAttached();
   const stranded = await page.evaluate(() => {
     const offenders: string[] = [];
     for (const flow of Array.from(document.querySelectorAll<HTMLElement>('.ck-alert .ck-alert-flow'))) {

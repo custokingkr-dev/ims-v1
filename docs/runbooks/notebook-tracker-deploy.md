@@ -121,6 +121,79 @@ Each peer URL is also the audience of the caller's identity token, so it must ap
 `SERVICE_OIDC_AUDIENCES`. The `*_url` target parameters and the first entry of each `service_oidc_audiences` are the
 same deterministic `https://custoking-<service>-dev-<project number>.<region>.run.app` address.
 
+## The creation queue since catalog V38
+
+The item order workflows release (school-core catalog `V38`) moved school-core's creation queue to a new table,
+`catalog.order_workflow_creation_queue`. Every SQL statement in this runbook reads that table. The old table,
+`catalog.notebook_tracker_creation_queue`, stays for one release, always empty. Why: during a release the previous
+school-core revision keeps serving (on dev until the new one is ready, in prod beside it through the Cloud Deploy canary),
+and its drain would give any queued order a notebook workflow
+([design, "Review fixes: school-core and platform"](../product/item-order-workflows-sop-v1.md#review-fixes-school-core-and-platform)).
+
+- **The forwarding trigger.** `trg_notebook_tracker_creation_queue_forward` (`BEFORE INSERT` on the old table, function
+  `catalog.forward_to_order_workflow_creation_queue()`) puts each row the previous revision queues into the new table,
+  with fresh retries, and writes nothing to the old one. That revision's own attempt and drain then find nothing, and its
+  status push deletes nothing that matters. The trigger runs with the caller's rights, under the same row-level security
+  policy.
+- **`repair = true` rows.** An order the previous revision places has no order number, because that revision does not
+  mint one. The deferred constraint trigger `trg_catalog_orders_queue_unnumbered_placement` (on `catalog.catalog_orders`,
+  function `catalog.queue_unnumbered_placement()`) queues such an order with `repair = true` when its placing transaction
+  commits. This release mints in the placing transaction, so its own placements never match. The next claim of a repair
+  row, in a transaction of its own under the order's row lock:
+  1. mints the number, dated by the placement;
+  2. moves an open structured order of a template category (a flier, flex and the rest) onto its workflow, as V38 moved
+     the orders that were open at the release;
+  3. tells reporting when either changed (school-core logs `Order <id> was placed without an order number and is
+     repaired: number <number>`);
+  4. sets `repair = false`, then creates the workflow as for any other row. An order that runs on no workflow (a tie,
+     say) needed only its number, so its row is dropped.
+
+  A repair that fails keeps the backoff and records `the order could not be repaired: <reason>` in `last_error`. The
+  trigger never fails a placement: when it cannot queue the order, PostgreSQL logs a WARNING, `Catalog order <id> was
+  placed without an order number and could not be queued for repair: <reason>`, in the Cloud SQL instance's
+  PostgreSQL log. Repair rows are expected only while a revision older than V38 still serves. A repair row queued after
+  the rollout means a placement path that did not mint a number; the repair still numbers the order, but report it.
+- **Orders placed between V37 and V38.** V37 commits on its own, and the previous revision keeps placing orders without
+  numbers until V38 takes its locks (or for longer, if V38 fails and is re-run later). V38 queues every such order of a
+  coded category with `repair = true`, so they are numbered by the same claim.
+- **If V38 fails with a lock error.** V38 first takes `catalog_orders` and `notebook_tracker_creation_queue` together,
+  never waiting while it holds one, so it cannot deadlock with the previous revision. If the two stay busy for 15
+  seconds, it stops with `V38: catalog_orders and notebook_tracker_creation_queue stayed busy for 15 seconds; nothing was
+  changed, re-run the migration job` (or `canceling statement due to lock timeout` for any later wait). Nothing was
+  changed: re-run the school-core migration job. The previous revision keeps working on V37 meanwhile.
+- **Clean-up (next release).** Once no school-core revision older than this one can serve (the prod canary has
+  completed and the rollback target is this release or later), the next release's catalog migration drops the old table
+  (its forwarding trigger goes with it), `catalog.forward_to_order_workflow_creation_queue()`, the placement trigger and
+  `catalog.queue_unnumbered_placement()`. The `repair` column stays while the code reads it. This is a migration, not a
+  step to run by hand:
+
+  ```sql
+  DROP TRIGGER IF EXISTS trg_catalog_orders_queue_unnumbered_placement ON catalog.catalog_orders;
+  DROP FUNCTION IF EXISTS catalog.queue_unnumbered_placement();
+  DROP TABLE IF EXISTS catalog.notebook_tracker_creation_queue;
+  DROP FUNCTION IF EXISTS catalog.forward_to_order_workflow_creation_queue();
+  ```
+
+After the school-core migration job, and again before the clean-up, check the queue (read-only, in a bypass-on
+transaction as described under *Reading the queues*):
+
+```sql
+BEGIN;
+SELECT set_config('app.bypass_rls', 'on', true);
+-- Always 0: the forwarding trigger writes nothing to the old table.
+SELECT count(*) AS old_table_rows FROM catalog.notebook_tracker_creation_queue;
+-- Both triggers present and enabled (tgenabled 'O').
+SELECT tgname, tgenabled FROM pg_trigger
+WHERE tgname IN ('trg_notebook_tracker_creation_queue_forward', 'trg_catalog_orders_queue_unnumbered_placement');
+-- Orders the previous revision placed that still wait for their number.
+SELECT order_id, attempts, next_attempt_at, dead_lettered_at, last_error
+FROM catalog.order_workflow_creation_queue WHERE repair;
+COMMIT;
+```
+
+A repair row still pending at the clean-up is repaired as before, since the `repair` column and the code stay. A
+dead-lettered one is an order that still lacks its number; revive it as described under *When it fails* below.
+
 ## Post-deploy probe
 
 If dev sign-in fails, the dev database may have been stopped by the cost controller; probe while it is running.
@@ -159,11 +232,14 @@ The probe passes only when all four hold. Record the order ID and the timestamps
 - **The order stays "tracker pending"** (step 1), or **the status does not move** (step 2): school-core's creation
   queue and operations' status outbox both retry on the existing relay trigger (`POST /api/v1/internal/outbox/relay`,
   Cloud Scheduler every minute) with a growing backoff, so nothing is lost while you fix the cause. The reason of the
-  last failed creation is in `catalog.notebook_tracker_creation_queue.last_error` (for example `operator directory
-  answered HTTP 403`; see *Reading the queues* below). Superadmin can retry a pending order at once with
-  `POST /api/v1/supply/orders/{orderId}/tracker/ensure`. A creation that fails 48 times (about two days) is given up:
-  school-core logs an ERROR with `event=tracker_creation_dead_lettered`, the row counts in the outbox dead-letter
-  alert, and only that `ensure` call (it revives the row with fresh retries) starts it again.
+  last failed creation is in `catalog.order_workflow_creation_queue.last_error` (for example `operator directory
+  answered HTTP 403`, or `the order could not be repaired: …` on a `repair` row; see *Reading the queues* below).
+  Superadmin can retry a pending order at once with `POST /api/v1/supply/orders/{orderId}/tracker/ensure`. A creation
+  that fails 48 times (about two days) is given up: school-core logs an ERROR with
+  `event=tracker_creation_dead_lettered`, the row counts in the outbox dead-letter alert, and that `ensure` call (it
+  revives the row with fresh retries and keeps its `repair` flag) starts it again. `ensure` refuses an order that is not
+  on a workflow yet, which a `repair` row's order can be (a flier the previous revision placed is moved onto its
+  workflow only by the repair, and a tie never is). Revive such a row with SQL instead (below).
 - **A status is not delivered:** the reason is in `workflow.workflow_tracker_status_outbox.last_error`. A status that
   fails 48 times is given up the same way: operations logs an ERROR with `event=tracker_status_dead_lettered` (with
   `orderId` and `trackerVersion`) and the row counts in operations' outbox dead-letter figure. The order's next step
@@ -176,10 +252,10 @@ The probe passes only when all four hold. Record the order ID and the timestamps
   transaction only. The `true` in `set_config` ends the bypass at `COMMIT`. Never disable row security instead.
 
   ```sql
-  -- school-core's creation queue
+  -- school-core's creation queue (catalog V38 and later; the old notebook_tracker_creation_queue is always empty)
   BEGIN;
   SELECT set_config('app.bypass_rls', 'on', true);
-  SELECT order_id, attempts, dead_lettered_at, last_error FROM catalog.notebook_tracker_creation_queue WHERE order_id = '<orderId>';
+  SELECT order_id, repair, attempts, next_attempt_at, dead_lettered_at, last_error FROM catalog.order_workflow_creation_queue WHERE order_id = '<orderId>';
   COMMIT;
 
   -- operations' status outbox
@@ -189,7 +265,7 @@ The probe passes only when all four hold. Record the order ID and the timestamps
   COMMIT;
   ```
 
-  To retry a dead-lettered status at once (a creation is retried with the `ensure` call above, not with SQL):
+  To retry a dead-lettered status at once:
 
   ```sql
   BEGIN;
@@ -200,6 +276,20 @@ The probe passes only when all four hold. Record the order ID and the timestamps
 
   Expect `UPDATE 1`, and the relay trigger delivers the status within a minute. `UPDATE 0` means the bypass was not
   on in that same transaction, or the order has no status queued.
+
+  A creation is retried with the `ensure` call above, not with SQL, except a dead-lettered `repair` row whose order
+  `ensure` refuses. That one is revived the way `ensure` revives a row, and keeps its `repair` flag, so the next claim
+  repairs the order first:
+
+  ```sql
+  BEGIN;
+  SELECT set_config('app.bypass_rls', 'on', true);
+  UPDATE catalog.order_workflow_creation_queue SET dead_lettered_at = NULL, attempts = 0, next_attempt_at = now() WHERE order_id = '<orderId>' AND repair AND dead_lettered_at IS NOT NULL;
+  COMMIT;
+  ```
+
+  Expect `UPDATE 1`; the relay trigger repairs the order within a minute. `UPDATE 0` means the bypass was not on, or
+  the row is not a dead-lettered repair row.
 - **A 403 on an internal route** has three causes, told apart by the body:
   - **Empty body:** the callee revision predates this release and has no such route (its `MachineCallerFilter` answers
     403 to every unregistered `/api/v1/internal/` path). Expected during the one-after-another rollout, and the queues
@@ -219,7 +309,9 @@ The probe passes only when all four hold. Record the order ID and the timestamps
   gcloud logging read 'resource.type="cloud_run_revision" AND resource.labels.service_name=("custoking-operations-service-dev" OR "custoking-school-core-service-dev") AND jsonPayload.event="outbox_backlog_count_failed"' --project=custoking-dev --freshness=1d --limit=20
   ```
 
-  Its `queue` field names the queue that could not be counted.
+  Its `queue` field names the queue that could not be counted: `order_workflow_creation_queue` for school-core's
+  creation queue (`notebook_tracker_creation_queue` before catalog V38), `workflow_tracker_status_outbox` for
+  operations' status outbox.
 - **Abandoning a dead-lettered row:** when a dead-lettered row must never be delivered (its order is gone and will
   not return), delete it instead of reviving it; this ends its count in the dead-letter figure. In the same
   bypass-on transaction as above:
@@ -234,13 +326,14 @@ The probe passes only when all four hold. Record the order ID and the timestamps
   -- school-core's creation queue
   BEGIN;
   SELECT set_config('app.bypass_rls', 'on', true);
-  DELETE FROM catalog.notebook_tracker_creation_queue WHERE order_id = '<orderId>' AND dead_lettered_at IS NOT NULL;
+  DELETE FROM catalog.order_workflow_creation_queue WHERE order_id = '<orderId>' AND dead_lettered_at IS NOT NULL;
   COMMIT;
   ```
 
   Expect `DELETE 1`. `DELETE 0` means the bypass was not on in that transaction, or the row is not dead-lettered. A
   creation row deleted this way is queued again by the next `ensure` call, so abandon it only for an order that is
-  gone.
+  gone. A `repair` row is the only record that its order still needs a number: nothing queues it again (`ensure`
+  queues a plain row), so never abandon a `repair` row of an order that still exists.
 - **A tracker exists but nobody is assigned:** identity answered that the school has no notebook operator, or more
   than one. (When identity cannot be asked, the order stays "tracker pending" and is retried instead.) Superadmin opens
   the order and uses "Assign order" in the tracker's side panel.

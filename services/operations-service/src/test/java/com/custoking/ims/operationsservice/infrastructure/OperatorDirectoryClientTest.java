@@ -90,6 +90,22 @@ class OperatorDirectoryClientTest {
         assertTrue(requests.get(0).contains("catalogCategory=NOTEBOOKS"), requests.get(0));
     }
 
+    /** Design D42: eligibility is per item, so a flier order asks about FLIERS, never a notebook constant. */
+    @Test
+    void itAsksAboutTheOrdersOwnItem() throws Exception {
+        assertTrue(clientFor(200, "{\"eligible\":true}").eligible(7, 4, "FLIERS"));
+        assertTrue(requests.get(0).contains("catalogCategory=FLIERS"), requests.get(0));
+    }
+
+    /** Every workflow order has a category; asking without one is a bug, refused before identity is called. */
+    @Test
+    void anOrderWithoutACategoryIsABugNotAQuestion() throws Exception {
+        OperatorDirectoryClient client = clientFor(200, "{\"eligible\":true}");
+        assertThrows(IllegalArgumentException.class, () -> client.eligible(7, 4, null));
+        assertThrows(IllegalArgumentException.class, () -> client.eligible(7, 4, " "));
+        assertTrue(requests.isEmpty());
+    }
+
     @Test
     void aNoFromIdentityIsNo() throws Exception {
         assertFalse(clientFor(200, "{\"eligible\":false}").eligible(7, 4, "NOTEBOOKS"));

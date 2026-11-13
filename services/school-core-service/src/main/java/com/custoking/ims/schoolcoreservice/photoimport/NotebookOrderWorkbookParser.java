@@ -30,6 +30,14 @@ public class NotebookOrderWorkbookParser {
     private static final Pattern TOTAL = Pattern.compile("^(GRAND\\s*)?TOTAL$");
 
     public Preview parse(byte[] bytes, String fileName, String orderId) {
+        return parse(bytes, fileName, orderId, null);
+    }
+
+    /**
+     * Reads the order workbook of the open order. A workbook that names its order must name this one, by its CK id or by
+     * its order number (design §3.6: the client's sheets carry the SOP number, such as NB-DPS_GUR-26-11-13-0042).
+     */
+    public Preview parse(byte[] bytes, String fileName, String orderId, String orderNumber) {
         String normalizedName = fileName == null ? "" : fileName.strip();
         int separator = Math.max(normalizedName.lastIndexOf('/'), normalizedName.lastIndexOf('\\'));
         normalizedName = normalizedName.substring(separator + 1);
@@ -67,7 +75,8 @@ public class NotebookOrderWorkbookParser {
             if (tables.size() > 1) {
                 throw new IllegalArgumentException("The workbook has multiple matching sheets; keep one order table");
             }
-            if (workbookOrderId != null && !workbookOrderId.equalsIgnoreCase(orderId.strip())) {
+            if (workbookOrderId != null && !workbookOrderId.equalsIgnoreCase(orderId.strip())
+                    && (orderNumber == null || !workbookOrderId.equalsIgnoreCase(orderNumber.strip()))) {
                 throw new IllegalArgumentException("The workbook order ID does not match the open order");
             }
             return totals(tables.getFirst(), normalizedName, workbookOrderId, orderId.strip(), formatter);

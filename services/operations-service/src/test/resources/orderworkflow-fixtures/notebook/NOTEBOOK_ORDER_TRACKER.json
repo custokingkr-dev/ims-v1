@@ -1,0 +1,179 @@
+{
+  "$comment": "Engine test fixture shaped like the notebook template of design v1 §2.7. Wording is abbreviated; the shipped template lives in src/main/resources/workflow-templates.",
+  "definitionId": "NOTEBOOK_ORDER_TRACKER",
+  "title": "Notebook order workflow",
+  "introMessage": "My name is {Name}, and I will be your point of contact for all notebook-related orders.",
+  "steps": [
+    {
+      "order": 1, "code": "ORDER_DETAILS", "title": "Order Details", "description": "Verify the order form.", "phase": "INTAKE",
+      "sla": {"value": 2, "unit": "HOURS"}, "icon": "ClipboardList", "tabs": ["WORK", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {"type": "ORDER_PDF_LINK", "fields": ["orderPdfLink"], "save": "Save PDF link"},
+        {"type": "INTRO_MESSAGE", "title": "School Group Chat & Introduction Message", "checklist": "introChecks"}
+      ],
+      "fields": {"orderPdfLink": {"kind": "URL", "label": "School order PDF link", "placeholder": "Paste link to the school order PDF"}},
+      "checklists": {"introChecks": {"items": ["Introduction message sent in the school group"], "source": "ours"}},
+      "gates": [{"type": "FIELDS_PRESENT", "fields": ["orderPdfLink"]}, {"type": "ALL_CHECKED", "checklist": "introChecks"}]
+    },
+    {
+      "order": 2, "code": "DESIGNING_ACTIVITY", "title": "Designing Activity", "description": "Coordinate drafts.", "phase": "INTAKE",
+      "sla": {"value": 72, "unit": "HOURS"}, "customisedOnly": true, "icon": "PenTool", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [{"type": "SCHOOL_GROUP"}, {"type": "DESIGN_FILES", "title": "Upload Design Files"}],
+      "gates": [{"type": "DESIGN_FILES_PRESENT"}]
+    },
+    {
+      "order": 3, "code": "CDR_CONVERSION", "title": "CDR Conversion", "description": "Convert to CDR.", "phase": "INTAKE",
+      "sla": {"value": 2, "unit": "HOURS"}, "customisedOnly": true, "icon": "Layers", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {"type": "FIELDS", "fields": ["cdrLink", "cdrNotes"], "save": "Save CDR details"},
+        {"type": "CHECKLIST", "title": "Conversion checks", "checklist": "cdrChecks"},
+        {"type": "LEGACY_DETAILS", "fields": ["cdrFilename"]}
+      ],
+      "fields": {
+        "cdrLink": {"kind": "URL", "label": "Controlled storage link", "placeholder": "Paste SharePoint / Drive link"},
+        "cdrNotes": {"kind": "TEXT", "label": "Conversion comments", "max": 1000},
+        "cdrFilename": {"kind": "TEXT", "label": "CDR file name", "max": 200, "legacy": true}
+      },
+      "checklists": {"cdrChecks": {"items": ["Fonts outlined", "Colours checked", "Artwork matches approved version"], "source": "note"}},
+      "gates": [{"type": "FIELDS_PRESENT", "fields": ["cdrLink"]}, {"type": "ALL_CHECKED", "checklist": "cdrChecks"}]
+    },
+    {
+      "order": 4, "code": "HEAD_APPROVAL", "title": "Head Approval", "description": "Approve the exact design.", "phase": "INTAKE",
+      "sla": {"value": 2, "unit": "HOURS"}, "customisedOnly": true, "icon": "BadgeCheck", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [{"type": "CDR_FOR_APPROVAL", "title": "Design version for approval"}, {"type": "HEAD_APPROVAL"}],
+      "gates": [{"type": "HEAD_APPROVED"}]
+    },
+    {
+      "order": 5, "code": "PRODUCTION_PLANNING", "title": "Production Planning", "description": "Plan production.", "phase": "PLANNING",
+      "sla": {"value": 24, "unit": "HOURS"}, "icon": "ListChecks", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {"type": "ORDER_FOLDER"}, {"type": "TITLE_CARD_QUANTITIES"},
+        {"type": "VENDOR_DIRECTORY", "title": "Supplier Contact Groups", "categories": ["BOARD_SUPPLIERS", "LAMINATION_VENDORS", "BINDERS", "OFFSET_PRINTERS"]},
+        {"type": "VENDOR_SELECTION", "categories": ["BOARD_SUPPLIERS", "LAMINATION_VENDORS", "BINDERS", "OFFSET_PRINTERS"]},
+        {"type": "CHECKLIST", "title": "Production planning checklist", "checklist": "planningChecks"},
+        {"type": "FIELDS", "fields": ["targetCompletion"]},
+        {"type": "LEGACY_DETAILS", "fields": ["paperGsm", "workbookKing"]}
+      ],
+      "fields": {
+        "targetCompletion": {"kind": "DATE", "label": "Target completion date"},
+        "paperGsm": {"kind": "TEXT", "label": "Paper GSM", "max": 50, "legacy": true},
+        "workbookKing": {"kind": "WHOLE", "label": "King notebooks (workbook)", "legacy": true}
+      },
+      "checklists": {"planningChecks": {"items": ["NOTEBOOK ORDER SHARED WITH BINDER", "BOARDS AVAILABILITY CHECKED", "DESIGN STATUS CHECKED"], "source": "prototype"}},
+      "gates": [
+        {"type": "ALL_CHECKED", "checklist": "planningChecks"},
+        {"type": "VENDORS_SELECTED", "categories": ["BOARD_SUPPLIERS", "LAMINATION_VENDORS", "BINDERS", "OFFSET_PRINTERS"]}
+      ]
+    },
+    {
+      "order": 6, "code": "BOARD_PROCUREMENT", "title": "Board Procurement", "description": "Procure boards.", "phase": "PLANNING",
+      "sla": {"value": 6, "unit": "HOURS"}, "icon": "Package", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {"type": "SAVED_TITLE_CARDS"},
+        {"type": "VENDOR_GROUPS", "title": "Board vendor contacts", "categories": ["BOARD_SUPPLIERS"]},
+        {"type": "FIELDS", "title": "Board Vendor Bills", "fields": ["boardBillLink"], "save": "Save bill link"}
+      ],
+      "fields": {"boardBillLink": {"kind": "URL", "label": "Link to board vendor bills"}},
+      "gates": [{"type": "FIELDS_PRESENT", "fields": ["boardBillLink"]}]
+    },
+    {
+      "order": 7, "code": "PRE_PRINT_QUALITY_GATE", "title": "Pre-Print Quality Check", "description": "Verify before bulk printing.",
+      "phase": "PRODUCTION", "sla": {"value": 24, "unit": "HOURS"}, "icon": "ShieldCheck", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {"type": "VENDOR_GROUPS", "title": "Offset Printer Group Links", "categories": ["OFFSET_PRINTERS"]},
+        {"type": "INTERNAL_APPROVAL_GROUP"},
+        {"type": "CHECKLIST", "title": "Mandatory pre-print quality gate", "checklist": "checks"},
+        {"type": "FIELDS", "fields": ["sampleLink", "schoolVerification", "qcComments"], "save": "Save QC evidence"},
+        {"type": "SIGN_OFF"}, {"type": "SEND_BACK"}
+      ],
+      "fields": {
+        "sampleLink": {"kind": "URL", "label": "Print sample evidence link"},
+        "schoolVerification": {"kind": "CHOICE", "label": "School verification",
+          "choices": [["NOT_REQUIRED", "Not required"], ["PENDING", "Pending"], ["VERIFIED", "Verified"], ["CHANGES_REQUIRED", "Not verified – changes needed"]]},
+        "qcComments": {"kind": "TEXT", "label": "QC reviewer comments", "max": 1000}
+      },
+      "checklists": {"checks": {"items": [
+        "School name, logo and spelling verified", "Latest approved artwork version confirmed", "Dimensions, bleed and safe margins checked",
+        "Board material, GSM and print specifications verified", "Physical print sample inspected for defects",
+        "School verification recorded where required", "Print quantity and title-wise breakup verified",
+        "Authorised quality reviewer releases bulk printing"], "signOffItem": 7, "source": "prototype"}},
+      "gates": [
+        {"type": "ALL_CHECKED", "checklist": "checks", "except": [7]},
+        {"type": "FIELDS_PRESENT", "fields": ["sampleLink"]},
+        {"type": "CHOICE_IN", "field": "schoolVerification", "values": ["VERIFIED", "NOT_REQUIRED"]},
+        {"type": "SIGNED_OFF"}
+      ],
+      "signOff": {"label": "Record reviewer sign-off", "role": "SUPERADMIN", "banner": "Bulk printing blocked until all checks and reviewer sign-off are complete."}
+    },
+    {
+      "order": 8, "code": "PRINTING_PRESS", "title": "Printing Press", "description": "Track printing.", "phase": "PRODUCTION",
+      "sla": {"value": 50, "unit": "HOURS"}, "icon": "Printer", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {"type": "VENDOR_GROUPS", "categories": ["OFFSET_PRINTERS", "LAMINATION_VENDORS"]},
+        {"type": "CHECKLIST", "title": "Printing & Lamination Checklist", "checklist": "pressChecks"},
+        {"type": "FIELDS", "fields": ["expectedReturnDate"]}
+      ],
+      "fields": {"expectedReturnDate": {"kind": "DATE", "label": "Expected completion"}},
+      "checklists": {"pressChecks": {"items": ["VERIFIED THE IMPRESSIONS FOR EACH DESIGN", "DESIGN SENT FOR MAKING PLATES", "DESIGN PLATES RECEIVED",
+        "PRINTING SCHEDULED/ EXPECTED COMPLETION TIME", "COMPLETION OF PRINTING", "RECEIVED FOR LAMINATION", "SCHEDULED FOR LAMINATION",
+        "LAMINATION COMPLETED"], "source": "prototype"}},
+      "gates": [{"type": "ALL_CHECKED", "checklist": "pressChecks"}]
+    },
+    {
+      "order": 9, "code": "FACTORY_HANDOVER", "title": "Factory Handover", "description": "Hand over to the factory.", "phase": "PRODUCTION",
+      "sla": {"value": 4, "unit": "HOURS"}, "icon": "Truck", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [{"type": "CHECKLIST", "title": "Factory Handover Checklist", "checklist": "handoverChecks"}],
+      "checklists": {"handoverChecks": {"items": ["Verified the titles received"], "source": "prototype"}},
+      "gates": [{"type": "ALL_CHECKED", "checklist": "handoverChecks"}]
+    },
+    {
+      "order": 10, "code": "PRODUCTION_FOLLOW_UP", "title": "Production Follow-up", "description": "Follow up production.", "phase": "PRODUCTION",
+      "sla": {"value": 72, "unit": "HOURS"}, "icon": "PhoneCall", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [{"type": "CHECKLIST", "title": "Production Follow-up Checklist", "checklist": "productionChecks"}, {"type": "FIELDS", "fields": ["revisedCompletion"]}],
+      "fields": {"revisedCompletion": {"kind": "DATE", "label": "Revised completion date"}},
+      "checklists": {"productionChecks": {"items": ["CONFIRMED RECEIVING THE TITLE", "FOLDING OF TITLE", "RULED PAPER RECEIVED", "PAPER COUNTING",
+        "PAPER FILLING", "PINNING", "CUTTING", "PACKING"], "source": "prototype"}},
+      "gates": [{"type": "ALL_CHECKED", "checklist": "productionChecks"}]
+    },
+    {
+      "order": 11, "code": "VALIDATION_COUNT", "title": "Validation Count", "description": "Reconcile quantities.", "phase": "VERIFICATION",
+      "sla": {"value": 2, "unit": "HOURS"}, "icon": "Calculator", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {"type": "FIELDS", "title": "Validation Documents", "fields": ["varianceReportLink", "deliveryChallanLink", "billsLink"], "save": "Save document links"},
+        {"type": "FIELDS", "title": "Counts", "fields": ["producedCount", "acceptedCount", "dispatchCount", "discrepancyNote"]}
+      ],
+      "fields": {
+        "varianceReportLink": {"kind": "URL", "label": "Variance report link"},
+        "deliveryChallanLink": {"kind": "URL", "label": "Delivery challan link"},
+        "billsLink": {"kind": "URL", "label": "Bills link"},
+        "producedCount": {"kind": "WHOLE", "label": "Produced"},
+        "acceptedCount": {"kind": "WHOLE", "label": "Accepted"},
+        "dispatchCount": {"kind": "WHOLE", "label": "Dispatched"},
+        "discrepancyNote": {"kind": "WORDS", "label": "Discrepancy / approval notes", "max": 200}
+      },
+      "gates": [
+        {"type": "FIELDS_PRESENT", "fields": ["varianceReportLink", "deliveryChallanLink", "billsLink"]},
+        {"type": "COUNTS_CONSISTENT"}
+      ]
+    },
+    {
+      "order": 12, "code": "DELIVERY_INVOICING", "title": "Delivery & Invoicing", "description": "Dispatch and invoice.", "phase": "DELIVERY",
+      "sla": {"value": 4, "unit": "HOURS"}, "icon": "Receipt", "tabs": ["WORK", "SCHOOL_VENDOR", "CHECKLIST", "ACTIVITY"],
+      "blocks": [
+        {"type": "FIELDS", "fields": ["transporter", "dispatchDate", "lrNumber", "proofLink", "invoiceStatus", "invoiceNumber"], "save": "Save dispatch & invoice details"},
+        {"type": "SCHOOL_GROUP"}, {"type": "SIGN_OFF", "title": "Executive consignment sign-off"}
+      ],
+      "fields": {
+        "transporter": {"kind": "TEXT", "label": "Transporter / vehicle", "placeholder": "Vehicle / courier", "max": 200},
+        "dispatchDate": {"kind": "DATE", "label": "Dispatch date"},
+        "lrNumber": {"kind": "TEXT", "label": "LR / docket number", "max": 100},
+        "proofLink": {"kind": "URL", "label": "Proof of delivery / invoice link"},
+        "invoiceStatus": {"kind": "CHOICE", "label": "Invoice status",
+          "choices": [{"value": "NOT_INITIATED", "label": "Not initiated"}, {"value": "INITIATED", "label": "Initiated"}, {"value": "SENT", "label": "Sent"}, {"value": "PAID", "label": "Paid"}]},
+        "invoiceNumber": {"kind": "TEXT", "label": "Invoice number", "max": 100}
+      },
+      "gates": [{"type": "FIELDS_PRESENT", "fields": ["transporter", "dispatchDate", "proofLink"]}, {"type": "SIGNED_OFF"}],
+      "signOff": {"label": "Record consignment sign-off"}
+    }
+  ]
+}

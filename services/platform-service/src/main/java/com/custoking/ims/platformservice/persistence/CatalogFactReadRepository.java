@@ -35,6 +35,19 @@ public class CatalogFactReadRepository {
                         String superadminApprovalStatus, OffsetDateTime vendorPaidAt, OffsetDateTime createdAt,
                         LocalDate requiredByDate, String designStatus, String notes,
                         int formVersion, String pricingStatus, Long sourceVersion) {
+        upsert(id, schoolId, category, status, totalAmount, superadminApprovalStatus, vendorPaidAt, createdAt,
+                requiredByDate, designStatus, notes, formVersion, pricingStatus, sourceVersion, null);
+    }
+
+    /**
+     * {@code orderNumber} is the order's SOP number (item order workflows design D10), or null. A number never changes
+     * once minted, so an event without one (an older emitter, a replay) keeps the number already stored.
+     */
+    @Transactional
+    public void upsert(String id, Long schoolId, String category, String status, Long totalAmount,
+                        String superadminApprovalStatus, OffsetDateTime vendorPaidAt, OffsetDateTime createdAt,
+                        LocalDate requiredByDate, String designStatus, String notes,
+                        int formVersion, String pricingStatus, Long sourceVersion, String orderNumber) {
         ProjectorRls.allow(jdbc);
         String effectivePricingStatus = pricingStatus == null || pricingStatus.isBlank()
                 ? (formVersion >= 2 ? "PENDING_PRICING" : "NOT_APPLICABLE") : pricingStatus;
@@ -43,12 +56,12 @@ public class CatalogFactReadRepository {
                             id, school_id, category, status, total_amount,
                             superadmin_approval_status, vendor_paid_at, created_at,
                             required_by_date, design_status, notes, form_version, pricing_status,
-                            source_version, updated_at
+                            source_version, order_number, updated_at
                         ) VALUES (
                             :id, :schoolId, :category, :status, :totalAmount,
                             :superadminApprovalStatus, :vendorPaidAt, :createdAt,
                             :requiredByDate, :designStatus, :notes, :formVersion, :pricingStatus,
-                            :sourceVersion, now()
+                            :sourceVersion, :orderNumber, now()
                         )
                         ON CONFLICT (id) DO UPDATE SET
                             school_id = EXCLUDED.school_id,
@@ -64,6 +77,7 @@ public class CatalogFactReadRepository {
                             form_version = EXCLUDED.form_version,
                             pricing_status = EXCLUDED.pricing_status,
                             source_version = EXCLUDED.source_version,
+                            order_number = COALESCE(EXCLUDED.order_number, reporting.fact_catalog_order.order_number),
                             updated_at = now()
                         WHERE (reporting.fact_catalog_order.source_version IS NULL
                                AND EXCLUDED.source_version IS NULL)
@@ -83,6 +97,7 @@ public class CatalogFactReadRepository {
                 .param("formVersion", formVersion)
                 .param("pricingStatus", effectivePricingStatus)
                 .param("sourceVersion", sourceVersion)
+                .param("orderNumber", orderNumber == null || orderNumber.isBlank() ? null : orderNumber)
                 .update();
     }
 }

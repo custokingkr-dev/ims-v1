@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { AuthUser } from '../../types/auth';
+import { ORDER_WORKFLOW_URL_KEYS } from '../../features/orders/list/filters';
 import {
   type PanelKey,
   ACCOUNTANT_NAV_SECTIONS, ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS,
@@ -18,9 +19,9 @@ interface WorkspaceNavigationOptions {
 }
 
 /**
- * An operator assigned only to catalogue items (for example NOTEBOOKS at a school) and to no school as a whole. They work
- * that item's orders in the notebook order tracker and nothing else (owner decision D2), so their workspace offers only
- * "Notebook orders", even though they hold order:read for the tracker's order calls.
+ * An operator assigned only to catalogue items (for example NOTEBOOKS or FLIERS at a school) and to no school as a whole.
+ * They work those items' orders in the order workflows and nothing else (owner decision D2), so their workspace offers
+ * only "Order workflows", even though they hold order:read for the workflow's order calls.
  */
 export function isItemOnlyOperator(user: Pick<AuthUser, 'role' | 'operatorSchools' | 'operatorScopes'> | null | undefined): boolean {
   return user?.role === 'OPERATIONS' && !user.operatorSchools?.length && !!user.operatorScopes?.length;
@@ -54,6 +55,10 @@ export function useWorkspaceNavigation({ role, activeModules, can, canAny, itemO
       const next = new URLSearchParams(previous);
       next.set('panel', nextPanel);
       if (nextPanel !== 'ff-new') next.delete('request');
+      // Choosing a panel shows its first screen: an open order closes, and the order workflow list's filters only belong
+      // to that list (design section 4.1).
+      next.delete('order');
+      if (nextPanel !== 'nb-work') for (const key of ORDER_WORKFLOW_URL_KEYS) next.delete(key);
       return next;
     }, { replace });
   };

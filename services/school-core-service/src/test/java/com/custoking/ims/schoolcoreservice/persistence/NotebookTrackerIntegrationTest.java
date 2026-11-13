@@ -88,7 +88,7 @@ class NotebookTrackerIntegrationTest {
         boolean failCreate;
         boolean down;
         ImageAccess access = new ImageAccess(true, null);
-        final List<String> accessChecks = new ArrayList<>();
+        final List<String> accessChecks = java.util.Collections.synchronizedList(new ArrayList<>());
 
         @Override public void create(NewTracker tracker) {
             createdInTransaction.add(TransactionSynchronizationManager.isActualTransactionActive());
@@ -267,7 +267,7 @@ class NotebookTrackerIntegrationTest {
         var order = notebook(false);
         place(order);
         TenantContext.clear();
-        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 47 WHERE order_id = :id").param("id", order).update();
+        jdbc.sql("UPDATE catalog.order_workflow_creation_queue SET attempts = 47 WHERE order_id = :id").param("id", order).update();
         due(order);
 
         var logs = capture(NotebookTrackerCreationQueue.class);
@@ -303,7 +303,7 @@ class NotebookTrackerIntegrationTest {
         OPERATORS.userId = 42L;
         var order = notebook(true);
         place(order);
-        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 48, dead_lettered_at = now(), next_attempt_at = now() + interval '1 hour' WHERE order_id = :id")
+        jdbc.sql("UPDATE catalog.order_workflow_creation_queue SET attempts = 48, dead_lettered_at = now(), next_attempt_at = now() + interval '1 hour' WHERE order_id = :id")
                 .param("id", order).update();
         int calls = TRACKER.createCalls();
 
@@ -338,7 +338,7 @@ class NotebookTrackerIntegrationTest {
         var open = notebook(false);
         place(open);
         for (String order : List.of(completed, delivered, open)) {
-            jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 48, dead_lettered_at = now() WHERE order_id = :id").param("id", order).update();
+            jdbc.sql("UPDATE catalog.order_workflow_creation_queue SET attempts = 48, dead_lettered_at = now() WHERE order_id = :id").param("id", order).update();
         }
         TenantContext.clear();
         assertThat(queue.backlog().pendingCount()).isEqualTo(1);
@@ -362,6 +362,33 @@ class NotebookTrackerIntegrationTest {
         assertThat(queued(open)).isEqualTo(1);
     }
 
+    /**
+     * Design D13: a queued creation also carries the order's number to a workflow that already exists, so a status push for
+     * an open numbered order proves only that the workflow exists, not that it holds the number. The row stays until a create
+     * succeeds. This is the deploy-skew case: an engine that predates order numbers keeps pushing statuses while school-core's
+     * creates for it fail, and the number must still arrive once the new engine answers.
+     */
+    @Test
+    void aStatusPushLeavesAnOpenNumberedOrdersCreationQueuedUntilItsNumberIsSent() {
+        TRACKER.failCreate = true;
+        var order = notebook(false);
+        place(order);
+        String number = jdbc.sql("SELECT order_number FROM catalog.catalog_orders WHERE id = :id").param("id", order).query(String.class).single();
+        assertThat(number).as("placement mints the number").startsWith("NB-");
+        assertThat(queued(order)).isEqualTo(1);
+
+        tx(() -> { forms.applyTrackerStatus(order, "PRODUCTION_PLANNING", 3L); return null; });
+        assertThat(pending(order)).as("the push proves the workflow exists").isFalse();
+        assertThat(queued(order)).as("but not that it holds the order number").isEqualTo(1);
+
+        TRACKER.failCreate = false;
+        due(order);
+        TenantContext.clear();
+        assertThat(queue.drain(5)).isEqualTo(1);
+        assertThat(TRACKER.created).singleElement().satisfies(sent -> assertThat(sent.orderNumber()).isEqualTo(number));
+        assertThat(queued(order)).isZero();
+    }
+
     /** The queue's backlog is added into the outbox health figures, so the outbox pending, age and dead-letter alerts cover it. */
     @Test
     void healthReportIncludesTrackerQueue() {
@@ -370,14 +397,14 @@ class NotebookTrackerIntegrationTest {
         place(waiting);
         var stuck = notebook(false);
         place(stuck);
-        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET created_at = now() - interval '2 hours' WHERE order_id = :id").param("id", waiting).update();
-        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET dead_lettered_at = now() WHERE order_id = :id").param("id", stuck).update();
+        jdbc.sql("UPDATE catalog.order_workflow_creation_queue SET created_at = now() - interval '2 hours' WHERE order_id = :id").param("id", waiting).update();
+        jdbc.sql("UPDATE catalog.order_workflow_creation_queue SET dead_lettered_at = now() WHERE order_id = :id").param("id", stuck).update();
         long outboxPending = jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events WHERE published_at IS NULL AND dead_lettered_at IS NULL")
                 .query(Long.class).single();
         long outboxDead = jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events WHERE dead_lettered_at IS NOT NULL").query(Long.class).single();
         TenantContext.clear();
 
-        assertThat(queue.queueName()).as("named in the health log if it cannot be counted").isEqualTo("notebook_tracker_creation_queue");
+        assertThat(queue.queueName()).as("named in the health log if it cannot be counted").isEqualTo("order_workflow_creation_queue");
         var reporter = new OutboxAsyncHealthReporter(jdbc, "tenant_school");
         reporter.configureBacklogs(List.of(queue));
         var logs = capture(OutboxAsyncHealthReporter.class);
@@ -555,7 +582,7 @@ class NotebookTrackerIntegrationTest {
         assertThat(attempts(order)).isEqualTo(2);
         assertThat(minutesToNextAttempt(order)).isCloseTo(4.0, within(0.2));
 
-        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 9 WHERE order_id = :id").param("id", order).update();
+        jdbc.sql("UPDATE catalog.order_workflow_creation_queue SET attempts = 9 WHERE order_id = :id").param("id", order).update();
         due(order);
         assertThat(queue.drain(5)).isZero();
         assertThat(minutesToNextAttempt(order)).isCloseTo(60.0, within(0.2));
@@ -569,7 +596,7 @@ class NotebookTrackerIntegrationTest {
         place(order);
         TenantContext.clear();
         // About six weeks at the hourly cap: 2^1101 minutes would overflow PostgreSQL's float8.
-        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET attempts = 1100 WHERE order_id = :id").param("id", order).update();
+        jdbc.sql("UPDATE catalog.order_workflow_creation_queue SET attempts = 1100 WHERE order_id = :id").param("id", order).update();
         due(order);
 
         assertThat(queue.drain(5)).isZero();
@@ -593,16 +620,16 @@ class NotebookTrackerIntegrationTest {
         OPERATORS.brokenSchool = 2L;
         // Oldest first, so both broken rows come before the healthy one.
         for (var row : List.of(Map.entry(refusedAtClaim, 30), Map.entry(failsWhileCreating, 20), Map.entry(healthy, 10))) {
-            jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET next_attempt_at = now() - make_interval(secs => :ago) WHERE order_id = :id")
+            jdbc.sql("UPDATE catalog.order_workflow_creation_queue SET next_attempt_at = now() - make_interval(secs => :ago) WHERE order_id = :id")
                     .param("ago", row.getValue()).param("id", row.getKey()).update();
         }
         jdbc.sql("CREATE FUNCTION catalog.test_refuse_claim() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'claim refused'; END $$").update();
-        jdbc.sql("CREATE TRIGGER test_refuse_claim BEFORE UPDATE ON catalog.notebook_tracker_creation_queue FOR EACH ROW WHEN (OLD.order_id = '"
+        jdbc.sql("CREATE TRIGGER test_refuse_claim BEFORE UPDATE ON catalog.order_workflow_creation_queue FOR EACH ROW WHEN (OLD.order_id = '"
                 + refusedAtClaim + "') EXECUTE FUNCTION catalog.test_refuse_claim()").update();
         try {
             assertThat(queue.drain(5)).as("the healthy order behind two failing ones still gets its tracker").isEqualTo(1);
         } finally {
-            jdbc.sql("DROP TRIGGER test_refuse_claim ON catalog.notebook_tracker_creation_queue").update();
+            jdbc.sql("DROP TRIGGER test_refuse_claim ON catalog.order_workflow_creation_queue").update();
             jdbc.sql("DROP FUNCTION catalog.test_refuse_claim()").update();
         }
         assertThat(TRACKER.created).extracting(TrackerGateway.NewTracker::orderId).containsExactly(healthy);
@@ -637,7 +664,7 @@ class NotebookTrackerIntegrationTest {
     void ensuringATrackerNeedsAPlacedNotebookOrderAndAnOperatorOrSuperadmin() {
         var draft = notebook(true);
         superadmin();
-        assertThatThrownBy(() -> forms.ensureTracker(draft)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("placed notebook");
+        assertThatThrownBy(() -> forms.ensureTracker(draft)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("placed order on an order workflow");
         school(1);
         assertThatThrownBy(() -> forms.ensureTracker(draft)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
         assertThat(TRACKER.createCalls()).isZero();
@@ -672,43 +699,127 @@ class NotebookTrackerIntegrationTest {
 
     // ---- design drafts -----------------------------------------------------------------------------------------------------
 
+    /** Design D26: at most four current design files per order; a removed one frees its place. */
     @Test
-    void draftsHaveNoCountCapAndOnlyCurrentOnesCount() {
+    void aFifthDesignFileIsRefusedAndOnlyCurrentOnesCount() {
         var order = placedNotebook(true);
         operator(8L, Set.of(1L), Set.of());
         List<Long> ids = new ArrayList<>();
-        for (int color = 1; color <= 7; color++) ids.add(id(draft(order, color)));
+        for (int color = 1; color <= 4; color++) ids.add(id(draft(order, color)));
+        assertThat(id(draft(order, 3))).as("the same file again is not a new file").isEqualTo(ids.get(2));
 
-        assertThat(currentDrafts(order)).isEqualTo(7);
-
-        assertThat(id(draft(order, 3))).as("the same file again is not a new draft").isEqualTo(ids.get(2));
+        assertThatThrownBy(() -> draft(order, 5)).isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+            assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(ex.getReason()).contains("at most 4 design files");
+        });
+        assertThat(currentDrafts(order)).isEqualTo(4);
 
         forms.removeAsset(order, ids.get(0));
-        assertThat(currentDrafts(order)).isEqualTo(6);
         draft(order, 8);
-        assertThat(currentDrafts(order)).isEqualTo(7);
+        assertThat(currentDrafts(order)).isEqualTo(4);
         assertThat(TRACKER.accessChecks).allMatch(check -> check.startsWith(order + ":8:OPERATIONS"));
+        assertThat(intents(order)).as("the unsent four-drafts email intent is retired").isEmpty();
     }
 
+    /**
+     * Design D40: a design file's removal joins the order's Activity history with its actor, as its upload does. The remover
+     * is kept on the file itself (catalog V39), because the order's updated_by is overwritten by the next change.
+     */
     @Test
-    void anEmailIntentIsRecordedEachTimeTheDraftsReachFourAndNeverBefore() {
+    void aRemovedDesignFileNamesWhoRemovedIt() {
         var order = placedNotebook(true);
         operator(8L, Set.of(1L), Set.of());
-        List<Long> ids = new ArrayList<>();
-        for (int color = 1; color <= 3; color++) ids.add(id(draft(order, color)));
-        assertThat(intents(order)).isEmpty();
+        long first = id(draft(order, 1));
+        long second = id(draft(order, 2));
+        operator(9L, Set.of(1L), Set.of());
+        forms.removeAsset(order, first);
+        superadmin();
+        draft(order, 3);
 
-        ids.add(id(draft(order, 4)));
-        assertThat(intents(order)).containsExactly("4:NOT_SENT:ACTIVE_SUPERADMINS");
-        ids.add(id(draft(order, 5)));
-        assertThat(intents(order)).as("the fifth draft does not repeat the review intent").hasSize(1);
+        var history = tx(() -> forms.assetHistory(order));
+        var removed = history.stream().filter(asset -> number(asset.get("id")) == first).findFirst().orElseThrow();
+        assertThat(removed.get("supersededAt")).isNotNull();
+        assertThat(number(removed.get("uploadedBy"))).isEqualTo(8L);
+        assertThat(number(removed.get("supersededBy"))).as("the remover, not the uploader or the last to touch the order").isEqualTo(9L);
+        var kept = history.stream().filter(asset -> number(asset.get("id")) == second).findFirst().orElseThrow();
+        assertThat(kept.get("supersededAt")).isNull();
+        assertThat(kept).containsEntry("supersededBy", null);
+    }
 
-        forms.removeAsset(order, ids.get(0));
-        forms.removeAsset(order, ids.get(1));
+    private static long number(Object value) {
+        return ((Number) value).longValue();
+    }
+
+    /** Design D26: 25 MB across the order's current files, not per file. */
+    @Test
+    void designFilesMayTotalAtMostTwentyFiveMegabytes() {
+        var order = placedNotebook(true);
+        operator(8L, Set.of(1L), Set.of());
+        int megabyte = 1024 * 1024;
+        long first = id(corelDraw(order, 10 * megabyte, 1));
+        corelDraw(order, 10 * megabyte, 2);
+        assertThatThrownBy(() -> corelDraw(order, 5 * megabyte + 1, 3)).isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
+            assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(ex.getReason()).contains("25 MB");
+        });
+        corelDraw(order, 5 * megabyte, 4);
+        assertThat(currentDrafts(order)).as("exactly 25 MB in total is allowed").isEqualTo(3);
+        assertThatThrownBy(() -> corelDraw(order, 64, 5)).as("not one more byte").isInstanceOf(ResponseStatusException.class);
+
+        forms.removeAsset(order, first);
+        corelDraw(order, 10 * megabyte, 6);
         assertThat(currentDrafts(order)).isEqualTo(3);
-        draft(order, 8);
-        assertThat(intents(order)).as("reaching four again creates a fresh review intent")
-                .containsExactly("4:NOT_SENT:ACTIVE_SUPERADMINS", "4:NOT_SENT:ACTIVE_SUPERADMINS");
+        assertThat(jdbc.sql("SELECT DISTINCT content_type FROM catalog.catalog_order_assets WHERE order_id = :id AND asset_kind = 'DESIGN_DRAFT'")
+                .param("id", order).query(String.class).list()).containsExactly("application/vnd.corel-draw");
+    }
+
+    /** Design D26: the limits are checked under the order's row lock, so two uploads racing for the last place cannot both win. */
+    @Test
+    void twoConcurrentUploadsForTheLastPlaceLetOnlyOneIn() throws Exception {
+        var order = placedNotebook(true);
+        operator(8L, Set.of(1L), Set.of());
+        for (int color = 1; color <= 3; color++) draft(order, color);
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try {
+            List<java.util.concurrent.Future<Boolean>> uploads = new ArrayList<>();
+            for (int color : new int[]{10, 11}) {
+                uploads.add(pool.submit(() -> {
+                    operator(8L, Set.of(1L), Set.of());
+                    start.await();
+                    try {
+                        draft(order, color);
+                        return true;
+                    } catch (ResponseStatusException refused) {
+                        assertThat(refused.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                        return false;
+                    } finally {
+                        TenantContext.clear();
+                    }
+                }));
+            }
+            start.countDown();
+            List<Boolean> outcomes = new ArrayList<>();
+            for (var upload : uploads) outcomes.add(upload.get(60, java.util.concurrent.TimeUnit.SECONDS));
+            assertThat(outcomes).containsExactlyInAnyOrder(true, false);
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(currentDrafts(order)).isEqualTo(4);
+    }
+
+    /** Design D26: every workflow item takes design files, not only customised notebooks. */
+    @Test
+    void aFlierOrderOnItsWorkflowTakesDesignFiles() {
+        school(1);
+        var flier = tx(() -> orders.createOrder(Map.of("schoolId", 1, "category", "FLIERS", "orderData", ProductOrderFixtures.orderData("FLIERS")))).id();
+        place(flier);
+        assertThat(TRACKER.created).extracting(TrackerGateway.NewTracker::definitionId).containsExactly("FLIER_ORDER_WORKFLOW");
+        operator(8L, Set.of(1L), Set.of());
+        draft(flier, 1);
+        assertThat(currentDrafts(flier)).isEqualTo(1);
+        TenantContext.clear();
+        assertThat(tx(() -> forms.draftImagesForTracker(flier))).hasSize(1).first().satisfies(file -> assertThat(file).containsKey("sizeBytes"));
     }
 
     @Test
@@ -836,7 +947,7 @@ class NotebookTrackerIntegrationTest {
         school(1);
         var placed = placedNotebook(true);
         TenantContext.clear();
-        for (String bad : new String[]{"", "lower case", "1ABC", "A;DROP", "X".repeat(50)}) {
+        for (String bad : new String[]{"", "lower case", "1ABC", "A;DROP", "X".repeat(65)}) {
             assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(placed, bad, 1L); return null; }), bad).isInstanceOf(ResponseStatusException.class);
         }
         var data = Map.of("orderSelections", Map.of(), "lines", List.of(
@@ -875,22 +986,23 @@ class NotebookTrackerIntegrationTest {
     }
 
     @Test
-    void unknownStatusCodeRejected() {
+    void theOrderFlowsOwnStatusesAreRefusedAndAnyStepCodeIsAccepted() {
         var order = placedNotebook(true);
         TenantContext.clear();
-        // Well-formed codes that are not tracker steps, including the old approval flow's statuses.
-        for (String unknown : new String[]{"NOT_A_STEP", "DESIGN_APPROVAL", "PROCESSING", "DELIVERED", "CANCELLED", "DRAFT"}) {
+        // Design D5: codes are checked by pattern, so a template's steps need no copy here; the approval flow's statuses
+        // are never a step and are refused.
+        for (String unknown : new String[]{"DESIGN_APPROVAL", "PROCESSING", "DELIVERED", "CANCELLED", "DRAFT", "APPROVED"}) {
             assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(order, unknown, 9L); return null; }), unknown)
                     .isInstanceOfSatisfying(ResponseStatusException.class, refused -> assertThat(refused.getStatusCode().value()).isEqualTo(400));
         }
         assertThatThrownBy(() -> tx(() -> { forms.applyTrackerStatus(order, "PRINTING_PRESS", null); return null; }), "no version")
                 .isInstanceOfSatisfying(ResponseStatusException.class, refused -> assertThat(refused.getStatusCode().value()).isEqualTo(400));
         assertThat(status(order)).isEqualTo("ORDER_DETAILS");
-        // Every one of operations' TrackerStep codes and COMPLETED is accepted.
+        // Every notebook step code, the nine-step templates' own codes, and COMPLETED are accepted.
         long version = 10;
         for (String code : new String[]{"ORDER_DETAILS", "DESIGNING_ACTIVITY", "HEAD_APPROVAL", "CDR_CONVERSION", "PRODUCTION_PLANNING",
                 "BOARD_PROCUREMENT", "PRINTING_PRESS", "PRE_PRINT_QUALITY_GATE", "FACTORY_HANDOVER", "PRODUCTION_FOLLOW_UP",
-                "VALIDATION_COUNT", "DELIVERY_INVOICING", "COMPLETED"}) {
+                "VALIDATION_COUNT", "DELIVERY_INVOICING", "PRE_PRINT_QUALITY_CHECK", "FINAL_APPROVAL", "COMPLETED"}) {
             long next = ++version;
             tx(() -> { forms.applyTrackerStatus(order, code, next); return null; });
             assertThat(status(order)).isEqualTo(code);
@@ -971,10 +1083,10 @@ class NotebookTrackerIntegrationTest {
         var runtimeJdbc = JdbcClient.create(runtime);
         var runtimeManager = new DataSourceTransactionManager(runtime);
         var runtimeQueue = new NotebookTrackerCreationQueue(runtimeJdbc, TRACKER, OPERATORS, runtimeManager);
-        assertThat(runtimeJdbc.sql("SELECT order_id FROM catalog.notebook_tracker_creation_queue").query(String.class).list())
+        assertThat(runtimeJdbc.sql("SELECT order_id FROM catalog.order_workflow_creation_queue").query(String.class).list())
                 .as("a school sees only its own queue rows").containsExactly(atTwo);
         TenantContext.clear();
-        assertThat(runtimeJdbc.sql("SELECT count(*) FROM catalog.notebook_tracker_creation_queue").query(Long.class).single())
+        assertThat(runtimeJdbc.sql("SELECT count(*) FROM catalog.order_workflow_creation_queue").query(Long.class).single())
                 .as("no scope, no rows").isZero();
 
         TRACKER.failCreate = false;
@@ -1058,6 +1170,24 @@ class NotebookTrackerIntegrationTest {
         @SuppressWarnings("unchecked") var lines = (List<Map<String, Object>>) summary.get("lines");
         assertThat(lines).hasSize(2);
         assertThat(lines.getFirst()).containsKeys("lineNo", "selections", "bookCount", "pageCount");
+        // The contract's OrderWorkflowSummary takes exactly these keys (additionalProperties: false).
+        assertThat(summary.keySet()).containsExactlyInAnyOrder("orderId", "orderNumber", "category", "itemCode", "itemLabel", "schoolId",
+                "schoolName", "schoolCity", "schoolContactEmail", "schoolContactPhone", "status", "customised", "requiredByDate", "placedAt",
+                "schoolNotes", "orderedCount", "lines", "quantities", "titleCards", "trackerPending");
+        assertThat(summary).containsEntry("category", "NOTEBOOKS").containsEntry("itemCode", "NB").containsEntry("itemLabel", "Notebooks");
+        assertThat(String.valueOf(summary.get("orderNumber"))).matches("NB-SA_IN-\\d\\d-\\d\\d-\\d\\d-\\d{4}");
+        // Design D25: each line's quantity with its main selection (the size) and the rest as details.
+        @SuppressWarnings("unchecked") var quantities = (Map<String, Object>) summary.get("quantities");
+        assertThat(quantities).containsEntry("total", 2000);
+        @SuppressWarnings("unchecked") var quantityLines = (List<Map<String, Object>>) quantities.get("lines");
+        assertThat(quantityLines).extracting(line -> line.get("label")).containsExactly("Long", "Jumbo Long");
+        assertThat(quantityLines).extracting(line -> line.get("quantity")).containsExactly(1000, 1000);
+        assertThat(quantityLines.getFirst().get("details")).asString().contains("Single");
+        // Design D24: title cards from the placed lines: Long ceil(1000/8)+13, Jumbo Long ceil(1000/4)+25.
+        var cards = (com.custoking.ims.schoolcoreservice.catalog.domain.TitleCardQuantities.Result) summary.get("titleCards");
+        assertThat(cards.rows()).extracting(com.custoking.ims.schoolcoreservice.catalog.domain.TitleCardQuantities.Row::sheets)
+                .containsExactly(0, 138, 275, 0);
+        assertThat(cards.unmatched()).isEmpty();
 
         school(1);
         assertThatThrownBy(() -> tx(() -> forms.trackerSummary(order.id()))).isInstanceOf(ResponseStatusException.class).hasMessageContaining("403");
@@ -1258,7 +1388,7 @@ class NotebookTrackerIntegrationTest {
             caller.run();
             assertThatThrownBy(() -> upload(tracked, "PRE_DELIVERY_PHOTO", 5)).isInstanceOfSatisfying(ResponseStatusException.class, ex -> {
                 assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                assertThat(ex.getReason()).isEqualTo("Notebook orders on the tracker record delivery in the tracker");
+                assertThat(ex.getReason()).isEqualTo("Orders on an order workflow record delivery in the workflow");
             });
         }
         assertThat(currentAssetIds(tracked)).isEmpty();
@@ -1318,7 +1448,7 @@ class NotebookTrackerIntegrationTest {
     }
 
     private boolean deadLettered(String order) {
-        return jdbc.sql("SELECT dead_lettered_at IS NOT NULL FROM catalog.notebook_tracker_creation_queue WHERE order_id = :id")
+        return jdbc.sql("SELECT dead_lettered_at IS NOT NULL FROM catalog.order_workflow_creation_queue WHERE order_id = :id")
                 .param("id", order).query(Boolean.class).single();
     }
 
@@ -1354,11 +1484,17 @@ class NotebookTrackerIntegrationTest {
     }
 
     /** A notebook order as placement left it before the tracker existed: on the approval flow, with no tracker attributes. */
+    /**
+     * A notebook placed before the tracker existed (owner decision D1), as it stands after catalog V37: numbered by the
+     * backfill. Without the number its placement would look like one by a school-core older than V37, which V38 queues
+     * for repair when it commits.
+     */
     private String placedBeforeTheTracker(boolean custom) {
         var id = notebook(custom);
         jdbc.sql("""
                 UPDATE catalog.catalog_orders SET status = :status, design_status = :design, superadmin_approval_status = :approval,
-                    pricing_status = 'PENDING_PRICING', placed_at = now(), placed_by = 7, attributes = '{}'::jsonb WHERE id = :id
+                    pricing_status = 'PENDING_PRICING', placed_at = now(), placed_by = 7, attributes = '{}'::jsonb,
+                    order_number = 'NB-SA_IN-25-04-01-' || :id WHERE id = :id
                 """).param("id", id).param("status", custom ? "DESIGN_APPROVAL" : "PROCESSING")
                 .param("design", custom ? "PENDING" : "NOT_REQUIRED").param("approval", custom ? "NOT_SUBMITTED" : "PENDING").update();
         return id;
@@ -1371,6 +1507,15 @@ class NotebookTrackerIntegrationTest {
     }
 
     private Map<String, Object> draft(String id, int color) { return upload(id, "DESIGN_DRAFT", color); }
+
+    /** A CorelDRAW X3 design file of exactly {@code size} bytes; {@code mark} makes each one a different file. */
+    private Map<String, Object> corelDraw(String id, int size, int mark) {
+        byte[] bytes = new byte[size];
+        System.arraycopy("RIFF".getBytes(java.nio.charset.StandardCharsets.US_ASCII), 0, bytes, 0, 4);
+        System.arraycopy("CDRDvrsn".getBytes(java.nio.charset.StandardCharsets.US_ASCII), 0, bytes, 8, 8);
+        bytes[size - 1] = (byte) mark;
+        return forms.upload(id, "DESIGN_DRAFT", bytes, "artwork-" + mark + ".cdr");
+    }
 
     private Map<String, Object> upload(String id, String kind, int color) {
         try {
@@ -1400,26 +1545,26 @@ class NotebookTrackerIntegrationTest {
     }
 
     private long queued(String order) {
-        return jdbc.sql("SELECT count(*) FROM catalog.notebook_tracker_creation_queue WHERE order_id = :id").param("id", order).query(Long.class).single();
+        return jdbc.sql("SELECT count(*) FROM catalog.order_workflow_creation_queue WHERE order_id = :id").param("id", order).query(Long.class).single();
     }
 
     /** Lets the backoff elapse. */
     private void due(String order) {
-        jdbc.sql("UPDATE catalog.notebook_tracker_creation_queue SET next_attempt_at = now() - interval '1 second' WHERE order_id = :id")
+        jdbc.sql("UPDATE catalog.order_workflow_creation_queue SET next_attempt_at = now() - interval '1 second' WHERE order_id = :id")
                 .param("id", order).update();
     }
 
     private int attempts(String order) {
-        return jdbc.sql("SELECT attempts FROM catalog.notebook_tracker_creation_queue WHERE order_id = :id").param("id", order).query(Integer.class).single();
+        return jdbc.sql("SELECT attempts FROM catalog.order_workflow_creation_queue WHERE order_id = :id").param("id", order).query(Integer.class).single();
     }
 
     private double minutesToNextAttempt(String order) {
-        return jdbc.sql("SELECT EXTRACT(EPOCH FROM next_attempt_at - clock_timestamp()) / 60 FROM catalog.notebook_tracker_creation_queue WHERE order_id = :id")
+        return jdbc.sql("SELECT EXTRACT(EPOCH FROM next_attempt_at - clock_timestamp()) / 60 FROM catalog.order_workflow_creation_queue WHERE order_id = :id")
                 .param("id", order).query(Double.class).single();
     }
 
     private String lastError(String order) {
-        return jdbc.sql("SELECT last_error FROM catalog.notebook_tracker_creation_queue WHERE order_id = :id").param("id", order).query(String.class).single();
+        return jdbc.sql("SELECT last_error FROM catalog.order_workflow_creation_queue WHERE order_id = :id").param("id", order).query(String.class).single();
     }
 
     private boolean pending(String order) {

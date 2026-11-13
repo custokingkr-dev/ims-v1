@@ -83,3 +83,22 @@ describe('returning an order is not dressed as approving one', () => {
     expect(confirm.className).toMatch(/\bck-btn-re\b/);
   });
 });
+
+describe('order numbers in approvals (section 4.8)', () => {
+  afterEach(cleanup);
+
+  it('heads an order with its number and keeps the CK id beneath it', async () => {
+    catalogue();
+    render(<SaOrderApprovalsPanel orders={[rowFor({ orderNumber: 'RC-GVS_PUN-26-11-13-0007' })]} {...NOOP} />);
+    const row = await screen.findByRole('row', { name: /RC-GVS_PUN-26-11-13-0007/ });
+    expect(within(row).getByText('RC-GVS_PUN-26-11-13-0007')).toHaveClass('tb');
+    expect(within(row).getByText('Ref CK-1042')).toBeInTheDocument();
+  });
+
+  it('names the order by its number when returning it', async () => {
+    catalogue();
+    render(<SaOrderApprovalsPanel orders={[rowFor({ orderNumber: 'RC-GVS_PUN-26-11-13-0007' })]} {...NOOP} rejectModalOrderId="CK-1042" />);
+    const dialog = await screen.findByRole('dialog', { name: 'Return order for revision' });
+    expect(within(dialog).getByText('RC-GVS_PUN-26-11-13-0007')).toBeInTheDocument();
+  });
+});

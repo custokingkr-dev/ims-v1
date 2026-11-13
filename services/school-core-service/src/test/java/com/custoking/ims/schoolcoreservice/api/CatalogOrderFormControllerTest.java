@@ -63,26 +63,37 @@ class CatalogOrderFormControllerTest {
                 null, null, 7L, null, null, null, 1L, 1L, null, null, null, null, null, "School A", 2, "NOT_APPLICABLE", true)));
         mvc.perform(get("/api/v1/supply/orders/CK-1/form").header("X-Catalog-Service-Token", "test-token"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.order.trackerManaged").value(true))
-                .andExpect(jsonPath("$.order.productionWorkflowAvailable").value(false));
+                .andExpect(jsonPath("$.order.productionWorkflowAvailable").doesNotExist());
     }
 
-    /** The order screen shows the production workflow only where the server says one exists; it keeps no category list. */
-    @Test void theFormPayloadSaysWhetherAProductionWorkflowIsAvailable() throws Exception {
+    /** The order screen headlines the order number and shows the workflow step (design D5, D14); the retired flag is gone. */
+    @Test void theFormPayloadCarriesTheOrderNumberAndTheWorkflowStep() throws Exception {
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         var row = new CatalogReadRepository.CatalogOrderRow("CK-2", "FLEX", "{}",
-                0L, 0L, 0L, "PROCESSING", null, null, null, null, null, null, null, null, "NOT_REQUIRED", "PENDING",
-                null, null, 7L, null, null, null, 4L, 1L, null, null, null, null, null, "School A", 2, "PENDING_PRICING", false);
-        var workflows = mock(com.custoking.ims.schoolcoreservice.persistence.ProductOrderWorkflowService.class);
-        when(workflows.available(row)).thenReturn(true);
-        var controller = new CatalogOrderFormController(forms, orders, "test-token");
-        controller.configureWorkflows(workflows);
-        mvc = MockMvcBuilders.standaloneSetup(controller).build();
+                0L, 0L, 0L, "CDR_CONVERSION", null, null, null, null, null, null, null, null, "NOT_REQUIRED", "NOT_SUBMITTED",
+                null, null, 7L, null, null, null, 4L, 1L, null, null, null, null, null, "School A", 2, "PENDING_PRICING", true,
+                "FX-SA_IN-26-11-13-0001", "FX", "{\"order\":3,\"title\":\"CDR Conversion\",\"total\":9,\"completed\":2}");
         when(forms.detail("CK-2")).thenReturn(new java.util.LinkedHashMap<>(java.util.Map.of("formVersion", 2)));
         when(orders.order("CK-2")).thenReturn(java.util.Optional.of(row));
         mvc.perform(get("/api/v1/supply/orders/CK-2/form").header("X-Catalog-Service-Token", "test-token"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.order.productionWorkflowAvailable").value(true))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.order.productionWorkflowAvailable").doesNotExist())
                 .andExpect(jsonPath("$.order.id").value("CK-2")).andExpect(jsonPath("$.order.schoolId").value(4))
+                .andExpect(jsonPath("$.order.orderNumber").value("FX-SA_IN-26-11-13-0001"))
+                .andExpect(jsonPath("$.order.itemCode").value("FX"))
+                .andExpect(jsonPath("$.order.workflowStep.order").value(3))
+                .andExpect(jsonPath("$.order.workflowStep.title").value("CDR Conversion"))
+                .andExpect(jsonPath("$.order.workflowStep.total").value(9))
+                .andExpect(jsonPath("$.order.workflowStep.completed").value(2))
                 .andExpect(jsonPath("$.order.category").value("FLEX")).andExpect(jsonPath("$.order.order").doesNotExist());
+    }
+
+    @Test void anOrderNumberResolvesToItsId() throws Exception {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+        when(forms.orderByNumber("nb-sa_in-26-11-13-0042")).thenReturn(java.util.Map.of("id", "CK-9", "orderNumber", "NB-SA_IN-26-11-13-0042"));
+        mvc.perform(get("/api/v1/catalog/orders/by-number/nb-sa_in-26-11-13-0042").header("X-Catalog-Service-Token", "test-token"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value("CK-9"))
+                .andExpect(jsonPath("$.orderNumber").value("NB-SA_IN-26-11-13-0042"));
+        mvc.perform(get("/api/v1/catalog/orders/by-number/NB-1")).andExpect(status().isUnauthorized());
     }
 
     @Test void streamedFilesArePrivateAndCannotExecuteInline() throws Exception {

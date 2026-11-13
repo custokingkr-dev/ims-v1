@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import {
@@ -18,6 +18,10 @@ import {
   X,
 } from 'lucide-react';
 import api from '../services/api';
+import { createTenantSchoolClient } from '../generated/tenantSchoolClient';
+import {
+  SCHOOL_ORDER_CODE_HELPER, firstFreeSchoolOrderCode, normaliseSchoolOrderCode, schoolOrderCodeError, suggestSchoolOrderCode,
+} from '../features/orders/vendors/codes';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { DEFAULT_SCHOOL_TIME_ZONE, SCHOOL_TIME_ZONES } from '../utils/timeZones';
@@ -29,10 +33,14 @@ import {
   groupModuleSelections,
 } from './workspace/config';
 
+const tenantSchools = createTenantSchoolClient(api);
+
 type SchoolRow = {
   id: number;
   name: string;
   shortCode: string;
+  /** `<Initials>_<Location>`, used in order numbers (design D12). */
+  orderCode?: string | null;
   city?: string;
   state?: string;
   active: boolean;
@@ -95,6 +103,7 @@ type SchoolFilter = 'all' | 'active' | 'needsSetup';
 const defaultSchoolForm = {
   name: '',
   shortCode: '',
+  orderCode: '',
   city: '',
   state: '',
   contactEmail: '',
@@ -220,6 +229,12 @@ export default function SchoolManagementPage() {
   const [moduleSelections, setModuleSelections] = useState<Record<string, boolean>>(defaultModuleSelections);
   const [currentEntitlements, setCurrentEntitlements] = useState<Record<string, boolean>>({});
   const [modulesLoading, setModulesLoading] = useState(false);
+  // Design D12: the add form suggests an order code from the name and city until one is typed.
+  const [schoolCodeTyped, setSchoolCodeTyped] = useState(false);
+  const [schoolCodeError, setSchoolCodeError] = useState('');
+  const [codeEdit, setCodeEdit] = useState<{ schoolId: number; value: string; error: string } | null>(null);
+  const [codeSaving, setCodeSaving] = useState(false);
+  const codeIds = useId();
 
   const activeCount = useMemo(() => schools.filter((school) => school.active).length, [schools]);
 
@@ -282,6 +297,7 @@ export default function SchoolManagementPage() {
       const haystack = [
         school.name,
         school.shortCode,
+        school.orderCode,
         school.city,
         school.state,
         ...adminAccounts.map((account) => `${account.email} ${account.fullName || ''}`),
@@ -455,28 +471,52 @@ export default function SchoolManagementPage() {
     );
   };
 
+  const setSchoolPlace = (patch: Partial<typeof defaultSchoolForm>) => {
+    setSchoolForm((current) => {
+      const next = { ...current, ...patch };
+      // The suggestion skips the codes the listed schools already use, as the server's derivation does (DPS2_GUR).
+      const suggested = suggestSchoolOrderCode({ name: next.name, city: next.city, state: next.state });
+      return schoolCodeTyped ? next : { ...next, orderCode: firstFreeSchoolOrderCode(suggested, schools.map((school) => school.orderCode)) };
+    });
+  };
+
+  const openSchoolModal = () => {
+    setNotice(''); setError(''); setSchoolCodeError(''); setSchoolCodeTyped(false);
+    setSchoolForm(defaultSchoolForm);
+    setShowSchoolModal(true);
+  };
+
   const submitSchool = async (e: FormEvent) => {
     e.preventDefault();
+    // A blank order code is derived by the server; a typed one must be initials, "_" and a location.
+    const codeProblem = schoolOrderCodeError(schoolForm.orderCode, { allowBlank: true });
+    setSchoolCodeError(codeProblem);
+    if (codeProblem) return;
     try {
       setSaving(true);
       setError('');
-      const res = await api.post<{ id: number; photoImportFolder?: { status?: string } }>('/schools', {
+      const created = await tenantSchools.createSchool({
         ...schoolForm,
+        // An untouched suggestion or a blank code is sent as null, so the server derives it and adds a 2–9 suffix on a
+        // collision (design D12); only a typed code is sent as it is.
+        orderCode: schoolCodeTyped ? normaliseSchoolOrderCode(schoolForm.orderCode) || null : null,
         classCount: Number(schoolForm.classCount || MAX_CLASS_COUNT),
         sectionCount: Number(schoolForm.sectionCount || 2),
         academicYearStartMonth: Number(schoolForm.academicYearStartMonth || 4),
         financialYearStartMonth: Number(schoolForm.financialYearStartMonth || 4),
       });
-      const schoolId = res.data?.id;
+      const schoolId = created?.id;
       if (schoolId) {
         await saveModuleSelections(schoolId, moduleSelections);
       }
       setShowSchoolModal(false);
       setSchoolForm(defaultSchoolForm);
+      setSchoolCodeTyped(false);
       setModuleSelections(defaultModuleSelections());
-      setNotice(res.data?.photoImportFolder?.status === 'READY'
-        ? 'School created. Add an administrator to complete setup.'
-        : `School created, but Drive setup needs attention (${res.data?.photoImportFolder?.status || 'unknown'}).`);
+      const codeNote = created?.orderCode ? ` with order code ${created.orderCode}` : '';
+      setNotice(created?.photoImportFolder?.status === 'READY'
+        ? `School created${codeNote}. Add an administrator to complete setup.`
+        : `School created${codeNote}, but Drive setup needs attention (${created?.photoImportFolder?.status || 'unknown'}).`);
       await loadAll();
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to create school.');
@@ -605,6 +645,27 @@ export default function SchoolManagementPage() {
     }
   };
 
+  const canEditOrderCode = user?.role === 'SUPERADMIN' && can('school:update');
+
+  const saveOrderCode = async (school: SchoolRow) => {
+    if (!codeEdit) return;
+    const orderCode = normaliseSchoolOrderCode(codeEdit.value);
+    if (orderCode === (school.orderCode || '')) { setCodeEdit(null); return; }
+    const problem = schoolOrderCodeError(orderCode, { allowBlank: false });
+    if (problem) { setCodeEdit({ ...codeEdit, error: problem }); return; }
+    try {
+      setCodeSaving(true);
+      await tenantSchools.updateSchool({ id: school.id }, { orderCode });
+      setCodeEdit(null);
+      setNotice(`${school.name} now uses order code ${orderCode} for new orders. Existing order numbers keep their code.`);
+      await loadSchools();
+    } catch (err: any) {
+      setCodeEdit({ ...codeEdit, error: err?.response?.data?.message || err?.message || 'Unable to change the order code.' });
+    } finally {
+      setCodeSaving(false);
+    }
+  };
+
   const submitModules = async () => {
     if (!selectedSchool) return;
     try {
@@ -634,7 +695,7 @@ export default function SchoolManagementPage() {
             <span className="badge">{schools.length} schools</span>
             <span className="badge">{activeCount} active</span>
             {can('school:create') && (
-              <button type="button" onClick={() => { setNotice(''); setError(''); setShowSchoolModal(true); }} className="ck-btn ck-btn-g">
+              <button type="button" onClick={openSchoolModal} className="ck-btn ck-btn-g">
                 <Plus size={16} /> Add School
               </button>
             )}
@@ -844,6 +905,29 @@ export default function SchoolManagementPage() {
                 <strong>{focusedSchool.name}</strong>
                 <span>{focusedSchool.shortCode || 'No code'}{focusedSchool.city ? ` - ${focusedSchool.city}` : ''}</span>
                 <span>{focusedSchool.timeZone || DEFAULT_SCHOOL_TIME_ZONE}</span>
+                {codeEdit?.schoolId === focusedSchool.id ? (
+                  <form className="ck-field" style={{ marginTop: 8 }} onSubmit={(event) => { event.preventDefault(); void saveOrderCode(focusedSchool); }}>
+                    <label htmlFor={`${codeIds}-code`}>Order code</label>
+                    <input id={`${codeIds}-code`} value={codeEdit.value} autoComplete="off" disabled={codeSaving}
+                      aria-invalid={codeEdit.error ? true : undefined}
+                      aria-describedby={`${codeIds}-helper${codeEdit.error ? ` ${codeIds}-error` : ''}`}
+                      onChange={(event) => setCodeEdit({ ...codeEdit, value: event.target.value.toUpperCase(), error: '' })} />
+                    <span id={`${codeIds}-helper`}>{SCHOOL_ORDER_CODE_HELPER}</span>
+                    {codeEdit.error && <span id={`${codeIds}-error`} className="error" role="alert">{codeEdit.error}</span>}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                      <button type="submit" className="ck-btn ck-btn-g ck-btn-sm" disabled={codeSaving}>{codeSaving ? 'Saving...' : 'Save order code'}</button>
+                      <button type="button" className="ck-btn ck-btn-ghost ck-btn-sm" disabled={codeSaving} onClick={() => setCodeEdit(null)}>Cancel</button>
+                    </div>
+                  </form>
+                ) : (
+                  <span>
+                    Order code {focusedSchool.orderCode || 'not set'}
+                    {canEditOrderCode && (
+                      <button type="button" className="ck-btn ck-btn-ghost ck-btn-sm" style={{ marginLeft: 8 }} aria-label={`Edit order code for ${focusedSchool.name}`}
+                        onClick={() => setCodeEdit({ schoolId: focusedSchool.id, value: focusedSchool.orderCode || '', error: '' })}>Edit</button>
+                    )}
+                  </span>
+                )}
               </div>
               <div className="sms-detail-cell">
                 <div className="sms-detail-label"><ShieldCheck size={14} /> Admin accounts</div>
@@ -940,10 +1024,19 @@ export default function SchoolManagementPage() {
             <form onSubmit={submitSchool}>
               <div className="ck-modal-body">
                 <div className="ck-form-grid ck-fg-2">
-                  <div className="ck-field"><label>School Name</label><input aria-label="School Name" value={schoolForm.name} onChange={(e) => setSchoolForm((s) => ({ ...s, name: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>School Name</label><input aria-label="School Name" value={schoolForm.name} onChange={(e) => setSchoolPlace({ name: e.target.value })} required /></div>
                   <div className="ck-field"><label>Short Code</label><input aria-label="Short Code" value={schoolForm.shortCode} onChange={(e) => setSchoolForm((s) => ({ ...s, shortCode: e.target.value.toUpperCase() }))} required /></div>
-                  <div className="ck-field"><label>City</label><input aria-label="City" value={schoolForm.city} onChange={(e) => setSchoolForm((s) => ({ ...s, city: e.target.value }))} /></div>
-                  <div className="ck-field"><label>State</label><input aria-label="State" value={schoolForm.state} onChange={(e) => setSchoolForm((s) => ({ ...s, state: e.target.value }))} /></div>
+                  <div className="ck-field">
+                    <label htmlFor={`${codeIds}-new`}>Order Code</label>
+                    <input id={`${codeIds}-new`} value={schoolForm.orderCode} placeholder="DPS_GUR" autoComplete="off"
+                      aria-invalid={schoolCodeError ? true : undefined}
+                      aria-describedby={`${codeIds}-new-helper${schoolCodeError ? ` ${codeIds}-new-error` : ''}`}
+                      onChange={(e) => { setSchoolCodeTyped(true); setSchoolCodeError(''); setSchoolForm((s) => ({ ...s, orderCode: e.target.value.toUpperCase() })); }} />
+                    <small id={`${codeIds}-new-helper`} className="ck-card-sub">{SCHOOL_ORDER_CODE_HELPER} Leave it blank to derive it.</small>
+                    {schoolCodeError && <span id={`${codeIds}-new-error`} className="field-error" role="alert">{schoolCodeError}</span>}
+                  </div>
+                  <div className="ck-field"><label>City</label><input aria-label="City" value={schoolForm.city} onChange={(e) => setSchoolPlace({ city: e.target.value })} /></div>
+                  <div className="ck-field"><label>State</label><input aria-label="State" value={schoolForm.state} onChange={(e) => setSchoolPlace({ state: e.target.value })} /></div>
                   <div className="ck-field"><label>No. of Classes</label><input aria-label="No. of Classes" type="number" min={1} max={MAX_CLASS_COUNT} value={schoolForm.classCount} onChange={(e) => setSchoolForm((s) => ({ ...s, classCount: e.target.value }))} required /></div>
                   <div className="ck-field"><label>Sections per Class</label><input aria-label="Sections per Class" type="number" min={1} max={26} value={schoolForm.sectionCount} onChange={(e) => setSchoolForm((s) => ({ ...s, sectionCount: e.target.value }))} required /></div>
                   <div className="ck-field"><label>Academic Year Starts</label><select aria-label="Academic Year Starts" value={schoolForm.academicYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, academicYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>

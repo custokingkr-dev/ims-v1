@@ -1,70 +1,84 @@
-import { useCallback, useEffect, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { NotebookTracker } from '../../../features/tracker/NotebookTracker';
-import { trackerApi, trackerError } from '../../../features/tracker/api';
-import type { WorklistItem } from '../../../features/tracker/types';
-import { getDisplayStatus } from '../../../shared/display/status';
-import '../../../features/catalog/product-form.css';
-import '../../../features/tracker/tracker.css';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { OrderWorkflowList } from '../../../features/orders/list';
+import { asOrderNumber } from '../../../features/orders/shared/orderLabel';
+import { OrderDetailEntry } from '../../../features/orders/workflow';
+import { isNotFound, workflowApi, workflowError } from '../../../features/orders/workflow/api';
+
+/** A CK id, as every API path takes it; anything else in the URL is ignored. */
+const ORDER_ID = /^[A-Za-z0-9_-]{1,255}$/;
 
 /**
- * Notebook orders waiting on the signed-in operator (or, with "All", every order they may see), soonest deadline first.
- * Superadmin is never the one a step is assigned to, so their list opens on "All".
+ * A link that names the order by its number (NB-DPS_GUR-26-11-13-0042), as people copy it from the screen: the number is
+ * looked up and the link continues under the order's CK id, which every workflow call takes.
  */
-export function NotebookWorklistPanel() {
-  const { user } = useAuth();
-  // Until the user picks one, the view follows the role: derived, not stored, so it is right even if the user loads late.
-  const [chosen, setScope] = useState<'mine' | 'all' | null>(null);
-  const scope = chosen ?? (user?.role === 'SUPERADMIN' ? 'all' : 'mine');
-  const [finished, setFinished] = useState(false);
-  const [rows, setRows] = useState<WorklistItem[] | null>(null);
+function OrderNumberLink({ orderNumber, onFound, onBack }: { orderNumber: string; onFound: (orderId: string) => void; onBack: () => void }) {
   const [error, setError] = useState('');
-  const [open, setOpen] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
+  const report = useRef(onFound);
+  report.current = onFound;
+  useEffect(() => {
+    let active = true;
     setError('');
-    try { setRows(await trackerApi.worklist({ scope, includeFinished: finished })); }
-    catch (e) { setRows(null); setError(trackerError(e, 'Unable to load notebook orders.')); }
-  }, [scope, finished]);
-  useEffect(() => { void load(); }, [load]);
-
-  if (open) return <NotebookTracker orderId={open} onBack={() => { setOpen(null); void load(); }} />;
+    workflowApi.orderIdByNumber(orderNumber).then((orderId) => { if (active) report.current(orderId); }, (e: unknown) => {
+      if (active) setError(isNotFound(e) ? `No order has the number ${orderNumber}.` : workflowError(e, 'The order could not be found.'));
+    });
+    return () => { active = false; };
+  }, [orderNumber]);
+  if (!error) return <p className="ck-wf-muted" role="status">Finding order {orderNumber}…</p>;
   return (
-    <div className="ck-trk">
-      <div className="ck-trk-row">
-        <h2>Notebook orders</h2>
-        <div className="ck-trk-actions">
-          <fieldset className="ck-trk-filter">
-            <legend>Show orders</legend>
-            <label><input type="radio" name="nb-scope" checked={scope === 'mine'} onChange={() => setScope('mine')} /> Assigned to me</label>
-            <label><input type="radio" name="nb-scope" checked={scope === 'all'} onChange={() => setScope('all')} /> All</label>
-          </fieldset>
-          <label><input type="checkbox" checked={finished} onChange={(e) => setFinished(e.target.checked)} /> Include completed</label>
-          <button type="button" className="ck-btn ck-btn-ghost" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" /> Refresh</button>
-        </div>
-      </div>
-      {error && <p className="ck-product-error" role="alert">{error}</p>}
-      {!error && rows === null && <p className="ck-product-muted">Loading…</p>}
-      {rows && (
-        <div className="ck-table-wrap"><table className="ck-table">
-          <thead><tr><th>Order</th><th>School</th><th className="ck-num">Qty</th><th>Current step</th><th>Due</th><th>Progress</th><th><span className="ck-sr-only">Actions</span></th></tr></thead>
-          <tbody>
-            {rows.length === 0 ? <tr><td colSpan={7} className="ck-product-muted">No notebook orders{scope === 'mine' ? ' assigned to you' : ''}.</td></tr>
-              : rows.map((row) => (
-                <tr key={row.orderId}>
-                  <td className="tb">{row.orderId}</td>
-                  <td>{row.schoolName ?? `School ${row.schoolId}`}</td>
-                  <td className="ck-num">{row.orderedCount.toLocaleString('en-IN')}</td>
-                  <td><span className="ck-status sb2">{getDisplayStatus(row.status)}</span>{row.assigneeUserId === user?.userId ? '' : row.assigneeUserId == null ? ' · unassigned' : ''}</td>
-                  <td className={row.overdue ? 'ck-trk-late' : undefined}>{row.dueAt ? `${row.overdue ? 'Overdue · ' : ''}${new Date(row.dueAt).toLocaleString('en-IN', { timeZone: row.timeZone, dateStyle: 'medium', timeStyle: 'short' })}` : '—'}</td>
-                  <td>{row.completed} of {row.total}</td>
-                  <td><button type="button" className="ck-btn ck-btn-ghost" onClick={() => setOpen(row.orderId)}>Open</button></td>
-                </tr>
-              ))}
-          </tbody>
-        </table></div>
-      )}
+    <div className="ck-wf">
+      <div><button type="button" className="ck-btn ck-btn-ghost" onClick={onBack}><ArrowLeft size={15} aria-hidden="true" /> Order workflows</button></div>
+      <div className="ck-alert ck-alert-re" role="alert">{error}</div>
     </div>
   );
+}
+
+/**
+ * The "Order workflows" panel (key `nb-work`, kept so bookmarks still work): the list and board of every placed workflow
+ * order, and one order's workflow at `?panel=nb-work&order=<CK id>` (or the order's number). Opening an order pushes a
+ * history entry, so the browser's Back closes it again.
+ */
+export function NotebookWorklistPanel() {
+  const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const requested = params.get('order');
+  const orderNumber = requested ? asOrderNumber(requested) : null;
+  const orderId = requested && !orderNumber && ORDER_ID.test(requested) ? requested : null;
+
+  const open = useCallback((id: string) => {
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.set('order', id);
+      return next;
+    }, { state: { fromWorkflowList: true } });
+  }, [setParams]);
+
+  // The number resolved: the same history entry now names the order by its CK id, keeping where it was opened from.
+  const found = useCallback((id: string) => {
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.set('order', id);
+      return next;
+    }, { replace: true, state: location.state });
+  }, [location.state, setParams]);
+
+  const close = useCallback(() => {
+    // Opened from the list: going back returns to the list exactly as it was. Opened from a link: there is no list entry
+    // behind it, so the order is closed in place.
+    if ((location.state as { fromWorkflowList?: boolean } | null)?.fromWorkflowList) {
+      navigate(-1);
+      return;
+    }
+    setParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.delete('order');
+      return next;
+    }, { replace: true });
+  }, [location.state, navigate, setParams]);
+
+  if (orderNumber) return <OrderNumberLink key={orderNumber} orderNumber={orderNumber} onFound={found} onBack={close} />;
+  if (orderId) return <OrderDetailEntry key={orderId} orderId={orderId} trackerManaged onBack={close} backLabel="Order workflows" />;
+  return <OrderWorkflowList onOpen={open} />;
 }

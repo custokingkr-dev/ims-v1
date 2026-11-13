@@ -368,6 +368,7 @@ public class TenantSchoolController {
             school.put("schoolUid", row.schoolUid());
             school.put("name", row.name());
             school.put("shortCode", row.shortCode());
+            school.put("orderCode", row.orderCode());
             school.put("city", row.city());
             school.put("active", row.active());
             school.put("adminEmail", row.adminEmail());

@@ -201,6 +201,47 @@ class CatalogFactProjectionIntegrationTest {
                 .query(String.class).single());
     }
 
+    private void feedNumberedOrderEvent(String orderId, long version, String status, String orderNumber) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>(Map.of(
+                "id", orderId, "schoolId", 7L, "category", "FLIERS", "status", status,
+                "totalAmount", 500L, "superadminApprovalStatus", "PENDING",
+                "formVersion", 2, "pricingStatus", "QUOTED", "version", version));
+        if (orderNumber != null) {
+            payload.put("orderNumber", orderNumber);
+            payload.put("itemCode", "FE");
+        }
+        String eventId = UUID.randomUUID().toString();
+        ObjectMapper mapper = new ObjectMapper();
+        inbox.record(new ReportingEventInboxRecord(eventId, null, "catalog-order.upserted.v1", "v1",
+                "CatalogOrder", orderId, 7L, null, Optional.of(OffsetDateTime.now()), OffsetDateTime.now(),
+                mapper.writeValueAsString(Map.of("eventId", eventId, "eventType", "catalog-order.upserted.v1",
+                        "payload", payload)), mapper.writeValueAsString(payload)));
+    }
+
+    private String storedOrderNumber(String orderId) {
+        return (String) jdbcClient.sql("SELECT order_number FROM reporting.fact_catalog_order WHERE id = :id")
+                .param("id", orderId).query().singleRow().get("order_number");
+    }
+
+    @Test
+    void theOrderNumberIsProjectedAndAnEventWithoutOneKeepsTheStoredNumber() throws Exception {
+        feedNumberedOrderEvent("CK-FE-1", 1, "DRAFT", null);
+        assertEquals(1, processor.processBatch());
+        assertEquals(null, storedOrderNumber("CK-FE-1"), "a draft has no number yet");
+
+        feedNumberedOrderEvent("CK-FE-1", 2, "ORDER_DETAILS", "FE-DPS_GUR-26-11-13-0001");
+        assertEquals(1, processor.processBatch());
+        assertEquals("FE-DPS_GUR-26-11-13-0001", storedOrderNumber("CK-FE-1"));
+
+        // An older emitter (or a replay of one) sends no number: the number, once minted, is never erased.
+        feedNumberedOrderEvent("CK-FE-1", 3, "DESIGNING_ACTIVITY", null);
+        assertEquals(1, processor.processBatch());
+        assertEquals("FE-DPS_GUR-26-11-13-0001", storedOrderNumber("CK-FE-1"));
+        assertEquals("DESIGNING_ACTIVITY", jdbcClient.sql(
+                "SELECT status FROM reporting.fact_catalog_order WHERE id = 'CK-FE-1'").query(String.class).single());
+        assertEquals(1, countOrderRows("CK-FE-1"));
+    }
+
     @Test
     void sameEventIdReplayed_isDedupedByInbox_doesNotDuplicateFactRow() throws Exception {
         String eventId = UUID.randomUUID().toString();

@@ -2,18 +2,19 @@ import Paginator from '../../../components/Paginator';
 import { useState } from 'react';
 import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 import { ModuleShell, Stat } from '../ui';
-import { TrackerStep } from './TrackerStep';
 import { formatMoney, prettyOrderStatus, orderItemsSummary } from '../utils';
+import { schoolWorkflowStatus } from '../../../features/catalog/types';
+import { orderLabel } from '../../../features/orders/shared/orderLabel';
 
 // Supply order status → stage index mapping.
 // DESIGN_APPROVAL / DESIGN_APPROVED_PROCESSING are mid-review sub-states.
-// A notebook order on the tracker never passes through these stages; its row shows its tracker step instead
-// (TrackerStep below). The step codes stay mapped for any row that arrives without its trackerManaged flag.
+// An order an order workflow runs never passes through these stages; its row shows only Processing or Delivered
+// (design D5). The step codes stay mapped for any row that arrives without its trackerManaged flag.
 const ORDER_STAGES = [
   { label: 'Draft',       statuses: ['DRAFT'] },
   { label: 'Submitted',   statuses: ['SUBMITTED', 'AWAITING_APPROVAL'] },
   { label: 'Approval',    statuses: ['DESIGN_APPROVAL', 'DESIGN_APPROVED_PROCESSING', 'APPROVED'] },
-  { label: 'Processing',  statuses: ['PROCESSING', 'ORDER_DETAILS', 'DESIGNING_ACTIVITY', 'HEAD_APPROVAL', 'CDR_CONVERSION', 'PRODUCTION_PLANNING', 'BOARD_PROCUREMENT', 'PRINTING_PRESS', 'PRE_PRINT_QUALITY_GATE', 'FACTORY_HANDOVER', 'PRODUCTION_FOLLOW_UP', 'VALIDATION_COUNT', 'DELIVERY_INVOICING'] },
+  { label: 'Processing',  statuses: ['PROCESSING', 'ORDER_DETAILS', 'DESIGNING_ACTIVITY', 'HEAD_APPROVAL', 'CDR_CONVERSION', 'PRODUCTION_PLANNING', 'BOARD_PROCUREMENT', 'PRINTING_PRESS', 'PRE_PRINT_QUALITY_GATE', 'PRE_PRINT_QUALITY_CHECK', 'FACTORY_HANDOVER', 'PRODUCTION_FOLLOW_UP', 'VALIDATION_COUNT', 'FINAL_APPROVAL', 'DELIVERY_INVOICING'] },
   { label: 'Delivered',   statuses: ['DELIVERED', 'FULFILLED', 'COMPLETED'] },
 ] as const;
 
@@ -29,6 +30,16 @@ function orderStatusClass(status: string): string {
   if (status.includes('DESIGN')) return 'spartial';
   if (['SUBMITTED', 'AWAITING_APPROVAL'].includes(status)) return 'sneutral';
   return 'sneutral'; // DRAFT, etc.
+}
+
+/** A school sees where its workflow order is only as Processing or Delivered (design D5), never the internal step. */
+function SchoolWorkflowStatus({ status }: { status: string }) {
+  return (
+    <div>
+      <div className="ts">Order status</div>
+      <div className="tb">{schoolWorkflowStatus(status)}</div>
+    </div>
+  );
 }
 
 function OrderWorkflowBanner({ status }: { status: string }) {
@@ -141,18 +152,23 @@ export function AdminOrdersPanel({
               ) : orders.map((row: any, i: number) => {
                 const status = String(row.status).toUpperCase();
                 // A notebook order on the tracker is not priced for the school; one placed before it keeps its quote (D1).
+                // Other workflow items keep their quote (D5), so only an unpriced workflow order hides its amount.
                 const onTracker = row.trackerManaged === true;
+                const unpriced = onTracker && (row.pricingStatus === 'NOT_APPLICABLE' || row.category === 'NOTEBOOKS');
+                const label = orderLabel({ orderId: String(row.id || row.code), orderNumber: row.orderNumber });
                 return (
                   <tr key={i}>
-                    <td><div className="tb">{row.id || row.code}</div><div className="ts">{row.description || row.title || row.category}</div></td>
+                    <td><div className="tb">{label.headline}</div><div className="ts">{label.reference ?? (row.description || row.title || row.category)}</div></td>
                     <td>{row.category}</td>
                     <td>{orderItemsSummary(row.orderData) || row.items || '—'}</td>
-                    <td className="col-money">{onTracker ? '—' : row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? row.amount ?? 0) / 100)}`}</td>
+                    <td className="col-money">{unpriced ? '—' : row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? row.amount ?? 0) / 100)}`}</td>
                     <td style={{ minWidth: 200 }}>
-                      {onTracker ? <TrackerStep status={row.status} /> : <OrderWorkflowBanner status={status} />}
+                      {onTracker ? <SchoolWorkflowStatus status={row.status} /> : <OrderWorkflowBanner status={status} />}
                     </td>
                     <td>
-                      <span className={`ck-status ${orderStatusClass(status)}`}>{prettyOrderStatus(row.status)}</span>
+                      {onTracker
+                        ? <span className={`ck-status ${status === 'COMPLETED' ? 'spaid' : 'spending'}`}>{schoolWorkflowStatus(row.status)}</span>
+                        : <span className={`ck-status ${orderStatusClass(status)}`}>{prettyOrderStatus(row.status)}</span>}
                     </td>
                     <td>{row.placedAt || row.date || '—'}</td>
                     <td>

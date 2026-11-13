@@ -4,7 +4,7 @@
 
 import type { AxiosInstance } from 'axios';
 
-export type CatalogOrder = { "id": string; "category": string; "schoolId": number; "status": string; "totalAmount"?: number; "trackerManaged"?: boolean | null; [key: string]: unknown; };
+export type CatalogOrder = { "id": string; "category": string; "schoolId": number; "status": string; "totalAmount"?: number; "trackerManaged"?: boolean | null; "orderNumber"?: string | null; "workflowStep"?: (OrderWorkflowStep | null); [key: string]: unknown; };
 
 export type CatalogOrderPage = { "content": Array<CatalogOrder>; "page": number; "size": number; "totalElements": number; "totalPages": number; [key: string]: unknown; };
 
@@ -16,11 +16,7 @@ export type AnnualPlanReviewItem = { "id": string; "term": string | null; "categ
 
 export type AnnualPlanReview = { "schoolId": number; "academicYearId": string; "yearLabel": string; "items": Array<AnnualPlanReviewItem>; "fingerprint": string; "confirmation": (AnnualPlanConfirmation | null); [key: string]: unknown; };
 
-export type NotebookTrackerSummary = { "orderId": string; "schoolId": number; "schoolName": string | null; "schoolContactEmail": string | null; "schoolContactPhone": string | null; "status": string; "customised": boolean; "requiredByDate": string | null; "placedAt": string | null; "schoolNotes": string | null; "orderedCount": number; "lines": Array<{ "lineNo": number; "selections": { [key: string]: (string | { "code": string; "label": string; "spec"?: string; "specText"?: string; [key: string]: unknown; }); }; "bookCount": number; "pageCount": number; }>; "trackerPending": boolean; };
-
-export type TrackerEnsureResult = { "trackerPending": boolean; };
-
-export type OrderAsset = { "id": number; "assetKind": string; "contentType": string; "sizeBytes": number; "checksumSha256"?: string; "originalFilename"?: string | null; "uploadedBy"?: string | null; "uploadedAt": string; "supersededAt"?: string | null; [key: string]: unknown; };
+export type OrderAsset = { "id": number; "assetKind": string; "contentType": string; "sizeBytes": number; "checksumSha256"?: string; "originalFilename"?: string | null; "uploadedBy"?: number | null; "uploadedAt": string; "supersededAt"?: string | null; "supersededBy"?: number | null; [key: string]: unknown; };
 
 export type OrderAssetUpload = { "assetKind": string; "file": Blob; };
 
@@ -28,29 +24,67 @@ export type NotebookWorkbookUpload = { "file": Blob; };
 
 export type NotebookWorkbookPreview = { "orderId": string; "fileName": string; "sheetName": string; "workbookOrderId": string | null; "total": number; "king": number; "longBooks": number; "jumboKing": number; "jumboLong": number; "fa": number; "validRows": number; };
 
-export type ProductCategory = { "code": string; "label": string; "emoji": string; "description": string; "orderType": string; "formEnabled": boolean; "sortOrder": number; "active": boolean; [key: string]: unknown; };
+export type ProductCategory = { "code": string; "label": string; "emoji": string; "description": string; "orderType": string; "formEnabled": boolean; "sortOrder": number; "active": boolean; "paged"?: boolean; "notesEnabled"?: boolean; "orderCode"?: string | null; "itemNoun"?: string | null; "workflowDefinition"?: "NOTEBOOK_ORDER_TRACKER" | "FLIER_ORDER_WORKFLOW" | "FLEX_ORDER_WORKFLOW" | "BILL_BOOK_ORDER_WORKFLOW" | "GENERAL_ITEM_ORDER_WORKFLOW" | null | null; [key: string]: unknown; };
+
+export type OrderWorkflowStep = { "order": number; "title": string; "total": number; "completed": number; };
+
+export type OrderQuantityLine = { "lineNo": number; "label": string; "details": string | null; "quantity": number; };
+
+export type OrderQuantities = { "total": number; "lines": Array<OrderQuantityLine>; };
+
+export type TitleCardCounts = { "king": number; "long": number; "jumboKing": number; "jumboLong": number; "fa": number; "other": number; };
+
+export type TitleCardRow = { "type": "KING_JUMBO_KING" | "LONG" | "JUMBO_LONG" | "FA"; "label": string; "size": string; "notebooks": number; "sheets": number; };
+
+export type UnmatchedTitleCardLine = { "lineNo": number; "label": string; "notebooks": number; };
+
+export type TitleCards = { "counts": TitleCardCounts; "rows": Array<TitleCardRow>; "unmatched": Array<UnmatchedTitleCardLine>; };
+
+export type OrderWorkflowSummary = { "orderId": string; "orderNumber": string | null; "category": string; "itemCode": string | null; "itemLabel": string; "schoolId": number; "schoolName": string | null; "schoolCity": string | null; "schoolContactEmail": string | null; "schoolContactPhone": string | null; "status": string; "customised": boolean; "requiredByDate": string | null; "placedAt": string | null; "schoolNotes": string | null; "orderedCount": number; "lines": Array<{ "lineNo": number; "selections": { [key: string]: (string | { "code": string; "label": string; "spec"?: string; "specText"?: string; [key: string]: unknown; }); }; "bookCount": number; "pageCount": number; }>; "quantities": OrderQuantities; "titleCards": (TitleCards | null); "trackerPending": boolean; };
+
+export type OrderWorkflowEnsureResult = { "trackerPending": boolean; };
+
+export type OrderNumberLookup = { "id": string; "orderNumber": string; };
+
+export type OrderQuoteLine = { "id": number; "unitPricePaise": number; };
+
+export type OrderQuoteRequest = { "version": number; "lines": Array<OrderQuoteLine>; "gstPaise": number; };
+
+export type CatalogOrderFormDetail = { "order": CatalogOrder; "pricingStatus": string; "version": number; "formVersion"?: number; "lines"?: Array<{ [key: string]: unknown; }>; [key: string]: unknown; };
+
+export type StageView = { "code": string; "order": number; "title": string; "status": "LOCKED" | "ACTIVE" | "COMPLETED"; "data": { [key: string]: unknown; }; "note": string | null; "completedAt": string | null; };
+
+export type WorkflowView = { "orderId": string; "category": string; "status": string; "currentStage": string | null; "version": number; "canEdit": boolean; "canComplete": boolean; "stages": Array<StageView>; };
+
+export type ProductCategoryRequest = { "code"?: string; "label"?: string; "emoji"?: string | null; "description"?: string | null; "orderType"?: "Recurring" | "One-time" | "Service"; "formEnabled"?: boolean | null; "sortOrder"?: number | null; "active"?: boolean | null; "orderCode"?: string | null; "itemNoun"?: string | null; "workflowDefinition"?: "NOTEBOOK_ORDER_TRACKER" | "FLIER_ORDER_WORKFLOW" | "FLEX_ORDER_WORKFLOW" | "BILL_BOOK_ORDER_WORKFLOW" | "GENERAL_ITEM_ORDER_WORKFLOW" | null | null; };
 
 export interface CatalogClient {
-  getOrderPage(parameters?: { schoolId?: number; status?: string; page?: number; size?: number; }): Promise<CatalogOrderPage>;
+  getOrderPage(parameters?: { schoolId?: number; status?: string; page?: number; size?: number; q?: string; }): Promise<CatalogOrderPage>;
   getOrderSummary(parameters?: { schoolId?: number; }): Promise<CatalogOrderStatistics>;
   updateOrderStatus(parameters: { id: string; }, request: { "status": string; [key: string]: unknown; }): Promise<CatalogOrder>;
   markDelivered(parameters: { id: string; }): Promise<CatalogOrder>;
   reviewAnnualPlan(parameters?: { schoolId?: number; }): Promise<AnnualPlanReview>;
   confirmAnnualPlan(parameters: { schoolId?: number; }, request: { "fingerprint": string; [key: string]: unknown; }): Promise<AnnualPlanConfirmation>;
-  getNotebookTrackerSummary(parameters: { id: string; }): Promise<NotebookTrackerSummary>;
+  getOrderWorkflowSummary(parameters: { id: string; }): Promise<OrderWorkflowSummary>;
   previewNotebookOrderWorkbook(parameters: { id: string; }, request: NotebookWorkbookUpload): Promise<NotebookWorkbookPreview>;
-  ensureNotebookTracker(parameters: { id: string; }): Promise<TrackerEnsureResult>;
+  ensureOrderWorkflow(parameters: { id: string; }): Promise<OrderWorkflowEnsureResult>;
   listOrderAssets(parameters: { id: string; }): Promise<Array<OrderAsset>>;
   uploadOrderAsset(parameters: { id: string; }, request: OrderAssetUpload): Promise<OrderAsset>;
   deleteOrderAsset(parameters: { id: string; assetId: number; }): Promise<void>;
   getOrderAssetContent(parameters: { id: string; assetId: number; }): Promise<Blob>;
   listProductCategories(): Promise<Array<ProductCategory>>;
+  createProductCategory(request: ProductCategoryRequest): Promise<ProductCategory>;
+  getOrderByNumber(parameters: { orderNumber: string; }): Promise<OrderNumberLookup>;
+  quoteOrder(parameters: { id: string; }, request: OrderQuoteRequest): Promise<CatalogOrderFormDetail>;
+  getProductionWorkflow(parameters: { id: string; }): Promise<WorkflowView>;
+  listAdminProductCategories(): Promise<Array<ProductCategory>>;
+  updateProductCategory(parameters: { code: string; }, request: ProductCategoryRequest): Promise<ProductCategory>;
 }
 
 export function createCatalogClient(http: AxiosInstance): CatalogClient {
   return {
-    async getOrderPage(parameters: { schoolId?: number; status?: string; page?: number; size?: number; } = {}) {
-      const response = await http.get<CatalogOrderPage>("/catalog/orders/page", { params: { schoolId: parameters.schoolId, status: parameters.status, page: parameters.page, size: parameters.size } });
+    async getOrderPage(parameters: { schoolId?: number; status?: string; page?: number; size?: number; q?: string; } = {}) {
+      const response = await http.get<CatalogOrderPage>("/catalog/orders/page", { params: { schoolId: parameters.schoolId, status: parameters.status, page: parameters.page, size: parameters.size, q: parameters.q } });
       return response.data;
     },
     async getOrderSummary(parameters: { schoolId?: number; } = {}) {
@@ -73,8 +107,8 @@ export function createCatalogClient(http: AxiosInstance): CatalogClient {
       const response = await http.post<AnnualPlanConfirmation>("/catalog/annual-plan/confirm", request, { params: { schoolId: parameters.schoolId } });
       return response.data;
     },
-    async getNotebookTrackerSummary(parameters: { id: string; }) {
-      const response = await http.get<NotebookTrackerSummary>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/tracker-summary`);
+    async getOrderWorkflowSummary(parameters: { id: string; }) {
+      const response = await http.get<OrderWorkflowSummary>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/tracker-summary`);
       return response.data;
     },
     async previewNotebookOrderWorkbook(parameters: { id: string; }, request: NotebookWorkbookUpload) {
@@ -83,8 +117,8 @@ export function createCatalogClient(http: AxiosInstance): CatalogClient {
       const response = await http.post<NotebookWorkbookPreview>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/workbook-preview`, form);
       return response.data;
     },
-    async ensureNotebookTracker(parameters: { id: string; }) {
-      const response = await http.post<TrackerEnsureResult>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/tracker/ensure`);
+    async ensureOrderWorkflow(parameters: { id: string; }) {
+      const response = await http.post<OrderWorkflowEnsureResult>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/tracker/ensure`);
       return response.data;
     },
     async listOrderAssets(parameters: { id: string; }) {
@@ -107,6 +141,30 @@ export function createCatalogClient(http: AxiosInstance): CatalogClient {
     },
     async listProductCategories() {
       const response = await http.get<Array<ProductCategory>>("/supply/product-catalog/categories");
+      return response.data;
+    },
+    async createProductCategory(request: ProductCategoryRequest) {
+      const response = await http.post<ProductCategory>("/supply/product-catalog/categories", request);
+      return response.data;
+    },
+    async getOrderByNumber(parameters: { orderNumber: string; }) {
+      const response = await http.get<OrderNumberLookup>(`/catalog/orders/by-number/${encodeURIComponent(String(parameters.orderNumber))}`);
+      return response.data;
+    },
+    async quoteOrder(parameters: { id: string; }, request: OrderQuoteRequest) {
+      const response = await http.put<CatalogOrderFormDetail>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/quote`, request);
+      return response.data;
+    },
+    async getProductionWorkflow(parameters: { id: string; }) {
+      const response = await http.get<WorkflowView>(`/catalog/orders/${encodeURIComponent(String(parameters.id))}/production-workflow`);
+      return response.data;
+    },
+    async listAdminProductCategories() {
+      const response = await http.get<Array<ProductCategory>>("/supply/product-catalog/admin/categories");
+      return response.data;
+    },
+    async updateProductCategory(parameters: { code: string; }, request: ProductCategoryRequest) {
+      const response = await http.patch<ProductCategory>(`/supply/product-catalog/categories/${encodeURIComponent(String(parameters.code))}`, request);
       return response.data;
     },
   };

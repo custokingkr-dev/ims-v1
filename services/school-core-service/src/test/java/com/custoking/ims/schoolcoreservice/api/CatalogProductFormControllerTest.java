@@ -122,4 +122,31 @@ class CatalogProductFormControllerTest {
         mvc.perform(delete("/api/v1/supply/product-catalog/options/3?hard=true").header("X-Catalog-Service-Token", "catalog-token"))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.referencingOrderCount").value(2));
     }
+
+    /** Design D3, D8: omitted keeps the stored value; an explicit null or a blank clears it, so null reaches the repository as blank. */
+    @Test
+    void categoryOrderCodeNounAndTemplateArePassedOnAndAnExplicitNullClears() throws Exception {
+        when(repository.update(eq("categories"), eq("FLIERS"), anyMap())).thenReturn(Map.of("code", "FLIERS"));
+        mvc.perform(patch("/api/v1/supply/product-catalog/categories/FLIERS").header("X-Catalog-Service-Token", "catalog-token")
+                        .contentType("application/json").content("{\"orderCode\":\"FE\",\"itemNoun\":\"flier\",\"workflowDefinition\":\"FLIER_ORDER_WORKFLOW\"}"))
+                .andExpect(status().isOk());
+        verify(repository).update("categories", "FLIERS", Map.of("orderCode", "FE", "itemNoun", "flier", "workflowDefinition", "FLIER_ORDER_WORKFLOW"));
+        mvc.perform(patch("/api/v1/supply/product-catalog/categories/FLIERS").header("X-Catalog-Service-Token", "catalog-token")
+                        .contentType("application/json").content("{\"workflowDefinition\":null}"))
+                .andExpect(status().isOk());
+        verify(repository).update("categories", "FLIERS", Map.of("workflowDefinition", ""));
+        mvc.perform(patch("/api/v1/supply/product-catalog/categories/FLIERS").header("X-Catalog-Service-Token", "catalog-token")
+                        .contentType("application/json").content("{\"label\":\"Fliers\"}"))
+                .andExpect(status().isOk());
+        verify(repository).update("categories", "FLIERS", Map.of("label", "Fliers"));
+    }
+
+    @Test
+    void anUnknownTemplateOrAMalformedItemCodeIsAFieldError() throws Exception {
+        mvc.perform(patch("/api/v1/supply/product-catalog/categories/FLIERS").header("X-Catalog-Service-Token", "catalog-token")
+                        .contentType("application/json").content("{\"orderCode\":\"F1\",\"workflowDefinition\":\"OTHER\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors.orderCode").exists())
+                .andExpect(jsonPath("$.fieldErrors.workflowDefinition").exists());
+        verifyNoInteractions(repository);
+    }
 }

@@ -60,39 +60,15 @@
 .ck-product-check { display: inline-flex; align-items: center; gap: var(--ck-space-2); font-size: var(--ck-text-sm); }
 .ck-product-admin .ck-product-check input { width: 16px; height: 16px; accent-color: var(--g); }
 .ck-product-admin-empty { padding-block: var(--ck-space-7); color: var(--ink3); }
-.ck-product-workflow { margin-top: var(--ck-space-7); padding: var(--ck-space-5); border: 1px solid var(--border); border-radius: var(--ck-radius-sm); background: linear-gradient(145deg, var(--white), var(--bg)); }
-.ck-product-workflow > .ck-product-muted { margin: 0 0 var(--ck-space-3); }
-.ck-product-workflow-stages { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--ck-space-2); list-style: none; padding: 0; margin: 0 0 var(--ck-space-5); }
-.ck-product-workflow-stage { min-width: 0; border-left: 2px solid var(--border2); }
-.ck-product-workflow-stage > button { width: 100%; justify-content: flex-start !important; align-items: flex-start !important; color: var(--ink3); text-align: left; border-radius: 0 var(--ck-radius-xs) var(--ck-radius-xs) 0; }
-.ck-product-workflow-stage-no { color: var(--ink3); font-variant-numeric: tabular-nums; }
-.ck-product-workflow-stage-name { display: grid; gap: 2px; min-width: 0; }
-.ck-product-workflow-stage-name small { color: var(--ink3); font-size: var(--ck-text-xs); font-weight: 400; }
-.ck-product-workflow-active { border-color: var(--g); }
-.ck-product-workflow-active > button, .ck-product-workflow-active .ck-product-workflow-stage-no { color: var(--g); font-weight: 600; }
-.ck-product-workflow-completed > button { color: var(--ink); }
-/* aria-current sits on the stage button, not the list item, so the highlight targets the button and the item carries a class. */
-.ck-product-workflow-selected { border-color: var(--g); }
-.ck-product-workflow-stage > button[aria-current="step"] { background: var(--g1); color: var(--g); box-shadow: inset 0 0 0 1px var(--g2); }
-.ck-product-workflow-stage > button[aria-current="step"] .ck-product-workflow-stage-no { color: var(--g); }
-.ck-product-workflow-editor, .ck-product-workflow-record { padding: var(--ck-space-4); background: var(--white); border: 1px solid var(--border); border-radius: var(--ck-radius-xs); }
-.ck-product-workflow-editor { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ck-space-3); }
-.ck-product-workflow-editor h3, .ck-product-workflow-editor .ck-product-actions { grid-column: 1 / -1; }
-.ck-product-workflow-editor textarea { min-height: 100px; resize: vertical; }
-.ck-product-workflow-record { display: grid; gap: var(--ck-space-2); }
-.ck-product-workflow-record p { margin: 0; }
-.ck-product-workflow-record dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ck-space-3); margin: var(--ck-space-2) 0 0; }
-.ck-product-workflow-record dt { color: var(--ink3); font-size: var(--ck-text-xs); }
-.ck-product-workflow-record dd { margin: var(--ck-space-1) 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.ck-product-workflow-load-error { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-.ck-product-workflow-groups { margin-top: var(--ck-space-5); }
-.ck-product-workflow-groups > h3 { margin-bottom: var(--ck-space-1); }
-.ck-product-workflow-groups > .ck-product-muted { margin: 0 0 var(--ck-space-3); }
-.ck-product-workflow-group { display: grid; grid-template-columns: minmax(120px, .7fr) minmax(0, 1.3fr); gap: var(--ck-space-2); align-items: center; padding-block: var(--ck-space-2); border-top: 1px solid var(--border); }
-.ck-product-workflow-group > a { display: inline-flex; align-items: center; gap: var(--ck-space-1); color: var(--g); }
-.ck-product-workflow-group-edit { display: flex; flex-wrap: wrap; gap: var(--ck-space-2); grid-column: 2; }
-.ck-product-workflow-group-edit input { flex: 1; min-width: 0; }
-.ck-product-workflow-group-edit .ck-product-error { flex-basis: 100%; }
+/* A catalog field with a hint or an error beneath it. */
+.ck-product-field-note { display: grid; gap: var(--ck-space-1); min-width: 0; }
+.ck-product-field-note > span { font-size: var(--ck-text-xs); }
+/* A workflow order's pointer to its order workflow screen (design D4): where it is, and the way there. */
+.ck-order-workflow-link { margin-top: var(--ck-space-6); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ck-space-3); padding: var(--ck-space-4); border: 1px solid var(--ck-color-primary-border); border-radius: var(--ck-radius-sm); background: var(--ck-color-primary-soft); }
+.ck-order-workflow-link h2 { margin: 0; font-size: var(--ck-text-base); }
+.ck-order-workflow-link p { margin: var(--ck-space-1) 0 0; }
+.ck-order-workflow-link .ck-btn { display: inline-flex; align-items: center; gap: var(--ck-space-2); text-decoration: none; }
+.ck-product-order-ref { margin: var(--ck-space-1) 0 0; font-size: var(--ck-text-xs); }
 @media (max-width: 900px) { .ck-product-line-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ck-product-assets { grid-template-columns: 1fr; gap: var(--ck-space-3); } }
 @media (max-width: 600px) {
   .ck-product-order-lines thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -101,12 +77,6 @@
   .ck-product-order-lines td { display: flex; flex-direction: column; min-width: 0; gap: var(--ck-space-1); padding: var(--ck-space-3) var(--ck-space-2); border: 0; overflow-wrap: anywhere; }
   .ck-product-order-lines td::before { content: attr(data-label); color: var(--ink3); font-size: var(--ck-text-xs); font-weight: 500; }
   .ck-product-totals > div { align-items: center; }
-  .ck-product-workflow { padding: var(--ck-space-3); }
-  .ck-product-workflow-editor { grid-template-columns: 1fr; }
-  .ck-product-workflow-editor h3, .ck-product-workflow-editor .ck-product-actions { grid-column: 1; }
-  .ck-product-workflow-record dl { grid-template-columns: 1fr; }
-  .ck-product-workflow-group { grid-template-columns: 1fr; }
-  .ck-product-workflow-group-edit { grid-column: 1; }
   .ck-product-totals > div > span { flex: 0 0 auto; }
   .ck-product-totals .field { flex: 1; }
 }

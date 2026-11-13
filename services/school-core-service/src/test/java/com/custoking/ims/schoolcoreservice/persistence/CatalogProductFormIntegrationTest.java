@@ -473,4 +473,34 @@ class CatalogProductFormIntegrationTest {
     private static Map<String, Object> group(Map<String, Object> definition, String code) {
         return maps(definition.get("groups")).stream().filter(g -> code.equals(g.get("code"))).findFirst().orElseThrow();
     }
+
+    /** Design D3, D8: a category's item code, noun and template are admin-editable, validated, and the code is unique. */
+    @Test
+    void categoriesCarryAnItemCodeANounAndATemplate() {
+        transaction.executeWithoutResult(status -> {
+            var category = repository.create("categories", row("code", "CALENDARS", "label", "Calendars", "orderCode", "cal",
+                    "itemNoun", " calendar ", "workflowDefinition", "GENERAL_ITEM_ORDER_WORKFLOW"));
+            assertEquals("CAL", category.get("orderCode"));
+            assertEquals("calendar", category.get("itemNoun"));
+            assertEquals("GENERAL_ITEM_ORDER_WORKFLOW", category.get("workflowDefinition"));
+            var cleared = repository.update("categories", "CALENDARS", row("workflowDefinition", ""));
+            assertNull(cleared.get("workflowDefinition"));
+            assertEquals("CAL", cleared.get("orderCode"));
+            var noTemplateNeedsNoCode = repository.update("categories", "CALENDARS", row("orderCode", ""));
+            assertNull(noTemplateNeedsNoCode.get("orderCode"));
+            status.setRollbackOnly();
+        });
+        var needsCode = assertThrows(com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormValidationException.class,
+                () -> transaction.executeWithoutResult(status ->
+                repository.update("categories", "TIES", row("orderCode", "", "workflowDefinition", "GENERAL_ITEM_ORDER_WORKFLOW"))));
+        assertTrue(needsCode.getMessage().contains("order code"));
+        assertThrows(com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormValidationException.class,
+                () -> transaction.executeWithoutResult(status -> repository.update("categories", "TIES", row("orderCode", "TOOLONG"))));
+        assertThrows(com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormValidationException.class,
+                () -> transaction.executeWithoutResult(status -> repository.update("categories", "TIES", row("workflowDefinition", "SOMETHING_ELSE"))));
+        var taken = assertThrows(ResponseStatusException.class, () -> transaction.executeWithoutResult(status ->
+                repository.update("categories", "TIES", row("orderCode", "FE"))));
+        assertEquals(409, taken.getStatusCode().value());
+        assertEquals("TIE", repository.categories(true).stream().filter(c -> "TIES".equals(c.get("code"))).findFirst().orElseThrow().get("orderCode"));
+    }
 }

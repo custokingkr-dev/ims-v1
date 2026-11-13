@@ -1,0 +1,112 @@
+/*
+ * Workflow set-up (design sections 4.5 and 4.7): the set-up panel's tabs and sections, the vendor directory and its forms.
+ * Tokens only; nothing renders below the 12px floor (--ck-text-xs), so the global 10px table headings, 11.5px field
+ * labels and 11px supporting text are raised inside this scope. Breakpoints are the documented 640/768/1024 only.
+ */
+
+.ck-setup { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ck-space-4); color: var(--ck-text-primary); font-size: var(--ck-text-base); }
+.ck-setup :is(h2, h3, h4), .ck-vd :is(h3, h4) { margin: 0; font-family: var(--ck-font-body); letter-spacing: 0; }
+.ck-setup h2 { font-size: var(--ck-text-lg); }
+.ck-setup h3, .ck-vd h3 { font-size: var(--ck-text-base); }
+.ck-setup h4 { font-size: var(--ck-text-sm); margin-bottom: var(--ck-space-2); }
+.ck-setup :is(input, select, textarea) { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid var(--ck-border-default); border-radius: var(--ck-radius-xs); padding: 9px 10px; font: inherit; color: var(--ck-text-primary); background: var(--ck-bg-surface); }
+.ck-setup :is(input[type="checkbox"], input[type="radio"]) { width: auto; accent-color: var(--ck-color-primary); }
+.ck-setup :is(input, select, textarea, button, a):focus-visible { outline: 2px solid var(--ck-color-primary); outline-offset: 3px; }
+.ck-setup :is(input, select, textarea):disabled { background: var(--ck-bg-app); color: var(--ck-text-muted); }
+.ck-setup .field { display: flex; flex-direction: column; gap: var(--ck-space-2); font-size: var(--ck-text-sm); font-weight: 500; min-width: 0; }
+.ck-setup .ck-btn { display: inline-flex; gap: var(--ck-space-2); align-items: center; justify-content: center; min-height: 36px; white-space: normal; }
+.ck-setup .ck-btn-sm { min-height: 32px; }
+.ck-setup .ck-table th, .ck-setup .ck-table td { font-size: var(--ck-text-sm); }
+.ck-setup .ck-table th { font-size: var(--ck-text-xs); }
+.ck-setup .ck-table-wrap { position: relative; }
+.ck-setup .ck-field label, .ck-vd-form .ck-field label { font-size: var(--ck-text-xs); }
+.ck-setup .ts, .ck-vd-form .ts { font-size: var(--ck-text-xs); }
+
+.ck-setup-muted { margin: 0; color: var(--ck-text-secondary); font-size: var(--ck-text-sm); }
+.ck-setup-error { margin: 0; color: var(--ck-color-danger); font-size: var(--ck-text-sm); font-weight: 600; }
+.ck-setup-notice { margin: 0; color: var(--ck-color-primary); font-size: var(--ck-text-sm); font-weight: 600; }
+
+/* Tabs: the WAI-ARIA tab pattern, underlined like the catalog tabs; the row scrolls rather than wrapping labels. */
+.ck-setup-tabs { display: flex; gap: var(--ck-space-1); border-bottom: 1px solid var(--ck-border-subtle); overflow-x: auto; }
+.ck-setup-tabs [role="tab"] { border: 0; border-bottom: 2px solid transparent; background: transparent; padding: var(--ck-space-3) var(--ck-space-2); font: inherit; font-size: var(--ck-text-sm); color: var(--ck-text-secondary); cursor: pointer; white-space: nowrap; }
+.ck-setup-tabs [role="tab"][aria-selected="true"] { border-bottom-color: var(--ck-color-primary); color: var(--ck-color-primary); font-weight: 700; }
+
+/* Sections inside a tab: a list, then each form, standing apart. */
+.ck-setup-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ck-space-6); }
+.ck-setup-section > * { min-width: 0; }
+.ck-setup-block { display: grid; gap: var(--ck-space-3); min-width: 0; }
+.ck-setup-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ck-space-4); }
+.ck-setup-actions { display: flex; flex-wrap: wrap; gap: var(--ck-space-2); align-items: center; }
+
+/* A time slot: value, unit and Save on one line inside the table cell, wrapping only when the cell is too narrow. */
+.ck-setup-slot { display: flex; flex-wrap: wrap; gap: var(--ck-space-2); align-items: center; }
+.ck-setup .ck-setup-slot-value { width: 5.5rem; }
+.ck-setup .ck-setup-slot-unit { width: auto; }
+.ck-setup-step-note { display: block; color: var(--ck-text-secondary); font-size: var(--ck-text-xs); }
+
+/* WhatsApp group rows: name, current link, then the edit line. */
+.ck-setup-group { display: grid; grid-template-columns: minmax(140px, .7fr) minmax(0, 1.3fr); gap: var(--ck-space-2) var(--ck-space-4); align-items: center; padding-block: var(--ck-space-3); border-top: 1px solid var(--ck-border-subtle); }
+.ck-setup-group a { display: inline-flex; align-items: center; gap: var(--ck-space-1); color: var(--ck-color-primary); font-weight: 600; }
+.ck-setup-group-edit { grid-column: 2; display: flex; flex-wrap: wrap; gap: var(--ck-space-2); }
+.ck-setup-group-edit input { flex: 1 1 240px; }
+.ck-setup-group-edit .ck-setup-error { flex-basis: 100%; }
+
+/* Vendor directory: categories beside vendors from 1024px, stacked below. */
+.ck-vd { display: grid; gap: var(--ck-space-4); min-width: 0; }
+.ck-vd-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--ck-space-3); }
+.ck-vd-layout { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: var(--ck-space-5); align-items: start; }
+.ck-vd-cats ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ck-vd-cat { display: flex; align-items: center; gap: var(--ck-space-1); border-radius: var(--ck-radius-sm); }
+.ck-vd-cat.is-selected { background: var(--ck-color-primary-soft); }
+.ck-vd-cat-pick { flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: center; gap: var(--ck-space-2); padding: var(--ck-space-2) var(--ck-space-3); border: 0; border-radius: var(--ck-radius-sm); background: transparent; font: inherit; font-size: var(--ck-text-sm); color: var(--ck-text-primary); text-align: left; cursor: pointer; }
+.ck-vd-cat-pick:hover { background: var(--ck-bg-surface-raised); }
+.ck-vd-cat.is-selected .ck-vd-cat-pick { color: var(--ck-color-primary); font-weight: 700; }
+.ck-vd-cat-pick:focus-visible, .ck-vd-menu button:focus-visible, .ck-vd a:focus-visible { outline: 2px solid var(--ck-color-primary); outline-offset: 2px; }
+.ck-vd-count { font-variant-numeric: tabular-nums; color: var(--ck-text-secondary); }
+.ck-vd-tag { margin-left: var(--ck-space-2); padding: 1px 6px; border-radius: var(--ck-radius-pill); background: var(--ck-status-neutral-bg); color: var(--ck-text-secondary); font-size: var(--ck-text-xs); font-weight: 600; }
+.ck-vd .ck-btn.ck-vd-icon { width: 32px; height: 32px; min-height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.ck-vd-menu-wrap { position: relative; }
+.ck-vd-menu { position: absolute; right: 0; top: calc(100% + var(--ck-space-1)); z-index: var(--ck-z-dropdown); min-width: 160px; display: grid; padding: var(--ck-space-1); background: var(--ck-bg-surface); border: 1px solid var(--ck-border-default); border-radius: var(--ck-radius-sm); box-shadow: var(--ck-shadow-popover); }
+.ck-vd-menu button { border: 0; background: transparent; padding: var(--ck-space-2) var(--ck-space-3); font: inherit; font-size: var(--ck-text-sm); text-align: left; border-radius: var(--ck-radius-xs); cursor: pointer; color: var(--ck-text-primary); }
+.ck-vd-menu button:hover { background: var(--ck-color-primary-soft); }
+.ck-vd-main { display: grid; gap: var(--ck-space-3); min-width: 0; }
+.ck-vd-toolbar { display: flex; flex-wrap: wrap; gap: var(--ck-space-3); align-items: center; justify-content: space-between; }
+.ck-vd-search { flex: 1 1 260px; display: flex; align-items: center; gap: var(--ck-space-2); padding-inline: var(--ck-space-3); border: 1px solid var(--ck-border-default); border-radius: var(--ck-radius-xs); background: var(--ck-bg-surface); color: var(--ck-text-secondary); }
+.ck-vd-search:focus-within { outline: 2px solid var(--ck-color-primary); outline-offset: 2px; }
+.ck-vd .ck-vd-search input { border: 0; padding-inline: 0; outline: none; }
+.ck-vd-empty { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ck-space-3); padding: var(--ck-space-6) var(--ck-space-4); border: 1px dashed var(--ck-border-default); border-radius: var(--ck-radius-sm); color: var(--ck-text-secondary); }
+.ck-vd-empty p { margin: 0; }
+.ck-vd-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--ck-space-1); }
+.ck-vd-chip { padding: 2px 8px; border-radius: var(--ck-radius-pill); background: var(--ck-bg-app); border: 1px solid var(--ck-border-subtle); font-size: var(--ck-text-xs); white-space: nowrap; }
+.ck-vd-nowrap { white-space: nowrap; }
+.ck-vd-table a { color: var(--ck-color-primary); font-weight: 600; display: inline-flex; align-items: center; gap: var(--ck-space-1); }
+.ck-vd-status { display: inline-flex; padding: 2px 8px; border-radius: var(--ck-radius-pill); font-size: var(--ck-text-xs); font-weight: 700; white-space: nowrap; }
+.ck-vd-status.is-success { background: var(--ck-color-primary-soft); color: var(--ck-color-primary); }
+.ck-vd-status.is-warning { background: var(--ck-color-warning-soft); color: var(--ck-color-warning); }
+.ck-vd-status.is-neutral { background: var(--ck-status-neutral-bg); color: var(--ck-text-secondary); }
+
+/* Vendor form (inside a Modal). */
+.ck-vd-form { display: grid; gap: var(--ck-space-4); min-width: 0; }
+.ck-vd-form .ck-alert { margin: 0; }
+.ck-vd-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ck-space-3) var(--ck-space-4); }
+.ck-vd-form :is(input:not([type="checkbox"]), textarea) { width: 100%; box-sizing: border-box; }
+.ck-vd-form-categories { margin: 0; padding: var(--ck-space-3); border: 1px solid var(--ck-border-subtle); border-radius: var(--ck-radius-sm); min-width: 0; }
+.ck-vd-form-categories[aria-invalid="true"] { border-color: var(--ck-color-danger); }
+.ck-vd-form-categories legend { padding: 0 var(--ck-space-1); font-size: var(--ck-text-xs); font-weight: 700; color: var(--ck-text-secondary); }
+.ck-vd-category-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ck-space-2) var(--ck-space-4); }
+.ck-vd-check { display: inline-flex; align-items: flex-start; gap: var(--ck-space-2); font-size: var(--ck-text-sm); }
+.ck-vd-check input { margin-top: 0.2em; accent-color: var(--ck-color-primary); }
+.ck-vd-error { margin: var(--ck-space-2) 0 0; color: var(--ck-color-danger); font-size: var(--ck-text-xs); }
+
+@media (max-width: 1024px) {
+  .ck-vd-layout { grid-template-columns: minmax(0, 1fr); }
+  .ck-vd-cats ul { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
+@media (max-width: 768px) {
+  .ck-setup-fields { grid-template-columns: minmax(0, 1fr); }
+  .ck-setup-group { grid-template-columns: minmax(0, 1fr); }
+  .ck-setup-group-edit { grid-column: 1; }
+}
+@media (max-width: 640px) {
+  .ck-vd-form-grid, .ck-vd-category-options { grid-template-columns: minmax(0, 1fr); }
+}

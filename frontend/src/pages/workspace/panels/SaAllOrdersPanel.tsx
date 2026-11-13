@@ -2,11 +2,32 @@ import { catalogClient } from '../../../services/catalogApi';
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field, Info, PanelMessage, Stat } from '../ui';
-import { formatIsoDay, formatMoney, todayIso } from '../utils';
+import { formatIsoDay, formatMoney, prettyOrderStatus, todayIso } from '../utils';
 import { getDisplayStatus } from '../../../shared/display/status';
 import { useCategoryLabel } from '../../../features/catalog/useCategoryLabel';
-import { TrackerStep } from './TrackerStep';
-import { OrderDetailEntry } from '../../../features/tracker/OrderDetailEntry';
+import { workflowStepText, type WorkflowStepSummary } from '../../../features/catalog/types';
+import { orderLabel } from '../../../features/orders/shared/orderLabel';
+import { OrderDetailEntry } from '../../../features/orders/workflow';
+
+/** How long typing pauses before the search goes to the server. */
+const SEARCH_DELAY_MS = 300;
+
+/** Where a workflow order is, for staff (design section 4.2): "5 · Production Planning" over "4 of 12 steps done". */
+function WorkflowStepCell({ status, step }: { status: string; step: WorkflowStepSummary | null | undefined }) {
+  const text = workflowStepText(status, step, prettyOrderStatus);
+  return (
+    <div>
+      <div className="ts">{text.progress || 'Current step'}</div>
+      <div className="tb">{text.stage}</div>
+    </div>
+  );
+}
+
+/** The order number as the headline, with "Ref CK-1015" beneath; an order without a number shows its CK id alone (D14). */
+function OrderCell({ id, orderNumber }: { id: string; orderNumber?: string | null }) {
+  const label = orderLabel({ orderId: id, orderNumber });
+  return <><div className="tb">{label.headline}</div>{label.reference && <div className="ts">{label.reference}</div>}</>;
+}
 
 interface Props {
   onNewOrder: () => void;
@@ -14,7 +35,7 @@ interface Props {
 }
 
 export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
-  // A placed form order opens in its own screen; a notebook order on the tracker opens as the tracker there.
+  // A placed form order opens in its own screen; an order an order workflow runs opens as that workflow there.
   const [formOrder, setFormOrder] = useState<{ id: string; trackerManaged: boolean } | null>(null);
   const categoryLabel = useCategoryLabel();
 
@@ -24,6 +45,8 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
   const [stats, setStats] = useState<any>(null);
   const [truncated, setTruncated] = useState(false);
   const [filter, setFilter] = useState({ cat: '', status: '', search: '' });
+  // The search the list was last loaded with: order number, CK id or school name, matched by the server (D14).
+  const [query, setQuery] = useState('');
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailOrder, setDetailOrder] = useState<any | null>(null);
@@ -47,13 +70,13 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const load = async () => {
+  const load = async (q = query) => {
     setLoading(true); setError('');
     try {
       const size = 200;
       let page = 0; let all: any[] = []; let totalPages = 1; let totalElements = 0;
       do {
-        const res = await catalogClient.getOrderPage({ page, size }).then(data => ({ data }));
+        const res = await catalogClient.getOrderPage({ page, size, q: q || undefined }).then(data => ({ data }));
         const d = res.data;
         const content = Array.isArray(d) ? d : (d?.content ?? []);
         totalPages = Array.isArray(d) ? 1 : (d?.totalPages ?? 1);
@@ -72,7 +95,13 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     }
   };
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(query); }, [query]);
+  useEffect(() => {
+    const next = filter.search.trim();
+    if (next === query) return undefined;
+    const timer = setTimeout(() => setQuery(next), SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [filter.search, query]);
 
   const categoryOptions = useMemo(
     () => Array.from(new Set(orders.map((r: any) => String(r.category || '')).filter(Boolean))).sort(),
@@ -82,15 +111,9 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     () => Array.from(new Set(orders.map((r: any) => String(r.status || '')).filter(Boolean))).sort(),
     [orders],
   );
-  const filtered = useMemo(() => {
-    const search = filter.search.trim().toLowerCase();
-    return orders.filter((r: any) => {
-      const categoryOk = !filter.cat || r.category === filter.cat;
-      const statusOk = !filter.status || r.status === filter.status;
-      const text = `${r.id || ''} ${r.schoolName || ''}`.toLowerCase();
-      return categoryOk && statusOk && (!search || text.includes(search));
-    });
-  }, [orders, filter]);
+  // The search is the server's; category and status narrow what it returned.
+  const filtered = useMemo(() => orders.filter((r: any) => (!filter.cat || r.category === filter.cat) && (!filter.status || r.status === filter.status)),
+    [orders, filter.cat, filter.status]);
 
   const openDetail = async (orderId: string) => {
     setDetailLoading(true); setDetailError(''); setDetailOpen(true); setDetailOrder(null);
@@ -136,7 +159,9 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     }
   };
 
-  const openInvoiceFromOrder = async (orderId: string, school: string, schoolId: number | null, valuePaise: number) => {
+  // The invoice describes the order by its number; orderRef stays the CK id, the key billing joins on (design section 4.8).
+  const openInvoiceFromOrder = async (orderId: string, school: string, schoolId: number | null, valuePaise: number, orderNumber?: string | null) => {
+    const description = orderNumber?.trim() || orderId;
     setInvError(''); setInvEditing(false); setInvSaving(false);
     try {
       const res = await api.get(`/billing/sa/invoices/by-order/${orderId}`);
@@ -146,7 +171,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
         const today = todayIso();
         const due = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
         const gstAmount = Math.round(valuePaise * 0.12);
-        setInvData({ orderRef: orderId, school, schoolId, description: orderId, qty: 1, rate: valuePaise, amount: valuePaise, gstAmount, total: valuePaise + gstAmount, status: 'Awaiting payment', issuedAt: today, dueAt: due });
+        setInvData({ orderRef: orderId, school, schoolId, description, qty: 1, rate: valuePaise, amount: valuePaise, gstAmount, total: valuePaise + gstAmount, status: 'Awaiting payment', issuedAt: today, dueAt: due });
         setInvExistingId(null);
       }
     } catch (e: any) {
@@ -155,7 +180,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
         const today = todayIso();
         const due = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
         const gstAmount = Math.round(valuePaise * 0.12);
-        setInvData({ orderRef: orderId, school, schoolId, description: orderId, qty: 1, rate: valuePaise, amount: valuePaise, gstAmount, total: valuePaise + gstAmount, status: 'Awaiting payment', issuedAt: today, dueAt: due });
+        setInvData({ orderRef: orderId, school, schoolId, description, qty: 1, rate: valuePaise, amount: valuePaise, gstAmount, total: valuePaise + gstAmount, status: 'Awaiting payment', issuedAt: today, dueAt: due });
         setInvExistingId(null);
       } else {
         // Non-404 error (network failure, 500, etc.) — abort to avoid duplicate-invoice risk
@@ -222,7 +247,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                 </select>
               </Field>
               <Field label="Search">
-                <input value={filter.search} onChange={(e) => setFilter({ ...filter, search: e.target.value })} placeholder="School or order ID" />
+                <input type="search" value={filter.search} onChange={(e) => setFilter({ ...filter, search: e.target.value })} placeholder="Order number, school or old order ID" />
               </Field>
             </div>
           </div>
@@ -235,7 +260,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
           : error ? (
             <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
               <div>{error}</div>
-              <button className="ck-btn ck-btn-ghost" onClick={() => void load()}>Retry</button>
+              <button className="ck-btn ck-btn-ghost" onClick={() => void load(query)}>Retry</button>
             </div>
           )
           : (
@@ -243,18 +268,19 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
               <thead><tr><th>Order</th><th>School</th><th>Category</th><th className="ck-num">Amount</th><th>Status</th><th>Placed</th><th /></tr></thead>
               <tbody>
                 {filtered.length === 0
-                  ? <tr><td colSpan={7}><PanelMessage>No orders found.</PanelMessage></td></tr>
+                  ? <tr><td colSpan={7}><PanelMessage>{query ? `No orders match “${query}”.` : 'No orders found.'}</PanelMessage></td></tr>
                   : filtered.map((row: any) => (
                     <tr key={row.id}>
-                      {/* description and title are not fields on a catalog order row, so this
-                          secondary line could only ever repeat the Category column beside it. */}
-                      <td><div className="tb">{row.id}</div></td>
+                      {/* description and title are not fields on a catalog order row; the secondary line is the CK
+                          reference beneath an order number, never a repeat of the Category column. */}
+                      <td><OrderCell id={row.id} orderNumber={row.orderNumber} /></td>
                       <td>{row.schoolName || row.school || '—'}</td>
                       <td className="ck-whole">{categoryLabel(row.category)}</td>
-                      <td className="ck-num">{row.trackerManaged === true ? '—' : row.pricingStatus === 'PENDING_PRICING'
+                      {/* A notebook on a workflow is never priced; other workflow items keep their quote (design D5). */}
+                      <td className="ck-num">{row.trackerManaged === true && (row.pricingStatus === 'NOT_APPLICABLE' || row.category === 'NOTEBOOKS') ? '—' : row.pricingStatus === 'PENDING_PRICING'
                         ? <span style={{ color: 'var(--ink3)' }}>Pending pricing</span>
                         : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
-                      <td>{row.trackerManaged === true ? <TrackerStep status={row.status} /> : <span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span>}</td>
+                      <td>{row.trackerManaged === true ? <WorkflowStepCell status={row.status} step={row.workflowStep} /> : <span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span>}</td>
                       <td className="ck-whole">{formatIsoDay(row.placedAt || row.createdAt)}</td>
                       <td><div className="ck-row-actions">
                         <button className="ck-btn ck-btn-ghost" onClick={() => Number(row.formVersion) === 2 ? setFormOrder({ id: row.id, trackerManaged: row.trackerManaged === true }) : void openDetail(row.id)}>View</button>
@@ -265,7 +291,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                               {String(row.status).toUpperCase() === 'APPROVED' && (
                                 <button className="ck-btn ck-btn-g" onClick={() => markDelivered(row.id)}>Mark delivered</button>
                               )}
-                              <button className="ck-btn ck-btn-ghost" onClick={() => openInvoiceFromOrder(row.id, row.schoolName || row.school || '—', row.schoolId ?? null, Number(row.totalAmount || 0))}>Invoice</button>
+                              <button className="ck-btn ck-btn-ghost" onClick={() => openInvoiceFromOrder(row.id, row.schoolName || row.school || '—', row.schoolId ?? null, Number(row.totalAmount || 0), row.orderNumber)}>Invoice</button>
                             </>
                           ))}
                       </div></td>
@@ -291,6 +317,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
               : (
                 <>
                   <div className="ck-student-modal-info" style={{ marginBottom: 16 }}>
+                    {detailOrder.orderNumber && <Info label="Order number" value={String(detailOrder.orderNumber)} />}
                     <Info label="Order ID" value={String(detailOrder.id || '—')} />
                     <Info label="School" value={String(detailOrder.schoolName || detailOrder.school || '—')} />
                     <Info label="Category" value={String(detailOrder.category || '—')} />
@@ -318,7 +345,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
               )}
             </div>
             <div className="ck-modal-foot">
-              {canManage && <button className="ck-btn ck-btn-ghost" onClick={() => detailOrder && openInvoiceFromOrder(detailOrder.id, detailOrder.schoolName || '—', detailOrder.schoolId ?? null, Number(detailOrder.totalAmount || 0))}>Generate invoice</button>}
+              {canManage && <button className="ck-btn ck-btn-ghost" onClick={() => detailOrder && openInvoiceFromOrder(detailOrder.id, detailOrder.schoolName || '—', detailOrder.schoolId ?? null, Number(detailOrder.totalAmount || 0), detailOrder.orderNumber)}>Generate invoice</button>}
               {canManage && <button className="ck-btn ck-btn-g" disabled={statusSaving} onClick={saveStatus}>{statusSaving ? 'Saving…' : 'Update status'}</button>}
             </div>
           </div>

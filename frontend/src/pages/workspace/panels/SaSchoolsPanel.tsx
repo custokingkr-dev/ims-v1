@@ -1,10 +1,14 @@
 import { photoImportClient } from '../../../services/photoImportApi';
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
+import { createTenantSchoolClient } from '../../../generated/tenantSchoolClient';
 import { ModuleShell, Field, PanelMessage, Stat } from '../ui';
 import { formatMoney } from '../utils';
 import { DEFAULT_SCHOOL_TIME_ZONE, SCHOOL_TIME_ZONES } from '../../../utils/timeZones';
 import { DEFAULT_SCHOOL_LOCALIZATION, SCHOOL_COUNTRY_PRESETS, formatSchoolCurrency, localizationForCountry } from '../../../utils/schoolLocalization';
+import {
+  SCHOOL_ORDER_CODE_HELPER, firstFreeSchoolOrderCode, normaliseSchoolOrderCode, schoolOrderCodeError, suggestSchoolOrderCode,
+} from '../../../features/orders/vendors/codes';
 
 type RoleAssignmentRow = {
   userId: number;
@@ -63,7 +67,9 @@ const YEAR_START_MONTHS = [
 ] as const;
 
 const MAX_CLASS_COUNT = 15;
-const EMPTY_ONBOARD_FORM = { name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4', ...DEFAULT_SCHOOL_LOCALIZATION };
+// School create and patch carry the order code (design D12), so they go through the typed tenant-school contract.
+const tenantSchools = createTenantSchoolClient(api);
+const EMPTY_ONBOARD_FORM = { name: '', shortCode: '', orderCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4', ...DEFAULT_SCHOOL_LOCALIZATION };
 
 function academicStartLabel(value?: number | string) {
   const month = String(value || 4);
@@ -89,15 +95,18 @@ export function SaSchoolsPanel() {
   const [saOnboardForm, setSaOnboardForm] = useState(EMPTY_ONBOARD_FORM);
   const [saOnboardErrors, setSaOnboardErrors] = useState<Record<string, string>>({});
   const [saOnboardSaving, setSaOnboardSaving] = useState(false);
+  // The order code follows the name and city as a suggestion until it is typed in; then it is left alone (design D12).
+  const [orderCodeTyped, setOrderCodeTyped] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [editSchool, setEditSchool] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ classCount: '15', sectionCount: '2', ...DEFAULT_SCHOOL_LOCALIZATION });
+  const [editForm, setEditForm] = useState({ classCount: '15', sectionCount: '2', orderCode: '', ...DEFAULT_SCHOOL_LOCALIZATION });
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
   const openEdit = (school: any) => {
     setEditSchool(school);
     setEditForm({
+      orderCode: school.orderCode || '',
       classCount: String(school.configuredClassCount ?? MAX_CLASS_COUNT),
       sectionCount: String(school.configuredSectionCount ?? 2),
       timeZone: school.timeZone || DEFAULT_SCHOOL_TIME_ZONE,
@@ -114,10 +123,16 @@ export function SaSchoolsPanel() {
     const sectionCount = Number(editForm.sectionCount || 0);
     if (!Number.isInteger(classCount) || classCount < 1 || classCount > MAX_CLASS_COUNT) { setEditError(`Classes must be between 1 and ${MAX_CLASS_COUNT}`); return; }
     if (!Number.isInteger(sectionCount) || sectionCount < 1 || sectionCount > 26) { setEditError('Sections must be between 1 and 26'); return; }
+    // A school keeps an order code once it has one; a changed code applies to new orders only.
+    const orderCode = normaliseSchoolOrderCode(editForm.orderCode);
+    const codeChanged = orderCode !== (editSchool.orderCode || '');
+    const codeError = codeChanged ? schoolOrderCodeError(orderCode, { allowBlank: false }) : '';
+    if (codeError) { setEditError(`Order code: ${codeError}`); return; }
     setEditError(''); setEditSaving(true);
     try {
       await api.put(`/schools/${editSchool.id}/structure`, { classCount, sectionCount });
-      await api.patch(`/schools/${editSchool.id}`, {
+      await tenantSchools.updateSchool({ id: editSchool.id }, {
+        ...(codeChanged ? { orderCode } : {}),
         timeZone: editForm.timeZone,
         countryCode: editForm.countryCode,
         locale: editForm.locale,
@@ -174,6 +189,15 @@ export function SaSchoolsPanel() {
 
   useEffect(() => { void loadSaSchools(); }, []);
 
+  const updateOnboardPlace = (patch: Partial<typeof EMPTY_ONBOARD_FORM>) => {
+    setSaOnboardForm((current) => {
+      const next = { ...current, ...patch };
+      // The suggestion skips the codes the listed schools already use, as the server's derivation does (DPS2_GUR).
+      const suggested = suggestSchoolOrderCode({ name: next.name, city: next.city, state: next.state });
+      return orderCodeTyped ? next : { ...next, orderCode: firstFreeSchoolOrderCode(suggested, saSchools.map((school: any) => school.orderCode)) };
+    });
+  };
+
   const applyOnboardCountry = (countryCode: string) => {
     const localization = localizationForCountry(countryCode);
     setSaOnboardForm((current) => ({ ...current, ...(localization || { countryCode, phoneRegion: countryCode }) }));
@@ -199,6 +223,8 @@ export function SaSchoolsPanel() {
     if (!saOnboardForm.name) errors.name = 'School name is required';
     if (!saOnboardForm.shortCode) errors.shortCode = 'Short code is required';
     if (!saOnboardForm.city) errors.city = 'City is required';
+    const orderCodeError = schoolOrderCodeError(saOnboardForm.orderCode, { allowBlank: true });
+    if (orderCodeError) errors.orderCode = orderCodeError;
     const classCount = Number(saOnboardForm.classCount || 0);
     const sectionCount = Number(saOnboardForm.sectionCount || 0);
     const academicYearStartMonth = Number(saOnboardForm.academicYearStartMonth || 0);
@@ -210,13 +236,18 @@ export function SaSchoolsPanel() {
     if (Object.keys(errors).length) { setSaOnboardErrors(errors); return; }
     setSaOnboardErrors({}); setSaOnboardSaving(true);
     try {
-      const response = await api.post('/schools', { ...saOnboardForm, classCount, sectionCount, academicYearStartMonth, financialYearStartMonth });
-      const folderStatus = response.data?.photoImportFolder?.status;
+      // An untouched suggestion or a blank code is sent as null: the server derives the code from the name and city and
+      // adds a 2–9 suffix on a collision (design D12). Only a typed code is sent as it is, and refused if it is taken.
+      const orderCode = orderCodeTyped ? normaliseSchoolOrderCode(saOnboardForm.orderCode) || null : null;
+      const created = await tenantSchools.createSchool({ ...saOnboardForm, orderCode, classCount, sectionCount, academicYearStartMonth, financialYearStartMonth });
+      const folderStatus = created?.photoImportFolder?.status;
+      const codeNote = created?.orderCode ? ` with order code ${created.orderCode}` : '';
       setToast(folderStatus === 'READY'
-        ? `${saOnboardForm.name} created. Add an administrator to complete setup.`
-        : `${saOnboardForm.name} created. Drive setup needs attention (${folderStatus || 'unknown'}).`);
+        ? `${saOnboardForm.name} created${codeNote}. Add an administrator to complete setup.`
+        : `${saOnboardForm.name} created${codeNote}. Drive setup needs attention (${folderStatus || 'unknown'}).`);
       setSaOnboardOpen(false);
       setSaOnboardForm(EMPTY_ONBOARD_FORM);
+      setOrderCodeTyped(false);
       await loadSaSchools();
     } catch (e: any) {
       setSaOnboardErrors({ _: e?.response?.data?.message || 'Save failed. Please try again.' });
@@ -251,15 +282,16 @@ export function SaSchoolsPanel() {
             </div>
           )
           : <div className="ck-table-wrap"><table className="ck-table">
-            <thead><tr><th>School</th><th>Setup</th><th>Short code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th className="ck-num">Orders YTD</th><th className="ck-num">Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
+            <thead><tr><th>School</th><th>Setup</th><th>Short code</th><th>Order code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th className="ck-num">Orders YTD</th><th className="ck-num">Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
             <tbody>
               {saSchools.length === 0
-                ? <tr><td colSpan={15}><PanelMessage>No schools found.</PanelMessage></td></tr>
+                ? <tr><td colSpan={16}><PanelMessage>No schools found.</PanelMessage></td></tr>
                 : saSchools.map((school: any) => (
                   <tr key={school.id}>
                     <td><div className="tb">{school.name}</div><div className="ts">{school.active ? 'Active' : 'Inactive'} · {school.countryCode || 'IN'} · {school.currencyCode || 'INR'}</div></td>
                     <td><span className={`ck-pill ${setupStatus(school).ready ? 'ck-pill-gr' : 'ck-pill-am'}`}>{setupStatus(school).ready ? 'Ready' : 'Action needed'}</span><div className="ts">Admin {setupStatus(school).hasAdmin ? 'ready' : 'missing'} · Drive {school.photoImportFolder?.status || 'unknown'}</div></td>
                     <td>{school.shortCode || '—'}</td>
+                    <td className="ck-whole">{school.orderCode || '—'}</td>
                     <td>{school.city || '—'}</td>
                     <td>{school.timeZone || DEFAULT_SCHOOL_TIME_ZONE}</td>
                     <td>{school.configuredClassCount ?? '—'}</td>
@@ -294,10 +326,14 @@ export function SaSchoolsPanel() {
             <div className="ck-modal-body">
               {saOnboardErrors._ && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{saOnboardErrors._}</div></div>}
               <div className="ck-form-grid ck-fg-2">
-                <Field label="School name *"><input value={saOnboardForm.name} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, name: e.target.value })} /></Field>
+                <Field label="School name *"><input value={saOnboardForm.name} onChange={(e) => updateOnboardPlace({ name: e.target.value })} /></Field>
                 <Field label="Short code *"><input value={saOnboardForm.shortCode} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, shortCode: e.target.value })} /></Field>
-                <Field label="City *"><input value={saOnboardForm.city} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, city: e.target.value })} /></Field>
-                <Field label="State"><input value={saOnboardForm.state} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, state: e.target.value })} /></Field>
+                <Field label="Order code" error={saOnboardErrors.orderCode} hint={`${SCHOOL_ORDER_CODE_HELPER} Leave it blank to derive it from the name and city.`}>
+                  <input value={saOnboardForm.orderCode} placeholder="DPS_GUR" autoComplete="off"
+                    onChange={(e) => { setOrderCodeTyped(true); setSaOnboardForm({ ...saOnboardForm, orderCode: e.target.value.toUpperCase() }); }} />
+                </Field>
+                <Field label="City *"><input value={saOnboardForm.city} onChange={(e) => updateOnboardPlace({ city: e.target.value })} /></Field>
+                <Field label="State"><input value={saOnboardForm.state} onChange={(e) => updateOnboardPlace({ state: e.target.value })} /></Field>
                 <Field label="No. of classes *">
                   <input type="number" min={1} max={MAX_CLASS_COUNT} value={saOnboardForm.classCount} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, classCount: e.target.value })} />
                   {saOnboardErrors.classCount ? <div className="ts" style={{ color: 'var(--re)', marginTop: 6 }}>{saOnboardErrors.classCount}</div> : <div className="ts" style={{ marginTop: 6 }}>Order: Nursery/Pre-Nursery/Playgroup, LKG, UKG, then 1 to 12</div>}
@@ -344,6 +380,9 @@ export function SaSchoolsPanel() {
             <div className="ck-modal-body">
               {editError && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{editError}</div></div>}
               <div className="ck-form-grid ck-fg-2">
+                <Field label="Order code" hint={SCHOOL_ORDER_CODE_HELPER}>
+                  <input value={editForm.orderCode} autoComplete="off" onChange={(e) => setEditForm({ ...editForm, orderCode: e.target.value.toUpperCase() })} />
+                </Field>
                 <Field label="No. of classes *"><input type="number" min={1} max={MAX_CLASS_COUNT} value={editForm.classCount} onChange={(e) => setEditForm({ ...editForm, classCount: e.target.value })} /></Field>
                 <Field label="Sections per class *"><input type="number" min={1} max={26} value={editForm.sectionCount} onChange={(e) => setEditForm({ ...editForm, sectionCount: e.target.value })} /></Field>
                 <Field label="Timezone *"><select value={editForm.timeZone} onChange={(e) => setEditForm({ ...editForm, timeZone: e.target.value })}>{SCHOOL_TIME_ZONES.map((timeZone) => <option key={timeZone} value={timeZone}>{timeZone}</option>)}</select></Field>

@@ -5,7 +5,7 @@ import {
   CalendarCheck, Clock, UserPlus, FileUp, Users, Package, ShoppingCart,
   CalendarDays, AlertCircle, Plus, ClipboardCheck, Truck,
   ClipboardList, FilePlus, Receipt, Building2, BarChart2,
-  TrendingUp, Globe, Package2, School, Images, FileDown,
+  TrendingUp, Globe, Package2, School, Images, FileDown, Workflow, Settings2,
 } from 'lucide-react';
 
 const PANEL_ICONS: Record<string, ComponentType<LucideProps>> = {
@@ -28,6 +28,8 @@ const PANEL_ICONS: Record<string, ComponentType<LucideProps>> = {
   'ff-approvals':  ClipboardCheck,
   'ff-orders':     Truck,
   'sa-all-orders': ClipboardList,
+  'nb-work':       Workflow,
+  'sa-nb-admin':   Settings2,
   'sa-new-order':  FilePlus,
   'sa-invoices':   Receipt,
   'sa-schools':    Building2,

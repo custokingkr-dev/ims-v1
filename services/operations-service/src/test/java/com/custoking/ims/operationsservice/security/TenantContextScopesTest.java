@@ -31,6 +31,29 @@ class TenantContextScopesTest {
         assertEquals(Set.of(), ctx.operatorSchoolsFor("NOTEBOOKS"));
     }
 
+    /** Design D42: a school-wide assignment covers every item there; an item scope only its own category. */
+    @Test
+    void anOperatorMayWorkASchoolsItemThroughASchoolWideAssignmentOrThatItemsScope() {
+        TenantContext ctx = operator(Set.of(2L), Set.of("4:FLIERS", "5:NOTEBOOKS"));
+        assertTrue(ctx.operatorMayWork(2, "FLIERS"));
+        assertTrue(ctx.operatorMayWork(2, "NOTEBOOKS"));
+        assertTrue(ctx.operatorMayWork(4, "FLIERS"));
+        assertFalse(ctx.operatorMayWork(4, "NOTEBOOKS"), "an FE scope does not open the school's notebooks");
+        assertTrue(ctx.operatorMayWork(5, "NOTEBOOKS"));
+        assertFalse(ctx.operatorMayWork(5, "FLIERS"));
+        assertFalse(ctx.operatorMayWork(9, "FLIERS"));
+        assertFalse(new TenantContext(1L, "a@x", "ADMIN", 4L, null).operatorMayWork(4, "FLIERS"), "a school admin is no operator");
+    }
+
+    /** The order workflows serve every item, so the RLS scope is every school with any assignment or well-formed scope. */
+    @Test
+    void theAnyItemSchoolsAreTheSchoolWideOnesPlusEveryWellFormedScopesSchool() {
+        TenantContext ctx = operator(Set.of(2L), Set.of("4:FLIERS", "5:NOTEBOOKS", "abc:FLIERS", "6:fliers", ":NOTEBOOKS", "0:FLIERS", "7:X"));
+        assertEquals(Set.of(2L, 4L, 5L), ctx.operatorSchoolsForAnyItem());
+        assertEquals(Set.of("4:FLIERS", "5:NOTEBOOKS"), ctx.operatorItemScopes());
+        assertEquals(Set.of(), operator(Set.of(), Set.of()).operatorSchoolsForAnyItem());
+    }
+
     @Test
     void theContextIsImmutableAndDefaultsToNoScopes() {
         assertTrue(new TenantContext(1L, "a@x", "ADMIN", 10L, null).operatorScopes().isEmpty());

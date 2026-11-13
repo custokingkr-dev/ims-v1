@@ -5,7 +5,7 @@ and `node scripts/generate-openapi-typescript-client.js --check` in verification
 The route inventory must first be current (`node scripts/generate-api-route-inventory.js`).
 The always-run CI architecture job checks generation and the generator/routing tests.
 
-Current coverage is **142 canonical operations across 15 contract files/clients**:
+Current coverage is **161 canonical operations across 16 contract files/clients**:
 
 | Contract | Operations | Covered workflow |
 | --- | ---: | --- |
@@ -17,13 +17,42 @@ Current coverage is **142 canonical operations across 15 contract files/clients*
 | Billing | 1 | Complete invoice statistics; Java-bound payment DTO exported with exact compatibility-route binding |
 | Broadcasts | 8 | Draft/list, capabilities, preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
 | Quotation documents | 4 | Capabilities, multipart upload, authenticated download, removal |
-| Catalog | 14 | Paginated order read, scoped statistics, guarded status/delivery, annual-plan review/confirmation; the notebook tracker's order summary, tracker start, design-draft attachment list/upload/delete/download, and the catalogue item list. Order rows carry `trackerManaged` |
+| Catalog | 20 | Paginated order read with server-side search (`q`: order number, CK id or school name), lookup by order number, scoped statistics, guarded status/delivery, superadmin quote, annual-plan review/confirmation; the order workflow summary (every workflow category: quantities, and title cards for notebooks), workflow start, design-file list/upload/delete/download, the read-only retired product workflow, and the catalogue item list plus superadmin category admin (order code, item noun, workflow template). Order rows carry `trackerManaged`, `orderNumber` and `workflowStep` |
 | Reporting | 7 | Workspace, command-center dashboard, fee defaulters, low-attendance sections/students, vendor dues and reorder signals |
 | Firefighting creation | 2 | Stable-key request and quotation creation |
 | Workflow decisions | 3 | Read versioned instance, approve and reject with required reviewed expectedVersion |
-| Notebook order tracker | 27 | Worklist and tracker read, step drafts/stage notes/complete/reopen/sign-off, assignment, follow-ups, design send/approve/request-changes, vendor/designer/internal notes, designers and per-school time slots. Request and response schemas bind to the Java records; the browser sends `expectedVersion` from the loaded step. The two machine-only endpoints (tracker creation and design-image access) are deliberately not in a browser contract. |
+| Order workflows | 33 | One engine for every item: list/board with filters and summary counts, templates and their default SLAs, the order view, step data/complete/reopen/sign-off, Head Approval, assignment and "Take this order", vendor selections, designer, contacts, notes, call log, activity timeline, WhatsApp groups (resolved, item-level, internal approval, per-school), designers and per-school time slots by template |
+| Vendor directory | 5 | The 18 SOP vendor categories (rename, reorder, deactivate) and global vendors with contacts and their own WhatsApp group |
 | Operator administration | 5 | Identity operator list and scope assignment, role-assignment revoke, user directory, school-user provisioning (with the operator's `catalogCategory`) |
-| Tenant schools | 1 | Superadmin school list |
+| Tenant schools | 3 | Superadmin school list; onboarding and editing a school, including its order code |
+
+## Item order workflows
+
+`orderWorkflowClient` and `vendorDirectoryClient` describe every browser endpoint of
+[the item order workflow design](../../docs/product/item-order-workflows-sop-v1.md) (section 3.5) on
+operations-service; `catalogClient` and `tenantSchoolClient` carry its school-core side. The gateway's existing
+`/api/v1/workflows/`, `/api/v1/catalog/`, `/api/v1/supply/` and `/api/v1/schools` routes already reach them.
+
+- **Keys.** The CK id is the key in every path. The order number (`NB-DPS_GUR-26-11-13-0042`) is a display field
+  and is only resolved through `GET /catalog/orders/by-number/{orderNumber}`.
+- **Bindings.** Every operations-service schema is bound with `x-ims-java-record` to the record that serializes or
+  binds it: the order view and its parts in `application/orderworkflow/OrderWorkflowView.java`, the template records
+  in `application/orderworkflow/template/`, `Sla`, `GateFailure` and `UpcomingAction` in
+  `application/orderworkflow/rules/`, the seam records `VendorSummary`, `GroupLink` and `ResolvedGroups` in
+  `VendorLookup.java` and `GroupLinkResolver.java`, and request bodies in their controllers. Properties are listed in
+  record-component order. A bound record must be declared `public record Name(...) {` with no `implements` clause,
+  or the generator cannot read its components. School-core answers these screens with maps, so its new schemas
+  (`OrderWorkflowSummary`, `SchoolDetails` and the rest) are explicit unbound objects, as before.
+- **Errors.** Operations refusals carry `OrderWorkflowError` (`code`, `message`, and `unmet[]` with
+  `GATE_UNMET`). The browser shows `unmet` as written and never retries a 409.
+- **Limits.** Constraints in the schemas match the stored columns: approval comments and call notes at most 1,000
+  characters, notes and template `WORDS` fields 4,000. Word limits (100, or a template field's `max`) are counted
+  as the server counts them; see `frontend/src/features/orders/shared/words.ts`.
+- **Integrated.** Every operation resolves to its controller in the route inventory, and every bound schema matches
+  its Java record. The notebook tracker contract (`notebookTrackerClient.v1.openapi.json`) and its generated client
+  were deleted with `NotebookTrackerController`; nothing used them.
+- **Machine endpoints.** `POST /api/v1/internal/order-workflows` (and its one-release alias), the design-file
+  access check and school-core's tracker-status push are service-to-service and stay out of browser contracts.
 
 These are critical browser contracts, not a claim of complete coverage of every
 controller. Legacy report row extensions and receipt detail fields remain explicit

@@ -18,8 +18,10 @@ import java.util.Optional;
 @Repository
 public class WorkflowReadRepository {
 
-    /** Entity type of notebook order trackers; see {@code NotebookTrackerRepository}. */
+    /** Entity type of the notebook order trackers created before the item order workflows (design D6). */
     public static final String NOTEBOOK_TRACKER_ENTITY = "NOTEBOOK_ORDER";
+    /** Entity type of every order workflow the engine creates now; see {@code OrderWorkflowRepository}. */
+    public static final String ITEM_ORDER_ENTITY = "ITEM_ORDER";
 
     private final JdbcClient jdbc;
     private final String definitionsTable;
@@ -61,11 +63,13 @@ public class WorkflowReadRepository {
     }
 
     /**
-     * The generic reads never find a notebook order tracker, for any caller: its progress, people and notes belong to the
-     * tracker API, which admits only superadmin and the order's operators (spec v4 acceptance criterion 1). School admins
-     * hold {@code workflow:read} for their school's ordinary workflows, so excluding trackers here is what keeps them out.
+     * The generic reads never find an order workflow, old notebook tracker or new item order alike, for any caller: its
+     * progress, people and notes belong to the order workflow API, which admits only superadmin and the order's operators
+     * (spec v4 acceptance criterion 1, design D6 and D42). School admins hold {@code workflow:read} for their school's
+     * ordinary workflows, so excluding order workflows here is what keeps them out.
      */
-    private static final String NOT_A_TRACKER = " AND UPPER(entity_type) <> '" + NOTEBOOK_TRACKER_ENTITY + "'";
+    private static final String ORDER_WORKFLOW_TYPES = "('" + NOTEBOOK_TRACKER_ENTITY + "', '" + ITEM_ORDER_ENTITY + "')";
+    private static final String NOT_A_TRACKER = " AND UPPER(entity_type) NOT IN " + ORDER_WORKFLOW_TYPES;
 
     public List<WorkflowInstanceRow> instances(Long schoolId, String status, String entityType, int limit) {
         StringBuilder sql = new StringBuilder(instanceSelect()).append(" WHERE 1=1").append(NOT_A_TRACKER);
@@ -85,7 +89,7 @@ public class WorkflowReadRepository {
         return instances(schoolId, "PENDING", null, limit);
     }
 
-    /** Empty for a notebook order tracker, as for an id that does not exist. */
+    /** Empty for an order workflow, as for an id that does not exist. */
     public Optional<WorkflowInstanceRow> instance(Long id) {
         return jdbc.sql(instanceSelect() + " WHERE id = :id" + NOT_A_TRACKER)
                 .param("id", id)
@@ -93,15 +97,15 @@ public class WorkflowReadRepository {
                 .optional();
     }
 
-    /** Empty for a notebook order tracker, as for an id that does not exist. */
+    /** Empty for an order workflow, as for an id that does not exist. */
     public List<WorkflowActionRow> actions(Long instanceId) {
         return jdbc.sql("""
                 SELECT id, instance_id, step_order, action, actor_id, actor_email, notes, acted_at
                 FROM %s
                 WHERE instance_id = :instanceId
-                  AND NOT EXISTS (SELECT 1 FROM %s i WHERE i.id = :instanceId AND UPPER(i.entity_type) = '%s')
+                  AND NOT EXISTS (SELECT 1 FROM %s i WHERE i.id = :instanceId AND UPPER(i.entity_type) IN %s)
                 ORDER BY acted_at ASC, id ASC
-                """.formatted(actionsTable, instancesTable, NOTEBOOK_TRACKER_ENTITY)).param("instanceId", instanceId)
+                """.formatted(actionsTable, instancesTable, ORDER_WORKFLOW_TYPES)).param("instanceId", instanceId)
                 .query(WorkflowActionRow.class)
                 .list();
     }
@@ -301,7 +305,7 @@ public class WorkflowReadRepository {
     }
 
     /**
-     * The instance a generic decision acts on, locked. A notebook order tracker is not found here, exactly like an id that
+     * The instance a generic decision acts on, locked. An order workflow is not found here, exactly like an id that
      * does not exist: the same 404 and message, for every caller including superadmin, so the generic mutations neither
      * touch a tracker nor reveal that one exists (the generic reads hide trackers the same way).
      */
@@ -320,12 +324,12 @@ public class WorkflowReadRepository {
     }
 
     /**
-     * Notebook order trackers move only through the tracker API, which enforces step order, roles and gates. The
-     * generic create/submit/approve/reject/cancel/complete endpoints never touch them, even for superadmin, and answer
-     * as if there were none: 404.
+     * Order workflows move only through the order workflow API, which enforces step order, roles and gates. The generic
+     * create/submit/approve/reject/cancel/complete endpoints never touch them, even for superadmin, and answer as if there
+     * were none: 404.
      */
     private void rejectTrackerEntity(String entityType) {
-        if (NOTEBOOK_TRACKER_ENTITY.equalsIgnoreCase(entityType)) throw instanceNotFound();
+        if (NOTEBOOK_TRACKER_ENTITY.equalsIgnoreCase(entityType) || ITEM_ORDER_ENTITY.equalsIgnoreCase(entityType)) throw instanceNotFound();
     }
 
     private void requireTenant(Map<String, Object> instance) {

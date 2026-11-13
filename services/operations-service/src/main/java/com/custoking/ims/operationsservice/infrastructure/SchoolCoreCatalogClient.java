@@ -12,7 +12,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Calls school-core's internal catalogue routes for the notebook order tracker. School-core's Cloud Run IAM and
+ * Calls school-core's internal catalogue routes for the order workflow engine: an order's design files, and the status
+ * push that shows the workflow's current step on the order (design §3.5, §3.6). School-core's Cloud Run IAM and
  * MachineCallerFilter admit only operations-service's service account, proven by the identity token {@link PeerHttp}
  * adds. Failures surface as {@link IllegalStateException}.
  */
@@ -49,12 +50,19 @@ public class SchoolCoreCatalogClient implements CatalogOrderGateway {
         }
     }
 
+    /**
+     * The status with the step it names (design §3.5 {@code tracker-status}); a school-core that predates the step fields
+     * ignores them.
+     */
     @Override
-    public void pushStatus(String orderId, String status, long trackerVersion) {
+    public void pushStatus(String orderId, String status, long trackerVersion, WorkflowStep step) {
         requireConfigured();
+        StatusBody body = step == null ? new StatusBody(status, trackerVersion, null, null, null, null, null)
+                : new StatusBody(status, trackerVersion, step.definitionId(), step.stepOrder(), step.stepTitle(), step.totalSteps(),
+                        step.completedSteps());
         try {
             http.client.put().uri("/api/v1/internal/catalog-orders/{id}/tracker-status", orderId).contentType(MediaType.APPLICATION_JSON)
-                    .headers(http::authorize).body(new StatusBody(status, trackerVersion)).retrieve().toBodilessEntity();
+                    .headers(http::authorize).body(body).retrieve().toBodilessEntity();
         } catch (RestClientResponseException refused) {
             // Kept as the queued status's last error, so a status the catalogue keeps refusing is told apart from an outage.
             String answer = "the order catalogue answered HTTP " + refused.getStatusCode().value();
@@ -68,7 +76,8 @@ public class SchoolCoreCatalogClient implements CatalogOrderGateway {
         }
     }
 
-    private record StatusBody(String status, long trackerVersion) { }
+    private record StatusBody(String status, long trackerVersion, String definitionId, Integer stepOrder, String stepTitle,
+                              Integer totalSteps, Integer completedSteps) { }
 
     private void requireConfigured() {
         if (!http.configured()) throw new IllegalStateException("the order catalogue is not configured");

@@ -4,16 +4,34 @@
 
 import type { AxiosInstance } from 'axios';
 
-export type SuperadminSchool = { "id": number; "schoolUid"?: string | null; "name": string; "shortCode"?: string | null; "city"?: string | null; "active"?: boolean; "adminEmail"?: string | null; [key: string]: unknown; };
+export type SuperadminSchool = { "id": number; "schoolUid"?: string | null; "name": string; "shortCode"?: string | null; "city"?: string | null; "active"?: boolean; "adminEmail"?: string | null; "orderCode"?: string | null; [key: string]: unknown; };
+
+export type PhotoImportProvisioning = { "schoolId": number; "schoolUid": string; "schoolName": string; "shortCode": string; "academicYearId": string; "academicYearLabel": string; "status": string; "folderId": string | null; "folderName": string | null; "folderUrl": string | null; "error": string | null; };
+
+export type SchoolDetails = { "id": number; "schoolUid": string; "name": string; "shortCode": string; "orderCode": string; "city": string; "state": string; "active": boolean; "configuredClassCount": number | null; "configuredSectionCount": number | null; "academicYearStartMonth": number | null; "financialYearStartMonth": number | null; "timeZone": string | null; "countryCode": string | null; "locale": string | null; "currencyCode": string | null; "phoneRegion": string | null; "photoImportFolder"?: PhotoImportProvisioning; };
+
+export type SchoolCreateRequest = { "name": string; "shortCode": string; "orderCode"?: string | null; "city"?: string | null; "state"?: string | null; "contactEmail"?: string | null; "contactPhone"?: string | null; "classCount"?: number | null; "sectionCount"?: number | null; "academicYearStartMonth"?: number | null; "financialYearStartMonth"?: number | null; "timeZone"?: string | null; "countryCode"?: string | null; "locale"?: string | null; "currencyCode"?: string | null; "phoneRegion"?: string | null; };
+
+export type SchoolUpdateRequest = { "name"?: string | null; "city"?: string | null; "orderCode"?: string | null; "academicYearStartMonth"?: number | null; "financialYearStartMonth"?: number | null; "timeZone"?: string | null; "countryCode"?: string | null; "locale"?: string | null; "currencyCode"?: string | null; "phoneRegion"?: string | null; "active"?: boolean | null; };
 
 export interface TenantSchoolClient {
   listSuperadminSchools(): Promise<Array<SuperadminSchool>>;
+  createSchool(request: SchoolCreateRequest): Promise<SchoolDetails>;
+  updateSchool(parameters: { id: number; }, request: SchoolUpdateRequest): Promise<SchoolDetails>;
 }
 
 export function createTenantSchoolClient(http: AxiosInstance): TenantSchoolClient {
   return {
     async listSuperadminSchools() {
       const response = await http.get<Array<SuperadminSchool>>("/sa/schools");
+      return response.data;
+    },
+    async createSchool(request: SchoolCreateRequest) {
+      const response = await http.post<SchoolDetails>("/schools", request);
+      return response.data;
+    },
+    async updateSchool(parameters: { id: number; }, request: SchoolUpdateRequest) {
+      const response = await http.patch<SchoolDetails>(`/schools/${encodeURIComponent(String(parameters.id))}`, request);
       return response.data;
     },
   };

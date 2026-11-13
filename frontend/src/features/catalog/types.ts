@@ -6,7 +6,17 @@ export interface ProductCategory {
   // Only fliers collect a free-text note, decided 2026-09-25. Read from the definition so the form
   // never has to name a category in code.
   notesEnabled?: boolean;
+  /** The item code in order numbers, e.g. NB or BBK (design D8); null means the category's orders get no number. */
+  orderCode?: string | null;
+  /** The noun the introduction message uses, e.g. "bill book". */
+  itemNoun?: string | null;
+  /** The order workflow template new placements start; null means no workflow (the approve, quote and deliver flow). */
+  workflowDefinition?: WorkflowDefinitionId | null;
 }
+export type WorkflowDefinitionId =
+  'NOTEBOOK_ORDER_TRACKER' | 'FLIER_ORDER_WORKFLOW' | 'FLEX_ORDER_WORKFLOW' | 'BILL_BOOK_ORDER_WORKFLOW' | 'GENERAL_ITEM_ORDER_WORKFLOW';
+/** Where an order's workflow is, as school-core stores it from the workflow's status push (design D5). */
+export interface WorkflowStepSummary { order: number; title: string; total: number; completed: number }
 export interface ProductOption {
   id: number; groupId: number; code: string; label: string; specText: string | null;
   widthMm: number | null; heightMm: number | null; specStatus: 'CONFIRMED' | 'PENDING_SPEC';
@@ -48,10 +58,12 @@ export interface SavedLine {
 export interface FormOrderDetail {
   order: { id: string; schoolId?: number; status: string; requiredByDate?: string; notes?: string;
     subtotal: number; gst: number; totalAmount: number; approvedDesignAssetId?: number;
-    /** True for a notebook order placed on the notebook order tracker; absent or false keeps the approval flow (owner decision D1). */
+    /** True for an order an order workflow runs; absent or false keeps the approval flow (owner decision D1). */
     trackerManaged?: boolean | null;
-    /** True exactly when GET /catalog/orders/{id}/production-workflow serves this caller; the server owns the category list. */
-    productionWorkflowAvailable?: boolean | null; [key: string]: unknown };
+    /** The SOP order number (design D10); null for drafts and categories without an item code. */
+    orderNumber?: string | null;
+    /** The workflow's current step for a workflow order; null until the workflow first reports. */
+    workflowStep?: WorkflowStepSummary | null; [key: string]: unknown };
   formDefinition: FormDefinition; orderSelections: SelectionSnapshot; lines: SavedLine[]; assets: OrderAsset[];
   formVersion: number; pricingStatus: string; version: number; quantityRuleResults: unknown[]; approvedDesignAssetId?: number | null;
 }
@@ -75,4 +87,20 @@ export function selectionLabel(snapshot: SelectionSnapshot, key: string): string
 export function selectionSpec(snapshot: SelectionSnapshot, key: string): string {
   const value = snapshot[key];
   return typeof value === 'string' ? '' : value?.spec || value?.specText || '';
+}
+
+/** School admins see only this coarse status for a workflow order (design D5): "Processing" while it runs, "Delivered" once completed. */
+export function schoolWorkflowStatus(status: string): 'Processing' | 'Delivered' {
+  return String(status).toUpperCase() === 'COMPLETED' ? 'Delivered' : 'Processing';
+}
+
+/**
+ * Staff see where a workflow order is (design section 4.2): "5 · Production Planning" and "4 of 12 steps done", or
+ * "Completed". Before the workflow first reports, the status code is the only clue, so it is shown in words.
+ */
+export function workflowStepText(status: string, step: WorkflowStepSummary | null | undefined, statusInWords: (status: string) => string): { stage: string; progress: string } {
+  const finished = String(status).toUpperCase() === 'COMPLETED';
+  if (!step) return { stage: finished ? 'Completed' : statusInWords(status), progress: '' };
+  const progress = `${step.completed} of ${step.total} steps done`;
+  return { stage: finished || step.completed >= step.total ? 'Completed' : `${step.order} · ${step.title}`, progress };
 }
