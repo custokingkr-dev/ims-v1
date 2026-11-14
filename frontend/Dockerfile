@@ -9,7 +9,7 @@ COPY src ./src
 COPY public ./public
 RUN npm run build
 
-FROM nginx:1.31.6-alpine3.24@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2
+FROM nginx:1.31.7-alpine3.24@sha256:892bb2152464f0c5d8972593a5f5afaf8054552580b699d95f8ff4af08c2d33d
 ENV API_UPSTREAM=http://api-gateway:8080
 ENV FRONTEND_CSP_HEADER=Content-Security-Policy
 ENV NGINX_RESOLVER="127.0.0.11 valid=10s ipv6=off"

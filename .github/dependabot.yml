@@ -74,6 +74,28 @@ updates:
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # The gateway stays on the OpenTelemetry JS SDK 2.x line until the 3.x
+      # migration is done on purpose. The 3.x generation arrives as 0.x
+      # "minor" bumps (auto-instrumentations 0.82+, sdk-node and the OTLP
+      # exporter 0.300+) plus API 1.10, which SDK 2.x cannot be installed
+      # with, so the npm-opentelemetry group kept proposing a set that fails
+      # npm ci with ERESOLVE (#375, #378). Patches on the 2.x line still flow.
+      # Remove these entries in the PR that migrates services/api-gateway to
+      # 3.x; the work is listed under "OpenTelemetry JS 3.x follow-up" in
+      # docs/security-remediation/dependency-reconciliation-2026-11-14.md.
+      - dependency-name: "@opentelemetry/auto-instrumentations-node"
+        versions: [">= 0.82.0"]
+      - dependency-name: "@opentelemetry/sdk-node"
+        versions: [">= 0.300.0"]
+      - dependency-name: "@opentelemetry/exporter-trace-otlp-proto"
+        versions: [">= 0.300.0"]
+      - dependency-name: "@opentelemetry/api"
+        versions: [">= 1.10.0"]
+      # Already a semver-major, but named so the 2.x pin survives any change
+      # to the wildcard rule above. sdk-trace-base has no 3.x: it is replaced
+      # by @opentelemetry/sdk-trace, which the migration adds.
+      - dependency-name: "@opentelemetry/resources"
+        versions: [">= 3.0.0"]
 
   - package-ecosystem: maven
     directories:
