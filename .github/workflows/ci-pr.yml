@@ -146,6 +146,25 @@ jobs:
       - name: Verify immutable runtime patch-cycle identities and workflow binding
         run: python3 -O -m unittest scripts.tests.image_source_patch_epoch_test scripts.tests.test_build_release_patch_epoch_binding
 
+  # Re-runs scripts/create-app-rt-role.sql on every service's real migrations (Docker PostgreSQL 16, Flyway from a
+  # service's own Maven classpath) and fails if the run changes an ACL a migration set, or if the create and audit
+  # narrowing lists drift. Also renders the Cloud Run job of invoke-create-app-rt-role-cloudsql.ps1 (pwsh, preinstalled
+  # on the runner) and runs its shell as a non-superuser owner over TLS. Runs on every PR: any migration can add a
+  # narrowing the script must keep. Without Docker or PowerShell the tests fail here rather than skip.
+  app-rt-role-invariants:
+    name: app-rt-role-invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Re-run create-app-rt-role.sql on all twelve migrated schemas
+        run: python3 -m unittest -v scripts.tests.create_app_rt_role_test scripts.tests.create_app_rt_role_migrated_test
+
   privacy-technical-controls:
     name: privacy-technical-controls
     runs-on: ubuntu-latest
@@ -397,7 +416,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   summary:
-    needs: [promotion-source-policy, detect, duplicate-class-drift, static-architecture-audits, dev-edge-terraform-validation, windows-security-helper-validation, privacy-technical-controls, maven-wrapper-validation, service-test, docker-build, secret-scan]
+    needs: [promotion-source-policy, detect, duplicate-class-drift, static-architecture-audits, app-rt-role-invariants, dev-edge-terraform-validation, windows-security-helper-validation, privacy-technical-controls, maven-wrapper-validation, service-test, docker-build, secret-scan]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -412,6 +431,7 @@ jobs:
             echo "- Docker builds: ${{ needs.docker-build.result }}"
             echo "- Duplicate class drift: ${{ needs.duplicate-class-drift.result }}"
             echo "- Static architecture audits: ${{ needs.static-architecture-audits.result }}"
+            echo "- app_rt role invariants: ${{ needs.app-rt-role-invariants.result }}"
             echo "- Windows security helpers: ${{ needs.windows-security-helper-validation.result }}"
             echo "- Dev edge Terraform: ${{ needs.dev-edge-terraform-validation.result }}"
             echo "- Privacy technical controls: ${{ needs.privacy-technical-controls.result }}"
@@ -427,6 +447,7 @@ jobs:
             "${{ needs.detect.result }}" \
             "${{ needs.duplicate-class-drift.result }}" \
             "${{ needs.static-architecture-audits.result }}" \
+            "${{ needs.app-rt-role-invariants.result }}" \
             "${{ needs.windows-security-helper-validation.result }}" \
             "${{ needs.dev-edge-terraform-validation.result }}" \
             "${{ needs.privacy-technical-controls.result }}" \

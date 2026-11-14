@@ -10,9 +10,11 @@ BEGIN
   THEN RAISE EXCEPTION 'Unsafe dedicated runtime role %',role_name; END IF;
   EXECUTE format('GRANT USAGE ON SCHEMA %I TO %I',schema_name,role_name);
   FOR relation IN SELECT c.oid,c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-      WHERE n.nspname=schema_name AND c.relkind IN ('r','p','v','m') AND c.relname<>'flyway_schema_history'
+      WHERE n.nspname=schema_name AND c.relkind IN ('r','p','v','m')
   LOOP
     EXECUTE format('REVOKE ALL ON TABLE %I.%I FROM %I',schema_name,relation.relname,role_name);
+    -- Flyway history tables (flyway_schema_history, flyway_schema_history_tenant_school) belong to the owner alone.
+    CONTINUE WHEN starts_with(relation.relname,'flyway_schema_history');
     FOREACH operation IN ARRAY ARRAY['SELECT','INSERT','UPDATE','DELETE'] LOOP
       IF has_table_privilege('app_rt',relation.oid,operation) THEN
         EXECUTE format('GRANT %s ON TABLE %I.%I TO %I',operation,schema_name,relation.relname,role_name);
