@@ -65,6 +65,18 @@ SELECT * FROM catalog.legacy_catalog_migration_readiness;
 
 The apply function is idempotent. It never overwrites a canonical row after provenance is established.
 
+- **Run it with the row-level-security bypass.** Since catalog V26, `catalog_orders` forces row-level security, and so
+  does `order_workflow_creation_queue`. On Cloud SQL the owner is not a superuser, so it sees and writes no tenant row
+  unless the policies' bypass is on. Run the three statements in one transaction that first runs
+  `SET LOCAL app.bypass_rls = 'on'`. The repository's test calls the function as a container superuser, which bypasses
+  row-level security anyway, so this was not exercised as the Cloud SQL owner.
+- **Placed orders get their order number afterwards (since catalog V41).** Each inserted order that is not DRAFT and
+  whose category has an order code is queued for repair in `catalog.order_workflow_creation_queue`. The next drain of
+  the creation queue (within about a minute on a running school-core) mints its number, dated by the legacy order date,
+  and tells reporting. School-core logs `Order <id> was placed without an order number and is repaired: number <n>` for
+  each one. That is expected here, not a defect (see
+  [the order workflows runbook](../runbooks/notebook-tracker-deploy.md#what-stays-and-when-it-can-go)).
+
 ## 3. Guardian compatibility columns
 
 The normalized guardians and relationships were already backfilled in student migration V14. Migration

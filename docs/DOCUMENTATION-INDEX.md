@@ -121,6 +121,8 @@ business approval exists.
 - `operations/student-photo-import-runbook.md`
 - `runbooks/cicd-break-glass.md`, `runbooks/deployment-evidence.md`
 - `runbooks/release-operator.md`, `runbooks/rollback.md`
+- `runbooks/notebook-tracker-deploy.md` — order workflows (formerly the notebook order tracker): routes, what each
+  release carries, rollout windows, post-deploy checks, the rollout bridges' clean-up, production and rollback
 - `MONOLITH_ROUTE_OWNERSHIP_MAP.md`
 
 ## Dated evidence — immutable observations

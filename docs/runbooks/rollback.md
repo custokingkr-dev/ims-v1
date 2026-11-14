@@ -71,6 +71,19 @@ A normal forward release passes through the second row for a few minutes, betwee
 
 These rules hold while a one-step rollback of any of the three services would reach a revision from before this release. Once a service has had a later release, its one-step rollback lands on a revision without passkeys; an explicit `release_id` can still reach an older one.
 
+## Order Workflows (SOP Release 2026-11-13 And Its Contract Release)
+
+Read [the order workflows runbook](notebook-tracker-deploy.md#rollback) before rolling back `school-core-service`,
+`operations-service`, `platform-service` or `frontend` past either release. In short:
+
+- Roll `frontend` back together with `operations-service`. A frontend from before the SOP release calls the removed
+  `/api/v1/workflows/notebook-orders/**` routes.
+- After the contract release, dev's `school-core-service` and `operations-service` must not go below the SOP release:
+  older revisions use the queue table and stage-note columns it drops. A one-step rollback is safe. Production's
+  rollback to `main` is not affected.
+- After the final clean-up of the rollout bridges, a `school-core-service` older than the contract release's mint fix,
+  or a `platform-service` older than the SOP release, leaves orders or reporting facts without numbers.
+
 ## After Rollback
 
 1. Confirm `gateway-smoke.json` reports `UP`.

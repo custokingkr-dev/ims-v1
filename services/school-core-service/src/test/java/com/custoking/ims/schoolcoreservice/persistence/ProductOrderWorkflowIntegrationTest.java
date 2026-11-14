@@ -284,6 +284,84 @@ class ProductOrderWorkflowIntegrationTest {
         }
     }
 
+    /**
+     * Superadmin's status override on an order of the older form (PATCH /orders/{id}/status, the All orders "Update status"
+     * select) can take a draft out of DRAFT, which places it. It records the placement (when, and by superadmin) and mints the
+     * number dated by it in that transaction, as placing does, and the event carries it, so catalog V38's commit-time trigger
+     * has nothing to repair. A category without an order code gets no number; an order already numbered keeps its number and
+     * takes no new one. An override that does not take a draft out of DRAFT numbers nothing: an order that left DRAFT earlier
+     * without a number (here, placed before its category had an order code) keeps none, and takes no running number.
+     */
+    @Test
+    void aLegacyStatusOverrideOutOfDraftMintsTheNumberInThatTransaction() {
+        String tie = legacyDraft("TIES");
+        String uniforms = legacyDraft("UNIFORMS");
+        String notebook = legacyDraft("NOTEBOOKS");
+        String placedBeforeItsCode = legacyPlacedWithoutNumber("TIES");
+        owner.sql("DELETE FROM tenant_school.outbox_events").update();
+        String placedNumber;
+        TenantContext.set(context(SUPERADMIN));
+        try {
+            var overridden = orders.updateOrderStatus(tie, "in_progress");
+            assertThat(overridden.status()).isEqualTo("IN_PROGRESS");
+            assertThat(overridden.orderNumber()).as("returned with the number").matches("TIE-SA_IN-\\d\\d-\\d\\d-\\d\\d-0001");
+            assertThat(orders.updateOrderStatus(uniforms, "IN_PROGRESS").orderNumber()).as("a category without an order code").isNull();
+            assertThat(orders.updateOrderStatus(placedBeforeItsCode, "DELIVERED").orderNumber())
+                    .as("an order that left DRAFT earlier is not numbered by a later override").isNull();
+            placedNumber = orders.placeOrder(notebook, 7L).orderNumber();
+            assertThat(placedNumber).matches("NB-SA_IN-\\d\\d-\\d\\d-\\d\\d-0001");
+            assertThat(orders.updateOrderStatus(notebook, "APPROVED").orderNumber()).as("an order already numbered").isEqualTo(placedNumber);
+        } finally {
+            TenantContext.clear();
+        }
+        String tieNumber = String.valueOf(row(tie).get("order_number"));
+        assertThat(row(tie).get("placed_at")).as("the override recorded the placement").isNotNull();
+        assertThat(row(tie).get("placed_by")).as("by superadmin").isEqualTo(99L);
+        assertThat(tieNumber).as("dated by the recorded placement").isEqualTo("TIE-SA_IN-" + placementDay(tie) + "-0001");
+        assertThat(row(uniforms).get("order_number")).isNull();
+        assertThat(row(uniforms).get("placed_at")).as("placed, though it takes no number").isNotNull();
+        assertThat(row(placedBeforeItsCode).get("order_number")).isNull();
+        assertThat(row(placedBeforeItsCode).get("placed_by")).as("its placement is left as it was").isEqualTo(7L);
+        assertThat(row(notebook).get("order_number")).isEqualTo(placedNumber);
+        for (String id : List.of(tie, uniforms, placedBeforeItsCode, notebook)) {
+            assertThat(queued(id)).as(id + ": numbered before commit, or not leaving DRAFT, so V38's trigger queues no repair").isFalse();
+        }
+        assertThat(owner.sql("SELECT item_code || '=' || last_value FROM catalog.order_number_counters ORDER BY item_code")
+                .query(String.class).list()).as("one number each, none taken twice").containsExactly("NB=1", "TIE=1");
+        assertThat(owner.sql("""
+                SELECT aggregate_id || ' ' || coalesce(payload ->> 'orderNumber', '-') || ' ' || (payload ->> 'status') FROM tenant_school.outbox_events
+                WHERE event_type = 'catalog-order.upserted.v1' ORDER BY id
+                """).query(String.class).list()).as("reporting is told each number with the status that carried it")
+                .containsExactly(tie + " " + tieNumber + " IN_PROGRESS", uniforms + " - IN_PROGRESS", placedBeforeItsCode + " - DELIVERED",
+                        notebook + " " + placedNumber + " DESIGN_APPROVAL", notebook + " " + placedNumber + " APPROVED");
+    }
+
+    /**
+     * A category given an order code later (superadmin's Catalog manager, PATCH /api/v1/supply/product-catalog/categories/{code})
+     * numbers only the orders placed afterwards (design D8, D11; ProductCatalogRepository: "Changing the code affects only
+     * numbers minted afterwards"). Its orders placed before keep no number, and neither a status override nor anything else
+     * numbers them later, so an item's running number never jumps back to an old placement.
+     */
+    @Test
+    void aCategoryGivenAnOrderCodeNumbersOnlyItsLaterPlacements() {
+        String before = placedLegacy("UNIFORMS");
+        try {
+            TenantContext.set(context(SUPERADMIN));
+            context.getBean(ProductCatalogRepository.class).update("categories", "UNIFORMS", Map.of("orderCode", "UNF"));
+            assertThat(orders.updateOrderStatus(before, "DELIVERED").orderNumber()).as("placed before the code").isNull();
+            TenantContext.clear();
+            String after = placedLegacy("UNIFORMS");
+
+            assertThat(row(before).get("order_number")).isNull();
+            assertThat(queued(before)).isFalse();
+            assertThat(String.valueOf(row(after).get("order_number"))).as("the first number of the new code")
+                    .isEqualTo("UNF-SA_IN-" + placementDay(after) + "-0001");
+        } finally {
+            TenantContext.clear();
+            owner.sql("UPDATE catalog.product_categories SET order_code = NULL WHERE code = 'UNIFORMS'").update();
+        }
+    }
+
     // ---- the creation queue -------------------------------------------------------------------------------------------------
 
     /**
@@ -291,8 +369,9 @@ class ProductOrderWorkflowIntegrationTest {
      * prod beside this one through the canary. That revision places orders without a number, and places a flier on approve,
      * quote and deliver. Its placement is queued for repair when it commits; the next drain numbers the order by its
      * placement, moves an open flier onto its template as V38 moved the open ones, tells reporting, and creates the workflow.
-     * An order on no workflow only gets its number. The previous revision's notebook, which it queued itself, lands in the
-     * new queue and is created here, with its number, under its own template.
+     * An order on no workflow only gets its number. A notebook placed tracker-managed without a number (as the notebook
+     * tracker's revision placed it) is created here, with its number, under its own template. Catalog V40 dropped the old
+     * queue that revision also wrote, so its forwarding is covered at catalog V39 by ItemOrderNumberMigrationTest.
      */
     @Test
     void anOrderThePreviousRevisionPlacedIsNumberedMovedOntoItsWorkflowAndCreated() {
@@ -309,14 +388,10 @@ class ProductOrderWorkflowIntegrationTest {
                     pricing_status = 'NOT_APPLICABLE', attributes = attributes || jsonb_build_object('trackerManaged', true, 'trackerPending', true)
                 WHERE id = :id
                 """).param("id", notebook).update();
-        owner.sql("""
-                INSERT INTO catalog.notebook_tracker_creation_queue (order_id, school_id) VALUES (:id, 1)
-                ON CONFLICT (order_id) DO UPDATE SET next_attempt_at = now(), attempts = 0, dead_lettered_at = NULL
-                """).param("id", notebook).update();
-        assertThat(owner.sql("SELECT count(*) FROM catalog.notebook_tracker_creation_queue").query(Long.class).single())
-                .as("forwarded: the previous revision's drain finds nothing").isZero();
+        assertThat(owner.sql("SELECT to_regclass('catalog.notebook_tracker_creation_queue') IS NULL").query(Boolean.class).single())
+                .as("catalog V40 dropped the old queue").isTrue();
         assertThat(owner.sql("SELECT order_id FROM catalog.order_workflow_creation_queue WHERE repair ORDER BY order_id").query(String.class).list())
-                .containsExactlyInAnyOrder(flier, tie, notebook);
+                .as("V38's placement trigger, which V40 keeps, queued each for repair").containsExactlyInAnyOrder(flier, tie, notebook);
         owner.sql("DELETE FROM tenant_school.outbox_events").update();
 
         assertThat(queue.drain(10)).as("the flier and the notebook; the tie runs on no workflow").isEqualTo(2);
@@ -354,6 +429,42 @@ class ProductOrderWorkflowIntegrationTest {
         assertThat(row(flier).get("order_number")).isEqualTo(number);
         assertThat(owner.sql("SELECT count(*) FROM tenant_school.outbox_events").query(Long.class).single()).as("nothing changed, nothing told").isZero();
         assertThat(owner.sql("SELECT last_value FROM catalog.order_number_counters WHERE item_code = 'FE'").query(Integer.class).single()).isEqualTo(1);
+    }
+
+    /**
+     * The legacy catalog consolidation (catalog V8's apply_legacy_catalog_mappings(), run by an operator) inserts a legacy
+     * supply order in its legacy status and never numbers it. Since catalog V41 it queues a placed one of a coded category for
+     * repair, so the next drain numbers it by its legacy order date and tells reporting; a legacy order runs on no workflow.
+     */
+    @Test
+    void aPlacedLegacySupplyOrderTheConsolidationMigratesIsNumberedByTheNextDrain() {
+        owner.sql("""
+                INSERT INTO catalog.supply_orders (code, title, category, items, amount, status, order_date, action_label)
+                VALUES ('SUP-POW-NB', 'Notebooks', 'Notebooks', '1200 books', 54000, 'Placed', DATE '2026-03-02', 'View')
+                """).update();
+        owner.sql("""
+                INSERT INTO catalog.legacy_catalog_migration_map (source_table, source_id, school_id, mapped_by, mapped_at)
+                VALUES ('supply_orders', 'SUP-POW-NB', 1, 'test', now())
+                """).update();
+        owner.sql("SELECT * FROM catalog.apply_legacy_catalog_mappings()").query().singleRow();
+        String id = owner.sql("SELECT id FROM catalog.catalog_orders WHERE legacy_source_id = 'SUP-POW-NB'").query(String.class).single();
+        assertThat(row(id).get("order_number")).isNull();
+        assertThat(owner.sql("SELECT repair FROM catalog.order_workflow_creation_queue WHERE order_id = :id").param("id", id)
+                .query(Boolean.class).single()).as("queued for repair by the function").isTrue();
+        owner.sql("DELETE FROM tenant_school.outbox_events").update();
+
+        assertThat(queue.drain(10)).as("numbered, and on no workflow").isZero();
+
+        String number = String.valueOf(row(id).get("order_number"));
+        assertThat(number).as("dated by its placement").isEqualTo("NB-SA_IN-" + placementDay(id) + "-0001");
+        assertThat(owner.sql("SELECT placed_at = CAST(DATE '2026-03-02' AS timestamptz) FROM catalog.catalog_orders WHERE id = :id")
+                .param("id", id).query(Boolean.class).single()).as("which is the legacy order date").isTrue();
+        assertThat(queued(id)).isFalse();
+        assertThat(CREATED).isEmpty();
+        assertThat(owner.sql("""
+                SELECT payload ->> 'orderNumber' FROM tenant_school.outbox_events
+                WHERE event_type = 'catalog-order.upserted.v1' AND aggregate_id = :id
+                """).param("id", id).query(String.class).list()).as("reporting is told the number").containsExactly(number);
     }
 
     /** A category label may be 80 characters, but the engine takes a noun of at most 40: a noun taken from the label is cut. */
@@ -658,6 +769,31 @@ class ProductOrderWorkflowIntegrationTest {
         } finally {
             TenantContext.clear();
         }
+    }
+
+    /** A draft on the older, unstructured order form (form_version 1), as orders created before the order forms are. */
+    private static String legacyDraft(String category) {
+        return owner.sql("""
+                INSERT INTO catalog.catalog_orders (id, school_id, category, order_data, subtotal, gst, total_amount, status,
+                    design_status, superadmin_approval_status, created_at, form_version, version)
+                VALUES ('CK-' || nextval('catalog.seq_catalog_order_id'), 1, :category, '{}', 0, 0, 0, 'DRAFT', 'NOT_REQUIRED',
+                    'NOT_REQUIRED', now(), 1, 0)
+                RETURNING id
+                """).param("category", category).query(String.class).single();
+    }
+
+    /**
+     * An order on the older form placed a month ago by the school's admin without a number, as one placed before its category
+     * had an order code is.
+     */
+    private static String legacyPlacedWithoutNumber(String category) {
+        return owner.sql("""
+                INSERT INTO catalog.catalog_orders (id, school_id, category, order_data, subtotal, gst, total_amount, status,
+                    design_status, superadmin_approval_status, placed_at, placed_by, created_at, form_version, version)
+                VALUES ('CK-' || nextval('catalog.seq_catalog_order_id'), 1, :category, '{}', 0, 0, 0, 'PROCESSING', 'NOT_REQUIRED',
+                    'NOT_REQUIRED', now() - interval '30 days', 7, now() - interval '30 days', 1, 1)
+                RETURNING id
+                """).param("category", category).query(String.class).single();
     }
 
     /** An order of a category with no structured form, created and placed through the legacy order flow. */

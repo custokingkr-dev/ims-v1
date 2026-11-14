@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * already holds schools, orders and a PR #380 product workflow, as dev and prod do: school codes derived with collisions,
  * existing orders numbered in placement order per item code and calendar year in the school's time zone, reporting told,
  * the counters continuing from there, open product orders moved onto the order workflow engine and the retired tables made
- * read-only for the runtime role.
+ * read-only for the runtime role. Catalog stops at V39: V40 drops the old queue that the rollout-window tests here use.
  */
 class ItemOrderNumberMigrationTest {
     static PostgreSQLContainer<?> pg;
@@ -75,7 +75,9 @@ class ItemOrderNumberMigrationTest {
         } finally {
             dedicated.destroy();
         }
-        flyway("catalog", null).migrate();
+        // Pinned to the last version before catalog V40, which retired the old queue and its forwarding trigger: these tests
+        // replay the rollout window V38 opened and that release closed (CreationQueueRetirementMigrationTest covers V40).
+        flyway("catalog", "39").migrate();
         // What scripts/create-app-rt-role.sql grants in every environment, so the runtime role can act as a school-core does.
         owner.sql("GRANT USAGE ON SCHEMA catalog, tenant_school TO app_rt").update();
         owner.sql("GRANT SELECT, UPDATE ON catalog.catalog_orders, tenant_school.schools TO app_rt").update();
