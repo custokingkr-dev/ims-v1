@@ -376,6 +376,15 @@ do not require the category choice present in a different prototype; Bill Books 
 
 ## Production workflow for product orders (2026-11-12)
 
+**Superseded on 2026-11-13 by the item order workflows (PR #382).** Every category with a workflow
+template, notebooks included, now runs on the one order workflow engine in operations-service ([design](item-order-workflows-sop-v1.md),
+D4; [deploy runbook](../runbooks/notebook-tracker-deploy.md)). Catalog V38 moved this workflow's open
+orders onto that engine and made its two tables read-only. `GET .../production-workflow` still reads
+the retired workflow; `PUT` and `POST` answer `409` with `{"code":"WORKFLOW_MOVED"}`.
+`ProductOrderWorkflowService.CATEGORIES` and `productionWorkflowAvailable` are gone: a category's
+`workflow_definition` now decides which workflow its orders run. The rest of this section records the
+2026-11-12 design.
+
 A placed order in one of nine categories runs a production workflow of nine fixed stages: Order
 Details, Designing Activity, CDR Conversion, Head Approval, Production Planning, Pre-Print Quality
 Check, Production Follow-up, Final Verification, and Delivery & Invoicing. The nine categories are
@@ -434,6 +443,13 @@ change them: `PUT /workflows/school-whatsapp-groups/{schoolId}/{target}` with `{
 blank URL removes the link. School users never see them. The notebook tracker's per-order endpoints
 read and write the same rows, but only the notebook keys: they neither return nor accept
 `PRODUCT_VENDOR`.
+
+**Since 2026-11-13 (item order workflows, PR #382)** the school-wide keys are only `SCHOOL_GROUP` and
+`INTERNAL_APPROVAL`; `PUT` refuses any other target. Vendor group links live with each vendor in the
+vendor directory. The notebook tracker's per-order endpoints are gone. An order's groups are read with
+`GET /workflows/item-orders/{orderId}/whatsapp-groups`, and its item-level school group is set with
+`PUT /workflows/item-orders/{orderId}/whatsapp-groups/school`. See the
+[deploy runbook](../runbooks/notebook-tracker-deploy.md#browser-routes).
 
 Only HTTPS `chat.whatsapp.com` invite URLs are accepted, and the database enforces tenant isolation.
 An accepted link is stored and returned as `https://chat.whatsapp.com/<code>`, whatever the casing

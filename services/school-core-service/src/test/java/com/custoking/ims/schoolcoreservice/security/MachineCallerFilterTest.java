@@ -55,12 +55,10 @@ class MachineCallerFilterTest {
   }
  }
 
- // ---- order workflow machine routes (spec 3.1; design 3.5: the notebook-tracker paths are aliases for one release) ----
+ // ---- order workflow machine routes (spec 3.1; design 3.5; the notebook-tracker aliases were retired after one release) ----
  private static final java.util.Map<String,String> TRACKER_ROUTES=java.util.Map.of(
    "POST /api/v1/internal/order-workflows","school-core",
    "POST /api/v1/internal/order-workflows/CK-2026_0001/design-file-access","school-core",
-   "POST /api/v1/internal/notebook-trackers","school-core",
-   "POST /api/v1/internal/notebook-trackers/CK-2026_0001/image-access","school-core",
    "GET /api/v1/internal/catalog-orders/CK-2026_0001/draft-images","operations",
    "PUT /api/v1/internal/catalog-orders/CK-2026_0001/tracker-status","operations",
    "GET /api/v1/internal/operator-directory/resolve","school-core",
@@ -95,10 +93,8 @@ class MachineCallerFilterTest {
  }
  @Test void trackerOrderIdsAreTightlyMatched() throws Exception {
   var filter=new MachineCallerFilter(trackerAllowLists(),token->Optional.of(token+"@project.iam.gserviceaccount.com"));
-  for(String route:java.util.List.of("POST /api/v1/internal/notebook-trackers/a.b/image-access","POST /api/v1/internal/notebook-trackers/a%2Eb/image-access",
-    "POST /api/v1/internal/notebook-trackers/a/b/image-access","POST /api/v1/internal/notebook-trackers//image-access",
-    "POST /api/v1/internal/notebook-trackers/"+"x".repeat(256)+"/image-access","POST /api/v1/internal/notebook-trackers/CK-1",
-    "POST /api/v1/internal/order-workflows/a.b/design-file-access","POST /api/v1/internal/order-workflows/a/b/design-file-access",
+  for(String route:java.util.List.of("POST /api/v1/internal/order-workflows/a.b/design-file-access","POST /api/v1/internal/order-workflows/a%2Eb/design-file-access",
+    "POST /api/v1/internal/order-workflows/a/b/design-file-access","POST /api/v1/internal/order-workflows//design-file-access",
     "POST /api/v1/internal/order-workflows/"+"x".repeat(256)+"/design-file-access","POST /api/v1/internal/order-workflows/CK-1",
     "POST /api/v1/internal/order-workflows/CK-1/image-access","POST /api/v1/internal/notebook-trackers/CK-1/design-file-access",
     "GET /api/v1/internal/catalog-orders/a.b/draft-images","PUT /api/v1/internal/catalog-orders/a%20b/tracker-status",
@@ -107,7 +103,6 @@ class MachineCallerFilterTest {
    assertFalse(admitted(filter,route,"school-core"),route);
    assertFalse(admitted(filter,route,"operations"),route);
   }
-  assertTrue(admitted(filter,"POST /api/v1/internal/notebook-trackers/"+"x".repeat(255)+"/image-access","school-core"));
   assertTrue(admitted(filter,"POST /api/v1/internal/order-workflows/"+"x".repeat(255)+"/design-file-access","school-core"));
  }
  @Test void localTrustAdmitsRegisteredRoutesWithoutATokenOnlyOffCloudRun() throws Exception {
@@ -118,14 +113,21 @@ class MachineCallerFilterTest {
   for(String route:TRACKER_ROUTES.keySet()) assertFalse(admitted(cloudRun,route,null),route);
   for(String value:java.util.List.of("false","TRUE","yes","")) {
    var notTrue=new MachineCallerFilter(new MockEnvironment().withProperty("MACHINE_CALLER_LOCAL_TRUST",value),token->Optional.empty());
-   assertFalse(admitted(notTrue,"POST /api/v1/internal/notebook-trackers",null),value);
+   assertFalse(admitted(notTrue,"POST /api/v1/internal/order-workflows",null),value);
   }
  }
  @Test void localTrustNeverOpensAnUnregisteredOrNoncanonicalInternalRoute() throws Exception {
   var local=new MachineCallerFilter(new MockEnvironment().withProperty("MACHINE_CALLER_LOCAL_TRUST","true"),token->Optional.empty());
-  for(String route:java.util.List.of("GET /api/v1/internal/unreviewed/capability","POST /api/v1/internal/notebook-trackers/a.b/image-access",
-    "POST /api/v1/internal/notebook-trackers/a%2Eb/image-access","GET /api/v1/internal/operator-directory/resolve/extra","GET /api/v1/internal/identity-directory/schools/+1"))
+  for(String route:java.util.List.of("GET /api/v1/internal/unreviewed/capability","POST /api/v1/internal/order-workflows/a.b/design-file-access",
+    "POST /api/v1/internal/order-workflows/a%2Eb/design-file-access","GET /api/v1/internal/operator-directory/resolve/extra","GET /api/v1/internal/identity-directory/schools/+1",
+    "POST /api/v1/internal/notebook-trackers","POST /api/v1/internal/notebook-trackers/CK-1/image-access"))
    assertFalse(admitted(local,route,null),route);
+ }
+ @Test void theRetiredNotebookTrackerAliasesAreRefusedEvenToTheirFormerCaller() throws Exception {
+  var filter=new MachineCallerFilter(trackerAllowLists(),token->Optional.of(token+"@project.iam.gserviceaccount.com"));
+  for(String route:java.util.List.of("POST /api/v1/internal/notebook-trackers","POST /api/v1/internal/notebook-trackers/CK-2026_0001/image-access"))
+   assertFalse(admitted(filter,route,"school-core"),route);
+  assertTrue(admitted(filter,"POST /api/v1/internal/order-workflows/"+"x".repeat(255)+"/design-file-access","school-core"));
  }
 
 }

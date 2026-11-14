@@ -51,8 +51,10 @@ operations-service; `catalogClient` and `tenantSchoolClient` carry its school-co
 - **Integrated.** Every operation resolves to its controller in the route inventory, and every bound schema matches
   its Java record. The notebook tracker contract (`notebookTrackerClient.v1.openapi.json`) and its generated client
   were deleted with `NotebookTrackerController`; nothing used them.
-- **Machine endpoints.** `POST /api/v1/internal/order-workflows` (and its one-release alias), the design-file
-  access check and school-core's tracker-status push are service-to-service and stay out of browser contracts.
+- **Machine endpoints.** `POST /api/v1/internal/order-workflows`, the design-file access check and school-core's
+  tracker-status push are service-to-service and stay out of browser contracts. The SOP release kept the old
+  `/api/v1/internal/notebook-trackers` paths as a one-release alias, which the contract release removes; see
+  [the order workflows runbook](../../docs/runbooks/notebook-tracker-deploy.md#machine-routes).
 
 These are critical browser contracts, not a claim of complete coverage of every
 controller. Legacy report row extensions and receipt detail fields remain explicit

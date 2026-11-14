@@ -131,13 +131,12 @@ class PeerClientsTest {
     }
 
     /**
-     * Design D6, deploy skew: an engine deployed before the item order workflows has only the notebook-tracker route, and its
-     * MachineCallerFilter refuses the unknown internal route with a bare 403 (no body) before any controller runs. The new
-     * engine never answers 403 or 404 for a registered caller (an order without a workflow is {@code allowed: false}), so
-     * that answer, or a 404, means the older engine and the question is asked again on its alias, which answers alike.
+     * The notebook-tracker alias (design D6) is retired after one release: a 404, or an engine's bare 403 for an internal route
+     * it does not know, fails closed like any other refusal, after one request, and the alias is never asked, even where it
+     * would have answered.
      */
     @Test
-    void imageAccessAsksTheNotebookTrackerAliasWhenTheEngineIsOlder() throws Exception {
+    void imageAccessNeverAsksTheRetiredNotebookTrackerAlias() throws Exception {
         for (Object[] older : new Object[][]{{403, ""}, {404, "{\"message\":\"Not Found\"}"}}) {
             String base = serve((Integer) older[0], (String) older[1]);
             server.createContext("/api/v1/internal/notebook-trackers/", exchange -> {
@@ -145,37 +144,30 @@ class PeerClientsTest {
                         new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
                 respond(exchange, 200, "{\"allowed\":true,\"reason\":null}");
             });
-            var access = new OperationsTrackerClient(base, "never", 1000, 2000).imageAccess("CK-1", 8, "OPERATIONS");
-            assertTrue(access.allowed(), "after " + older[0]);
-            assertEquals(List.of("POST /api/v1/internal/order-workflows/CK-1/design-file-access", "POST /api/v1/internal/notebook-trackers/CK-1/image-access"),
+            var client = new OperationsTrackerClient(base, "never", 1000, 2000);
+            assertThrows(IllegalStateException.class, () -> client.imageAccess("CK-1", 8, "OPERATIONS"), "after " + older[0]);
+            assertEquals(List.of("POST /api/v1/internal/order-workflows/CK-1/design-file-access"),
                     seen.stream().map(request -> request.method() + " " + request.uri()).toList(), "after " + older[0]);
-            assertTrue(seen.get(1).body().contains("\"userId\":8") && seen.get(1).body().contains("\"role\":\"OPERATIONS\""), seen.get(1).body());
         }
     }
 
     /**
-     * Only the older engine's answers are retried on the alias. A 403 that says why (the engine's MACHINE_CALLER_REJECTED, or
-     * Cloud Run IAM's page) is a real refusal, and like a 5xx it fails closed; so does a missing route on both.
+     * Every other refusal fails closed after one request too: a 403 that says why (the engine's MACHINE_CALLER_REJECTED, or
+     * Cloud Run IAM's page), and a 5xx.
      */
     @Test
-    void imageAccessFailsClosedWithoutTheAliasOnOtherRefusals() throws Exception {
+    void imageAccessFailsClosedOnEveryOtherRefusal() throws Exception {
         for (Object[] refusal : new Object[][]{{403, "{\"code\":\"MACHINE_CALLER_REJECTED\",\"message\":\"Caller not authorized\"}"},
                 {403, "<html><body>Your client does not have permission</body></html>"}, {403, "{}"}, {500, ""}, {503, "{}"}}) {
             var client = new OperationsTrackerClient(serve((Integer) refusal[0], (String) refusal[1]), "never", 1000, 2000);
             assertThrows(IllegalStateException.class, () -> client.imageAccess("CK-1", 8, "OPERATIONS"), "access " + refusal[0] + " " + refusal[1]);
-            assertEquals(1, seen.size(), "no alias after " + refusal[0] + " " + refusal[1]);
+            assertEquals(1, seen.size(), "one request after " + refusal[0] + " " + refusal[1]);
         }
-        var bothMissing = new OperationsTrackerClient(serve(404, "{}"), "never", 1000, 2000);
-        assertThrows(IllegalStateException.class, () -> bothMissing.imageAccess("CK-1", 8, "OPERATIONS"));
-        assertEquals(2, seen.size());
-        var bothBare = new OperationsTrackerClient(serve(403, ""), "never", 1000, 2000);
-        assertThrows(IllegalStateException.class, () -> bothBare.imageAccess("CK-1", 8, "OPERATIONS"), "the alias refused too");
-        assertEquals(2, seen.size());
     }
 
     /**
-     * A create is never retried on the alias: an engine that predates the item order workflows would make every item a
-     * notebook workflow. The queue keeps the order and retries once the new engine is deployed.
+     * A create is only ever sent to the order-workflow route: an engine that predates the item order workflows would make every
+     * item a notebook workflow. The queue keeps the order and retries.
      */
     @Test
     void createIsNotRetriedOnTheNotebookTrackerAlias() throws Exception {

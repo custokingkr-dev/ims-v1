@@ -31,11 +31,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * School-core's calls are served on the order-workflow internal path and, for one release, on the notebook-tracker path
- * (design D6); caller checks live in MachineCallerFilter.
+ * School-core's calls are served on the order-workflow internal paths only; the notebook-tracker paths that were aliases for
+ * one release (design D6) are gone. Caller checks live in MachineCallerFilter.
  */
 class OrderWorkflowMachineControllerTest {
-    /** What a school-core that predates the item order workflows sends. */
+    /** What a school-core that predates the item order workflows sent: no template, item, number or imported progress. */
     private static final String LEGACY_CREATE = "{\"orderId\":\"CK-1\",\"schoolId\":4,\"customised\":true,\"orderedCount\":2000,"
             + "\"placedAt\":\"2026-10-19T09:30:00+05:30\",\"timeZone\":\"Asia/Kolkata\",\"placedBy\":7,\"assigneeUserId\":42,\"schoolName\":\"School A\"}";
     /** What school-core sends now (OperationsTrackerClient.body). */
@@ -75,9 +75,19 @@ class OrderWorkflowMachineControllerTest {
                 OffsetDateTime.parse("2026-11-10T10:00:00Z"), 3L, "Two drafts shared", null)), command.importedProgress());
     }
 
-    @Test void theOldPathStillCreatesANotebookWorkflowForOneRelease() throws Exception {
-        when(service.create(any())).thenReturn(new OrderWorkflowService.Created(5L, true));
+    @Test void theRetiredNotebookTrackerPathsAreGone() throws Exception {
         mvc.perform(post("/api/v1/internal/notebook-trackers").contentType("application/json").content(LEGACY_CREATE))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/internal/notebook-trackers/CK-1/image-access").contentType("application/json")
+                        .content("{\"userId\":8,\"role\":\"OPERATIONS\"}"))
+                .andExpect(status().isNotFound());
+        verifyNoInteractions(service);
+    }
+
+    /** A create without a template still reaches the service, which treats it as a notebook order. */
+    @Test void aCreateWithoutATemplateIsPassedOnWithNone() throws Exception {
+        when(service.create(any())).thenReturn(new OrderWorkflowService.Created(5L, true));
+        mvc.perform(post("/api/v1/internal/order-workflows").contentType("application/json").content(LEGACY_CREATE))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.instanceId").value(5));
         ArgumentCaptor<CreateWorkflow> sent = ArgumentCaptor.forClass(CreateWorkflow.class);
         verify(service).create(sent.capture());
@@ -109,15 +119,12 @@ class OrderWorkflowMachineControllerTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("itemCode is required"));
     }
 
-    @Test void designFileAccessIsAnsweredOnTheNewPathAndTheOldOne() throws Exception {
+    @Test void designFileAccessIsAnswered() throws Exception {
         when(service.designFileAccess("CK-1", 8L, "OPERATIONS")).thenReturn(new DesignFileAccess(false, "locked"));
         mvc.perform(post("/api/v1/internal/order-workflows/CK-1/design-file-access").contentType("application/json")
                         .content("{\"userId\":8,\"role\":\"OPERATIONS\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.allowed").value(false)).andExpect(jsonPath("$.reason").value("locked"));
-        mvc.perform(post("/api/v1/internal/notebook-trackers/CK-1/image-access").contentType("application/json")
-                        .content("{\"userId\":8,\"role\":\"OPERATIONS\"}"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.allowed").value(false));
-        verify(service, times(2)).designFileAccess("CK-1", 8L, "OPERATIONS");
+        verify(service, times(1)).designFileAccess("CK-1", 8L, "OPERATIONS");
     }
 
     @Test void designFileAccessWithoutAUserIsA400AndCrossedAliasesDoNotExist() throws Exception {

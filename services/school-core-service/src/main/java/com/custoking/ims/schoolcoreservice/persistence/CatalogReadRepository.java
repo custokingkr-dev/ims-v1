@@ -356,6 +356,9 @@ public class CatalogReadRepository {
                 .param("eventDate", localDate(firstPresent(orderData, "eventDate")))
                 .param("createdAt", now)
                 .update();
+        // The controllers always create drafts, but this method accepts any status: an order created already placed is
+        // numbered now, as a placement is (catalog V38's commit-time trigger only sees an update out of DRAFT). A draft is not.
+        OrderNumberAllocator.mint(jdbc, id);
         CatalogOrderRow created = orderQuery(id).orElseThrow();
         emitOrderUpserted(created);
         return created;
@@ -431,6 +434,14 @@ public class CatalogReadRepository {
                 org.springframework.http.HttpStatus.BAD_REQUEST, "This action is unavailable while the order is " + status);
     }
 
+    /**
+     * Superadmin's direct status write. On an order of the older form, taking a draft out of DRAFT places it: the write then
+     * records the placement as {@link #placeOrder} does (when, and by whom, unless one is recorded already) and mints the
+     * order's number in this transaction (design D11), so the event below carries it and catalog V38's commit-time trigger
+     * has nothing to repair. A category without an order code gets no number. Any other override changes the status only
+     * and numbers nothing: an order that left DRAFT earlier without a number keeps none here (one placed before its category
+     * had an order code stays unnumbered, as D8 and D11 have it; one the previous revision placed is numbered by its repair).
+     */
     @Transactional
     public CatalogOrderRow updateOrderStatus(String id, String status) {
         if (forms != null && forms.isStructured(id)) {
@@ -440,10 +451,31 @@ public class CatalogReadRepository {
             return updated;
         }
         requiredOrder(id);
-        jdbc.sql("UPDATE catalog.catalog_orders SET status = :status, version = version + 1 WHERE id = :id")
+        String newStatus = normalize(status, "");
+        // Read under the order's row lock, so of two concurrent overrides only the first finds the draft and places it.
+        String before = jdbc.sql("SELECT status FROM catalog.catalog_orders WHERE id = :id FOR UPDATE")
                 .param("id", id)
-                .param("status", normalize(status, ""))
-                .update();
+                .query(String.class)
+                .single();
+        if (DRAFT.equals(before) && !DRAFT.equals(newStatus)) {
+            jdbc.sql("""
+                    UPDATE catalog.catalog_orders
+                    SET status = :status, version = version + 1,
+                        placed_at = COALESCE(placed_at, :placedAt), placed_by = COALESCE(placed_by, CAST(:placedBy AS BIGINT))
+                    WHERE id = :id
+                    """)
+                    .param("id", id)
+                    .param("status", newStatus)
+                    .param("placedAt", OffsetDateTime.now())
+                    .param("placedBy", TenantContext.get().userId())
+                    .update();
+            OrderNumberAllocator.mint(jdbc, id);
+        } else {
+            jdbc.sql("UPDATE catalog.catalog_orders SET status = :status, version = version + 1 WHERE id = :id")
+                    .param("id", id)
+                    .param("status", newStatus)
+                    .update();
+        }
         CatalogOrderRow updated = requiredOrder(id);
         emitOrderUpserted(updated);
         return updated;
