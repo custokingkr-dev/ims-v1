@@ -163,13 +163,24 @@ It removes what only a revision older than the SOP release could use, and keeps 
 prod still need. The details, and why it is safe, are under [Clean-up](#clean-up).
 
 - `catalog` V40 (`V40__retire_notebook_tracker_creation_queue.sql`): drops the old queue, its forwarding trigger and
-  `catalog.forward_to_order_workflow_creation_queue()`.
+  `catalog.forward_to_order_workflow_creation_queue()`. A leftover row is forwarded to the new queue first; one whose
+  order no longer exists at that school is dropped with a WARNING naming it.
+- `catalog` V41 (`V41__legacy_catalog_mappings_queue_placed_orders_for_numbers.sql`): the owner-run legacy catalog
+  consolidation, `catalog.apply_legacy_catalog_mappings()`, now queues for repair each placed order of a coded category
+  it inserts, so the creation queue numbers it. Before, such an order stayed unnumbered for good. Same inserts, same
+  ledger updates, same result row; `CREATE OR REPLACE` keeps V8's owner-only privileges.
 - `workflow` V22 (`V22__retire_stage_note_columns.sql`): drops `copy_retired_stage_note`, its function and the three
   `workflow_instance_steps.stage_note*` columns.
 - The internal aliases `/api/v1/internal/notebook-trackers` and `…/{orderId}/image-access` go, with school-core's
   fallback to them. Removing their entries from `MachineCallerFilter` changes all five identical copies, so all five
   Java services are rebuilt.
-- School-core's legacy superadmin status update mints the order number when an order leaves DRAFT.
+- School-core's legacy superadmin status update, when it takes an order out of DRAFT, records the placement
+  (`placed_at`, `placed_by`) and mints the order number in that transaction, as a placement does. Any other override
+  changes the status only.
+- **By design, a code covers only later placements (D8, D11).** When superadmin gives an existing category an order code
+  (`?panel=sa-catalog`), the category's orders placed before stay unnumbered, even after a later status override. So
+  "placed orders of a coded category without a number" can legitimately rise after a category edit; a rise with no
+  category edit is the defect to chase.
 
 ### Production's first release
 
@@ -177,7 +188,7 @@ One promotion takes prod from `main` to the dev head. Each Java service runs eve
 before its first canary, while `main` serves:
 
 - identity V11–V12;
-- school-core: `tenant_school` V31, `catalog` V27–V39, and V40 if the contract release is promoted with it;
+- school-core: `tenant_school` V31, `catalog` V27–V39, and V40–V41 if the contract release is promoted with it;
 - operations: `workflow` V8–V21, and V22 likewise;
 - platform: `reporting` V36.
 
@@ -462,7 +473,13 @@ tenant_school V30, catalog V26, workflow V7, reporting V35). Read prod's heads b
     were edited by hand. Restore them.
   - `V22: stage notes that are in no stage entry (no recorded author, so V20 and V21 did not copy them): instance <id>
     (order <id>) step <n>; …` names each stage note it cannot copy. With the owner, copy each into
-    `workflow.workflow_internal_notes` with the author it should carry, or clear its `stage_note`, then re-run.
+    `workflow.workflow_internal_notes` with the author it should carry, or clear its `stage_note`, then re-run. Do it
+    as the migration owner in a transaction that first runs `SET LOCAL app.bypass_rls = 'on'`: both tables force
+    row-level security, so without it a clear updates nothing and a copy is refused. Commit, then re-run the job.
+- **A warning, not a failure.** `V40: dropped rows left in catalog.notebook_tracker_creation_queue whose order does not
+  exist at that school: …` names old-queue rows whose order is gone (a row can only be there if a writer bypassed the
+  forwarding trigger). Nothing to do. `V40: forwarded rows left in …` is a NOTICE: those orders are now in
+  `order_workflow_creation_queue` and drain as usual.
 
 ## Post-deploy checks
 
@@ -586,7 +603,8 @@ FROM catalog.order_workflow_creation_queue GROUP BY 1, 2 ORDER BY 1, 2;
 SELECT count(*) AS open_orders_tracker_pending FROM catalog.catalog_orders
 WHERE attributes @> '{"trackerPending": true}'
   AND status NOT IN ('DRAFT', 'CANCELLED', 'DELIVERED', 'FULFILLED', 'REJECTED', 'RETURNED', 'COMPLETED');
--- 4. Placed orders of a coded category without a number, with their queue row: none once repair rows drain.
+-- 4. Placed orders of a coded category without a number, with their queue row: none once repair rows drain, except
+--    orders placed before superadmin gave their category its code, which stay unnumbered by design (D8, D11).
 SELECT co.id, co.category, co.status, q.repair, q.attempts, q.dead_lettered_at
 FROM catalog.catalog_orders co
 JOIN catalog.product_categories pc ON pc.code = co.category AND pc.order_code IS NOT NULL
@@ -605,7 +623,7 @@ ORDER BY 2;
 COMMIT;
 ```
 
-- **1.** SOP release: tenant_school 31, catalog 39, workflow 21, reporting 36. Contract release: catalog 40,
+- **1.** SOP release: tenant_school 31, catalog 39, workflow 21, reporting 36. Contract release: catalog 41,
   workflow 22.
 - **2–5.** No dead-lettered row. Repair rows only while a revision that does not mint serves, and then none. 0 orders
   still pending, no rows from 4, and 0 facts from 5, once the queue and the inbox have drained (minutes on dev; in prod
@@ -908,7 +926,11 @@ it. The retired V36 tables stay too; school-core still reads them.
 | `trg_catalog_orders_queue_unnumbered_placement` and `catalog.queue_unnumbered_placement()` (catalog V38) | Queues for repair an order that leaves DRAFT without a number | Every school-core older than the SOP release (prod's `main`). Also the SOP release's legacy status update, until the contract release's mint fix serves |
 | `trg_reporting_event_inbox_catalog_order_number` and `reporting.copy_catalog_order_number()` (reporting V36) | Copies an event's number onto a fact that lacks it when any revision marks the event processed | Every platform older than the SOP release (prod's `main`), whose projector ignores `orderNumber` |
 
-The `repair` column stays as long as the code reads it. The placement trigger is load-bearing on dev today:
+The `repair` column and school-core's repair code stay whatever happens to the placement trigger: since catalog V41,
+`catalog.apply_legacy_catalog_mappings()` queues repair rows for the placed orders it migrates, so they stay while that
+function exists.
+
+Before the contract release, the placement trigger was load-bearing on dev:
 
 - On the scratch database above, the legacy branch of `updateOrderStatus`, its UPDATE run verbatim as
   `ims_school_core_rt` in a request scoped to one school, moved a FLEX draft out of DRAFT with no number.
@@ -968,7 +990,9 @@ what was repaired before. The SQL alone cannot show that a placement path stoppe
 SET default_transaction_read_only = on;
 BEGIN;
 SELECT set_config('app.bypass_rls', 'on', true);
--- 1. Placed orders of a coded category still without a number (expect none; each needs a live repair row until numbered).
+-- 1. Placed orders of a coded category still without a number. Expect none, except orders placed before superadmin gave
+--    their category its code, which stay unnumbered by design (D8, D11): check the category's edit history for those.
+--    Any other row needs a live repair row until numbered.
 SELECT co.id, co.category, co.status, q.repair, q.attempts, q.dead_lettered_at
 FROM catalog.catalog_orders co
 JOIN catalog.product_categories pc ON pc.code = co.category AND pc.order_code IS NOT NULL
@@ -1015,14 +1039,21 @@ gcloud logging read "resource.type=\"cloud_run_revision\" AND resource.labels.se
   covered. For the legacy status update, the evidence is the contract release's own test
   (`ProductOrderWorkflowIntegrationTest.aLegacyStatusOverrideOutOfDraftMintsTheNumberInThatTransaction`, `b2186ea9`).
 
-Clean means: no rows from 1 or 2; 0 from 3; both bridges listed in 4; and no line from the log reads, whose windows
-together cover the time since `MINT_FIX_FROM`. Each line names an order placed without a number after the mint fix
-served. Find the path that placed it, from the order's request logs just before the line, and keep the trigger until
-that path mints.
+Clean means: no rows from 1 other than orders placed before their category got its code; no rows from 2; 0 from 3;
+both bridges listed in 4; and no line from the log reads, whose windows together cover the time since `MINT_FIX_FROM`.
+A line for a `LEGACY-SUPPLY-…` order comes from an owner's run of the legacy consolidation (catalog V41 queues those
+for repair on purpose), not from a placement path. Any other line names an order placed without a number after the
+mint fix served. Find the path that placed it, from the order's request logs just before the line, and keep the
+trigger until that path mints.
 
 **The migrations.** These are migrations, not steps to run by hand. Each takes its own lock with the `NOWAIT` loop, as
-V38 does: Flyway commits every version separately, so no earlier version's lock is still held. Each sweeps under the
-bypass before it drops anything, and drops without `IF EXISTS`. Replace `<n>` and `<m>` with the next free versions.
+V38 does: Flyway commits every version separately, so no earlier version's lock is still held. Each drops without
+`IF EXISTS`. Replace `<n>` and `<m>` with the next free versions (catalog V42 or later: V41 is the consolidation fix).
+
+The catalog one has **no sweep** of placed, unnumbered orders, unlike V38 step 2b. Once the conditions hold, no path
+places an order without minting, so a sweep would find only orders placed before their category got its code, and the
+repair would number them, against D8 and D11. The reporting one keeps its last copy: it only fills a number the events
+already carry.
 
 ```sql
 -- catalog V<n>__retire_unnumbered_placement_repair.sql: only once every condition above holds.
@@ -1042,16 +1073,7 @@ BEGIN
     RAISE EXCEPTION 'V<n>: catalog_orders stayed busy for 15 seconds; nothing was changed, re-run the migration job';
 END $$;
 
--- A last sweep, as V38 step 2b: an order placed without a number before the lock is queued for repair, so it still gets
--- one (the repair column and the code stay). The owner sees no rows of a forced-RLS table without the bypass.
-SET LOCAL app.bypass_rls = 'on';
-INSERT INTO catalog.order_workflow_creation_queue (order_id, school_id, repair)
-SELECT co.id, co.school_id, true
-FROM catalog.catalog_orders co
-JOIN catalog.product_categories pc ON pc.code = co.category AND pc.order_code IS NOT NULL
-WHERE co.status <> 'DRAFT' AND co.order_number IS NULL
-ON CONFLICT (order_id) DO UPDATE SET repair = true;
-
+-- No sweep: see above. The repair column and the repair code stay (catalog V41's consolidation still queues repairs).
 -- No IF EXISTS: a missing trigger means this database is not in the state this migration was written for.
 DROP TRIGGER trg_catalog_orders_queue_unnumbered_placement ON catalog.catalog_orders;
 DROP FUNCTION catalog.queue_unnumbered_placement();
@@ -1095,18 +1117,19 @@ DROP TRIGGER trg_reporting_event_inbox_catalog_order_number ON reporting.reporti
 DROP FUNCTION reporting.copy_catalog_order_number();
 ```
 
-Evidence from the scratch database of 2026-11-13 (the migrations as V41 and V37):
+Evidence from the scratch database of 2026-11-13 and 2026-11-14 (the drafts numbered V41 and V37 there; in the repo
+catalog V41 is now the consolidation fix):
 
 - With a reader holding `catalog_orders` for 20 s, the catalog migration stopped after 16 s with its `stayed busy`
   message, and the trigger was still there.
 - With a reader holding it for 3 s, the migration finished in about 3 s. A new reader with a 1 s statement timeout,
   started during the retries, was not blocked.
-- The sweep queued both placed, unnumbered orders (a flier and a tie) for repair, and the trigger and function were
-  gone.
+- The trigger and function were gone afterwards. (The drafts then still had the sweep, which queued the placed,
+  unnumbered orders for repair. It was removed after the contract release established that orders placed before their
+  category got its code stay unnumbered.)
 - The reporting migration filled the one fact that lacked its number, then dropped its trigger and function.
-- On 2026-11-14 both ran again, after the contract release's real V40 and V22. The catalog one's sweep reached the
-  three placed, unnumbered orders, each already queued for repair (`INSERT 0 3`). The reporting one filled the one
-  fact. Pre-check query 4 then listed neither pair.
+- On 2026-11-14 both ran again, after the contract release's real V40 and V22. Pre-check query 4 then listed neither
+  pair.
 
 ## Production
 

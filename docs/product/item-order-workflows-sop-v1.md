@@ -69,7 +69,7 @@ Each decision gives the **choice**, the *alternatives* considered, and *why*.
   - Placing an order in any category with a `workflow_definition` starts an operations workflow (a generalised `startTracker`).
   - Migration V38 queues every open, placed product order that has a V36 workflow. The creation call carries the V36 progress. Operations marks those stages COMPLETED without re-applying gates, logs the action `STEP_IMPORTED`, and copies each stage's "Production update" and note into stage-note entries.
   - Stage codes map one to one, except `DESIGN_ACTIVITY`→`DESIGNING_ACTIVITY` and `FINAL_VERIFICATION`→`FINAL_APPROVAL`.
-  - The V36 tables (`catalog.product_order_workflows`, `catalog.product_order_workflow_steps`) become read-only: the runtime role loses INSERT, UPDATE and DELETE. They are kept for one release, then dropped in a follow-up (out of scope).
+  - The V36 tables (`catalog.product_order_workflows`, `catalog.product_order_workflow_steps`) become read-only: the runtime role loses INSERT, UPDATE and DELETE. They are kept for one release, then dropped in a follow-up (out of scope). Not yet droppable: the creation queue still imports their progress (`NotebookTrackerCreationQueue`, including `product_order_workflow_steps.stage_note`), and `ProductOrderWorkflowService` still reads them for the retired `GET …/production-workflow`.
   - `GET …/production-workflow` stays, read-only. `PUT` and `POST` return 409 `WORKFLOW_MOVED`.
   - `ProductOrderWorkflowService.CATEGORIES`, the lazy creation in `view()`, `ProductOrderWorkflow.tsx` and the `productionWorkflowAvailable` flag are removed. For staff, `ProductOrderDetail` links to the order workflow instead.
 - *Alternative.* Keep both engines side by side. That means two UIs and two status models for the same order.
@@ -430,7 +430,7 @@ Superadmin sets the code, noun and template for any new category in Catalog mana
 - **Operations now scopes by category.** An item-scoped operator's schools for each workflow category come from `TenantContext.operatorSchoolsFor(category)`. The RLS session variable `app.operator_schools` holds the union of those schools, and queries additionally filter on each row's (school, category) pair.
 
 **D43. Rollout.**
-- **Target.** Dev only. Prod is on hold, so there is no prod plan.
+- **Target.** Dev only. Prod is on hold, so there is no prod plan. The runbook now has a production section for when the hold ends: the single migration job per service while `main` serves, the prerequisites, the read-only pre-counts, and the rows to bring forward after operations serves.
 - **Branch.** One integration branch, `feat/item-order-workflows`, cut from dev. Each work package is a branch merged into it, and each runs `CI / PR` through `workflow_dispatch`: PR CI only triggers on PRs into dev or main, and tests run only on PRs.
 - **Merge.** One PR from the integration branch into dev, which runs full CI. Merging it deploys to dev.
 - **No feature flag.** Setting a category's `workflow_definition` to null stops new placements of that category from starting a workflow.
@@ -443,7 +443,7 @@ Superadmin sets the code, noun and template for any new category in Catalog mana
 - A template editor UI.
 - A vendor portal.
 - Reporting dashboards on workflow turnaround.
-- Dropping the V36 tables and the internal-path alias (a follow-up release).
+- Dropping the V36 tables (still read; see D4). The internal-path alias went in the contract release (see "Contract release: retiring the rollout bridges").
 - Removing the notebook workbook-preview endpoint. Its UI is retired; the endpoint stays.
 - Rotating the credentials seen in the recording (an owner action).
 - Any prod work.
@@ -1835,10 +1835,7 @@ This closes the handoffs from "Review fixes: frontend", "Review fixes: operation
   - `ensure` revives a row and keeps its `repair` flag, but it refuses an order that is not on a workflow. A repair row's order can be one of these, so a new SQL snippet revives such a dead-lettered row.
   - A repair row must never be abandoned while its order still exists: nothing would queue that order's number again.
   - *Evidence.* V38 and every runbook statement ran on a scratch PostgreSQL 16 over a minimal catalog schema: a placement by the previous revision queued for repair, a forwarded insert, then read, revive, abandon and the clean-up, which dropped both triggers. These ran as a superuser, so they check the syntax and the effect, not the RLS bypass.
-  - *Still stale (out of scope).* The runbook's route table and post-deploy probe still describe the notebook tracker release.
-    - The probe's `GET /api/v1/workflows/notebook-orders/{orderId}` now returns 404 (`theOldNotebookOrderRoutesAreGone`).
-    - Creation now uses `POST /api/v1/internal/order-workflows`; the notebook-tracker paths remain as aliases for one release.
-    - The SOP release needs its own deploy and probe section.
+  - *Closed since: the runbook's routes and probe.* `docs/runbooks/notebook-tracker-deploy.md` was rewritten for the SOP release and the contract release (see "Runbook rewrite" below). Its probe no longer expects `GET /api/v1/workflows/notebook-orders/{orderId}` to answer; through the gateway every such route answers 401, so only a signed-in session can show it is gone (`theOldNotebookOrderRoutesAreGone`).
 - **Verification (all `clean` for Java).**
   - `node scripts/generate-openapi-typescript-client.js --check`: current (16 domains, 161 operations).
   - `node scripts/generate-api-route-inventory.js --check`: current (502 endpoints).
@@ -1868,3 +1865,231 @@ A second review looked only at the first round's fixes: rollout and migration sa
   - The fallback for fewer than 2 initials now takes the first word that is not a stop word ("The Heritage" → HER, not THE), and pads with X ("X" → XX).
   - Accented letters are dropped, as `SchoolOrderCode` and tenant_school V31 drop them ("École" → C), instead of folded.
   - Tests: `codes.test.ts`.
+
+### Contract release: retiring the rollout bridges
+
+PR #382 left bridges for the one release in which an older revision could still serve beside it. This release drops the ones that no environment needs any more. It keeps the ones prod's first release with the item order workflows still needs, and says exactly when each may go. It also closes the paths that could still leave a placed order of a coded category without a number, which is what the kept placement trigger compensates for. Branch `chore/retire-sop-rollout-bridges`; migrations catalog V40 and V41 (school-core) and workflow V22 (operations).
+
+**Who can still serve.** Checked before anything was dropped:
+- Dev serves ed8aeba5 on school-core, operations and platform (100 % of traffic, image tag `sha-ed8aeba5…`).
+- Prod serves origin/main (88fbf4ad). Its school-core has no creation queue and never mints. Its operations has no tracker, no `workflow_instance_steps`, no `/order-workflows` routes and no `/notebook-trackers` aliases (`git grep` on origin/main finds none of them).
+- Dev data, read-only under the bypass on 2026-11-13: `catalog.notebook_tracker_creation_queue` 0 rows; `order_workflow_creation_queue` 0 rows; 0 non-blank `stage_note` values; 0 placed orders of a coded category without a number.
+
+#### Dropped
+
+- **The old creation queue (catalog V40, `V40__retire_notebook_tracker_creation_queue.sql`).**
+  - *Before.* V38 kept `catalog.notebook_tracker_creation_queue` with a `BEFORE INSERT` trigger that forwarded every row into `order_workflow_creation_queue`, for a school-core older than ed8aeba5.
+  - *Now.* V40 drops the table (its trigger, policy, index and foreign key go with it), then `catalog.forward_to_order_workflow_creation_queue()`.
+  - *Leftover rows.* The table holds a row only if a writer bypassed the trigger (`session_replication_role = replica`, a disabled trigger, a data load). V40 first forwards any such row exactly as the trigger would have: a new row with fresh retries; a row already queued is due again now with fresh retries, keeping its `repair` flag and last error (`V40:41-49`, the conflict rule of `V38:99-100`). It logs the order ids it moved (NOTICE).
+  - *Orphaned leftover rows.* Replica mode also skips the old table's foreign key, so a leftover row can name an order that does not exist, or not at that school. The trigger could never have forwarded such a row (the new queue's foreign key refuses it), and `ON DELETE CASCADE` would have removed it with its order. V40 forwards only rows whose `(order_id, school_id)` exists in `catalog_orders` and drops the others with the table, naming them in a WARNING (`V40:35-37`, `:44`, `:56-58`): "V40: dropped rows left in catalog.notebook_tracker_creation_queue whose order does not exist at that school: CK-506 (school 2), CK-999 (school 1)". *Before this fix* one such row failed V40 with a bare foreign-key violation on every re-run.
+  - *Bypass.* V40 sets `app.bypass_rls = 'on'` (`V40:17`). Without it the migration owner sees no row under FORCE RLS, and the drop would silently discard every leftover row. The test below shows that.
+  - *Locks.* Dropping the table drops its foreign key's integrity triggers on `catalog_orders`, so V40 needs ACCESS EXCLUSIVE on both tables. V38's own comment, "they cost nothing" (`V38:27`), understated this. V40 takes both locks together with `NOWAIT`, releases them when either is busy, and retries for 15 seconds (`V40:19-30`). Then it stops: "nothing was changed, re-run the migration job". Readers are never queued behind the wait.
+- **The retired stage-note columns (workflow V22, `V22__retire_stage_note_columns.sql`).**
+  - *Before.* `workflow_instance_steps.stage_note`, `stage_note_saved_at` and `stage_note_saved_by` stayed after V20, and V21's trigger `copy_retired_stage_note` copied each note an old revision still saved into the stage's entries.
+  - *Now.* V22, in one transaction:
+    1. sets the bypass and a 15 s `lock_timeout`, and takes ACCESS EXCLUSIVE on `workflow_instance_steps` with the same `NOWAIT` retry loop (`V22:14-33`);
+    2. repeats V21 step 3a's copy, verbatim (`V22:35-45`). It copies each authored note that is in no entry yet, once;
+    3. stops and names every note still in no entry, as V19 and V21 stop on what they cannot map (`V22:47-68`). Such a note has no recorded author, so V20 and V21 never copied it. The message names `instance <id> (order <CK-…>) step <n>` and says nothing was changed. It then says: as the migration owner, in a transaction that first runs `SET LOCAL app.bypass_rls = 'on'`, copy the note into `workflow_internal_notes` with its author, or clear it; commit; re-run the job;
+    4. drops the trigger, then its function, then the three columns (`V22:70-76`). The trigger depends on the columns, so it goes first.
+  - *Why the message names the bypass.* Both tables force row-level security. Without the bypass the migration owner sees no row: its `UPDATE … SET stage_note = NULL` changes 0 rows with no error, and its `INSERT` into `workflow_internal_notes` is refused. Following the earlier message as written fixed nothing, and the re-run stopped again.
+  - *Not touched:* `catalog.product_order_workflow_steps.stage_note` (catalog V36). It is another table, and ed8aeba5 still reads it (`NotebookTrackerCreationQueue.withImportedProgress`).
+  - On prod's first release the table is created empty in the same job (workflow V8), so steps 2 and 3 find nothing.
+- **The one-release internal-path aliases (design D6).**
+  - *Before.* Operations served `POST /api/v1/internal/notebook-trackers` and `POST /api/v1/internal/notebook-trackers/{orderId}/image-access` beside the order-workflow paths. School-core's `OperationsTrackerClient.imageAccess` asked the alias again on a 404 or an empty-body 403.
+  - *Now.*
+    - `OrderWorkflowMachineController` maps only `/order-workflows` and `/order-workflows/{orderId}/design-file-access`.
+    - The two alias lines are gone from `MachineCallerFilter.callerProperty`, in all five identical copies (billing, identity, operations, platform, school-core). `scripts/check-duplicate-class-drift.py` reports 5 identical copies. An alias path is now an unregistered internal route: 403 before any controller, even for school-core's account.
+    - `OperationsTrackerClient.imageAccess` asks the design-file route once. A 404 or a bare 403 now fails closed like any other refusal.
+    - `scripts/audit-service-authorization-boundaries.ps1` drops the two alias contracts. `scripts/tests/service_authorization_machine_proof_test.py` drops their cases.
+    - `services/api-gateway/api-route-inventory.json` is regenerated: 500 endpoints, 21 internal (was 502 and 23). No OpenAPI contract or generated client named the aliases.
+  - *Why it is safe.* Only an operations older than ed8aeba5 had the alias without the new path. Only a school-core older than ed8aeba5 called the alias. Neither can serve after this release (see *Rollback*). Prod's origin/main has neither path, so the alias never helped prod. In prod's first release the new school-core's design-file checks fail closed (503) until the new operations serves, with or without the alias.
+
+#### Kept, and when each may go
+
+- **V38's placement trigger, `trg_catalog_orders_queue_unnumbered_placement`, with `catalog.queue_unnumbered_placement()`.**
+  - *Why.* During prod's first release with the item order workflows, origin/main's school-core keeps serving through the canary. It places orders, and moves them out of DRAFT by superadmin's status override, without minting. The trigger queues each for repair at commit. V38 step 2b only catches orders placed before V38 took its locks.
+  - *When it may be dropped.* In a later migration, only when both hold. V40 records this on the function and the trigger (`COMMENT ON`, `V40:65-76`):
+    1. every school-core revision that can serve, in every environment, mints on the legacy status update (this release or later; see *Fixed* below);
+    2. prod's first release with the item order workflows has completed its school-core canary, and the rollback target is that release or later.
+- **The `repair` column of `order_workflow_creation_queue` and the repair code (`NotebookTrackerCreationQueue.repair`).** They stay while repair rows can be written. Two writers can write them: V38's placement trigger (above), and, since catalog V41, `catalog.apply_legacy_catalog_mappings()` (see *Added* below). So they stay as long as that function exists, even after the placement trigger goes. Prod's V38 step 2b also creates repair rows at promotion.
+- **Reporting V36's trigger `trg_reporting_event_inbox_catalog_order_number`.** Not touched. It fills `orderNumber` for a projector that does not write it. It may go only when both hold:
+  1. no platform revision older than ed8aeba5 can serve in any environment. Reporting V36 came with PR #382 (89d14a36), so dev's platform at 53f75ef6 predates it, and dev can still roll platform back there. This release declares rollback below ed8aeba5 unsupported for school-core and operations only, not for platform. Dropping the trigger would make that rollback silently lose order numbers in reporting; so either keep the trigger, or declare that rollback unsupported in the same release;
+  2. prod's first release with the item order workflows has completed its platform canary, and the rollback target is that release or later (origin/main's platform projector ignores `orderNumber`).
+- **The V36 tables `catalog.product_order_workflows` and `product_order_workflow_steps`.** Not touched. ed8aeba5 still reads them (`ProductOrderWorkflowService`, `NotebookTrackerCreationQueue.withImportedProgress`).
+- **A create without `definitionId` is still a notebook order** (`OrderWorkflowService.item`). No caller sends one any more: every school-core that can serve sends the template. It is input tolerance, not a route, so it stays; removing it is a follow-up.
+
+#### Fixed: superadmin's status override places the order when it takes it out of DRAFT
+
+- *Before.* `CatalogReadRepository.updateOrderStatus`, for an order of the older form (`form_version != 2`), ran `UPDATE … SET status = :status` and nothing else. Superadmin reaches it through `PATCH /orders/{id}/status`, `PATCH /api/v1/supply|sa/orders/{id}/status` and the All orders "Update status" select (`SaAllOrdersPanel.tsx`). A draft of a coded category (for example a legacy `NOTEBOOKS` or `TIES` draft) left DRAFT with no number, no `placed_at` and no `placed_by`. Only V38's trigger queued it for repair, so its event went out without a number and its number came a drain later, dated by the drain.
+- *Now.* It reads the status under the order's row lock (`SELECT … FOR UPDATE`, `CatalogReadRepository.java:456`). Only when the override takes a draft out of DRAFT does it place the order as `placeOrder` does (`:377-423`):
+  - it records the placement: `placed_at = COALESCE(placed_at, now)`, `placed_by = COALESCE(placed_by, superadmin)` (`:464`);
+  - it calls `OrderNumberAllocator.mint(jdbc, id)` in the same transaction (`:472`). The number is dated by that placement. The event and outbox row it then emits carry the number. The trigger finds the order numbered at commit and queues nothing.
+  - `mint` does nothing for a category without an order code, or an order that already has a number. It serialises the running number as a placement does: the update holds the order's row lock, then the counter row is taken with a single-row upsert and held until commit.
+- *Any other override changes the status only, and numbers nothing.* An order that left DRAFT earlier without a number keeps none:
+  - one placed before its category had an order code stays unnumbered (by design; see the sweep below);
+  - one the previous revision (origin/main) placed is numbered by its repair, not by the override.
+  - *Why.* An earlier version of this fix minted after every override. A routine override such as PROCESSING → DELIVERED then quietly numbered an old order in its placement year's series while its siblings stayed unnumbered.
+- *Also fixed: a legacy order created already placed.* `CatalogReadRepository.createOrder` accepts any status. The controllers always pass DRAFT (`CatalogReadController.java:158`, `CatalogPublicCompatibilityController.java:114`), but the method mints after its insert now (`:361`). It already records `placed_at` for a non-DRAFT insert. V38's trigger fires only on an update out of DRAFT, so nothing else would ever number such an order.
+
+#### Added: the legacy catalog consolidation queues its placed orders for their number (catalog V41)
+
+- *Before.* `catalog.apply_legacy_catalog_mappings()` (catalog V8) is still live: an operator runs it by hand (`docs/operations/database-consolidation-runbook.md` §2, `SELECT * FROM catalog.apply_legacy_catalog_mappings()`). It inserts each mapped `catalog.supply_orders` row into `catalog_orders` with `status = upper(source.status)` and `category = upper(source.category)` (`V8:82-97`), and never sets `order_number`. A legacy `Notebooks` order of status `Placed` became a placed `NOTEBOOKS` order (code NB) without a number, for good. V37 numbered only the orders placed before it. V38's trigger fires only on `UPDATE OF status` out of DRAFT (`V38:130-135`), never on this INSERT. D13 was broken for these orders.
+- *Now.* `V41__legacy_catalog_mappings_queue_placed_orders_for_numbers.sql` replaces the function with the same body, except:
+  - the supply-order INSERT returns its rows (`V41:34-65`);
+  - a second statement in the same `WITH` queues each inserted order that is not DRAFT and whose category has an order code for repair, by V38 step 2b's rule: `ON CONFLICT (order_id) DO UPDATE SET repair = true` (`V41:66-75`).
+- The next drain mints its number (dated by the legacy order date), tells reporting, and drops the row: a legacy order (`form_version` 1) runs on no workflow. Ledger updates and the result row are unchanged.
+- `CREATE OR REPLACE` keeps V8's owner-only privileges and takes no table lock. Its `COMMENT` says to keep the repair column and code while the function exists (`V41:129-132`).
+- *Not re-queued:* orders the function migrated earlier. V37 numbered every placed coded order when it ran. Dev had no placed coded order without a number on 2026-11-13 (read-only, under the bypass). Prod runs V37 to V41 in one migration job. Neither dev nor prod was queried again for `legacy_catalog_migration_map` rows (this work had no database access).
+
+#### Sweep: every write that can leave a placed order of a coded category without a number
+
+- *Fixed in this release:*
+  - `CatalogReadRepository.updateOrderStatus`, legacy branch (above);
+  - `CatalogReadRepository.createOrder` with a non-DRAFT status (above);
+  - `catalog.apply_legacy_catalog_mappings()` (catalog V41, above).
+- *Already mint:* `placeOrder` (legacy) and `CatalogOrderFormService.transition` with PLACE (`CatalogReadRepository.java:423`, `CatalogOrderFormService.java:273`). `NotebookTrackerCreationQueue.repair` mints; its other updates change only `attributes`.
+- *Never take an order out of DRAFT:*
+  - `CatalogOrderFormService.create` always inserts DRAFT;
+  - `transition`'s other actions, `returnOrder`, `applyTrackerStatus` and `assetChanged` start only from non-DRAFT statuses (the last two refuse or skip DRAFT);
+  - the legacy `markDesignApproved`, `approveBySuperadmin`, `markDelivered` and `returnBySuperadmin` also start only from non-DRAFT statuses. A placed order keeps its number (catalog V37's trigger refuses a change).
+- *One-off, before V37:* catalog V1's copy of `public.catalog_orders` (`V1:118-138`). V37 numbered those.
+- *Local only:* `scripts/ensure-local-dev-users.ps1:337` inserts local probe orders of `NOTEBOOK`, a category without an order code, with no status.
+- *No other writer:* no other service writes `catalog.catalog_orders`. The legacy retirement scripts (`scripts/generate-legacy-public-retirement-*.ps1`) only drop `public.*` tables.
+- *By design: a category given an order code later.* This is not a write to `catalog_orders`, but it changes which orders count as coded.
+  - Superadmin can set, change or clear a category's `orderCode` on an existing category: Catalog manager (`ProductCatalogManager.tsx:94`), `PATCH /api/v1/supply/product-catalog/categories/{code}`, `ProductCatalogRepository.update`.
+  - Once an uncoded category (for example UNIFORMS) gets a code, its orders placed before stay placed and unnumbered. Nothing numbers them.
+  - This is the rule, not a gap. A number is minted at placement (D11) and only when the category has a code then (D8: "A category with no code gets no order number"). `ProductCatalogRepository.java:265` says "Changing the code affects only numbers minted afterwards", as D12 says of school codes. Numbering them later would give old placements running numbers after newer ones. Through the repair it would also move an open structured order onto a workflow mid-flight. That is a product decision for the owner, not part of this release.
+  - The legacy override no longer numbers such an order as a side effect (above). `aCategoryGivenAnOrderCodeNumbersOnlyItsLaterPlacements` pins the rule.
+  - So "placed orders of coded categories without a number = 0" is a point-in-time fact, not an invariant. After a category gains a code, the count can rise legitimately.
+
+#### Rollback consequences
+
+- **Dev, below ed8aeba5: unsupported from this release on.**
+  - School-core at 53f75ef6 enqueues into `notebook_tracker_creation_queue` inside the placing transaction. After V40, every notebook placement and every hand-started workflow fails with "relation does not exist", and so do its drain and its health query.
+  - Operations at 53f75ef6 selects `stage_note` in every step read. After V22, every tracker read fails.
+- **Dev, to ed8aeba5: supported.** Neither service at ed8aeba5 reads a dropped object. Its school-core asks the new design-file path first, which this release's operations serves. Its operations still registers the aliases, which nothing calls. A school-core at ed8aeba5 does not mint on the legacy status override, which is why V38's placement trigger stays (condition 1).
+- **Prod, to origin/main: unaffected.** Main names none of the dropped objects or paths. Its placements without numbers are queued by the kept trigger and wait for the next roll-forward, as before.
+- **Catalog V41 and the override fix change nothing for a rollback.** No revision calls `apply_legacy_catalog_mappings()`; an operator does. The repair rows it writes are drained by every school-core from ed8aeba5 on; under origin/main they wait for the roll-forward, like the trigger's. A school-core at ed8aeba5 overrides without placing or minting, and the kept trigger repairs it.
+- **Deploy order.** Either service may deploy first on dev: every school-core that can serve calls only the order-workflow paths, and every operations that can serve has them.
+
+#### Tests
+
+All Java runs with `clean`. Each new test that is meant to catch a defect was run against the code without the fix, and failed.
+
+- `CreationQueueRetirementMigrationTest` (school-core, 6), pinned to catalog V40 since V41 follows. Migrations run as a non-superuser, non-BYPASSRLS owner, as in every deployed environment.
+  - `aBusyCatalogOrdersTableStopsTheMigrationWithinAboutFifteenSecondsHavingChangedNothing`: a reader holds `catalog_orders`; V40 retries about 15 s, stops with its message, and leaves the old table, its 4 rows and Flyway at 39.
+  - `theOldQueueItsForwardingTriggerAndItsFunctionAreGone`.
+  - `rowsLeftInTheOldQueueAreForwardedExactlyAsItsTriggerWouldHaveForwardedThem`: rows written with `session_replication_role = replica`, in two schools; a new row gets fresh retries, a dead-lettered repair row is revived and keeps `repair` and its last error. *Without V40's bypass this failed:* CK-501's row was dropped with the table and CK-502 stayed dead-lettered.
+  - `rowsLeftInTheOldQueueForAnOrderThatDoesNotExistAreDroppedNotForwarded`: replica-mode rows for CK-999 (no such order) and CK-506 at the wrong school are dropped, not forwarded, and CK-506 itself is untouched. *Without the fix the whole class failed in `@BeforeAll`:* "insert or update on table order_workflow_creation_queue violates foreign key constraint". The Flyway log shows the WARNING naming both.
+  - `thePlacementTriggerStaysAndStillQueuesAnUnnumberedPlacementForRepair`: as `ims_school_core_rt`, origin/main's placement is queued with `repair`; a minting placement and an uncoded category are not. Both comments state the drop conditions.
+  - `theNewQueueKeepsItsRowLevelSecurityAndTheRuntimeRolesKeepTheirPrivileges`: FORCE RLS and `tenant_isolation`; `app_rt` and `ims_school_core_rt` hold the same privileges on every catalog table after `afterMigrate`; another school's row is refused.
+- `StageNoteRetirementMigrationTest` (operations, 7). Same owner set-up.
+  - `aBusyStepsTableStopsTheMigrationWithinAboutFifteenSecondsHavingChangedNothing`.
+  - `aNoteWithNoRecordedAuthorStopsTheMigrationNamedAndNothingIsChanged`: names `instance <id> (order CK-403) step 3` only, and tells the operator to work "As the migration owner, in a transaction that first runs SET LOCAL app.bypass_rls = 'on'"; columns, trigger, function and Flyway 21 are unchanged; the copy rolled back. *Without the guard this failed:* V22 migrated and dropped the note. *Against the earlier V22 message it failed* on the bypass sentence.
+  - `theRemedyTheMessageGivesNeedsTheBypassItNames`: as the migration owner without the bypass, the clear updates 0 rows and the copy is refused ("row-level security"). The set-up then follows the message exactly, as the owner, with `SET LOCAL app.bypass_rls = 'on'`, and re-runs the job.
+  - `theTriggerItsFunctionAndTheColumnsAreGone`, after that re-run.
+  - `everyNoteIsAStageEntryOnceWithItsAuthorAndTime`: an authored note written with V21's trigger bypassed is copied once with its author and time; notes already in entries are not duplicated; a blank note is ignored. *Without V22's bypass this failed:* the note was lost and the author-less note was dropped silently.
+  - `theServingRevisionsStepQueriesStillWorkAsTheRuntimeRole`: `OrderWorkflowRepository.findByOrder`, `steps` and `saveStepData` as `app_rt`.
+  - `theDedicatedRuntimeRoleKeepsTheRuntimeRolesPrivilegesOnTheSteps`.
+- `ProductOrderWorkflowIntegrationTest` (runtime role, forced RLS, real transactions, V38's trigger present):
+  - `aLegacyStatusOverrideOutOfDraftMintsTheNumberInThatTransaction`: a legacy TIES draft overridden to IN_PROGRESS gets `placed_at` and `placed_by` 99 (superadmin), returns and stores `TIE-SA_IN-<its placement day>-0001`, queues no repair row, and its event carries the number. UNIFORMS gets none. An already-numbered notebook keeps its number. A TIES order placed a month ago without a number, overridden to DELIVERED, stays unnumbered and keeps its placer. Counters end at NB=1, TIE=1. *Without the fix it failed:* against ed8aeba5 the TIES number was null; against cc85c058 (which minted after every override) it failed at "an order that left DRAFT earlier is not numbered by a later override" ("expected: null but was TIE-SA_IN-26-10-15-0002"); with only the placement recording removed it failed at "the override recorded the placement".
+  - `aCategoryGivenAnOrderCodeNumbersOnlyItsLaterPlacements`: superadmin gives UNIFORMS the code UNF through `ProductCatalogRepository.update`. An order placed before stays unnumbered, even after an override to DELIVERED; the next placement is `UNF-SA_IN-…-0001`. *Against cc85c058 it failed:* "expected: null but was UNF-SA_IN-26-11-14-0001".
+  - `aPlacedLegacySupplyOrderTheConsolidationMigratesIsNumberedByTheNextDrain`: a legacy `Notebooks`/`Placed` supply order mapped to school 1 and applied by the function is queued for repair; the drain numbers it `NB-SA_IN-26-03-02-0001` (its legacy order date), creates no workflow, drops the row and tells reporting. *Without V41 it failed:* no queue row.
+- `LegacyCatalogConsolidationIntegrationTest.aPlacedOrderOfACodedCategoryIsQueuedForItsNumber`: placed Notebooks and delivered ` ties ` are queued with `repair`; a draft and a stationery order are not; a re-run queues nothing. *Without V41 it failed:* nothing was queued.
+- `CatalogOrderEventEmissionIntegrationTest.aLegacyOrderCreatedAlreadyPlacedIsNumberedAtOnceAndTheEventCarriesIt`. *Without the fix it failed:* the number was null.
+- Aliases:
+  - `MachineCallerFilterTest.theRetiredNotebookTrackerAliasesAreRefusedEvenToTheirFormerCaller`, in all five services; `localTrustNeverOpensAnUnregisteredOrNoncanonicalInternalRoute` now lists the alias paths. Both failed against the ed8aeba5 filter.
+  - `OrderWorkflowMachineControllerTest.theRetiredNotebookTrackerPathsAreGone` (failed against the ed8aeba5 controller) and `aCreateWithoutATemplateIsPassedOnWithNone`.
+  - `PeerClientsTest.imageAccessNeverAsksTheRetiredNotebookTrackerAlias` (failed against the ed8aeba5 client: it asked the alias and was allowed) and `imageAccessFailsClosedOnEveryOtherRefusal`.
+- Pinned, not weakened:
+  - `ItemOrderNumberMigrationTest` now migrates catalog to V39, not the latest. Its rollout-window tests use the old queue V40 drops.
+  - `ProductOrderWorkflowIntegrationTest.anOrderThePreviousRevisionPlacedIsNumberedMovedOntoItsWorkflowAndCreated` no longer inserts into the dropped table. V38's trigger still queues all three placements for repair, and the rest of the test is unchanged. The forwarding itself stays covered at V39 by `ItemOrderNumberMigrationTest`. The class stays at the latest schema: its other 19 tests cover current behaviour.
+  - `OrderWorkflowRolloutWindowMigrationTest` and `OrderWorkflowMigrationTest` were already pinned to workflow V21 and V20.
+- Full suites, `./mvnw -B -fae clean test` from the root, at the branch head: billing 101, identity 225 (1 skipped), operations 550, platform 520, school-core 1246 (1 skipped); BUILD SUCCESS, no failures or errors. `MigrationOnlyMainIntegrationTest` runs catalog V40 and V41 and workflow V22 on empty schemas as the migration-only owner.
+- Checks, at the branch head: `node scripts/generate-api-route-inventory.js --check` (current, 500 endpoints); `node scripts/generate-openapi-typescript-client.js --check` (current, 16 domains, 161 canonical operations); `python scripts/check-duplicate-class-drift.py` (all 10 guarded classes consistent). Run at cc85c058, before the review fixes, which touch no contract, route, gateway or filter: the generator and gateway contract `node --test` suites (29 pass), the gateway suite (117 pass), and `python -m unittest scripts/tests/service_authorization_machine_proof_test.py` (22 pass, Windows PowerShell 5.1).
+
+#### The runbook
+
+`docs/runbooks/notebook-tracker-deploy.md` is updated in the same release (see "Runbook rewrite" below): the machine-route table, the contract release's migrations (V40, V41, V22), V40's NOTICE and WARNING, V22's stop with the bypass, the point-in-time nature of "placed orders of a coded category without a number", and the legacy consolidation's repair rows (also in `docs/operations/database-consolidation-runbook.md` §2).
+
+#### Corrections to earlier statements in this document
+
+- **D6 (`:94`).** "Kept: the creation-queue table name, `catalog.notebook_tracker_creation_queue`." False since catalog V38, which moved the queue to `catalog.order_workflow_creation_queue` (the deviation at `:1747`). Catalog V40 drops the old table.
+- **D6 (`:97`), the §3.5 table (`:840-841`), Out of scope (`:446`), WP2 acceptance (`:1182`), the risk table (`:1335`), `:1438`, `:1477-1483`, `:1541`, `:1775-1779` and `:1840`.** The `/notebook-trackers` alias paths and school-core's fallback to them are gone in this release. Either service may still deploy first on dev, because both directions now use the order-workflow paths. The V36 tables in `:446` are still kept.
+- **D38 (`:379`).** "The old `stage_note` columns are kept but no longer used." Workflow V22 drops them.
+- **§3.2 (`:732`).** V38 inserts into `order_workflow_creation_queue`, not `notebook_tracker_creation_queue`.
+- **`:1724`.** The stage-note clean-up is done: workflow V22.
+- **`:1751`.** "This release mints in the placing transaction, so its placements never match." False for one path: ed8aeba5's superadmin status override on a legacy order took a draft out of DRAFT without minting or recording the placement, and relied on the trigger. Fixed in this release (see *Fixed* above).
+- **D13 (`:168-172`) and `:1765` ("D13 now holds for them").** D13 did not hold for every path. The legacy catalog consolidation (`catalog.apply_legacy_catalog_mappings()`) inserted placed orders of coded categories without a number, and nothing queued them. Catalog V41 fixes that. D13 also holds only for orders placed while their category had a code: a category given a code later keeps its earlier orders unnumbered, by design (D8, D11).
+- **`:1761` and `:1833`.** The plan to drop the placement trigger and `catalog.queue_unnumbered_placement()` "next release" is withdrawn. Only the old table, its forwarding trigger and its function are dropped (catalog V40). The placement trigger stays until the two conditions under *Kept*. The runbook's ready-made clean-up SQL, which starts with `DROP TRIGGER IF EXISTS trg_catalog_orders_queue_unnumbered_placement`, must not be used; the runbook is updated separately.
+- **`:1837`.** The clean-up rehearsed there "dropped both triggers"; the real one keeps the placement trigger.
+- **`V38:27` (a migration comment, not editable).** "They cost nothing once that revision is gone": dropping the old table needs ACCESS EXCLUSIVE on `catalog_orders`, which V40 takes with a `NOWAIT` retry loop.
+
+### Runbook rewrite
+
+`docs/runbooks/notebook-tracker-deploy.md` is now "Order workflows (formerly the notebook order tracker): deploy,
+probe and clean up". The file name is kept, since other documents link to it.
+
+- **Routes.**
+  - *Before.* It listed the tracker's machine routes, with the alias as the create path.
+  - *Now.* Every `/item-orders`, set-up and vendor route, with who may call it. The school-core routes the SOP release
+    changed. The machine routes, with the alias marked until the contract release. The 25 removed `/notebook-orders/**`
+    routes. The `?panel=` screens.
+- **What each release carries.** The SOP release's migrations, per service, with their locks and stop-and-name
+  guards. The contract release. Prod's first release as one job per service while `main` serves.
+- **Windows.** What serves between gateway → identity → frontend → school-core → operations → billing → platform, on
+  dev's direct path and through prod's 5/25/50 % canaries. For example, in prod design-file changes answer 503 from
+  school-core's canary until operations serves, because `main`'s engine has neither the new path nor the alias.
+  - A dev run that is cancelled (dev runs are cancel-in-progress) or stops on a failure leaves its window open. The
+    next push deploys only what it changed, so the runbook closes the window with a dispatch on the dev head
+    (`commit_sha`), which includes every service. Do not merge to `dev` while a release rolls out.
+- **Migration job failures.** Where the reason is (only the Cloud SQL PostgreSQL log), which messages are safe to
+  re-run (the `stayed busy` messages of V38, V40 and V22; lock timeouts) and which are data problems (the stop-and-name
+  lists of V17, V19, V21 and V22).
+  - One case is not "nothing later deploys". In prod's Cloud Deploy path, operations and billing run in one wave, and
+    operations' rollout exists before billing's migration job runs. If billing's job fails, operations stays at its
+    5 % canary phase, and nothing advances it. Settle that rollout before re-running.
+- **Post-deploy checks prove only what they can.**
+  - Without a session, every `/api/v1/workflows/**` path answers 401, including the removed `/notebook-orders`, and
+    `/api/v1/internal/**` answers 404. So an unsigned probe cannot show a route is gone. A signed-in superadmin call
+    can, by copying a request from the browser's developer tools.
+  - `OWNER_MIGRATION_RESULT` lines (`textPayload`). `MigrationOnlyMain` hides a failure's reason, which is only in the
+    Cloud SQL PostgreSQL log.
+  - The operations startup line `Order workflow templates match the database`.
+  - ERROR and event queries on `jsonPayload`.
+  - A read-only SQL bundle under the bypass: schema heads, queue state, pending orders, placed orders without a
+    number, facts without a number, bridges present.
+- **Clean-up corrected.**
+  - *Before.* The runbook's clean-up SQL began `DROP TRIGGER IF EXISTS trg_catalog_orders_queue_unnumbered_placement`,
+    with no lock handling and no row guard.
+  - *Problem.* Prod's `main` and the SOP legacy status update both place orders that only that trigger numbers.
+  - *Now.* The runbook gives conditions, a read-only pre-check, and the two final migrations (placement trigger;
+    reporting number copy). Each uses the V38 NOWAIT lock loop in ACCESS EXCLUSIVE mode and drops without `IF EXISTS`. The
+    reporting one makes a last copy under the bypass first. The catalog one has no sweep (see below).
+  - *The pre-check reads logs too.* SQL shows only what is queued now, and a repair row lives about a minute. So the
+    pre-check also reads school-core's INFO line `… was placed without an order number and is repaired` since
+    `MINT_FIX_FROM`. It repeats the read once per `_Default` retention period, so the windows cover the whole time.
+- **Evidence.** Every SQL block in the runbook ran on scratch PostgreSQL 16 databases (2026-11-14). The migrations were
+  applied as a NOSUPERUSER, NOBYPASSRLS owner, with `app_rt`'s grants and each schema's afterMigrate.
+  - *Dev's path.* The real tenant_school V1–V31, catalog V1–V39, workflow V1–V21 and reporting V1–V36. Then the
+    contract release's real catalog V40 and workflow V22 (`cc85c058`), then the final clean-up. Without the bypass the
+    owner saw 0 of 7 orders. V22 stopped and named the one author-less note, changing nothing; it applied once the note
+    was cleared.
+  - *Prod's path.* `main`'s heads (tenant_school V30, catalog V26, workflow V7, reporting V35), where the prod
+    pre-count ran. Then every later version through V40 and V22, one run per schema: 31/1, 40/14, 22/15 and 36/1, as
+    the runbook's table says.
+  - *Locks.* With a reader holding `catalog_orders`, then `workflow_instance_steps`, for 20 s, V40 and V22 each stopped
+    after 16–21 s (two runs) with its `stayed busy` message and was not applied. A new reader with a 1 s statement
+    timeout, started during the retries, was answered each time. With a 3 s reader, each finished in 3–5 s. On
+    2026-11-13 the final clean-up's catalog migration behaved the same way.
+  - *Not real.* Flyway itself did not run: psql applied each version in one transaction, and the test filled history
+    tables of Flyway's shape. The legacy status update was its SQL statement, run as `ims_school_core_rt` in a request
+    scoped to one school, not the Java code.
+  - The unsigned probes ran against dev on 2026-11-13 19:03 UTC.
+- **Prod finding.** Prod's `main` has no catalog V36, so V38 moves prod's open structured orders of template categories
+  with no progress to import. They restart at step 1, and their status becomes `ORDER_DETAILS` once operations pushes,
+  whatever approval or production state they were in. The runbook's pre-count lists them for the owner before the
+  promotion.
+
+- **No sweep in the final placement-trigger clean-up (integration fix).** The runbook's draft of the final catalog migration repeated V38 step 2b: queue every placed, unnumbered order of a coded category for repair. After this release that would be wrong. An order placed before superadmin gave its category an order code stays unnumbered by design (D8, D11; `aCategoryGivenAnOrderCodeNumbersOnlyItsLaterPlacements`), and the repair would number it. Once the conditions for that clean-up hold, no path places an order without minting, so the sweep has nothing legitimate to find. The runbook's pre-check (query 1) and post-deploy query 4 now say the same: such orders are expected there, and a rise with no category edit is the defect.
+- **The final clean-up takes the next free numbers.** The runbook's scratch drafts were numbered catalog V41 and reporting V37; catalog V41 is now the consolidation fix, so the real ones take catalog V42 or later.
