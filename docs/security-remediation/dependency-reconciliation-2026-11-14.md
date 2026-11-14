@@ -209,6 +209,16 @@ cannot install. It would do so every week.
   is 2.12.1 on this line. The edited file validates against the SchemaStore
   `dependabot-2.0.json` schema, and a deliberately wrong key (`version:`) is
   rejected by the same check.
+- **These ignores do nothing until `main` has them (found after the merge).**
+  Dependabot reads `.github/dependabot.yml` from the repository's default
+  branch, which is `main`, even though every update targets `dev`. Twenty
+  minutes after this reconciliation merged to `dev`, Dependabot opened #390:
+  the same unresolvable 3.x set (api 1.10.0, auto-instrumentations-node
+  0.83.0), whose `service-test` and `docker-build` for the gateway fail.
+  Until the next `dev` → `main` promotion (production is on hold), expect a
+  red OpenTelemetry PR every week; close it. The same applies to any other
+  `dependabot.yml` change made on `dev`, including the open-pull-requests
+  limit.
 - The 2.x patches #378 bundled are taken as #378 proposed them:
   `@opentelemetry/resources` and `sdk-trace-base` 2.12.1,
   `@opentelemetry/sdk-node` and `exporter-trace-otlp-proto` 0.223.1
