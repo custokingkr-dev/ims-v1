@@ -83,6 +83,11 @@ PostgreSQL roles. `app_rt` and `appuser` therefore do not exist in the destinati
    `app_rt_password` = the value of `app-rt-password-prod`. The script creates `app_rt` as
    `LOGIN NOINHERIT NOCREATEROLE NOCREATEDB **NOBYPASSRLS**` and grants schema usage.
 
+   > **Superseded 2026-11-14.** Run the script only through `scripts/invoke-create-app-rt-role-cloudsql.ps1`
+   > from a current checkout. A persistent `ims-app-rt-prod` job or the `create-app-rt-role-sql` secret
+   > holds an older script whose blanket grant undoes 18 migration narrowings; do not execute either. See
+   > `docs/MICROSERVICE-APP-RT-PROVISIONING-RUNBOOK.md`, "Only this script provisions `app_rt`".
+
 Miss step 3 and every service fails to connect, with RLS behaviour that will not reproduce in tests —
 `app_rt` is the RLS-subject role while `appuser` is RLS-exempt.
 

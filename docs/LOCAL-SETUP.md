@@ -146,7 +146,16 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-local-dev.ps1 -ComposePro
 ```
 
 When a compose profile is started, the setup script also runs `ensure-app-rt-local.ps1`
-after migrations so the local runtime DB role has schema/table/sequence grants.
+after migrations so the local runtime DB role has schema/table/sequence grants. It runs
+`scripts/create-app-rt-role.sql`, which never undoes a narrowing a migration made, even when it
+runs while the services are still migrating (its narrowing list; see
+`docs/MICROSERVICE-APP-RT-PROVISIONING-RUNBOOK.md`).
+
+The script grants and narrows in one transaction, so each relation whose grants it changes stays
+row-locked in `pg_class` until it commits. A service migration altering that relation at the same
+moment waits, and one of the two can fail with `tuple concurrently updated`. `ensure-app-rt-local.ps1`
+retries its own side; if a service's startup migration lost the race, start that service again.
+Once the stack has migrated, a re-run changes nothing and takes no such locks.
 
 For a laptop that already has stale Custoking containers or an old local database volume,
 reset the local compose state first:

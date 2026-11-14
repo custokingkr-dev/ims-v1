@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
@@ -15,16 +14,13 @@ import java.util.Map;
 
 /**
  * Calls the order workflow engine's internal routes in operations-service ({@code /api/v1/internal/order-workflows},
- * design §3.5; operations keeps the old notebook-tracker path as an alias for one release). Operations' Cloud Run IAM and
- * MachineCallerFilter admit only school-core's service account, proven by the identity token {@link PeerHttp} adds.
- * Every failure surfaces as {@link IllegalStateException}.
+ * design §3.5). Operations' Cloud Run IAM and MachineCallerFilter admit only school-core's service account, proven by the
+ * identity token {@link PeerHttp} adds. Every failure surfaces as {@link IllegalStateException}.
  */
 @Component
 public class OperationsTrackerClient implements TrackerGateway {
     static final String CREATE_PATH = "/api/v1/internal/order-workflows";
     static final String DESIGN_FILE_ACCESS_PATH = "/api/v1/internal/order-workflows/{order}/design-file-access";
-    /** The engine's notebook-tracker route before the item order workflows (design D6); same body, same answer. */
-    static final String LEGACY_DESIGN_FILE_ACCESS_PATH = "/api/v1/internal/notebook-trackers/{order}/image-access";
     private static final ParameterizedTypeReference<Map<String, Object>> BODY = new ParameterizedTypeReference<>() { };
 
     private final PeerHttp http;
@@ -91,42 +87,23 @@ public class OperationsTrackerClient implements TrackerGateway {
 
     /**
      * Asks the engine whether this user may change the order's design files now. The engine answers an order it holds no
-     * workflow for with {@code allowed: false}, never 403 or 404. An engine deployed before the item order workflows has
-     * only the notebook-tracker route (design D6), and its MachineCallerFilter refuses an internal route it does not know
-     * with a bare 403 before any controller runs; so that answer, or a 404, means the older engine and the question is
-     * asked again on the alias. A 403 with a body is a real refusal (MACHINE_CALLER_REJECTED, or Cloud Run IAM's page) and
-     * fails closed. A create is never retried that way: the older engine would make every item a notebook workflow.
+     * workflow for with {@code allowed: false}, never 403 or 404, so every refusal or error fails closed. The notebook-tracker
+     * alias it once fell back to (design D6) is retired: only an engine older than ed8aeba5 had the alias without this route,
+     * and none can serve on the schema since workflow V22.
      */
     @Override
     public ImageAccess imageAccess(String orderId, long userId, String role) {
         requireConfigured();
         Map<String, Object> question = Map.of("userId", userId, "role", role == null ? "" : role);
         try {
-            Map<String, Object> answer;
-            try {
-                answer = ask(DESIGN_FILE_ACCESS_PATH, orderId, question);
-            } catch (HttpClientErrorException.NotFound | HttpClientErrorException.Forbidden refused) {
-                if (!olderEngine(refused)) throw refused;
-                answer = ask(LEGACY_DESIGN_FILE_ACCESS_PATH, orderId, question);
-            }
+            Map<String, Object> answer = http.client.post().uri(DESIGN_FILE_ACCESS_PATH, orderId).contentType(MediaType.APPLICATION_JSON)
+                    .headers(http::authorize).body(question).retrieve().body(BODY);
             boolean allowed = answer != null && Boolean.TRUE.equals(answer.get("allowed"));
             Object reason = answer == null ? null : answer.get("reason");
             return new ImageAccess(allowed, reason == null ? null : String.valueOf(reason));
         } catch (RestClientException failure) {
             throw new IllegalStateException("order workflow engine is unavailable", failure);
         }
-    }
-
-    /** A 404, or the older engine's bare 403 for an internal route it does not know (no body at all). */
-    static boolean olderEngine(HttpClientErrorException refused) {
-        if (refused.getStatusCode().value() == 404) return true;
-        byte[] body = refused.getResponseBodyAsByteArray();
-        return refused.getStatusCode().value() == 403 && (body == null || new String(body, java.nio.charset.StandardCharsets.UTF_8).isBlank());
-    }
-
-    private Map<String, Object> ask(String path, String orderId, Map<String, Object> question) {
-        return http.client.post().uri(path, orderId).contentType(MediaType.APPLICATION_JSON).headers(http::authorize)
-                .body(question).retrieve().body(BODY);
     }
 
     private void requireConfigured() {

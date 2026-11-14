@@ -49,7 +49,6 @@ class MachineProofAuditTest(unittest.TestCase):
             ("/api/v1/internal/notifications/reports/reconcile", "gateway-exposed"),
             # Regex routes can never appear verbatim in a gateway file; each is guarded through its literal prefix.
             ("/api/v1/internal/catalog-orders", "exposed through the API gateway"),
-            ("/api/v1/internal/notebook-trackers", "exposed through the API gateway"),
             ("/api/v1/internal/order-workflows", "exposed through the API gateway"),
             ("/api/v1/internal/identity-directory", "exposed through the API gateway"),
         ]:
@@ -99,8 +98,6 @@ class MachineProofAuditTest(unittest.TestCase):
         for service, line in [
             ("operations-service", 'if(path.equals("/api/v1/internal/order-workflows")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
             ("operations-service", 'if(path.matches("/api/v1/internal/order-workflows/[A-Za-z0-9_-]{1,255}/design-file-access")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
-            ("operations-service", 'if(path.equals("/api/v1/internal/notebook-trackers")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
-            ("operations-service", 'if(path.matches("/api/v1/internal/notebook-trackers/[A-Za-z0-9_-]{1,255}/image-access")) return "NOTEBOOK_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
             ("school-core-service", 'if(path.matches("/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/draft-images")) return "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
             ("school-core-service", 'if(path.matches("/api/v1/internal/catalog-orders/[A-Za-z0-9_-]{1,255}/tracker-status")) return "CATALOG_TRACKER_CALLER_SERVICE_ACCOUNTS";'),
             ("school-core-service", 'if(path.matches("/api/v1/internal/identity-directory/(schools|zones)/[0-9]+")) return "IDENTITY_DIRECTORY_CALLER_SERVICE_ACCOUNTS";'),

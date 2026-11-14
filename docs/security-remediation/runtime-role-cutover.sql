@@ -22,11 +22,14 @@ BEGIN
         FOR owned_schema IN SELECT jsonb_array_elements_text(mapping->service_role) LOOP
             EXECUTE format('GRANT USAGE ON SCHEMA %I TO %I',owned_schema,service_role);
             FOR table_row IN SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-                WHERE n.nspname=owned_schema AND c.relkind IN ('r','p','v','m') AND c.relname<>'flyway_schema_history'
+                WHERE n.nspname=owned_schema AND c.relkind IN ('r','p','v','m')
             LOOP
                 -- Preserve reviewed append-only/column-specific app_rt restrictions rather
                 -- than silently widening queue identities or immutable document manifests.
                 EXECUTE format('REVOKE ALL ON TABLE %I.%I FROM %I',owned_schema,table_row.relname,service_role);
+                -- Flyway history tables (flyway_schema_history, flyway_schema_history_tenant_school) belong to the
+                -- owner alone, as in afterMigrate__dedicated_runtime_acl.sql.
+                CONTINUE WHEN starts_with(table_row.relname,'flyway_schema_history');
                 FOREACH operation IN ARRAY ARRAY['SELECT','INSERT','UPDATE','DELETE'] LOOP
                     IF has_table_privilege('app_rt',format('%I.%I',owned_schema,table_row.relname),operation) THEN
                         EXECUTE format('GRANT %s ON TABLE %I.%I TO %I',operation,owned_schema,table_row.relname,service_role);
