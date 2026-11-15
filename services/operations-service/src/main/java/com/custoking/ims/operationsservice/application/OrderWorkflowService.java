@@ -1157,6 +1157,7 @@ public class OrderWorkflowService {
     /**
      * The school's own groups (SCHOOL_GROUP, INTERNAL_APPROVAL) as target to invite link: superadmin, or an operator
      * assigned to the whole school. Item-level groups and vendor groups are read through the order (design D34).
+     * Superadmin changes them through {@link GroupLinkService#setSchoolGroupLink}, which logs every change.
      */
     public Map<String, String> schoolWhatsAppGroupLinks(long schoolId) {
         return tx.execute(status -> {
@@ -1164,22 +1165,6 @@ public class OrderWorkflowService {
             if (schoolId <= 0) throw bad("A positive schoolId is required");
             requireSchoolWideAccess(schoolId);
             repo.applySchoolScope(schoolId);
-            return schoolGroups(repo.whatsappGroupLinks(schoolId));
-        });
-    }
-
-    /** Superadmin only; SCHOOL_GROUP or INTERNAL_APPROVAL, and a blank link removes the group. */
-    public Map<String, String> setSchoolWhatsAppGroupLink(long schoolId, String targetKey, String inviteUrl) {
-        Role role = OrderWorkflowAccess.role(true, WHATSAPP_STAFF_ONLY);
-        requireSuperadmin(role, "Only superadmin can maintain WhatsApp group links");
-        String target = targetKey == null ? "" : targetKey.strip();
-        if (!SCHOOL_WHATSAPP_TARGETS.contains(target)) throw bad("Choose the school group or the internal approval group");
-        String clean = canonicalInvite(inviteUrl);
-        if (schoolId <= 0) throw bad("A positive schoolId is required");
-        long userId = TenantContext.get().userId();
-        return tx.execute(status -> {
-            if (clean == null) repo.deleteWhatsAppGroupLink(schoolId, target);
-            else repo.upsertWhatsAppGroupLink(schoolId, target, clean, userId);
             return schoolGroups(repo.whatsappGroupLinks(schoolId));
         });
     }
@@ -1196,10 +1181,6 @@ public class OrderWorkflowService {
         if (!ctx.isSuperAdmin() && !ctx.operatorSchools().contains(schoolId)) throw forbidden("No access to this school");
     }
 
-    /** The one invite rule every group link shares: {@link GroupLinkService#canonicalInvite}. */
-    static String canonicalInvite(String value) {
-        return GroupLinkService.canonicalInvite(value);
-    }
 
     // ==== the change machinery ===========================================================================================
 

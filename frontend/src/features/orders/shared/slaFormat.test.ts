@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  clockOffset, dueSummary, formatDuration, formatDurationSpoken, formatShortDuration, formatStamp, serverTime, slaLabel,
+  clockOffset, dueSummary, formatDuration, formatDurationSpoken, formatShortDuration, formatStamp, formatStampWithYear, serverTime, slaLabel,
   stageStatusLine, stageTimer, upcomingDueLabel, upcomingDueTone,
 } from './slaFormat';
 
@@ -99,6 +99,13 @@ describe('dates in the school\'s time zone', () => {
   it('formats a stamp as "13 Nov, 12:19 am"', () => {
     expect(formatStamp('2026-11-12T18:49:00Z', IST)).toBe('13 Nov, 12:19 am');
     expect(formatStamp('2026-11-16T10:30:00Z', IST)).toBe('16 Nov, 4:00 pm');
+  });
+
+  it('formats a stamp with its year for a log read across years, and across a year end in the zone', () => {
+    expect(formatStampWithYear('2026-11-16T10:30:00Z', IST)).toBe('16 Nov 2026, 4:00 pm');
+    expect(formatStampWithYear('2026-12-31T19:00:00Z', IST)).toBe('1 Jan 2027, 12:30 am');
+    expect(formatStampWithYear('2026-12-31T19:00:00Z', null)).toBe('1 Jan 2027, 12:30 am');
+    expect(formatStampWithYear('not a date', IST)).toBe('not a date');
   });
 
   it('writes each stage list status line', () => {

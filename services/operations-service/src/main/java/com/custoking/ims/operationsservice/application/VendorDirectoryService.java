@@ -1,6 +1,9 @@
 package com.custoking.ims.operationsservice.application;
 
 import com.custoking.ims.operationsservice.application.orderworkflow.rules.WorkflowRuleViolation;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository.Source;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository.Target;
 import com.custoking.ims.operationsservice.persistence.VendorRepository;
 import com.custoking.ims.operationsservice.persistence.VendorRepository.CategoryRow;
 import com.custoking.ims.operationsservice.persistence.VendorRepository.VendorFields;
@@ -43,10 +46,12 @@ public class VendorDirectoryService {
     private static final String SUPERADMIN_ONLY = "Only superadmin can maintain the vendor directory";
 
     private final VendorRepository repo;
+    private final GroupLinkChangeRepository changes;
     private final TransactionTemplate tx;
 
-    public VendorDirectoryService(VendorRepository repo, TransactionTemplate tx) {
+    public VendorDirectoryService(VendorRepository repo, GroupLinkChangeRepository changes, TransactionTemplate tx) {
         this.repo = repo;
+        this.changes = changes;
         this.tx = tx;
     }
 
@@ -134,7 +139,10 @@ public class VendorDirectoryService {
         return repo.vendors(cleanCategory, cleanQuery, superadmin && includeInactive).stream().map(VendorView::of).toList();
     }
 
-    /** Superadmin: adds a vendor. A phone is required: only the seeded sample vendors have none. */
+    /**
+     * Superadmin: adds a vendor. A phone is required: only the seeded sample vendors have none. A WhatsApp group given
+     * here is logged in the group link change log as added from the vendor directory.
+     */
     public VendorView create(VendorInput input) {
         long userId = requireSuperadmin();
         Validated v = validate(input, false, input == null || input.active() == null || input.active());
@@ -144,13 +152,15 @@ public class VendorDirectoryService {
             if (repo.duplicateExists(v.fields().name(), v.fields().phone(), null)) throw duplicate();
             long id = repo.insertVendor(v.fields(), userId);
             repo.replaceCategories(id, v.categories());
+            changes.record(Target.vendor(id), null, v.fields().whatsappGroupUrl(), Source.VENDOR_DIRECTORY, null);
             return VendorView.of(repo.vendor(id).orElseThrow());
         });
     }
 
     /**
      * Superadmin: replaces every field of a vendor. A sample vendor stays "Sample" only while it has no phone: giving it a
-     * phone makes it a real vendor. Deactivating keeps it on the orders that selected it.
+     * phone makes it a real vendor. Deactivating keeps it on the orders that selected it. A changed WhatsApp group is
+     * logged in the group link change log.
      */
     public VendorView update(long id, VendorInput input) {
         long userId = requireSuperadmin();
@@ -164,6 +174,7 @@ public class VendorDirectoryService {
             if (repo.duplicateExists(v.fields().name(), v.fields().phone(), id)) throw duplicate();
             repo.updateVendor(id, v.fields(), userId);
             repo.replaceCategories(id, v.categories());
+            changes.record(Target.vendor(id), current.whatsappGroupUrl(), v.fields().whatsappGroupUrl(), Source.VENDOR_DIRECTORY, null);
             return VendorView.of(repo.vendor(id).orElseThrow());
         });
     }

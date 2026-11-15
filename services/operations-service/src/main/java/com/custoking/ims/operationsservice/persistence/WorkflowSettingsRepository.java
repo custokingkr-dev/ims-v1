@@ -159,7 +159,8 @@ public class WorkflowSettingsRepository {
                 .update();
     }
 
-    private static String correlationId() {
+    /** The request's correlation id, as the workflow engine records it; a fresh one when the request has none. */
+    static String correlationId() {
         String value = MDC.get("requestId");
         return value != null && value.matches("[A-Za-z0-9._:-]{1,128}") ? value : UUID.randomUUID().toString();
     }

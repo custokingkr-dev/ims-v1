@@ -130,6 +130,10 @@ export type WhatsAppGroupImportError = { "line": number; "message": string; };
 
 export type WhatsAppGroupImportResult = { "dryRun": boolean; "applied": boolean; "changes": Array<WhatsAppGroupImportChange>; "errors": Array<WhatsAppGroupImportError>; };
 
+export type WhatsAppGroupLinkChange = { "id": number; "changedAt": string; "kind": "SCHOOL_GROUP" | "INTERNAL_APPROVAL" | "ITEM" | "GLOBAL_INTERNAL_APPROVAL" | "VENDOR"; "schoolId": number | null; "categoryCode": string | null; "vendorId": number | null; "vendorName": string | null; "before": string | null; "after": string | null; "outcome": "ADDED" | "CHANGED" | "REMOVED"; "source": "SETUP" | "ORDER" | "IMPORT" | "VENDOR_DIRECTORY"; "orderId": string | null; "orderNumber": string | null; "changedBy": number; "changedByName": string | null; };
+
+export type WhatsAppGroupLinkChangePage = { "changes": Array<WhatsAppGroupLinkChange>; "nextBefore": number | null; };
+
 export interface OrderWorkflowClient {
   listOrderWorkflows(parameters?: { item?: string; step?: string; phase?: "INTAKE" | "PLANNING" | "PRODUCTION" | "VERIFICATION" | "DELIVERY"; assignee?: string; schoolId?: number; sla?: "OVERDUE" | "DUE_SOON" | "ON_TRACK" | "NO_TIMER" | "DUE_TODAY"; q?: string; includeFinished?: boolean; sort?: "due" | "placed" | "number"; limit?: number; offset?: number; }): Promise<OrderWorkflowPage>;
   listWorkflowTemplates(): Promise<Array<WorkflowTemplate>>;
@@ -167,6 +171,7 @@ export interface OrderWorkflowClient {
   listSchoolItemGroupLinks(parameters: { schoolId: number; }): Promise<Array<ItemGroupLinkView>>;
   saveSchoolItemGroupLink(parameters: { schoolId: number; categoryCode: string; }, request: WhatsAppGroupLinkRequest): Promise<Array<ItemGroupLinkView>>;
   importWhatsAppGroupLinks(request: WhatsAppGroupImportRequest): Promise<WhatsAppGroupImportResult>;
+  listWhatsAppGroupLinkChanges(parameters?: { schoolId?: number; before?: number; limit?: number; }): Promise<WhatsAppGroupLinkChangePage>;
 }
 
 export function createOrderWorkflowClient(http: AxiosInstance): OrderWorkflowClient {
@@ -311,6 +316,10 @@ export function createOrderWorkflowClient(http: AxiosInstance): OrderWorkflowCli
     },
     async importWhatsAppGroupLinks(request: WhatsAppGroupImportRequest) {
       const response = await http.post<WhatsAppGroupImportResult>("/workflows/whatsapp-groups/import", request);
+      return response.data;
+    },
+    async listWhatsAppGroupLinkChanges(parameters: { schoolId?: number; before?: number; limit?: number; } = {}) {
+      const response = await http.get<WhatsAppGroupLinkChangePage>("/workflows/whatsapp-groups/changes", { params: { schoolId: parameters.schoolId, before: parameters.before, limit: parameters.limit } });
       return response.data;
     },
   };
