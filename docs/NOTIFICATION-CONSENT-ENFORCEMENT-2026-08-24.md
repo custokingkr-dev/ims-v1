@@ -53,7 +53,12 @@ drainer re-evaluates `guardian-communications.v2` immediately before every attem
 retries, and needs the outcome back on the queued row. The command reuses the persisted inbox and
 `NotificationInboxProcessor`, so the guard, row lock, delivery-attempt audit and terminal-state
 idempotency apply unchanged. school-core ships with `ATTENDANCE_ABSENTEE_DELIVERY_MODE=dry-run`,
-which never calls platform-service and marks rows `SENT_DRY_RUN`. The v2 evidence binds the school, student, guardian, channel, normalized
+which never calls platform-service and marks rows `SENT_DRY_RUN`. Since 2026-11-15
+`GET /attendance/exceptions`, `GET /attendance/absentees` and `POST /attendance/absentees/notify`
+also return `channel: WHATSAPP` and `deliveryMode: DRY_RUN | LIVE`. Unless the mode is `LIVE`, the
+attendance Exceptions screen says that absence alerts go to parents on WhatsApp but WhatsApp
+sending isn't switched on, so no parent receives them; its button reads "Queue WhatsApp alerts" and
+`SENT_DRY_RUN` rows read "Not sent (test mode)". The v2 evidence binds the school, student, guardian, channel, normalized
 destination SHA-256, source event, immutable consent event and notice version, evaluation time, and
 expiry. Platform compares every binding and rejects future, expired, or more-than-two-minute-old
 evidence before invoking the provider. Missing, invalid, stale, or mismatched evidence produces a

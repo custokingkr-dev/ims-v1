@@ -66,9 +66,13 @@ class AttendanceReadControllerTest {
         Map<String, Object> result = Map.of("totalExceptions", 3);
         when(attendance.exceptions(date, "c1", "s1", 4L)).thenReturn(result);
 
-        Object response = controller.exceptions("attendance-token", 4L, date, "c1", "s1");
+        Map<String, Object> response = controller.exceptions("attendance-token", 4L, date, "c1", "s1");
 
-        assertThat(response).isSameAs(result);
+        // The repository's body is passed through; the controller only adds how absence alerts go out.
+        assertThat(response).containsAllEntriesOf(result)
+                .containsEntry("channel", "WHATSAPP")
+                .containsEntry("deliveryMode", "DRY_RUN")
+                .hasSize(3);
         verify(attendance).exceptions(date, "c1", "s1", 4L);
     }
 

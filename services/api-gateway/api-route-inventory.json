@@ -3454,7 +3454,7 @@
       "path": "/api/v1/attendance/absentees",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 131
+      "line": 140
     },
     {
       "service": "school-core-service",
@@ -3463,7 +3463,7 @@
       "path": "/api/v1/attendance/absentees/notify",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 159
+      "line": 168
     },
     {
       "service": "school-core-service",
@@ -3472,7 +3472,7 @@
       "path": "/api/v1/attendance/daily",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 66
+      "line": 75
     },
     {
       "service": "school-core-service",
@@ -3481,7 +3481,7 @@
       "path": "/api/v1/attendance/daily-entry",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 300
+      "line": 309
     },
     {
       "service": "school-core-service",
@@ -3490,7 +3490,7 @@
       "path": "/api/v1/attendance/daily-summary",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 92
+      "line": 101
     },
     {
       "service": "school-core-service",
@@ -3499,7 +3499,7 @@
       "path": "/api/v1/attendance/exceptions",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 145
+      "line": 154
     },
     {
       "service": "school-core-service",
@@ -3508,7 +3508,7 @@
       "path": "/api/v1/attendance/records",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 78
+      "line": 87
     },
     {
       "service": "school-core-service",
@@ -3517,7 +3517,7 @@
       "path": "/api/v1/attendance/report/register",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 176
+      "line": 185
     },
     {
       "service": "school-core-service",
@@ -3526,7 +3526,7 @@
       "path": "/api/v1/attendance/report/register/export",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 217
+      "line": 226
     },
     {
       "service": "school-core-service",
@@ -3535,7 +3535,7 @@
       "path": "/api/v1/attendance/report/student",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 190
+      "line": 199
     },
     {
       "service": "school-core-service",
@@ -3544,7 +3544,7 @@
       "path": "/api/v1/attendance/report/student/export",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 231
+      "line": 240
     },
     {
       "service": "school-core-service",
@@ -3553,7 +3553,7 @@
       "path": "/api/v1/attendance/report/summary",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 204
+      "line": 213
     },
     {
       "service": "school-core-service",
@@ -3562,7 +3562,7 @@
       "path": "/api/v1/attendance/report/summary/export",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 247
+      "line": 256
     },
     {
       "service": "school-core-service",
@@ -3571,7 +3571,7 @@
       "path": "/api/v1/attendance/section-info",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 104
+      "line": 113
     },
     {
       "service": "school-core-service",
@@ -3580,7 +3580,7 @@
       "path": "/api/v1/attendance/section-register",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 117
+      "line": 126
     },
     {
       "service": "school-core-service",
@@ -3589,7 +3589,7 @@
       "path": "/api/v1/attendance/section-register",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 280
+      "line": 289
     },
     {
       "service": "school-core-service",
@@ -3598,7 +3598,7 @@
       "path": "/api/v1/attendance/submit-day",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 340
+      "line": 349
     },
     {
       "service": "school-core-service",
@@ -3607,7 +3607,7 @@
       "path": "/api/v1/attendance/submit-section",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 321
+      "line": 330
     },
     {
       "service": "school-core-service",

@@ -1,10 +1,13 @@
 package com.custoking.ims.schoolcoreservice.api;
 
+import com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryProperties;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantContextFilter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -25,9 +28,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * HTTP-level contract of {@code GET /attendance/absentees} and {@code POST /attendance/absentees/notify}:
- * who may call them, where the school scope and the actor come from, and how the optional
- * class/section filters reach the repository. The repository is mocked; the real
+ * HTTP-level contract of {@code GET /attendance/absentees}, {@code GET /attendance/exceptions} and
+ * {@code POST /attendance/absentees/notify}: who may call them, where the school scope and the actor
+ * come from, how the optional class/section filters reach the repository, and the alert channel and
+ * delivery mode each response reports. The repository is mocked; the real
  * {@link TenantContextFilter} populates {@link TenantContext} from the gateway headers.
  */
 class AttendanceAbsenteeControllerTest {
@@ -229,5 +233,95 @@ class AttendanceAbsenteeControllerTest {
                         .header("X-Attendance-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "SUPERADMIN"))
                 .andExpect(status().isBadRequest());
+    }
+
+    // ── Channel and delivery mode ───────────────────────────────────────────────
+    // The Exceptions screen tells staff that absence alerts go on WhatsApp and, unless the delivery
+    // worker is live, that no parent receives them. Both facts come from these three responses.
+
+    @ParameterizedTest(name = "mode {0} is reported as {1}")
+    @CsvSource({"dry-run, DRY_RUN", "live, LIVE"})
+    void exceptions_reportTheWhatsAppChannelAndTheDeliveryMode(String mode, String reported) throws Exception {
+        when(attendance.exceptions(LocalDate.parse("2026-04-06"), null, null, 10L))
+                .thenReturn(Map.of("totalExceptions", 2, "queuedCount", 1));
+
+        mvcWithDeliveryMode(mode).perform(get("/api/v1/attendance/exceptions")
+                        .header("X-Attendance-Service-Token", TOKEN)
+                        .header("X-Authenticated-User-Id", "42")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "attendance:read")
+                        .param("date", "2026-04-06"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalExceptions").value(2))
+                .andExpect(jsonPath("$.queuedCount").value(1))
+                .andExpect(jsonPath("$.channel").value("WHATSAPP"))
+                .andExpect(jsonPath("$.deliveryMode").value(reported));
+    }
+
+    @ParameterizedTest(name = "mode {0} is reported as {1}")
+    @CsvSource({"dry-run, DRY_RUN", "live, LIVE"})
+    void absentees_reportTheWhatsAppChannelAndTheDeliveryMode(String mode, String reported) throws Exception {
+        when(attendance.absentees(LocalDate.parse("2026-04-06"), "c1", null, 10L))
+                .thenReturn(Map.of("totalAbsent", 2));
+
+        mvcWithDeliveryMode(mode).perform(get("/api/v1/attendance/absentees")
+                        .header("X-Attendance-Service-Token", TOKEN)
+                        .header("X-Authenticated-User-Id", "42")
+                        .header("X-Authenticated-Role", "TEACHER")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "attendance:read")
+                        .param("date", "2026-04-06")
+                        .param("classId", "c1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalAbsent").value(2))
+                .andExpect(jsonPath("$.channel").value("WHATSAPP"))
+                .andExpect(jsonPath("$.deliveryMode").value(reported));
+    }
+
+    @ParameterizedTest(name = "mode {0} is reported as {1}")
+    @CsvSource({"dry-run, DRY_RUN", "live, LIVE"})
+    void notify_reportsTheWhatsAppChannelAndTheDeliveryMode(String mode, String reported) throws Exception {
+        when(attendance.notifyAbsentees(LocalDate.parse("2026-04-06"), null, null, 10L, 42L))
+                .thenReturn(Map.of("queued", 2, "skippedNoContact", 0, "skippedAlreadyQueued", 1));
+
+        mvcWithDeliveryMode(mode).perform(post("/api/v1/attendance/absentees/notify")
+                        .header("X-Attendance-Service-Token", TOKEN)
+                        .header("X-Authenticated-User-Id", "42")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "attendance:manage")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"date\":\"2026-04-06\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.queued").value(2))
+                .andExpect(jsonPath("$.skippedAlreadyQueued").value(1))
+                .andExpect(jsonPath("$.channel").value("WHATSAPP"))
+                .andExpect(jsonPath("$.deliveryMode").value(reported));
+    }
+
+    @Test
+    void withoutDeliveryConfiguration_theModeIsReportedAsDryRun() throws Exception {
+        // The two-argument constructor has no delivery configuration; nothing can send without it.
+        when(attendance.exceptions(LocalDate.parse("2026-04-06"), null, null, 10L)).thenReturn(Map.of());
+
+        mvc.perform(get("/api/v1/attendance/exceptions")
+                        .header("X-Attendance-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "attendance:read")
+                        .param("date", "2026-04-06"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.channel").value("WHATSAPP"))
+                .andExpect(jsonPath("$.deliveryMode").value("DRY_RUN"));
+    }
+
+    private MockMvc mvcWithDeliveryMode(String mode) {
+        AbsenteeDeliveryProperties delivery = new AbsenteeDeliveryProperties();
+        delivery.setMode(mode);
+        return MockMvcBuilders
+                .standaloneSetup(new AttendanceReadController(attendance, null, delivery, TOKEN))
+                .addFilters(new TenantContextFilter())
+                .build();
     }
 }

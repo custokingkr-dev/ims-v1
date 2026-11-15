@@ -35,6 +35,9 @@ public class AttendanceReadRepository {
 
     static final Set<String> ALLOWED_STATUSES = Set.of("PRESENT", "ABSENT", "LATE", "LEAVE");
 
+    /** The only channel absence alerts are queued on; the attendance API reports it to the screen. */
+    public static final String ABSENTEE_ALERT_CHANNEL = "WHATSAPP";
+
     public AttendanceReadRepository(
             JdbcClient jdbc,
             StudentPhotoStorage photoStorage,
@@ -567,7 +570,7 @@ public class AttendanceReadRepository {
             if (Boolean.TRUE.equals(s.get("alreadyQueued"))) { skippedAlreadyQueued++; continue; }
             long rowSchoolId = longNum(s.get("schoolId"), 0);
             long studentId = longNum(s.get("studentId"), 0);
-            var decision = guardianCommunicationPolicy.evaluate(rowSchoolId, studentId, "WHATSAPP");
+            var decision = guardianCommunicationPolicy.evaluate(rowSchoolId, studentId, ABSENTEE_ALERT_CHANNEL);
             if (!decision.allowed()) {
                 if ("DESTINATION_MISSING".equals(decision.reason())) skippedNoContact++;
                 suppressed.add(row("studentId", studentId, "reason", decision.reason()));
@@ -585,7 +588,7 @@ public class AttendanceReadRepository {
                                    policy_version, policy_decision, destination_sha256,
                                    policy_evaluated_at, policy_expires_at)
                     VALUES (:id, :schoolId, :studentId, :classId, :sectionId, :academicYearId,
-                            :date, :parentContact, 'WHATSAPP', :message, 'QUEUED', :actorId,
+                            :date, :parentContact, :channel, :message, 'QUEUED', :actorId,
                             :guardianId, :consentEventId, :consentNoticeVersion,
                             :policyVersion, 'ALLOW', :destinationSha256,
                             :policyEvaluatedAt, :policyExpiresAt)
@@ -599,6 +602,7 @@ public class AttendanceReadRepository {
                     .param("academicYearId", academicYearId)
                     .param("date", date)
                     .param("parentContact", decision.destination())
+                    .param("channel", ABSENTEE_ALERT_CHANNEL)
                     .param("message", message)
                     .param("actorId", actorId)
                     .param("guardianId", decision.guardianId())
