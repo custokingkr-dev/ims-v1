@@ -4,6 +4,8 @@ import com.custoking.ims.platformservice.application.SenderProfile;
 import com.custoking.ims.platformservice.persistence.NotificationBroadcastCommandRepository;
 import com.custoking.ims.platformservice.application.BroadcastDispatchService;
 import com.custoking.ims.platformservice.persistence.SenderProfileRepository;
+import com.custoking.ims.platformservice.persistence.WhatsappOnboardingStateException;
+import com.custoking.ims.platformservice.persistence.WhatsappOnboardingStateException.Reason;
 import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantContextFilter;
 import org.junit.jupiter.api.AfterEach;
@@ -13,8 +15,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -23,7 +28,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -58,6 +65,7 @@ class NotificationTenantScopingTest {
 
     private final MockMvc senderProfileMvc = MockMvcBuilders
             .standaloneSetup(new SenderProfileController(senderProfiles, TOKEN))
+            .setControllerAdvice(new ValidationExceptionHandler())
             .addFilters(new TenantContextFilter())
             .build();
 
@@ -270,5 +278,119 @@ class NotificationTenantScopingTest {
                 .andExpect(status().isForbidden());
 
         verify(senderProfiles, never()).defaultProfile();
+    }
+
+    // --- SenderProfileController: completing/failing WhatsApp onboarding — superadmin-only ---
+    // Completion writes the school's WhatsApp sender details, which PUT /schools/{schoolId} keeps
+    // superadmin-only; a school admin's notification:send must not reach the same write.
+
+    private static final UUID SESSION = UUID.fromString("d0000000-0000-0000-0000-000000000001");
+    private static final String ONBOARDING = "/api/v1/notifications/sender-profiles/schools/10/whatsapp-onboarding/" + SESSION;
+
+    @Test
+    void schoolAdmin_isForbiddenCompletingOwnSchoolWhatsappOnboarding() throws Exception {
+        senderProfileMvc.perform(post(ONBOARDING + "/complete")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "notification:send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"integratedNumber\":\"911234567890\",\"whatsappDefaultTemplateName\":\"fees\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(senderProfiles, never()).completeWhatsappOnboarding(any(), any(), anyMap());
+        verify(senderProfiles, never()).upsert(any(), any());
+    }
+
+    @Test
+    void schoolAdmin_isForbiddenFailingOwnSchoolWhatsappOnboarding() throws Exception {
+        senderProfileMvc.perform(post(ONBOARDING + "/fail")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "notification:send")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"failureReason\":\"changed my mind\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(senderProfiles, never()).failWhatsappOnboarding(any(), any(), anyMap());
+    }
+
+    @Test
+    void headerlessHttp_isForbiddenCompletingWhatsappOnboarding() throws Exception {
+        senderProfileMvc.perform(post(ONBOARDING + "/complete")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"integratedNumber\":\"911234567890\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(senderProfiles, never()).completeWhatsappOnboarding(any(), any(), anyMap());
+    }
+
+    @Test
+    void superadmin_canCompleteWhatsappOnboarding() throws Exception {
+        when(senderProfiles.completeWhatsappOnboarding(eq(10L), eq(SESSION), anyMap()))
+                .thenReturn(Map.of("id", SESSION, "status", "COMPLETED"));
+
+        senderProfileMvc.perform(post(ONBOARDING + "/complete")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"integratedNumber\":\"911234567890\"}"))
+                .andExpect(status().isOk());
+
+        verify(senderProfiles).completeWhatsappOnboarding(eq(10L), eq(SESSION), anyMap());
+    }
+
+    @Test
+    void superadmin_canFailWhatsappOnboarding() throws Exception {
+        when(senderProfiles.failWhatsappOnboarding(eq(10L), eq(SESSION), anyMap()))
+                .thenReturn(Map.of("id", SESSION, "status", "FAILED"));
+
+        senderProfileMvc.perform(post(ONBOARDING + "/fail")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
+
+        verify(senderProfiles).failWhatsappOnboarding(eq(10L), eq(SESSION), anyMap());
+    }
+
+    @Test
+    void unknownOrOtherSchoolsOnboardingSession_isNotFound() throws Exception {
+        when(senderProfiles.completeWhatsappOnboarding(eq(10L), eq(SESSION), anyMap()))
+                .thenThrow(new WhatsappOnboardingStateException(Reason.NOT_FOUND));
+
+        senderProfileMvc.perform(post(ONBOARDING + "/complete")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"integratedNumber\":\"911234567890\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("WhatsApp onboarding request not found"));
+    }
+
+    @Test
+    void closedOnboardingSession_isAConflict() throws Exception {
+        when(senderProfiles.completeWhatsappOnboarding(eq(10L), eq(SESSION), anyMap()))
+                .thenThrow(new WhatsappOnboardingStateException(Reason.ALREADY_FAILED));
+        when(senderProfiles.failWhatsappOnboarding(eq(10L), eq(SESSION), anyMap()))
+                .thenThrow(new WhatsappOnboardingStateException(Reason.ALREADY_COMPLETED));
+
+        senderProfileMvc.perform(post(ONBOARDING + "/complete")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"integratedNumber\":\"911234567890\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("This WhatsApp onboarding request is already failed"));
+        senderProfileMvc.perform(post(ONBOARDING + "/fail")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("This WhatsApp onboarding request is already completed"));
     }
 }

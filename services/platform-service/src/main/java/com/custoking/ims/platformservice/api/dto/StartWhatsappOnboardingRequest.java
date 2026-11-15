@@ -8,13 +8,14 @@ import jakarta.validation.constraints.Size;
  * DTO for POST /notifications/sender-profiles/schools/{schoolId}/whatsapp-onboarding.
  *
  * All fields are optional — the repo inserts NULL for any absent field.
- * actorId is forwarded as the requestedBy parameter; all other fields populate the body map.
+ * actorId is validated (@Positive) but NOT forwarded: the controller records the authenticated
+ * user (TenantContext userId) as requestedBy. All other fields populate the body map.
  *
  * FORMAT-ONLY constraints (@Email, @Size, @Positive) are skipped automatically when the field
  * is null, so no @NotNull/@NotBlank is used here.
  *
  * Keys forwarded to SenderProfileRepository.requestWhatsappOnboarding(schoolId, actorId, map):
- *   actorId → requestedBy parameter (not in the body map)
+ *   authenticated userId → requestedBy parameter (the body actorId is ignored)
  *   schoolName, contactName, contactEmail, contactMobile,
  *   desiredDisplayName, desiredPhoneNumber, notes → body map
  */

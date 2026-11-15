@@ -3165,7 +3165,7 @@
       "path": "/api/v1/notifications/sender-profiles/schools/{schoolId}/whatsapp-onboarding/{sessionId}/complete",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/SenderProfileController.java",
-      "line": 155
+      "line": 158
     },
     {
       "service": "platform-service",
@@ -3174,7 +3174,7 @@
       "path": "/api/v1/notifications/sender-profiles/schools/{schoolId}/whatsapp-onboarding/{sessionId}/fail",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/SenderProfileController.java",
-      "line": 187
+      "line": 190
     },
     {
       "service": "platform-service",

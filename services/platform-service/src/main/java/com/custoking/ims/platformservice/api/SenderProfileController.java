@@ -122,8 +122,8 @@ public class SenderProfileController {
 
     /**
      * CONVERTED: all fields optional — the repo inserts NULLs for any absent body field.
-     * actorId is extracted from the DTO and forwarded as the requestedBy parameter directly
-     * (not via the body map). All other fields are null-gated into the body map.
+     * requestedBy is the authenticated user (TenantContext userId); a body actorId is validated
+     * but ignored. All other fields are null-gated into the body map.
      * FORMAT-ONLY constraints (@Email, @Size, @Positive) fire only when a field is present.
      * Guard is unconditional: resolveSchoolId enforces tenant scope for any HTTP caller.
      */
@@ -150,7 +150,10 @@ public class SenderProfileController {
      * CONVERTED: integratedNumber is required (no fallback in repo). All other fields optional.
      * The built map is forwarded to the repo which also calls upsert() with the sender-profile
      * fields — optional fields are only put when non-null.
-     * Guard is unconditional: resolveSchoolId enforces tenant scope for any HTTP caller.
+     * Sensitive provisioning: completing writes the school's WhatsApp sender details, so it is
+     * superadmin-only like PUT /schools/{schoolId}. Only a REQUESTED session of this school can be
+     * completed: 404 when it is unknown or another school's, 409 when it is already closed
+     * (WhatsappOnboardingStateException, rendered by ValidationExceptionHandler).
      */
     @PostMapping("/schools/{schoolId}/whatsapp-onboarding/{sessionId}/complete")
     public Map<String, Object> completeWhatsappOnboarding(
@@ -160,7 +163,7 @@ public class SenderProfileController {
             @Valid @RequestBody CompleteWhatsappOnboardingRequest req) {
         requireToken(token, "notification:write");
         TenantScope.requirePermissionIfAuthenticated("notification:send");
-        TenantScope.resolveSchoolId(schoolId);
+        TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         body.put("integratedNumber", req.integratedNumber());
         if (req.providerReference() != null) body.put("providerReference", req.providerReference());
@@ -182,7 +185,7 @@ public class SenderProfileController {
     /**
      * CONVERTED: failureReason has a DEFAULT fallback in the repo ("Onboarding failed"),
      * so both fields are optional. Null-gating preserves fallback behaviour when a key is absent.
-     * Guard is unconditional: resolveSchoolId enforces tenant scope for any HTTP caller.
+     * Superadmin-only, with the same 404/409 state guards as completion.
      */
     @PostMapping("/schools/{schoolId}/whatsapp-onboarding/{sessionId}/fail")
     public Map<String, Object> failWhatsappOnboarding(
@@ -192,7 +195,7 @@ public class SenderProfileController {
             @Valid @RequestBody FailWhatsappOnboardingRequest req) {
         requireToken(token, "notification:write");
         TenantScope.requirePermissionIfAuthenticated("notification:send");
-        TenantScope.resolveSchoolId(schoolId);
+        TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         if (req.failureReason() != null) body.put("failureReason", req.failureReason());
         if (req.providerReference() != null) body.put("providerReference", req.providerReference());
