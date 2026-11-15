@@ -5,9 +5,10 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { INVALID_INVITE_MESSAGE, normaliseInvite, safeInviteHref } from '../../../features/orders/shared/invite';
 import {
-  WORKFLOW_DEFINITIONS, setupApi, workflowError, type InternalApprovalGroupView, type OperatorRow, type SchoolGroupTarget, type SchoolOption,
-  type SlaUnit, type WorkflowDefinitionId,
+  WORKFLOW_DEFINITIONS, setupApi, workflowError, type InternalApprovalGroupView, type ItemGroupLinkView, type OperatorRow, type SchoolGroupTarget,
+  type SchoolOption, type SlaUnit, type WorkflowDefinitionId,
 } from '../../../features/orders/vendors/api';
+import { GroupLinkImport } from '../../../features/orders/vendors/GroupLinkImport';
 import { VendorDirectory } from '../../../features/orders/vendors/VendorDirectory';
 import '../../../features/orders/vendors/setup.css';
 
@@ -348,6 +349,79 @@ const SCHOOL_TARGETS: ReadonlyArray<{ key: SchoolGroupTarget; label: string }> =
   { key: 'INTERNAL_APPROVAL', label: 'School internal approval group' },
 ];
 
+/**
+ * A school's own group per item (D34): it replaces the school group on that item's orders at the school. Operators save
+ * one from an order when the school has no group; here superadmin sees, changes, removes and adds them.
+ */
+function ItemGroups({ schoolId, attempt, categories, run }: {
+  schoolId: number; attempt: number; categories: Array<{ code: string; label: string }> | null;
+  run: (operation: () => Promise<unknown>, done: string) => Promise<boolean>;
+}) {
+  const [rows, setRows] = useState<ItemGroupLinkView[] | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [newItem, setNewItem] = useState('');
+  const [newLink, setNewLink] = useState('');
+  const ids = useId();
+
+  useEffect(() => {
+    let active = true;
+    setRows(null); setLoadError('');
+    setupApi.schoolItemGroups(schoolId).then(
+      (next) => { if (active) { setRows(next); setInputs(Object.fromEntries(next.map((row) => [row.categoryCode, row.inviteUrl]))); } },
+      (e: unknown) => { if (active) setLoadError(workflowError(e, "Unable to load the school's item groups.")); },
+    );
+    return () => { active = false; };
+  }, [schoolId, attempt, retry]);
+
+  const label = (code: string) => `${categories?.find((category) => category.code === code)?.label ?? code} group`;
+  const save = async (code: string, text: string) => {
+    const trimmed = text.trim();
+    setSaving(code);
+    const saved = await run(async () => {
+      const next = await setupApi.saveSchoolItemGroup(schoolId, code, trimmed ? normaliseInvite(trimmed) ?? trimmed : '');
+      setRows(next); setInputs(Object.fromEntries(next.map((row) => [row.categoryCode, row.inviteUrl])));
+    }, trimmed ? `${label(code)} link saved.` : `${label(code)} link removed.`);
+    setSaving(null);
+    return saved;
+  };
+
+  if (loadError) return <LoadFailure message={loadError} onRetry={() => setRetry((value) => value + 1)} />;
+  if (rows === null) return <p className="ck-setup-muted" role="status">Loading the item groups…</p>;
+  const free = (categories ?? []).filter((category) => !rows.some((row) => row.categoryCode === category.code));
+  const newInvalid = newLink.trim() !== '' && !normaliseInvite(newLink.trim());
+  return (
+    <div className="ck-setup-block">
+      <h4>Item groups at this school</h4>
+      <p className="ck-setup-muted">An item&apos;s own group replaces the school group on that item&apos;s orders here. Operators can also save one from an order when the school has no group.</p>
+      {rows.length === 0 && <p className="ck-setup-muted">No item has its own group at this school.</p>}
+      {rows.map((row) => (
+        <GroupLinkRow key={row.categoryCode} label={label(row.categoryCode)} saved={row.inviteUrl} value={inputs[row.categoryCode] ?? ''}
+          saving={saving === row.categoryCode} onChange={(value) => setInputs((current) => ({ ...current, [row.categoryCode]: value }))}
+          onSave={() => void save(row.categoryCode, inputs[row.categoryCode] ?? '')} />
+      ))}
+      {categories === null ? <p className="ck-setup-muted" role="status">Loading the items…</p> : free.length > 0 && (
+        <div className="ck-setup-group" role="group" aria-labelledby={`${ids}-add`}>
+          <strong id={`${ids}-add`}>Add an item group</strong>
+          <div className="ck-setup-group-edit">
+            <select aria-label="Item" value={newItem} disabled={saving !== null} onChange={(e) => setNewItem(e.target.value)}>
+              <option value="">Select item…</option>{free.map((category) => <option key={category.code} value={category.code}>{category.label}</option>)}
+            </select>
+            <input aria-label="New item group invite link" type="url" inputMode="url" placeholder="https://chat.whatsapp.com/…" value={newLink}
+              disabled={saving !== null} aria-invalid={newInvalid || undefined} aria-describedby={newInvalid ? `${ids}-add-error` : undefined}
+              onChange={(e) => setNewLink(e.target.value)} />
+            <button type="button" className="ck-btn ck-btn-ghost" disabled={saving !== null || !newItem || !newLink.trim() || newInvalid}
+              onClick={() => void save(newItem, newLink).then((saved) => { if (saved) { setNewItem(''); setNewLink(''); } })}>Add item group</button>
+            {newInvalid && <span id={`${ids}-add-error`} className="ck-setup-error">{INVALID_INVITE_MESSAGE}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GroupsTab({ schools }: { schools: SchoolOption[] }) {
   const [global, setGlobal] = useState<InternalApprovalGroupView | null>(null);
   const [globalError, setGlobalError] = useState('');
@@ -360,6 +434,7 @@ function GroupsTab({ schools }: { schools: SchoolOption[] }) {
   const [linksAttempt, setLinksAttempt] = useState(0);
   const [saving, setSaving] = useState<string | null>(null);
   const { error, notice, run } = useAction();
+  const categories = useList(setupApi.categories, 'Unable to load the items.');
 
   useEffect(() => {
     let active = true;
@@ -427,8 +502,11 @@ function GroupsTab({ schools }: { schools: SchoolOption[] }) {
           <GroupLinkRow key={key} label={label} saved={links[key] ?? null} value={inputs[key] ?? ''} saving={saving === key}
             onChange={(value) => setInputs((current) => ({ ...current, [key]: value }))} onSave={() => void saveSchool(key, label)} />
         ))}
+        {schoolId && categories.error && <LoadFailure message={categories.error} onRetry={() => void categories.reload()} />}
+        {schoolId && <ItemGroups schoolId={Number(schoolId)} attempt={linksAttempt} categories={categories.rows} run={run} />}
       </div>
       <Messages error={error} notice={notice} />
+      <GroupLinkImport schools={schools} onApplied={() => setLinksAttempt((value) => value + 1)} />
     </section>
   );
 }

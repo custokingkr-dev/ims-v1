@@ -49,6 +49,8 @@ beforeEach(() => {
   vi.mocked(setupApi.timeSlots).mockResolvedValue([]);
   vi.mocked(setupApi.internalApprovalGroup).mockResolvedValue({ inviteUrl: null, updatedAt: null, updatedBy: null });
   vi.mocked(setupApi.schoolGroups).mockResolvedValue({});
+  vi.mocked(setupApi.schoolItemGroups).mockResolvedValue([]);
+  vi.mocked(setupApi.vendors).mockResolvedValue([]);
 });
 afterEach(cleanup);
 
@@ -210,6 +212,97 @@ describe('Groups', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save school internal approval group link' }));
     await waitFor(() => expect(setupApi.saveSchoolGroup).toHaveBeenCalledWith(7, 'INTERNAL_APPROVAL', 'https://chat.whatsapp.com/ZyXwVu98765'));
     expect(await screen.findByText('School internal approval group link saved.')).toBeInTheDocument();
+  });
+
+  it("shows, removes and adds a school's item groups", async () => {
+    const FLIER = 'https://chat.whatsapp.com/FlierGroup000001';
+    vi.mocked(setupApi.schoolItemGroups).mockResolvedValue([{ categoryCode: 'FLIERS', inviteUrl: FLIER, updatedAt: '2026-11-15T05:00:00Z', updatedBy: 12 }]);
+    vi.mocked(setupApi.saveSchoolItemGroup).mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ categoryCode: 'NOTEBOOKS', inviteUrl: INVITE, updatedAt: '2026-11-15T06:00:00Z', updatedBy: 1 }]);
+    render(<NotebookAdminPanel />);
+    fireEvent.click(tab('Groups'));
+    fireEvent.change(await screen.findByRole('combobox', { name: 'School' }), { target: { value: '7' } });
+    expect(await screen.findByRole('link', { name: /Open fliers group/ })).toHaveAttribute('href', FLIER);
+    await waitFor(() => expect(setupApi.schoolItemGroups).toHaveBeenCalledWith(7));
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Fliers group invite link' }), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Remove fliers group link' }));
+    await waitFor(() => expect(setupApi.saveSchoolItemGroup).toHaveBeenCalledWith(7, 'FLIERS', ''));
+    expect(await screen.findByText('Fliers group link removed.')).toBeInTheDocument();
+    expect(screen.getByText('No item has its own group at this school.')).toBeInTheDocument();
+
+    const add = screen.getByRole('button', { name: 'Add item group' });
+    expect(add).toBeDisabled();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Item' }), { target: { value: 'NOTEBOOKS' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'New item group invite link' }), { target: { value: `${INVITE}?mode=ems_copy_t` } });
+    fireEvent.click(add);
+    await waitFor(() => expect(setupApi.saveSchoolItemGroup).toHaveBeenLastCalledWith(7, 'NOTEBOOKS', INVITE));
+    expect(await screen.findByText('Notebooks group link saved.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Open notebooks group/ })).toHaveAttribute('href', INVITE);
+  });
+});
+
+describe('Importing group links from a spreadsheet', () => {
+  const HEADER = 'Type,School ID,School,Item,Vendor ID,Vendor,WhatsApp group link';
+  const ADDED = { line: 2, kind: 'SCHOOL_GROUP', schoolId: 7, categoryCode: null, vendorId: null, before: null, after: INVITE, outcome: 'ADDED' } as const;
+  const choose = async (csv: string) => fireEvent.change(await screen.findByLabelText('Choose filled-in sheet'),
+    { target: { files: [new File([csv], 'links.csv', { type: 'text/csv' })] } });
+
+  it('checks the file with the server first, shows each change, and applies it only when asked', async () => {
+    vi.mocked(setupApi.importGroupLinks)
+      .mockResolvedValueOnce({ dryRun: true, applied: false, changes: [ADDED], errors: [] })
+      .mockResolvedValueOnce({ dryRun: false, applied: true, changes: [ADDED], errors: [] });
+    render(<NotebookAdminPanel />);
+    fireEvent.click(tab('Groups'));
+    await choose(`${HEADER}\nSchool group,7,School Seven,,,,${INVITE}?mode=ems_copy_t\nInternal approval group,7,School Seven,,,,\n`);
+    const rows = [{ line: 2, kind: 'SCHOOL_GROUP', inviteUrl: INVITE, schoolId: 7 }];
+    await waitFor(() => expect(setupApi.importGroupLinks).toHaveBeenCalledWith({ dryRun: true, rows }));
+    const check = await screen.findByRole('region', { name: 'Check of links.csv' });
+    expect(within(check).getByText('1 to add · 0 to change · 0 to remove · 0 already saved')).toBeInTheDocument();
+    expect(within(check).getByText(/1 line left blank keeps what is saved/)).toBeInTheDocument();
+    expect(within(check).getByRole('cell', { name: 'School group · School Seven' })).toBeInTheDocument();
+
+    fireEvent.click(within(check).getByRole('button', { name: 'Apply 1 change' }));
+    await waitFor(() => expect(setupApi.importGroupLinks).toHaveBeenLastCalledWith({ dryRun: false, rows }));
+    expect(await screen.findByText('Imported: 1 added, 0 changed, 0 removed.')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Check of links.csv' })).not.toBeInTheDocument();
+  });
+
+  it('applies nothing while any line needs fixing, whether the screen or the server found it', async () => {
+    vi.mocked(setupApi.importGroupLinks).mockResolvedValue({ dryRun: true, applied: false, changes: [ADDED], errors: [{ line: 4, message: 'This sets the same group as line 2' }] });
+    render(<NotebookAdminPanel />);
+    fireEvent.click(tab('Groups'));
+    await choose(`${HEADER}\nSchool group,7,,,,,${INVITE}\nSchool group,,Nowhere,,,,${INVITE}\nSchool group,7,,,,,${INVITE}\n`);
+    const check = await screen.findByRole('region', { name: 'Check of links.csv' });
+    const alert = within(check).getByRole('alert');
+    expect(alert).toHaveTextContent('2 lines need fixing before anything can be imported:');
+    expect(within(alert).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Line 3: There is no school named "Nowhere"',
+      'Line 4: This sets the same group as line 2',
+    ]);
+    expect(within(check).getByRole('button', { name: 'Apply 1 change' })).toBeDisabled();
+    expect(setupApi.importGroupLinks).toHaveBeenCalledTimes(1);
+  });
+
+  it('downloads the saved links of every school and vendor as CSV', async () => {
+    const createObjectURL = vi.fn(() => 'blob:links');
+    const revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    vi.mocked(setupApi.schoolGroups).mockResolvedValue({ SCHOOL_GROUP: INVITE });
+    render(<NotebookAdminPanel />);
+    fireEvent.click(tab('Groups'));
+    const download = await screen.findByRole('button', { name: /Download saved links/ });
+    await waitFor(() => expect(download).toBeEnabled());
+    fireEvent.click(download);
+    expect(await screen.findByText(/^Downloaded\./)).toBeInTheDocument();
+    expect(setupApi.schoolGroups).toHaveBeenCalledWith(7);
+    expect(setupApi.schoolItemGroups).toHaveBeenCalledWith(7);
+    expect(setupApi.vendors).toHaveBeenCalled();
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect(click).toHaveBeenCalled();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:links');
+    click.mockRestore();
   });
 });
 

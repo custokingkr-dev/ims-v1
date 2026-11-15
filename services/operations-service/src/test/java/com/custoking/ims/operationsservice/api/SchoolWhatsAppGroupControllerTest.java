@@ -1,5 +1,7 @@
 package com.custoking.ims.operationsservice.api;
 
+import com.custoking.ims.operationsservice.application.GroupLinkService;
+import com.custoking.ims.operationsservice.application.GroupLinkService.ItemGroupLinkView;
 import com.custoking.ims.operationsservice.application.OrderWorkflowService;
 import com.custoking.ims.operationsservice.application.orderworkflow.rules.WorkflowRuleViolation;
 import com.custoking.ims.operationsservice.persistence.OrderWorkflowRepository;
@@ -17,6 +19,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -42,14 +45,16 @@ class SchoolWhatsAppGroupControllerTest {
     static final String TOKEN = "X-Workflow-Service-Token";
 
     OrderWorkflowService service;
+    GroupLinkService groups;
     WorkflowReadRepository workflows;
     MockMvc mvc;
 
     @BeforeEach void setup() {
         service = mock(OrderWorkflowService.class);
+        groups = mock(GroupLinkService.class);
         workflows = mock(WorkflowReadRepository.class);
         // Every controller mapped under /api/v1/workflows, so the routing below is decided as it is in the service.
-        mvc = MockMvcBuilders.standaloneSetup(new SchoolWhatsAppGroupController(service, "workflow-token"),
+        mvc = MockMvcBuilders.standaloneSetup(new SchoolWhatsAppGroupController(service, groups, "workflow-token"),
                 new WorkflowReadController(workflows, "workflow-token"),
                 new OrderWorkflowController(service, "workflow-token")).build();
     }
@@ -70,7 +75,7 @@ class SchoolWhatsAppGroupControllerTest {
     }
 
     @Test void aBlankConfiguredTokenRefusesEveryCall() throws Exception {
-        MockMvc unconfigured = MockMvcBuilders.standaloneSetup(new SchoolWhatsAppGroupController(service, "  ")).build();
+        MockMvc unconfigured = MockMvcBuilders.standaloneSetup(new SchoolWhatsAppGroupController(service, groups, "  ")).build();
         unconfigured.perform(get("/api/v1/workflows/school-whatsapp-groups/12").header(TOKEN, "")).andExpect(status().isUnauthorized());
         unconfigured.perform(get("/api/v1/workflows/school-whatsapp-groups/12").header(TOKEN, "anything")).andExpect(status().isUnauthorized());
         verifyNoInteractions(service);
@@ -146,7 +151,7 @@ class SchoolWhatsAppGroupControllerTest {
         when(repo.whatsappGroupLinks(41L)).thenReturn(Map.of("INTERNAL_APPROVAL", LINK, "PRODUCT_VENDOR", LINK, "board_shree", LINK));
         OrderWorkflowService real = new OrderWorkflowService(repo, null, null, new TransactionTemplate(mock(PlatformTransactionManager.class)),
                 Clock.systemUTC(), null, null, null, null, null, null, null, null);
-        MockMvc gateway = MockMvcBuilders.standaloneSetup(new SchoolWhatsAppGroupController(real, "workflow-token"))
+        MockMvc gateway = MockMvcBuilders.standaloneSetup(new SchoolWhatsAppGroupController(real, mock(GroupLinkService.class), "workflow-token"))
                 .addFilters(new TenantContextFilter()).build();
         String itemOnlyCodes = "workspace:access,notebook-tracker:read,notebook-tracker:act,order:read,order:update";
         String operationsCodes = "workspace:access,order:read,order:update,workflow:read,notebook-tracker:read,notebook-tracker:act";
@@ -199,6 +204,43 @@ class SchoolWhatsAppGroupControllerTest {
                         .contentType("application/json").content("{\"url\":\"https://example.com/AbCdEf1234567890\"}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INVITE"));
         verify(repo, never()).upsertWhatsAppGroupLink(anyLong(), org.mockito.ArgumentMatchers.eq("PRODUCT_VENDOR"), anyString(), anyLong());
+    }
+
+    @Test void aSchoolsItemGroupsAreReadAndSavedThroughTheGroupLinkService() throws Exception {
+        ItemGroupLinkView fliers = new ItemGroupLinkView("FLIERS", LINK, OffsetDateTime.parse("2026-11-15T10:00:00Z"), 1L);
+        when(groups.schoolItemGroupLinks(12L)).thenReturn(List.of(fliers));
+        mvc.perform(get("/api/v1/workflows/school-whatsapp-groups/12/items").header(TOKEN, "workflow-token"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].categoryCode").value("FLIERS"))
+                .andExpect(jsonPath("$[0].inviteUrl").value(LINK)).andExpect(jsonPath("$[0].updatedBy").value(1));
+
+        when(groups.setSchoolItemGroupLink(12L, "FLIERS", LINK)).thenReturn(List.of(fliers));
+        mvc.perform(put("/api/v1/workflows/school-whatsapp-groups/12/items/FLIERS").header(TOKEN, "workflow-token")
+                        .contentType("application/json").content("{\"url\":\"" + LINK + "\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].categoryCode").value("FLIERS"));
+        verify(groups).setSchoolItemGroupLink(12L, "FLIERS", LINK);
+
+        // A blank url reaches the service as such, where it removes the item's group.
+        when(groups.setSchoolItemGroupLink(12L, "FLIERS", "")).thenReturn(List.of());
+        mvc.perform(put("/api/v1/workflows/school-whatsapp-groups/12/items/FLIERS").header(TOKEN, "workflow-token")
+                        .contentType("application/json").content("{\"url\":\"\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+
+        when(groups.setSchoolItemGroupLink(12L, "FLIERS", "https://example.com/x"))
+                .thenThrow(new WorkflowRuleViolation(WorkflowRuleViolation.INVALID_INVITE, "Paste a WhatsApp group invite link"));
+        mvc.perform(put("/api/v1/workflows/school-whatsapp-groups/12/items/FLIERS").header(TOKEN, "workflow-token")
+                        .contentType("application/json").content("{\"url\":\"https://example.com/x\"}"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INVITE"));
+        verifyNoInteractions(service);
+    }
+
+    @Test void theItemEndpointsNeedTheTokenAndANumericSchool() throws Exception {
+        mvc.perform(get("/api/v1/workflows/school-whatsapp-groups/12/items")).andExpect(status().isUnauthorized());
+        mvc.perform(put("/api/v1/workflows/school-whatsapp-groups/12/items/FLIERS")
+                        .contentType("application/json").content("{\"url\":\"" + LINK + "\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/workflows/school-whatsapp-groups/twelve/items").header(TOKEN, "workflow-token"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").value("schoolId must be a number"));
+        verifyNoInteractions(groups);
     }
 
     /**

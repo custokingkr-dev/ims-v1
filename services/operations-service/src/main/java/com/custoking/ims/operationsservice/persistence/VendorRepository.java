@@ -142,6 +142,12 @@ public class VendorRepository implements VendorLookup {
                 .update();
     }
 
+    /** Sets, or with null removes, only the vendor's WhatsApp group (the spreadsheet import); every other field is kept. */
+    public int updateGroupLink(long id, String inviteUrl, long userId) {
+        return jdbc.sql("UPDATE " + vendors + " SET whatsapp_group_url = :url, updated_by = :user, updated_at = now() WHERE id = :id")
+                .param("id", id).param("url", inviteUrl).param("user", userId).update();
+    }
+
     /** Makes the vendor a member of exactly these categories. */
     public void replaceCategories(long vendorId, Collection<String> codes) {
         jdbc.sql("DELETE FROM " + members + " WHERE vendor_id = :id AND category_code NOT IN (:codes)")

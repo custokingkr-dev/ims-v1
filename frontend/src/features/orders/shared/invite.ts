@@ -9,12 +9,14 @@
 export const INVALID_INVITE_MESSAGE = 'Paste a WhatsApp group invite link (https://chat.whatsapp.com/…)';
 
 /**
- * Mirrors the server's invite check (NotebookTrackerService.validateWhatsAppInviteUrl, java.net.URI): https and
- * chat.whatsapp.com in any case, an empty port at most, and no userinfo, query or fragment (even empty ones). The raw
- * text is tested, not `new URL()`, because the browser parser normalises inputs the server refuses (`:443`,
- * `https://@…`, backslashes, dot segments). No `u` flag, so `i` never folds a non-ASCII letter onto an ASCII one.
+ * Mirrors the server's invite check (GroupLinkService.canonicalInvite, java.net.URI): https and chat.whatsapp.com in any
+ * case, an empty port at most, no userinfo, and a 10 to 64 character invite code. A query or fragment made of URI
+ * characters is allowed and dropped, since WhatsApp's own "copy link" adds one (`?mode=ems_copy_t`). The raw text is
+ * tested, not `new URL()`, because the browser parser normalises inputs the server refuses (`:443`, `https://@…`,
+ * backslashes, dot segments). No `u` flag, so `i` never folds a non-ASCII letter onto an ASCII one.
  */
-const WHATSAPP_INVITE = /^https:\/\/chat\.whatsapp\.com:?\/([A-Za-z0-9_-]{10,64})$/i;
+const URI_CHARS = "(?:%[0-9A-Fa-f]{2}|[A-Za-z0-9\\-._~!$&'()*+,;=:@/?])*";
+const WHATSAPP_INVITE = new RegExp(`^https://chat\\.whatsapp\\.com:?/([A-Za-z0-9_-]{10,64})(?:\\?${URI_CHARS})?(?:#${URI_CHARS})?$`, 'i');
 const INVITE_ORIGIN = 'https://chat.whatsapp.com/';
 
 /** The one spelling the server stores: https://chat.whatsapp.com/<code>, the code kept exactly; null if invalid. */

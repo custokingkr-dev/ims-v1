@@ -11,9 +11,9 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 59,
-    "endpoints": 500,
-    "canonicalEndpoints": 389,
+    "controllers": 60,
+    "endpoints": 503,
+    "canonicalEndpoints": 392,
     "compatibilityEndpoints": 90,
     "internalEndpoints": 21,
     "diagnosticAliases": 12,
@@ -1170,7 +1170,7 @@
       "basePaths": [
         "/api/v1/workflows/school-whatsapp-groups"
       ],
-      "endpointCount": 2,
+      "endpointCount": 4,
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/SchoolWhatsAppGroupController.java"
     },
     {
@@ -1182,6 +1182,16 @@
       ],
       "endpointCount": 5,
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/VendorDirectoryController.java"
+    },
+    {
+      "service": "operations-service",
+      "controller": "WhatsAppGroupImportController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/workflows/whatsapp-groups"
+      ],
+      "endpointCount": 1,
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/WhatsAppGroupImportController.java"
     },
     {
       "service": "operations-service",
@@ -2697,7 +2707,7 @@
       "path": "/api/v1/workflows/school-whatsapp-groups/{schoolId}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/SchoolWhatsAppGroupController.java",
-      "line": 55
+      "line": 61
     },
     {
       "service": "operations-service",
@@ -2706,7 +2716,25 @@
       "path": "/api/v1/workflows/school-whatsapp-groups/{schoolId}/{target}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/SchoolWhatsAppGroupController.java",
-      "line": 63
+      "line": 69
+    },
+    {
+      "service": "operations-service",
+      "controller": "SchoolWhatsAppGroupController",
+      "method": "GET",
+      "path": "/api/v1/workflows/school-whatsapp-groups/{schoolId}/items",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/SchoolWhatsAppGroupController.java",
+      "line": 81
+    },
+    {
+      "service": "operations-service",
+      "controller": "SchoolWhatsAppGroupController",
+      "method": "PUT",
+      "path": "/api/v1/workflows/school-whatsapp-groups/{schoolId}/items/{categoryCode}",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/SchoolWhatsAppGroupController.java",
+      "line": 89
     },
     {
       "service": "operations-service",
@@ -2797,6 +2825,15 @@
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/VendorDirectoryController.java",
       "line": 84
+    },
+    {
+      "service": "operations-service",
+      "controller": "WhatsAppGroupImportController",
+      "method": "POST",
+      "path": "/api/v1/workflows/whatsapp-groups/import",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/WhatsAppGroupImportController.java",
+      "line": 40
     },
     {
       "service": "operations-service",

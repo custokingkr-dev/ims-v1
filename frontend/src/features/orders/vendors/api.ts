@@ -2,8 +2,9 @@ import api from '../../../services/api';
 import { createCatalogClient } from '../../../generated/catalogClient';
 import { createOperatorAdminClient, type OperatorAssignment } from '../../../generated/operatorAdminClient';
 import {
-  createOrderWorkflowClient, type DesignerRow, type InternalApprovalGroupView, type TimeSlotRow, type WorkflowDefinitionId,
-  type WorkflowTemplate,
+  createOrderWorkflowClient, type DesignerRow, type InternalApprovalGroupView, type ItemGroupLinkView, type TimeSlotRow,
+  type WhatsAppGroupImportChange, type WhatsAppGroupImportRequest, type WhatsAppGroupImportResult, type WhatsAppGroupImportRow,
+  type WorkflowDefinitionId, type WorkflowTemplate,
 } from '../../../generated/orderWorkflowClient';
 import { createTenantSchoolClient } from '../../../generated/tenantSchoolClient';
 import {
@@ -22,7 +23,8 @@ export { WORKFLOW_DEFINITIONS, workflowDefinitionLabel };
  */
 
 export type {
-  DesignerRow, InternalApprovalGroupView, TimeSlotRow, VendorCategoryRequest, VendorCategoryView, VendorRequest, VendorView, WorkflowDefinitionId, WorkflowTemplate,
+  DesignerRow, InternalApprovalGroupView, ItemGroupLinkView, TimeSlotRow, VendorCategoryRequest, VendorCategoryView, VendorRequest, VendorView,
+  WhatsAppGroupImportChange, WhatsAppGroupImportRequest, WhatsAppGroupImportResult, WhatsAppGroupImportRow, WorkflowDefinitionId, WorkflowTemplate,
 };
 export type OperatorRow = OperatorAssignment;
 export interface OperatorUser { userId: number; fullName: string; email: string }
@@ -83,6 +85,18 @@ export const setupApi = {
   // An empty url removes the link.
   saveSchoolGroup: async (schoolId: number, target: SchoolGroupTarget, url: string): Promise<Record<string, string>> =>
     parseGroupLinks(await workflows.saveSchoolWhatsAppGroupLink({ schoolId, target }, { url })),
+  // A school's own group for one item, which replaces its school group on that item's orders. An empty url removes it.
+  schoolItemGroups: async (schoolId: number): Promise<ItemGroupLinkView[]> =>
+    parseList<ItemGroupLinkView>(await workflows.listSchoolItemGroupLinks({ schoolId })),
+  saveSchoolItemGroup: async (schoolId: number, categoryCode: string, url: string): Promise<ItemGroupLinkView[]> =>
+    parseList<ItemGroupLinkView>(await workflows.saveSchoolItemGroupLink({ schoolId, categoryCode }, { url })),
+  // The spreadsheet import: a dry run says what would change; dryRun false applies the whole file or nothing.
+  importGroupLinks: async (request: WhatsAppGroupImportRequest): Promise<WhatsAppGroupImportResult> => {
+    const result = parseRecord<WhatsAppGroupImportResult>(await workflows.importWhatsAppGroupLinks(request));
+    parseList(result.changes);
+    parseList(result.errors);
+    return result;
+  },
 
   // Operators (existing set-up, moved here from the retired notebook tracker).
   operators: async (): Promise<OperatorRow[]> => parseList<OperatorRow>(await operatorAdmin.listOperators()),

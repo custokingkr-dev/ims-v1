@@ -37,29 +37,61 @@ export function OpenSchoolGroup({ primary = true }: { primary?: boolean }) {
 }
 
 /**
- * What the screen offers when the school has no group chat (D34): the stage's assignee may save the item's group link
- * right here; superadmin is pointed at the set-up screen, where school-wide links live.
+ * The item's own school group (D34). When the school has no group chat, superadmin or the stage's assignee may save one
+ * for this order's item right here. When the item already has its own group, the same people may change or remove it;
+ * it then applies to every order of this item at the school, and removing it shows the school's group again. School-wide
+ * groups stay in Workflow set-up → Groups.
  */
-function MissingSchoolGroup() {
+function SchoolGroupLinkEditor() {
   const { view, user, run } = useWorkflow();
   const [text, setText] = useState('');
   const [touched, setTouched] = useState(false);
-  if (safeInviteHref(view.groups.school.url)) return null;
-  if (user.superadmin) return <Warning>No group chat saved for this school. Add it in Workflow set-up → Groups.</Warning>;
-  if (!view.can.canSetSchoolGroup) return <Warning>No group chat saved for this school yet.</Warning>;
+  const [editing, setEditing] = useState(false);
+  const resolved = safeInviteHref(view.groups.school.url);
+  const itemOwn = resolved !== null && view.groups.school.source === 'ITEM';
+  const canSet = view.can.canSetSchoolGroup;
+  if (resolved && !itemOwn) return null;
+  if (!resolved && !canSet) return <Warning>No group chat saved for this school yet.</Warning>;
+
   const invite = normaliseInvite(text);
+  const close = () => { setText(''); setTouched(false); setEditing(false); };
   const save = async () => {
     setTouched(true);
     if (!invite) return;
-    if (await run(() => workflowApi.setSchoolGroup(view.orderId, invite), 'Group link saved')) { setText(''); setTouched(false); }
+    if (await run(() => workflowApi.setSchoolGroup(view.orderId, invite), 'Group link saved')) close();
   };
-  return (
-    <div className="ck-wf-inline-form">
-      <Warning>No group chat saved for this school yet. Paste the group's invite link to save it for this order's item.</Warning>
-      <Field label="Save group link" error={touched && !invite ? INVALID_INVITE_MESSAGE : undefined}>
+  const remove = async () => {
+    if (await run(() => workflowApi.setSchoolGroup(view.orderId, ''), "Item's group removed")) close();
+  };
+  const form = (
+    <>
+      <Field label={itemOwn ? 'New group link' : 'Save group link'} error={touched && !invite ? INVALID_INVITE_MESSAGE : undefined}>
         <input type="url" value={text} placeholder="https://chat.whatsapp.com/…" onChange={(e) => setText(e.target.value)} onBlur={() => setTouched(!!text)} />
       </Field>
-      <button type="button" className="ck-btn ck-btn-ghost" disabled={!text.trim()} onClick={() => void save()}>Save group link</button>
+      <div className="ck-wf-block-actions">
+        <button type="button" className="ck-btn ck-btn-ghost" disabled={!text.trim()} onClick={() => void save()}>Save group link</button>
+        {itemOwn && <button type="button" className="ck-btn ck-btn-ghost" onClick={() => void remove()}>Remove item&apos;s group</button>}
+        {itemOwn && <button type="button" className="ck-btn ck-btn-ghost" onClick={close}>Cancel</button>}
+      </div>
+    </>
+  );
+
+  if (itemOwn) {
+    return (
+      <div className="ck-wf-inline-form">
+        <p className="ck-wf-muted">This is the item&apos;s own group at this school; it replaces the school group on every order of this item here.</p>
+        {canSet && !editing && <button type="button" className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => setEditing(true)}>Change item&apos;s group</button>}
+        {canSet && editing && form}
+      </div>
+    );
+  }
+  return (
+    <div className="ck-wf-inline-form">
+      <Warning>
+        No group chat saved for this school yet. Paste the group&apos;s invite link to save it for this order&apos;s item
+        {user.superadmin ? ', or add one for the whole school in Workflow set-up → Groups.' : '.'}
+      </Warning>
+      {form}
     </div>
   );
 }
@@ -70,7 +102,7 @@ export function SchoolGroupBlock({ block }: { block: BlockSpec }) {
       <SchoolChip />
       <div className="ck-wf-block-actions"><OpenSchoolGroup /></div>
       <p className="ck-wf-muted">Opens the WhatsApp group mapped to this order&apos;s school in a new tab.</p>
-      <MissingSchoolGroup />
+      <SchoolGroupLinkEditor />
     </BlockCard>
   );
 }
@@ -140,7 +172,7 @@ export function IntroMessageBlock({ block }: { block: BlockSpec }) {
         {edited !== null && <button type="button" className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => setEdited(null)}>Reset to template</button>}
       </div>
       <p className="ck-wf-muted">Copy the message, then open the mapped school WhatsApp group in a new tab to send it.</p>
-      <MissingSchoolGroup />
+      <SchoolGroupLinkEditor />
       {checklist && (
         <fieldset className="ck-wf-checklist is-inline">
           <legend className="ck-sr-only">Introduction checklist</legend>
