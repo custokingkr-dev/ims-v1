@@ -205,17 +205,25 @@ include `orgpolicy.policyAdmin`. That role can only be granted at organization l
 | When | Grant | Where | Why |
 |---|---|---|---|
 | Before dev move | `roles/owner` to `<COMPANY_ADMIN>`. The account is outside this organization, so Google requires the console; the invitation must be accepted. | **Directly on** custoking-dev and custoking-prod | Survives the move (direct project roles move with it). Also covers the project-level move permissions. |
-| Before dev move | Also a **direct** project role (owner, or the narrower set the team needs) for **the operations account**, which today has none | Both projects | Otherwise it loses all access when the projects leave the organization |
+| Before dev move | Also a **direct** project role for **the operations account**, which today has none: owner, or at least `roles/viewer` plus `roles/iam.securityReviewer` | Both projects | Otherwise it loses all access when the projects leave the organization, and the checks that read IAM, dataset access lists and effective policies cannot run |
+| Before dev move | `roles/resourcemanager.folderViewer` and `roles/iam.securityReviewer` for the operations account. If the company organization refuses a personal account, `<COMPANY_ADMIN>` runs every company-side read instead and keeps the output in restricted storage. | **IMS folder** only | The operations account holds no role in the company organization and cannot be given one at its top level |
 | Before dev move | `roles/resourcemanager.projectMover` (forward move: the project's current parent), **`roles/resourcemanager.projectCreator`** (reverse move: the old organization becomes the destination), `roles/orgpolicy.policyAdmin` | **Current** organization | Forward move, and a rollback that can actually run |
 | Before dev move | `roles/orgpolicy.policyAdmin` | Company **organization** (org level only) | Set the IMS-folder policies (§4) and the import/export allowances |
 | Before dev move | `roles/resourcemanager.projectMover` | **IMS folder** | Forward move: Project Mover on the destination folder. Reverse move: Project Mover on the project's parent at that time. |
 | Before dev move | `roles/billing.admin` on the company billing account | Billing | Phase 3 relink, and the Terraform budgets |
+| Before Phase 3 | `roles/billing.admin` on the **current** billing account as well. Allowed: the old organization has no domain restriction. | Billing | Google needs permissions on **both** the current and the target account to relink. The budget apply deletes the old budgets, which needs rights on the old account. Relinking back in a rollback needs rights there too. |
 | After prod passes soak | Revoke the temporary mover, creator and policy-admin roles in both organizations; remove the export/import allowances | Both organizations | Google's own clean-up step |
 | After billing switch | Personal accounts step down, per P6 | Projects, billing accounts | Least privilege, only after stabilization |
 
-**Monitoring notification channels** today point at the two personal email addresses. Add a company address before the
-move. In prod, the 27 notifying policies and 7 uptime checks already cover a broken service; leave the 49 muted ones
-as they are. If they should notify, flip the two Terraform flags and apply **before** the freeze; never edit them in the
+**Monitoring notification channels** today point at the two personal email addresses. They are made by Terraform, one
+per address in `notification_email_addresses`, and every notifying policy uses only those. A channel added in the
+console is attached to no alert, so it receives nothing.
+- Add the company address there, in both observability tfvars, and **apply before the freeze**. This is an [owner]
+  step.
+- Check that the prod policies now list the new channel.
+
+In prod, the 27 notifying policies and 7 uptime checks already cover a broken service; leave the 49 muted ones as they
+are. If they should notify, flip the two Terraform flags and apply **before** the freeze; never edit them in the
 console, because the next apply would revert it. Dev has nothing that pages (§6.1 step 8).
 
 ---
@@ -245,7 +253,8 @@ console, because the next apply would revert it. Dev has nothing that pages (§6
 3. **[owner] Access, first:** every §5 "before dev move" grant. These include `orgpolicy.policyAdmin`, which the next
    step needs.
 
-   **[ops] verify:**
+   **Verify.** Company-side reads are run by `<COMPANY_ADMIN>`, or by the operations account if the IMS-folder grants
+   in §5 were accepted.
    - each account can `projects describe` both projects through a **direct** binding;
    - `<COMPANY_ADMIN>` holds Project Mover and Project Creator on the current organization, Project Mover on the IMS
      folder, and Org Policy Admin on both organizations:
@@ -262,6 +271,16 @@ console, because the next apply would revert it. Dev has nothing that pages (§6
    gcloud resource-manager org-policies allow resourcemanager.allowedImportSources      under:organizations/<SOURCE_ORG_ID> --organization=<DEST_ORG_ID>
    gcloud resource-manager org-policies allow resourcemanager.allowedExportDestinations under:organizations/<SOURCE_ORG_ID> --organization=<DEST_ORG_ID>
    ```
+
+   **[owner: `<COMPANY_ADMIN>`] Prove both directions on a canary before touching dev.** Google's `analyze-move`
+   "does not perform any checks on the destination organization resource", so a clean analysis proves little.
+   1. Create an empty project in the old organization, with no billing.
+   2. Move it to the IMS folder, and read its effective policies there (§4).
+   3. Move it back with `gcloud beta projects move <CANARY> --organization=<SOURCE_ORG_ID>`.
+   4. Delete it.
+
+   A successful round trip is a go/no-go condition for Phase 1. It exercises all four allowances, Project Mover on the
+   old organization and on the IMS folder, and Project Creator on the old organization (the rollback path).
 6. **[ops] Pre-checks against the real destination:**
    ```powershell
    gcloud asset analyze-move --project=custoking-dev  --destination-folder=<IMS_FOLDER_ID> --format=json
@@ -280,11 +299,15 @@ console, because the next apply would revert it. Dev has nothing that pages (§6
      to the dashboard would stop.
    - No open Google support cases or Marketplace subscriptions.
 8. **[ops] Alerting before the move:**
-   - add a company notification channel and send one test notification;
-   - **give dev something that pages for its soak.** Create temporary uptime checks for the dev frontend and
-     api-gateway, with the dev channels, or put twice-daily manual checks on the calendar. Remove them in Phase 4.
-9. **Freeze:** no prod promotion and no Terraform apply from now until prod passes its soak. The prod promotion is
-   already on hold (§9).
+   - the company address is on the Terraform channels (§5) and one test notification arrives;
+   - **give dev something that pages for its soak.** Dev runs with `enable_alert_notifications = false`, so uptime
+     checks alone alert no one. Either create temporary uptime checks for the dev frontend and api-gateway together with
+     alert policies on the dev channels, or put twice-daily manual checks on the calendar. Remove them in Phase 4.
+9. **Freeze:** from now until prod passes its soak:
+   - no prod promotion. It is already on hold (§9);
+   - no Terraform apply;
+   - **no merges to `dev`** from the start of Phase 1 until the dev soak ends. Otherwise a regression cannot be blamed
+     on the move or ruled out.
 
 ### 6.2 Phase 1: move dev (about 30 minutes; then 48–72 h soak)
 
@@ -306,8 +329,12 @@ console, because the next apply would revert it. Dev has nothing that pages (§6
    - each Scheduler relay's next run succeeds (or trigger one with `gcloud scheduler jobs run`);
    - Pub/Sub push subscriptions show no growing backlog;
    - no new ERROR logs per service;
-   - **GitHub → GCP:** run one dev deploy through `build-release.yml` (`workflow_dispatch`). This proves WIF, the build
-     and Cloud Run deploy;
+   - **GitHub → GCP:** run one dev deploy through `build-release.yml` with `workflow_dispatch`,
+     `target_environment=dev` and `commit_sha=<baseline dev HEAD>`.
+     - Naming a commit rebuilds every service on the normal direct dev path. A dispatch without one compares only the
+       last commit; if that commit touched no service, the run is green **without ever signing in to Google Cloud**.
+     - Do **not** use `force_full_deploy=true`: it moves dev onto Cloud Deploy.
+     - Pass only if the "Authenticate to Google Cloud" steps ran and new revisions of that commit are serving.
    - **cross-organization links:** compare IAM with the baseline. Do not rely on the cost jobs, which fail for an
      unrelated reason. Specifically:
      - the dev Artifact Registry policy still lists the 5 prod readers
@@ -351,7 +378,10 @@ already in place.
    custoking-prod.
    - Charges up to the switch stay on the old account.
    - **Do not link to a closed account:** that disables billing and stops the project.
-2. **[owner] Budgets come from Terraform, not by hand.**
+2. **[owner: `<COMPANY_ADMIN>`] Budgets come from Terraform, not by hand.**
+   - A budget cannot move between billing accounts, so the apply **replaces** them: it deletes the budgets on the old
+     account and creates new ones. Run `terraform plan` first. It must show only those replacements: 2 project budgets
+     created, and the old account's 2 project budgets plus the trial-runway budget deleted.
    - Both project budgets (today ₹2,000 dev and ₹5,000 prod, on gross cost) are `google_billing_budget` resources. A
      hand-made copy plus an apply would give duplicate alerts.
    - In **both** observability tfvars (they are gitignored), set `billing_account_id = <COMPANY_BILLING_ACCOUNT_ID>`.
@@ -397,7 +427,8 @@ already in place.
 | Cloud Run | Same revisions serving; no new errors | Check inherited policy denials (Policy Troubleshooter) |
 | Cloud SQL | RUNNABLE; connections OK; no restore | Never restore for an access error |
 | Scheduler / Pub/Sub | Relays run; no backlog growth | Check OIDC invoker grants; do not replay blindly |
-| CI (WIF) | A dev deploy succeeds | Check provider condition and the folder's WIF policy |
+| CI (WIF) | A dev deploy of a named commit succeeds, with the sign-in steps actually run | Check the provider condition and the folder's WIF policy |
+| Prod CI (WIF) | **Not proven by the move:** no prod release runs in the window. The provider and service-account policies must equal the baseline. | The first prod release after the move is its real test; run it with the deploy runbook |
 | Observability | Uptime checks green; logs and metrics flowing; a test alert arrives | Treat missing telemetry as a failure |
 | Cross-project | Dev registry readers, the billing dataset ACL and the collector's dev grants equal the baseline | Folder or domain policy; restore the grant narrowly |
 | Dashboard sign-in | An allowlisted personal account signs in from outside the company, at the move and about 24 h later | Check the OAuth client audience (External); do not chase IAP, which is off |
@@ -416,7 +447,8 @@ already in place.
      - it works only because Phase 0 step 5 set the reverse allowances, and §5 gave `<COMPANY_ADMIN>` Project Mover on
        the IMS folder and Project Creator on the old organization. Google: a rollback needs "the same IAM permissions
        and enforced policies as a new migration".
-- **Billing switch problem:** relink the previous account. It is open, because it was upgraded today.
+- **Billing switch problem:** `<COMPANY_ADMIN>` relinks the previous account. It is open, because it was upgraded
+  today, and §5 gave `<COMPANY_ADMIN>` billing admin on it before Phase 3.
 - **Never** restore the database or copy buckets because of an access or policy failure. An organization move does
   not touch data.
 
