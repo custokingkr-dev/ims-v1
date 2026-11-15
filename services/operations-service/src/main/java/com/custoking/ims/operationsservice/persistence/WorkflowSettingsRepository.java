@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,7 +20,8 @@ import java.util.UUID;
  *   <li>{@code workflow_school_item_group_links}: a school's group for one item, overriding its school-wide group. Tenant
  *       data under row-level security.</li>
  *   <li>{@code workflow_school_whatsapp_group_links}: the school-wide groups ({@code SCHOOL_GROUP},
- *       {@code INTERNAL_APPROVAL}), read here and maintained through the school endpoints. Tenant data.</li>
+ *       {@code INTERNAL_APPROVAL}), read here for an order and written here by the spreadsheet import; the school
+ *       endpoints maintain them one at a time. Tenant data.</li>
  * </ul>
  * Every tenant read and write must run inside the transaction that applied the caller's scope.
  */
@@ -88,6 +90,33 @@ public class WorkflowSettingsRepository {
     public int deleteItemGroupLink(long schoolId, String categoryCode) {
         return jdbc.sql("DELETE FROM " + itemLinks + " WHERE school_id = :school AND category_code = :category")
                 .param("school", schoolId).param("category", categoryCode).update();
+    }
+
+    /** A school's group for one item, with who saved it last and when. */
+    public record ItemGroupLinkRow(String categoryCode, String inviteUrl, OffsetDateTime updatedAt, Long updatedBy) { }
+
+    /** Every item group the school has, by item code. */
+    public List<ItemGroupLinkRow> itemGroupLinks(long schoolId) {
+        return jdbc.sql("SELECT category_code, invite_url, updated_at, updated_by FROM " + itemLinks
+                        + " WHERE school_id = :school ORDER BY category_code")
+                .param("school", schoolId)
+                .query((rs, n) -> new ItemGroupLinkRow(rs.getString("category_code"), rs.getString("invite_url"),
+                        rs.getObject("updated_at", OffsetDateTime.class), rs.getObject("updated_by", Long.class)))
+                .list();
+    }
+
+    /** Sets one of the school-wide groups ({@link #SCHOOL_GROUP} or {@link #INTERNAL_APPROVAL}). */
+    public void upsertSchoolGroupLink(long schoolId, String targetKey, String inviteUrl, long userId) {
+        jdbc.sql("INSERT INTO " + schoolLinks + " (school_id, target_key, invite_url, updated_by, updated_at) "
+                        + "VALUES (:school, :target, :url, :user, now()) "
+                        + "ON CONFLICT (school_id, target_key) DO UPDATE SET invite_url = EXCLUDED.invite_url, "
+                        + "updated_by = EXCLUDED.updated_by, updated_at = now()")
+                .param("school", schoolId).param("target", targetKey).param("url", inviteUrl).param("user", userId).update();
+    }
+
+    public int deleteSchoolGroupLink(long schoolId, String targetKey) {
+        return jdbc.sql("DELETE FROM " + schoolLinks + " WHERE school_id = :school AND target_key = :target")
+                .param("school", schoolId).param("target", targetKey).update();
     }
 
     /** The school-wide {@link #SCHOOL_GROUP} and {@link #INTERNAL_APPROVAL} links the school has, by target. */

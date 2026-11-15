@@ -49,7 +49,16 @@
 .ck-setup-group a { display: inline-flex; align-items: center; gap: var(--ck-space-1); color: var(--ck-color-primary); font-weight: 600; }
 .ck-setup-group-edit { grid-column: 2; display: flex; flex-wrap: wrap; gap: var(--ck-space-2); }
 .ck-setup-group-edit input { flex: 1 1 240px; }
+.ck-setup .ck-setup-group-edit select { flex: 0 1 200px; width: auto; }
 .ck-setup-group-edit .ck-setup-error { flex-basis: 100%; }
+
+/* Spreadsheet import: the file button is a label around a visually hidden input, so it takes the input's focus ring. */
+.ck-setup-file { cursor: pointer; }
+.ck-setup-file:focus-within { outline: 2px solid var(--ck-color-primary); outline-offset: 3px; }
+.ck-setup-file.is-disabled { opacity: .6; cursor: not-allowed; }
+.ck-setup-import { display: grid; gap: var(--ck-space-3); min-width: 0; }
+.ck-setup-import-errors { margin: var(--ck-space-2) 0 0; padding-left: var(--ck-space-5); }
+.ck-setup .ck-setup-import-table td { overflow-wrap: anywhere; }
 
 /* Vendor directory: categories beside vendors from 1024px, stacked below. */
 .ck-vd { display: grid; gap: var(--ck-space-4); min-width: 0; }

@@ -118,6 +118,18 @@ export type InviteLinkRequest = { "inviteUrl"?: string | null; };
 
 export type InternalApprovalGroupView = { "inviteUrl": string | null; "updatedAt": string | null; "updatedBy": number | null; };
 
+export type ItemGroupLinkView = { "categoryCode": string; "inviteUrl": string; "updatedAt": string; "updatedBy": number | null; };
+
+export type WhatsAppGroupImportRow = { "line"?: number | null; "kind": string; "schoolId"?: number | null; "categoryCode"?: string | null; "vendorId"?: number | null; "inviteUrl"?: string | null; };
+
+export type WhatsAppGroupImportRequest = { "dryRun"?: boolean | null; "rows": Array<WhatsAppGroupImportRow>; };
+
+export type WhatsAppGroupImportChange = { "line": number; "kind": "SCHOOL_GROUP" | "INTERNAL_APPROVAL" | "ITEM" | "VENDOR"; "schoolId": number | null; "categoryCode": string | null; "vendorId": number | null; "before": string | null; "after": string | null; "outcome": "ADDED" | "CHANGED" | "REMOVED" | "UNCHANGED"; };
+
+export type WhatsAppGroupImportError = { "line": number; "message": string; };
+
+export type WhatsAppGroupImportResult = { "dryRun": boolean; "applied": boolean; "changes": Array<WhatsAppGroupImportChange>; "errors": Array<WhatsAppGroupImportError>; };
+
 export interface OrderWorkflowClient {
   listOrderWorkflows(parameters?: { item?: string; step?: string; phase?: "INTAKE" | "PLANNING" | "PRODUCTION" | "VERIFICATION" | "DELIVERY"; assignee?: string; schoolId?: number; sla?: "OVERDUE" | "DUE_SOON" | "ON_TRACK" | "NO_TIMER" | "DUE_TODAY"; q?: string; includeFinished?: boolean; sort?: "due" | "placed" | "number"; limit?: number; offset?: number; }): Promise<OrderWorkflowPage>;
   listWorkflowTemplates(): Promise<Array<WorkflowTemplate>>;
@@ -152,6 +164,9 @@ export interface OrderWorkflowClient {
   clearTimeSlot(parameters: { schoolId: number; definitionId: "NOTEBOOK_ORDER_TRACKER" | "FLIER_ORDER_WORKFLOW" | "FLEX_ORDER_WORKFLOW" | "BILL_BOOK_ORDER_WORKFLOW" | "GENERAL_ITEM_ORDER_WORKFLOW"; step: number; }): Promise<void>;
   getSchoolWhatsAppGroupLinks(parameters: { schoolId: number; }): Promise<{ [key: string]: string; }>;
   saveSchoolWhatsAppGroupLink(parameters: { schoolId: number; target: "SCHOOL_GROUP" | "INTERNAL_APPROVAL"; }, request: WhatsAppGroupLinkRequest): Promise<{ [key: string]: string; }>;
+  listSchoolItemGroupLinks(parameters: { schoolId: number; }): Promise<Array<ItemGroupLinkView>>;
+  saveSchoolItemGroupLink(parameters: { schoolId: number; categoryCode: string; }, request: WhatsAppGroupLinkRequest): Promise<Array<ItemGroupLinkView>>;
+  importWhatsAppGroupLinks(request: WhatsAppGroupImportRequest): Promise<WhatsAppGroupImportResult>;
 }
 
 export function createOrderWorkflowClient(http: AxiosInstance): OrderWorkflowClient {
@@ -284,6 +299,18 @@ export function createOrderWorkflowClient(http: AxiosInstance): OrderWorkflowCli
     },
     async saveSchoolWhatsAppGroupLink(parameters: { schoolId: number; target: "SCHOOL_GROUP" | "INTERNAL_APPROVAL"; }, request: WhatsAppGroupLinkRequest) {
       const response = await http.put<{ [key: string]: string; }>(`/workflows/school-whatsapp-groups/${encodeURIComponent(String(parameters.schoolId))}/${encodeURIComponent(String(parameters.target))}`, request);
+      return response.data;
+    },
+    async listSchoolItemGroupLinks(parameters: { schoolId: number; }) {
+      const response = await http.get<Array<ItemGroupLinkView>>(`/workflows/school-whatsapp-groups/${encodeURIComponent(String(parameters.schoolId))}/items`);
+      return response.data;
+    },
+    async saveSchoolItemGroupLink(parameters: { schoolId: number; categoryCode: string; }, request: WhatsAppGroupLinkRequest) {
+      const response = await http.put<Array<ItemGroupLinkView>>(`/workflows/school-whatsapp-groups/${encodeURIComponent(String(parameters.schoolId))}/items/${encodeURIComponent(String(parameters.categoryCode))}`, request);
+      return response.data;
+    },
+    async importWhatsAppGroupLinks(request: WhatsAppGroupImportRequest) {
+      const response = await http.post<WhatsAppGroupImportResult>("/workflows/whatsapp-groups/import", request);
       return response.data;
     },
   };

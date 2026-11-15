@@ -2698,6 +2698,194 @@
           }
         }
       }
+    },
+    "/api/v1/workflows/school-whatsapp-groups/{schoolId}/items": {
+      "get": {
+        "operationId": "listSchoolItemGroupLinks",
+        "x-ims-controller": "SchoolWhatsAppGroupController",
+        "summary": "The school's group for each item that has its own (it overrides the school group on that item's orders)",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ItemGroupLinkView"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid schoolId (not a positive number)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Not superadmin or an operator assigned to the whole school (an item scope does not count), or without notebook-tracker:read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/school-whatsapp-groups/{schoolId}/items/{categoryCode}": {
+      "put": {
+        "operationId": "saveSchoolItemGroupLink",
+        "x-ims-controller": "SchoolWhatsAppGroupController",
+        "summary": "Superadmin: set or (blank url) remove the school's group for one item",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "categoryCode",
+            "in": "path",
+            "required": true,
+            "description": "The item's catalogue category code, such as FLIERS",
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 60,
+              "pattern": "^[A-Za-z][A-Za-z0-9_]{1,59}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppGroupLinkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ItemGroupLinkView"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_INVITE, or a plain message for a bad schoolId or item code",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Not superadmin: SUPERADMIN_ONLY (operators), or \"WhatsApp group links are for superadmin and operators only\" (anyone else)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workflows/whatsapp-groups/import": {
+      "post": {
+        "operationId": "importWhatsAppGroupLinks",
+        "x-ims-controller": "WhatsAppGroupImportController",
+        "summary": "Superadmin: check (dryRun, the default) or apply many school, item and vendor group links at once; one row in error applies nothing",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppGroupImportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppGroupImportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A missing, empty or oversized rows list (more than 2,000). A row in error is not a 400: it comes back in errors[] and nothing is applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Not superadmin: SUPERADMIN_ONLY (operators), or \"WhatsApp group links are for superadmin and operators only\" (anyone else)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5284,6 +5472,259 @@
         "x-ims-java-record": {
           "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/WorkflowSettingsService.java",
           "name": "InternalApprovalGroupView",
+          "requireAll": true
+        }
+      },
+      "ItemGroupLinkView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "categoryCode",
+          "inviteUrl",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "properties": {
+          "categoryCode": {
+            "type": "string",
+            "description": "The item's catalogue category code, such as FLIERS"
+          },
+          "inviteUrl": {
+            "type": "string",
+            "description": "The https://chat.whatsapp.com/... invite"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedBy": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/GroupLinkService.java",
+          "name": "ItemGroupLinkView",
+          "requireAll": true
+        }
+      },
+      "WhatsAppGroupImportRow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "line": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The spreadsheet line, so errors point at it"
+          },
+          "kind": {
+            "type": "string",
+            "description": "SCHOOL_GROUP, INTERNAL_APPROVAL, ITEM or VENDOR (any case)"
+          },
+          "schoolId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Every kind but VENDOR"
+          },
+          "categoryCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ITEM: the catalogue category code, such as FLIERS"
+          },
+          "vendorId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "VENDOR: the vendor"
+          },
+          "inviteUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The invite to set; blank or null removes the link"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/GroupLinkService.java",
+          "name": "ImportRow",
+          "requireAll": false
+        }
+      },
+      "WhatsAppGroupImportRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rows"
+        ],
+        "properties": {
+          "dryRun": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Only work out what would change (the default when absent); false applies it"
+          },
+          "rows": {
+            "type": "array",
+            "maxItems": 2000,
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppGroupImportRow"
+            }
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/GroupLinkService.java",
+          "name": "ImportRequest",
+          "requireAll": false
+        }
+      },
+      "WhatsAppGroupImportChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "line",
+          "kind",
+          "schoolId",
+          "categoryCode",
+          "vendorId",
+          "before",
+          "after",
+          "outcome"
+        ],
+        "properties": {
+          "line": {
+            "type": "integer"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "SCHOOL_GROUP",
+              "INTERNAL_APPROVAL",
+              "ITEM",
+              "VENDOR"
+            ]
+          },
+          "schoolId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "categoryCode": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vendorId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "before": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The link saved now; null when none"
+          },
+          "after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The link the row sets; null when it removes it"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "ADDED",
+              "CHANGED",
+              "REMOVED",
+              "UNCHANGED"
+            ]
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/GroupLinkService.java",
+          "name": "ImportChange",
+          "requireAll": true
+        }
+      },
+      "WhatsAppGroupImportError": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "line",
+          "message"
+        ],
+        "properties": {
+          "line": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string",
+            "description": "Why the line cannot be imported"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/GroupLinkService.java",
+          "name": "ImportError",
+          "requireAll": true
+        }
+      },
+      "WhatsAppGroupImportResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dryRun",
+          "applied",
+          "changes",
+          "errors"
+        ],
+        "properties": {
+          "dryRun": {
+            "type": "boolean"
+          },
+          "applied": {
+            "type": "boolean",
+            "description": "True only when this was not a dry run and no row was in error"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppGroupImportChange"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppGroupImportError"
+            }
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/GroupLinkService.java",
+          "name": "ImportResult",
           "requireAll": true
         }
       }

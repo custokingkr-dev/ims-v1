@@ -211,8 +211,8 @@ class VendorDirectoryServiceIntegrationTest {
     @Test void onlyAWhatsAppGroupInviteIsAcceptedAsTheVendorsGroup() {
         superadmin();
         for (String invite : List.of("https://example.com/AbCdEf1234567890", "http://chat.whatsapp.com/AbCdEf1234567890",
-                "https://chat.whatsapp.com/short", "https://chat.whatsapp.com/AbCdEf1234567890?ref=x",
-                "https://chat.whatsapp.com/AbCdEf1234567890#x", "https://chat.whatsapp.com:443/AbCdEf1234567890",
+                "https://chat.whatsapp.com/short", "https://chat.whatsapp.com/short?mode=ems_copy_t",
+                "https://chat.whatsapp.com:443/AbCdEf1234567890",
                 "https://user@chat.whatsapp.com/AbCdEf1234567890", "https://wa.me/919876543210", "chat.whatsapp.com/AbCdEf1234567890")) {
             WorkflowRuleViolation refused = assertThrows(WorkflowRuleViolation.class, () -> directory.create(new VendorInput(
                     unique("Invite"), List.of("BINDERS"), null, "9876543210", null, null, null, invite, null, null)), invite);

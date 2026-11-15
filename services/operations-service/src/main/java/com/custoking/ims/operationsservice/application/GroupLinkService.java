@@ -4,26 +4,38 @@ import com.custoking.ims.operationsservice.application.orderworkflow.AccessibleO
 import com.custoking.ims.operationsservice.application.orderworkflow.GroupLinkResolver;
 import com.custoking.ims.operationsservice.application.orderworkflow.OrderAccess;
 import com.custoking.ims.operationsservice.application.orderworkflow.VendorLookup;
+import com.custoking.ims.operationsservice.application.orderworkflow.rules.Role;
 import com.custoking.ims.operationsservice.application.orderworkflow.rules.WorkflowRuleViolation;
 import com.custoking.ims.operationsservice.persistence.VendorRepository;
 import com.custoking.ims.operationsservice.persistence.WorkflowRequestScope;
 import com.custoking.ims.operationsservice.persistence.WorkflowSettingsRepository;
+import com.custoking.ims.operationsservice.persistence.WorkflowSettingsRepository.ItemGroupLinkRow;
+import com.custoking.ims.operationsservice.security.TenantContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
- * Which WhatsApp group links an order shows, and the item-level school group an order's worker may save (design D34).
- * The system only opens these links in a new tab; it sends nothing.
+ * Which WhatsApp group links an order shows, and how they are kept (design D34). The system only opens these links in a
+ * new tab; it sends nothing.
  * <ul>
  *   <li><b>School group:</b> the school's group for the order's item (an operator creates one per item), else the school's
  *       own {@code SCHOOL_GROUP} link, else none.</li>
@@ -33,15 +45,23 @@ import java.util.Optional;
  *       what it chose).</li>
  * </ul>
  * The order workflow asks {@link #resolve} for its view; the order's own endpoints use {@link #orderGroups} and
- * {@link #setOrderSchoolGroup}.
+ * {@link #setOrderSchoolGroup}. Workflow set-up lists and edits a school's item groups through
+ * {@link #schoolItemGroupLinks} and {@link #setSchoolItemGroupLink}, and imports many links at once through
+ * {@link #importGroupLinks}.
  */
 @Service
 public class GroupLinkService implements GroupLinkResolver {
+    private static final Logger LOG = LoggerFactory.getLogger(GroupLinkService.class);
     /** The only origin an invite is stored with: the CHECKs of workflow V15 and V19 spell it exactly so. */
     static final String INVITE_ORIGIN = "https://chat.whatsapp.com";
     /** The refusal the screens show under an invite field (design §4.5). */
     public static final String INVALID_INVITE_MESSAGE = "Paste a WhatsApp group invite link (https://chat.whatsapp.com/…)";
     static final String GROUP_LINK_SET = "GROUP_LINK_SET";
+    static final String STAFF_ONLY = "WhatsApp group links are for superadmin and operators only";
+    /** An item is named by its catalogue category code, as V19's {@code ck_wsigl_category_code} requires. */
+    static final Pattern ITEM_CODE = Pattern.compile("[A-Z][A-Z0-9_]{1,59}");
+    /** The most rows one import may carry; a school network's links are far fewer. */
+    public static final int MAX_IMPORT_ROWS = 2000;
 
     private final WorkflowSettingsRepository settings;
     private final VendorRepository vendorRepository;
@@ -140,24 +160,255 @@ public class GroupLinkService implements GroupLinkResolver {
         }
     }
 
+    // ---- a school's item groups (Workflow set-up) --------------------------------------------------------------------
+
+    /**
+     * A school's group for one item: it overrides the school-wide group on every order of that item at the school.
+     *
+     * @param categoryCode the item's catalogue category code, such as {@code FLIERS}
+     * @param inviteUrl    the {@code https://chat.whatsapp.com/...} invite
+     * @param updatedAt    when it was last saved
+     * @param updatedBy    who last saved it
+     */
+    public record ItemGroupLinkView(String categoryCode, String inviteUrl, OffsetDateTime updatedAt, Long updatedBy) {
+        static ItemGroupLinkView of(ItemGroupLinkRow row) {
+            return new ItemGroupLinkView(row.categoryCode(), row.inviteUrl(), row.updatedAt(), row.updatedBy());
+        }
+    }
+
+    /** The school's item groups by item code: superadmin, or an operator assigned to the whole school (as its school-wide groups). */
+    public List<ItemGroupLinkView> schoolItemGroupLinks(long schoolId) {
+        return tx.execute(status -> {
+            OrderWorkflowAccess.role(false, STAFF_ONLY);
+            requirePositiveSchool(schoolId);
+            TenantContext ctx = TenantContext.get();
+            if (!ctx.isSuperAdmin() && !ctx.operatorSchools().contains(schoolId)) throw forbidden("No access to this school");
+            scope.applyOperatorScope();
+            return settings.itemGroupLinks(schoolId).stream().map(ItemGroupLinkView::of).toList();
+        });
+    }
+
+    /**
+     * Superadmin only: sets, or with a blank link removes, the school's group for one item. Unlike a save from an order,
+     * this records no order history: it belongs to the school, not to one order.
+     *
+     * @throws WorkflowRuleViolation {@code SUPERADMIN_ONLY} (403) and {@code INVALID_INVITE} (400)
+     */
+    public List<ItemGroupLinkView> setSchoolItemGroupLink(long schoolId, String categoryCode, String inviteUrl) {
+        requireSuperadmin("Only superadmin can maintain WhatsApp group links");
+        requirePositiveSchool(schoolId);
+        String category = itemCode(categoryCode);
+        if (category == null) throw bad("Choose an item, such as FLIERS");
+        String clean = canonicalInvite(inviteUrl);
+        long userId = TenantContext.get().userId();
+        return tx.execute(status -> {
+            if (clean == null) settings.deleteItemGroupLink(schoolId, category);
+            else settings.upsertItemGroupLink(schoolId, category, clean, userId);
+            return settings.itemGroupLinks(schoolId).stream().map(ItemGroupLinkView::of).toList();
+        });
+    }
+
+    // ---- the spreadsheet import --------------------------------------------------------------------------------------
+
+    /** What a row of the import sets: one school-wide group, one item group at a school, or one vendor's group. */
+    public enum ImportKind { SCHOOL_GROUP, INTERNAL_APPROVAL, ITEM, VENDOR }
+
+    /** What happens to a row's link: the link it holds now against the one the row asks for. */
+    public enum ImportOutcome { ADDED, CHANGED, REMOVED, UNCHANGED }
+
+    /**
+     * One link to set.
+     *
+     * @param line         the spreadsheet line it came from, so errors point at it; the row's position when absent
+     * @param kind         {@link ImportKind}
+     * @param schoolId     the school, for every kind but {@code VENDOR}
+     * @param categoryCode the item, for {@code ITEM}
+     * @param vendorId     the vendor, for {@code VENDOR}
+     * @param inviteUrl    the invite to set; blank or null removes the link
+     */
+    public record ImportRow(Integer line, String kind, Long schoolId, String categoryCode, Long vendorId, String inviteUrl) { }
+
+    /**
+     * @param dryRun only work out what would change (the default); {@code false} applies it
+     * @param rows   at most {@link #MAX_IMPORT_ROWS}
+     */
+    public record ImportRequest(Boolean dryRun, List<ImportRow> rows) { }
+
+    /** A row that was understood, with the link it holds now ({@code before}) and the one it would hold ({@code after}). */
+    public record ImportChange(int line, ImportKind kind, Long schoolId, String categoryCode, Long vendorId,
+                               String before, String after, ImportOutcome outcome) { }
+
+    /** A row that cannot be imported, and why. */
+    public record ImportError(int line, String message) { }
+
+    /**
+     * The import's answer. {@code applied} is true only when this was not a dry run and every row was understood: one row
+     * in error applies nothing, so a file is imported whole or not at all.
+     */
+    public record ImportResult(boolean dryRun, boolean applied, List<ImportChange> changes, List<ImportError> errors) { }
+
+    /**
+     * Superadmin only: sets many school, item and vendor groups at once, from a spreadsheet the set-up screen reads. Every
+     * row is checked first and the file is applied in one transaction, all of it or (when any row is in error) none of it.
+     * A blank link removes that group. School ids are not checked against the schools: the set-up screen sends only the
+     * schools it lists, and the school endpoints accept any positive id in the same way.
+     *
+     * @throws WorkflowRuleViolation {@code SUPERADMIN_ONLY} (403)
+     */
+    public ImportResult importGroupLinks(ImportRequest request) {
+        requireSuperadmin("Only superadmin can import WhatsApp group links");
+        if (request == null || request.rows() == null) throw bad("Send {\"rows\": [...]} with the links to import");
+        if (request.rows().isEmpty()) throw bad("The file has no links to import");
+        if (request.rows().size() > MAX_IMPORT_ROWS) throw bad("Import at most " + MAX_IMPORT_ROWS + " links at a time");
+        boolean dryRun = !Boolean.FALSE.equals(request.dryRun());
+        long userId = TenantContext.get().userId();
+        return tx.execute(status -> {
+            List<ImportChange> changes = new ArrayList<>();
+            List<ImportError> errors = new ArrayList<>();
+            Map<String, Integer> seen = new HashMap<>();
+            Map<Long, Map<String, String>> schoolLinks = new HashMap<>();
+            for (int index = 0; index < request.rows().size(); index++) {
+                ImportRow row = request.rows().get(index);
+                int line = row != null && row.line() != null && row.line() > 0 ? row.line() : index + 1;
+                try {
+                    ImportChange change = understand(row, line, schoolLinks);
+                    Integer first = seen.putIfAbsent(target(change), line);
+                    if (first != null) throw bad("This sets the same group as line " + first);
+                    changes.add(change);
+                } catch (WorkflowRuleViolation | ResponseStatusException refused) {
+                    errors.add(new ImportError(line, refused instanceof ResponseStatusException r ? r.getReason() : refused.getMessage()));
+                }
+            }
+            boolean apply = !dryRun && errors.isEmpty();
+            if (apply) {
+                if (changes.stream().anyMatch(c -> c.kind() == ImportKind.VENDOR && c.outcome() != ImportOutcome.UNCHANGED)) {
+                    vendorRepository.lockDirectory();
+                }
+                changes.stream().filter(c -> c.outcome() != ImportOutcome.UNCHANGED).forEach(c -> write(c, userId));
+                LOG.info("WhatsApp group links imported by user {}: {} added, {} changed, {} removed, {} unchanged", userId,
+                        count(changes, ImportOutcome.ADDED), count(changes, ImportOutcome.CHANGED),
+                        count(changes, ImportOutcome.REMOVED), count(changes, ImportOutcome.UNCHANGED));
+            }
+            return new ImportResult(dryRun, apply, List.copyOf(changes), List.copyOf(errors));
+        });
+    }
+
+    /** The row checked and compared with what is saved now; refused with the reason the screen shows against its line. */
+    private ImportChange understand(ImportRow row, int line, Map<Long, Map<String, String>> schoolLinks) {
+        if (row == null) throw bad("This line is empty");
+        ImportKind kind = importKind(row.kind());
+        String after = canonicalInvite(row.inviteUrl());
+        String before;
+        Long schoolId = null;
+        String category = null;
+        Long vendorId = null;
+        switch (kind) {
+            case SCHOOL_GROUP, INTERNAL_APPROVAL -> {
+                schoolId = requireRowSchool(row);
+                before = schoolLinks.computeIfAbsent(schoolId, settings::schoolGroupLinks).get(kind.name());
+            }
+            case ITEM -> {
+                schoolId = requireRowSchool(row);
+                category = itemCode(row.categoryCode());
+                if (category == null) throw bad("Give the item's code, such as FLIERS");
+                before = settings.itemGroupLink(schoolId, category).orElse(null);
+            }
+            case VENDOR -> {
+                if (row.vendorId() == null || row.vendorId() <= 0) throw bad("Give the vendor's id");
+                vendorId = row.vendorId();
+                before = vendorRepository.vendor(vendorId).orElseThrow(() -> bad("There is no vendor " + row.vendorId()))
+                        .whatsappGroupUrl();
+            }
+            default -> throw new IllegalStateException("Unhandled import kind " + kind);
+        }
+        ImportOutcome outcome = Objects.equals(before, after) ? ImportOutcome.UNCHANGED
+                : before == null ? ImportOutcome.ADDED : after == null ? ImportOutcome.REMOVED : ImportOutcome.CHANGED;
+        return new ImportChange(line, kind, schoolId, category, vendorId, before, after, outcome);
+    }
+
+    private void write(ImportChange change, long userId) {
+        switch (change.kind()) {
+            case SCHOOL_GROUP, INTERNAL_APPROVAL -> {
+                if (change.after() == null) settings.deleteSchoolGroupLink(change.schoolId(), change.kind().name());
+                else settings.upsertSchoolGroupLink(change.schoolId(), change.kind().name(), change.after(), userId);
+            }
+            case ITEM -> {
+                if (change.after() == null) settings.deleteItemGroupLink(change.schoolId(), change.categoryCode());
+                else settings.upsertItemGroupLink(change.schoolId(), change.categoryCode(), change.after(), userId);
+            }
+            case VENDOR -> vendorRepository.updateGroupLink(change.vendorId(), change.after(), userId);
+        }
+    }
+
+    private static String target(ImportChange change) {
+        return change.kind() + ":" + change.schoolId() + ":" + change.categoryCode() + ":" + change.vendorId();
+    }
+
+    private static long count(List<ImportChange> changes, ImportOutcome outcome) {
+        return changes.stream().filter(change -> change.outcome() == outcome).count();
+    }
+
+    private static ImportKind importKind(String value) {
+        String key = value == null ? "" : value.strip().toUpperCase(Locale.ROOT);
+        try {
+            return ImportKind.valueOf(key);
+        } catch (IllegalArgumentException unknown) {
+            throw bad(key.isEmpty() ? "Say which group this is" : "Unknown group type " + value.strip());
+        }
+    }
+
+    private static long requireRowSchool(ImportRow row) {
+        if (row.schoolId() == null || row.schoolId() <= 0) throw bad("Give the school's id");
+        return row.schoolId();
+    }
+
+    /** The item code as stored (upper case), or null when it is not one. */
+    private static String itemCode(String value) {
+        if (value == null) return null;
+        String code = value.strip().toUpperCase(Locale.ROOT);
+        return ITEM_CODE.matcher(code).matches() ? code : null;
+    }
+
+    private static void requireSuperadmin(String message) {
+        if (OrderWorkflowAccess.role(true, STAFF_ONLY) != Role.SUPERADMIN) {
+            throw new WorkflowRuleViolation(WorkflowRuleViolation.SUPERADMIN_ONLY, message);
+        }
+    }
+
+    private static void requirePositiveSchool(long schoolId) {
+        if (schoolId <= 0) throw bad("A positive schoolId is required");
+    }
+
+    private static ResponseStatusException bad(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
+
+    private static ResponseStatusException forbidden(String message) {
+        return new ResponseStatusException(HttpStatus.FORBIDDEN, message);
+    }
+
     // ---- invite links ------------------------------------------------------------------------------------------------
 
     /**
      * The one spelling an invite is stored with, {@code https://chat.whatsapp.com/<code>}, or null for blank text. The
      * scheme and host may be typed in any case and with an empty port, as browsers allow; the invite code (10 to 64
-     * letters, digits, {@code _} or {@code -}) is kept exactly, since it is case-sensitive. The browser's
-     * {@code features/orders/shared/invite.ts} accepts exactly the same links.
+     * letters, digits, {@code _} or {@code -}) is kept exactly, since it is case-sensitive. Everything from the first
+     * {@code ?} or {@code #} is dropped unread: WhatsApp's own "copy link" adds a query (such as {@code ?mode=ems_copy_t})
+     * the invite does not need. The browser's {@code features/orders/shared/invite.ts} applies the same rule; it trims with
+     * JavaScript's {@code trim()}, which also removes a no-break space this {@code strip()} keeps, and it only ever sends
+     * the canonical link.
      *
-     * @throws WorkflowRuleViolation {@code INVALID_INVITE} (400) for anything else, including a query or fragment
+     * @throws WorkflowRuleViolation {@code INVALID_INVITE} (400) for anything else
      */
     public static String canonicalInvite(String value) {
         if (value == null || value.isBlank()) return null;
         String clean = value.strip();
         if (clean.length() > 2048) throw invalidInvite();
+        int tail = indexOfQueryOrFragment(clean);
         try {
-            URI uri = new URI(clean);
+            URI uri = new URI(tail < 0 ? clean : clean.substring(0, tail));
             if (!"https".equalsIgnoreCase(uri.getScheme()) || !"chat.whatsapp.com".equalsIgnoreCase(uri.getHost())
-                    || uri.getPort() != -1 || uri.getRawUserInfo() != null || uri.getRawQuery() != null || uri.getRawFragment() != null
+                    || uri.getPort() != -1 || uri.getRawUserInfo() != null
                     || uri.getRawPath() == null || !uri.getRawPath().matches("/[A-Za-z0-9_-]{10,64}")) {
                 throw invalidInvite();
             }
@@ -165,6 +416,12 @@ public class GroupLinkService implements GroupLinkResolver {
         } catch (URISyntaxException malformed) {
             throw invalidInvite();
         }
+    }
+
+    private static int indexOfQueryOrFragment(String text) {
+        int query = text.indexOf('?');
+        int fragment = text.indexOf('#');
+        return query < 0 ? fragment : fragment < 0 ? query : Math.min(query, fragment);
     }
 
     private static WorkflowRuleViolation invalidInvite() {

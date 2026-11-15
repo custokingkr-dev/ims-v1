@@ -62,8 +62,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.ObjectMapper;
 
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -1198,32 +1196,9 @@ public class OrderWorkflowService {
         if (!ctx.isSuperAdmin() && !ctx.operatorSchools().contains(schoolId)) throw forbidden("No access to this school");
     }
 
-    /** The only origin an invite link is stored with: V15's {@code invite_url} check spells it exactly so. */
-    private static final String WHATSAPP_INVITE_ORIGIN = "https://chat.whatsapp.com";
-
-    /**
-     * An invite link however its scheme and host are cased, and with an empty port, answered with the one canonical
-     * spelling; null for blank. The invite code itself is kept exactly as given (it is case-sensitive).
-     *
-     * @throws WorkflowRuleViolation {@code INVALID_INVITE} for anything else
-     */
+    /** The one invite rule every group link shares: {@link GroupLinkService#canonicalInvite}. */
     static String canonicalInvite(String value) {
-        if (value == null || value.isBlank()) return null;
-        String clean = value.strip();
-        WorkflowRuleViolation invalid = new WorkflowRuleViolation(WorkflowRuleViolation.INVALID_INVITE,
-                "Paste a WhatsApp group invite link (https://chat.whatsapp.com/…)");
-        if (clean.length() > 2048) throw invalid;
-        try {
-            URI uri = new URI(clean);
-            if (!"https".equalsIgnoreCase(uri.getScheme()) || !"chat.whatsapp.com".equalsIgnoreCase(uri.getHost())
-                    || uri.getPort() != -1 || uri.getRawUserInfo() != null || uri.getRawQuery() != null || uri.getRawFragment() != null
-                    || uri.getRawPath() == null || !uri.getRawPath().matches("/[A-Za-z0-9_-]{10,64}")) {
-                throw invalid;
-            }
-            return WHATSAPP_INVITE_ORIGIN + uri.getRawPath();
-        } catch (URISyntaxException malformed) {
-            throw invalid;
-        }
+        return GroupLinkService.canonicalInvite(value);
     }
 
     // ==== the change machinery ===========================================================================================
