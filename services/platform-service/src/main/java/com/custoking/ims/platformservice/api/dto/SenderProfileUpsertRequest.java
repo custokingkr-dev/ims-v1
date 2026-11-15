@@ -22,15 +22,15 @@ import jakarta.validation.constraints.Size;
  *   msg91OtpTemplateId, msg91EmailTemplateId
  */
 public record SenderProfileUpsertRequest(
-        @Size(max = 200) String profileName,
-        @Size(max = 200) String emailFromName,
+        @Size(max = 160) String profileName,
+        @Size(max = 160) String emailFromName,
         @Email @Size(max = 255) String emailFromAddress,
         @Size(max = 255) String emailDomain,
         @Email @Size(max = 255) String emailReplyTo,
         @Size(max = 20) String whatsappIntegratedNumber,
-        @Size(max = 200) String whatsappDisplayName,
-        @Size(max = 500) String whatsappTemplateNamespace,
-        @Size(max = 200) String whatsappDefaultTemplateName,
+        @Size(max = 160) String whatsappDisplayName,
+        @Size(max = 160) String whatsappTemplateNamespace,
+        @Size(max = 160) String whatsappDefaultTemplateName,
         @Size(max = 20) String whatsappLanguageCode,
         @Size(max = 100) String msg91SmsFlowId,
         @Size(max = 100) String msg91OtpTemplateId,

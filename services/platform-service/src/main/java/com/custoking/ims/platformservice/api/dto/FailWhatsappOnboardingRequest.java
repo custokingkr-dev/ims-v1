@@ -19,5 +19,5 @@ import jakarta.validation.constraints.Size;
  */
 public record FailWhatsappOnboardingRequest(
         @Size(max = 1000) String failureReason,
-        @Size(max = 500) String providerReference
+        @Size(max = 220) String providerReference
 ) {}

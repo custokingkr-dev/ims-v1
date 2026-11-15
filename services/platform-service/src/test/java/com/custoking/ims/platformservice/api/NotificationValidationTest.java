@@ -13,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -355,6 +356,33 @@ class NotificationValidationTest {
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.fieldErrors.integratedNumber").exists());
         verify(senderProfiles, never()).completeWhatsappOnboarding(any(), any(), anyMap());
+    }
+
+    @Test
+    void completeAndFailOnboarding_valuesLongerThanTheirColumns_return400NotA500() throws Exception {
+        // Each bound is the column's width (notification V6), so the database never sees a value it would refuse.
+        String session = "/api/v1/notifications/sender-profiles/schools/10/whatsapp-onboarding/" + UUID.randomUUID();
+        for (String body : List.of(
+                "{\"integratedNumber\":\"911111111111\",\"whatsappDisplayName\":\"" + "x".repeat(161) + "\"}",
+                "{\"integratedNumber\":\"" + "9".repeat(41) + "\"}",
+                "{\"integratedNumber\":\"911111111111\",\"providerReference\":\"" + "r".repeat(221) + "\"}")) {
+            senderProfileMvc.perform(post(session + "/complete")
+                            .header("X-Notification-Service-Token", TOKEN)
+                            .header("X-Authenticated-Role", "SUPERADMIN")
+                            .contentType("application/json")
+                            .content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("Validation failed"));
+        }
+        senderProfileMvc.perform(post(session + "/fail")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType("application/json")
+                        .content("{\"providerReference\":\"" + "r".repeat(221) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.providerReference").exists());
+        verify(senderProfiles, never()).completeWhatsappOnboarding(any(), any(), anyMap());
+        verify(senderProfiles, never()).failWhatsappOnboarding(any(), any(), anyMap());
     }
 
     @Test

@@ -164,12 +164,42 @@ class SenderProfileOnboardingIntegrationTest {
     void aProfileWriteFailureRollsBackTheSessionUpdate() {
         UUID session = seedSession(10L, "REQUESTED");
 
-        // whatsapp_display_name is VARCHAR(160) and the request DTO does not bound it.
+        // whatsapp_display_name is VARCHAR(160). The request DTO refuses a longer one with 400; calling the repository
+        // directly gets past that, so the profile write fails after the session update has run.
         assertThrows(DataAccessException.class, () -> profiles.completeWhatsappOnboarding(10L, session,
                 Map.of("integratedNumber", "911111111111", "whatsappDisplayName", "x".repeat(161))));
 
         assertEquals("REQUESTED", sessionStatus(session));
         assertEquals(Optional.empty(), profileNumber(10L));
+    }
+
+    @Test
+    void twoWritersOfOneSchoolsProfileAtOnceBothLandOnOneProfile() throws Exception {
+        // With no profile yet, two unserialised writers would each pick a new id, and the second insert would break the
+        // one-active-profile-per-school index (a 500). Serialised, the second updates what the first inserted.
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+        try {
+            java.util.List<java.util.concurrent.Future<?>> writes = new java.util.ArrayList<>();
+            for (String number : java.util.List.of("911111111111", "922222222222")) {
+                writes.add(pool.submit(() -> {
+                    TenantContext.set(new TenantContext(1L, "root@x", "SUPERADMIN", null, null));
+                    try {
+                        start.await();
+                        return profiles.upsert(10L, Map.of("whatsappIntegratedNumber", number));
+                    } finally {
+                        TenantContext.clear();
+                    }
+                }));
+            }
+            start.countDown();
+            for (java.util.concurrent.Future<?> write : writes) write.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        } finally {
+            pool.shutdownNow();
+        }
+        assertEquals(1, owner.sql("SELECT count(*) FROM notification.notification_sender_profiles WHERE school_id = 10 AND active")
+                .query(Integer.class).single());
+        assertTrue(java.util.Set.of("911111111111", "922222222222").contains(profileNumber(10L).orElseThrow()));
     }
 
     @Test

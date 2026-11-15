@@ -88,7 +88,23 @@ public class SenderProfileRepository {
         return spec.query(this::mapProfile).list();
     }
 
+    /**
+     * Writes the school's (or, with a null school, the default) sender profile, keeping stored values for absent fields.
+     * Writers of one profile are serialised for the rest of the transaction: two at once would otherwise both read the
+     * profile before either wrote, so one would restore the other's fields, or (with no profile yet) both would insert
+     * and the second would break the one-active-profile-per-school index. Joins the caller's transaction (onboarding
+     * completion) or opens its own.
+     */
     public SenderProfile upsert(Long schoolId, Map<String, Object> request) {
+        return transaction.execute(status -> {
+            jdbc.sql("SELECT pg_advisory_xact_lock(hashtext(:key))")
+                    .param("key", "notification.sender-profile:" + (schoolId == null ? "default" : schoolId))
+                    .query((rs, n) -> 1).list();
+            return upsertSerialised(schoolId, request);
+        });
+    }
+
+    private SenderProfile upsertSerialised(Long schoolId, Map<String, Object> request) {
         UUID id = findProfileId(schoolId).orElse(UUID.randomUUID());
         SenderProfile existing = schoolId == null
                 ? defaultProfile()

@@ -22,10 +22,10 @@ import jakarta.validation.constraints.Size;
 public record StartWhatsappOnboardingRequest(
         @Positive Long actorId,
         @Size(max = 200) String schoolName,
-        @Size(max = 200) String contactName,
+        @Size(max = 160) String contactName,
         @Email @Size(max = 255) String contactEmail,
         @Size(max = 20) String contactMobile,
-        @Size(max = 200) String desiredDisplayName,
+        @Size(max = 160) String desiredDisplayName,
         @Size(max = 20) String desiredPhoneNumber,
         @Size(max = 1000) String notes
 ) {}
