@@ -467,7 +467,7 @@ public class AttendanceReadRepository {
     }
 
     public Map<String, Object> absentees(LocalDate date, String classId, String sectionId, Long schoolId) {
-        List<Map<String, Object>> students = absenteeRows(date, classId, sectionId, schoolId);
+        List<Map<String, Object>> students = withAlertPreview(absenteeRows(date, classId, sectionId, schoolId));
         long queued = students.stream().filter(s -> Boolean.TRUE.equals(s.get("alreadyQueued"))).count();
         return row("date", date.toString(),
                 "sectionId", sectionId,
@@ -477,7 +477,8 @@ public class AttendanceReadRepository {
     }
 
     public Map<String, Object> exceptions(LocalDate date, String classId, String sectionId, Long schoolId) {
-        List<Map<String, Object>> students = attendanceExceptionRows(date, classId, sectionId, schoolId, false);
+        List<Map<String, Object>> students = withAlertPreview(
+                attendanceExceptionRows(date, classId, sectionId, schoolId, false));
         long absent = students.stream().filter(student -> "ABSENT".equals(student.get("status"))).count();
         long late = students.stream().filter(student -> "LATE".equals(student.get("status"))).count();
         long leave = students.stream().filter(student -> "LEAVE".equals(student.get("status"))).count();
@@ -497,6 +498,40 @@ public class AttendanceReadRepository {
 
     private List<Map<String, Object>> absenteeRows(LocalDate date, String classId, String sectionId, Long schoolId) {
         return attendanceExceptionRows(date, classId, sectionId, schoolId, true);
+    }
+
+    /**
+     * Says, for every ABSENT row with no alert yet, whether queuing would pass the guardian policy:
+     * {@code alertAllowed} and, when refused, {@code alertBlockedReason} (the policy reason). One
+     * preview query per school, never a per-row evaluate. Other rows get null for both. Queuing still
+     * re-evaluates every student, so this only lets the screen count and label rows truthfully.
+     */
+    private List<Map<String, Object>> withAlertPreview(List<Map<String, Object>> students) {
+        Map<Long, List<Long>> pendingBySchool = new LinkedHashMap<>();
+        for (Map<String, Object> student : students) {
+            student.put("alertAllowed", null);
+            student.put("alertBlockedReason", null);
+            if (awaitsAlert(student)) {
+                pendingBySchool.computeIfAbsent(longNum(student.get("schoolId"), 0), school -> new ArrayList<>())
+                        .add(longNum(student.get("studentId"), 0));
+            }
+        }
+        Map<Long, Map<Long, GuardianCommunicationPolicy.Decision>> decisionsBySchool = new java.util.HashMap<>();
+        pendingBySchool.forEach((school, ids) -> decisionsBySchool.put(school,
+                guardianCommunicationPolicy.preview(school, ids, ABSENTEE_ALERT_CHANNEL)));
+        for (Map<String, Object> student : students) {
+            if (!awaitsAlert(student)) continue;
+            GuardianCommunicationPolicy.Decision decision = decisionsBySchool
+                    .get(longNum(student.get("schoolId"), 0))
+                    .get(longNum(student.get("studentId"), 0));
+            student.put("alertAllowed", decision.allowed());
+            student.put("alertBlockedReason", decision.allowed() ? null : decision.reason());
+        }
+        return students;
+    }
+
+    private static boolean awaitsAlert(Map<String, Object> student) {
+        return "ABSENT".equals(student.get("status")) && !Boolean.TRUE.equals(student.get("alreadyQueued"));
     }
 
     private List<Map<String, Object>> attendanceExceptionRows(

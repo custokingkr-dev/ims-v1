@@ -149,6 +149,13 @@ export interface AbsenteeStudent {
   alreadyQueued: boolean;
   /** null when no notification has been queued for this student on this date. */
   notificationStatus?: AbsenteeNotificationStatus | null;
+  /**
+   * For an ABSENT row with no alert yet: whether queuing would pass the guardian-communication policy
+   * (primary guardian, verified phone, consent). null on other rows; missing from older backends.
+   */
+  alertAllowed?: boolean | null;
+  /** The policy's reason code when alertAllowed is false (e.g. CONTACT_NOT_VERIFIED), else null. */
+  alertBlockedReason?: string | null;
 }
 export interface AbsenteeListResponse extends AbsenteeAlertDelivery {
   date: string;

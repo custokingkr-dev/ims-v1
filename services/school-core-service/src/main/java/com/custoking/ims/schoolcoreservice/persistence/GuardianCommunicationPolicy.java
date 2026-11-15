@@ -5,12 +5,18 @@ import com.custoking.ims.schoolcoreservice.erasure.StudentErasureJournal;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Authoritative school-communications policy evaluated where guardian and consent data is owned.
@@ -54,57 +60,98 @@ final class GuardianCommunicationPolicy {
                 return Decision.denied("ERASURE_FENCE_UNCONFIRMED");
             }
         }
-        Snapshot snapshot = jdbc.sql("""
-                        SELECT g.id AS guardian_id, g.status AS guardian_status,
-                               sg.receives_notifications, g.contact_verified_at,
-                               g.phone, g.email,
-                               consent.id AS consent_event_id,
-                               consent.guardian_id AS consent_guardian_id,
-                               consent.status AS consent_status,
-                               consent.lawful_basis AS consent_lawful_basis,
-                               consent.notice_version AS consent_notice_version,
-                               consent.expires_at AS consent_expires_at
-                        FROM student.students s
-                        LEFT JOIN student.student_guardians sg
-                          ON sg.student_id = s.id
-                         AND sg.school_id = s.school_id
-                         AND sg.is_primary = TRUE
-                        LEFT JOIN student.guardians g
-                          ON g.id = sg.guardian_id
-                         AND g.school_id = s.school_id
-                        LEFT JOIN LATERAL (
-                            SELECT ce.id, ce.guardian_id, ce.status, ce.lawful_basis,
-                                   ce.notice_version, ce.expires_at
-                            FROM student.student_consent_events ce
-                            WHERE ce.school_id = s.school_id
-                              AND ce.student_id = s.id
-                              AND ce.purpose = 'SCHOOL_COMMUNICATIONS'
-                              AND ce.effective_at <= now()
-                            ORDER BY ce.effective_at DESC, ce.recorded_at DESC, ce.id DESC
-                            LIMIT 1
-                        ) consent ON TRUE
+        Snapshot snapshot = jdbc.sql(SNAPSHOT_SQL + """
                         WHERE s.id = :studentId
                           AND s.school_id = :schoolId
                           AND s.deleted_at IS NULL
                         """)
                 .param("studentId", studentId)
                 .param("schoolId", schoolId)
-                .query((rs, rowNum) -> new Snapshot(
-                        rs.getString("guardian_id"),
-                        rs.getString("guardian_status"),
-                        rs.getBoolean("receives_notifications"),
-                        rs.getObject("contact_verified_at", OffsetDateTime.class),
-                        rs.getString("phone"),
-                        rs.getString("email"),
-                        rs.getString("consent_event_id"),
-                        rs.getString("consent_guardian_id"),
-                        rs.getString("consent_status"),
-                        rs.getString("consent_lawful_basis"),
-                        rs.getString("consent_notice_version"),
-                        rs.getObject("consent_expires_at", OffsetDateTime.class)))
+                .query((rs, rowNum) -> snapshot(rs))
                 .optional()
                 .orElse(null);
         return decide(snapshot, channel, OffsetDateTime.now(), schoolId, studentId);
+    }
+
+    /**
+     * Read-only preview of {@link #evaluate} for many students of one school, for list screens: one
+     * snapshot query for all of them, then the same {@link #decide} per student. A student with no row
+     * (unknown, deleted or in another school) is {@code STUDENT_NOT_FOUND}; an empty list runs no query.
+     *
+     * <p>It does not run the erasure-journal fence, so it can answer ALLOWED where a fenced
+     * {@link #evaluate} would refuse with {@code ERASURE_FENCE_UNCONFIRMED}. It decides nothing: queue
+     * time still runs the full {@link #evaluate}, and the delivery worker re-evaluates before every
+     * attempt, so those stay authoritative.</p>
+     */
+    Map<Long, Decision> preview(long schoolId, Collection<Long> studentIds, String channel) {
+        if (studentIds == null || studentIds.isEmpty()) return Map.of();
+        Set<Long> ids = new LinkedHashSet<>(studentIds);
+        Map<Long, Snapshot> snapshots = new HashMap<>();
+        jdbc.sql(SNAPSHOT_SQL + """
+                        WHERE s.id IN (:studentIds)
+                          AND s.school_id = :schoolId
+                          AND s.deleted_at IS NULL
+                        """)
+                .param("studentIds", ids)
+                .param("schoolId", schoolId)
+                .query((rs, rowNum) -> Map.entry(rs.getLong("student_id"), snapshot(rs)))
+                .list()
+                .forEach(entry -> snapshots.putIfAbsent(entry.getKey(), entry.getValue()));
+        OffsetDateTime now = OffsetDateTime.now();
+        Map<Long, Decision> decisions = new LinkedHashMap<>();
+        for (Long studentId : ids) {
+            decisions.put(studentId, decide(snapshots.get(studentId), channel, now, schoolId, studentId));
+        }
+        return decisions;
+    }
+
+    /** The primary guardian, their link and the latest effective SCHOOL_COMMUNICATIONS decision; callers add the WHERE. */
+    private static final String SNAPSHOT_SQL = """
+            SELECT s.id AS student_id,
+                   g.id AS guardian_id, g.status AS guardian_status,
+                   sg.receives_notifications, g.contact_verified_at,
+                   g.phone, g.email,
+                   consent.id AS consent_event_id,
+                   consent.guardian_id AS consent_guardian_id,
+                   consent.status AS consent_status,
+                   consent.lawful_basis AS consent_lawful_basis,
+                   consent.notice_version AS consent_notice_version,
+                   consent.expires_at AS consent_expires_at
+            FROM student.students s
+            LEFT JOIN student.student_guardians sg
+              ON sg.student_id = s.id
+             AND sg.school_id = s.school_id
+             AND sg.is_primary = TRUE
+            LEFT JOIN student.guardians g
+              ON g.id = sg.guardian_id
+             AND g.school_id = s.school_id
+            LEFT JOIN LATERAL (
+                SELECT ce.id, ce.guardian_id, ce.status, ce.lawful_basis,
+                       ce.notice_version, ce.expires_at
+                FROM student.student_consent_events ce
+                WHERE ce.school_id = s.school_id
+                  AND ce.student_id = s.id
+                  AND ce.purpose = 'SCHOOL_COMMUNICATIONS'
+                  AND ce.effective_at <= now()
+                ORDER BY ce.effective_at DESC, ce.recorded_at DESC, ce.id DESC
+                LIMIT 1
+            ) consent ON TRUE
+            """;
+
+    private static Snapshot snapshot(ResultSet rs) throws SQLException {
+        return new Snapshot(
+                rs.getString("guardian_id"),
+                rs.getString("guardian_status"),
+                rs.getBoolean("receives_notifications"),
+                rs.getObject("contact_verified_at", OffsetDateTime.class),
+                rs.getString("phone"),
+                rs.getString("email"),
+                rs.getString("consent_event_id"),
+                rs.getString("consent_guardian_id"),
+                rs.getString("consent_status"),
+                rs.getString("consent_lawful_basis"),
+                rs.getString("consent_notice_version"),
+                rs.getObject("consent_expires_at", OffsetDateTime.class));
     }
 
     static Decision decide(Snapshot snapshot, String channel, OffsetDateTime now,

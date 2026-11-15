@@ -362,14 +362,15 @@ public class AttendanceReadController {
     }
 
     /**
-     * Absence alerts go to parents on WhatsApp only. {@code deliveryMode} is {@code DRY_RUN} unless the
-     * delivery worker runs in live mode; in dry run every step runs except sending the message, so the
-     * screen must not imply that parents receive anything.
+     * Absence alerts go to parents on WhatsApp only. {@code deliveryMode} is {@code LIVE} only when the
+     * delivery worker runs in live mode AND the provider is declared to really send
+     * ({@code attendance.absentee-delivery.parents-receive}); otherwise it is {@code DRY_RUN}: every
+     * step runs except sending the message, so the screen must not imply that parents receive anything.
      */
     private Map<String, Object> withAbsenteeDelivery(Map<String, Object> body) {
         Map<String, Object> response = body == null ? new LinkedHashMap<>() : new LinkedHashMap<>(body);
         response.put("channel", AttendanceReadRepository.ABSENTEE_ALERT_CHANNEL);
-        response.put("deliveryMode", absenteeDelivery.isLive() ? DELIVERY_MODE_LIVE : DELIVERY_MODE_DRY_RUN);
+        response.put("deliveryMode", absenteeDelivery.reachesParents() ? DELIVERY_MODE_LIVE : DELIVERY_MODE_DRY_RUN);
         return response;
     }
 

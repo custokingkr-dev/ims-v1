@@ -236,16 +236,17 @@ class AttendanceAbsenteeControllerTest {
     }
 
     // ── Channel and delivery mode ───────────────────────────────────────────────
-    // The Exceptions screen tells staff that absence alerts go on WhatsApp and, unless the delivery
-    // worker is live, that no parent receives them. Both facts come from these three responses.
+    // The Exceptions screen tells staff that absence alerts go on WhatsApp and, unless parents really
+    // receive them, that no parent does. Both facts come from these three responses. Live mode alone is
+    // not enough: platform-service still refuses live sends, so LIVE also needs parents-receive=true.
 
-    @ParameterizedTest(name = "mode {0} is reported as {1}")
-    @CsvSource({"dry-run, DRY_RUN", "live, LIVE"})
-    void exceptions_reportTheWhatsAppChannelAndTheDeliveryMode(String mode, String reported) throws Exception {
+    @ParameterizedTest(name = "mode {0}, parents-receive {1} is reported as {2}")
+    @CsvSource({"dry-run, false, DRY_RUN", "dry-run, true, DRY_RUN", "live, false, DRY_RUN", "live, true, LIVE"})
+    void exceptions_reportTheWhatsAppChannelAndTheDeliveryMode(String mode, boolean parentsReceive, String reported) throws Exception {
         when(attendance.exceptions(LocalDate.parse("2026-04-06"), null, null, 10L))
                 .thenReturn(Map.of("totalExceptions", 2, "queuedCount", 1));
 
-        mvcWithDeliveryMode(mode).perform(get("/api/v1/attendance/exceptions")
+        mvcWithDeliveryMode(mode, parentsReceive).perform(get("/api/v1/attendance/exceptions")
                         .header("X-Attendance-Service-Token", TOKEN)
                         .header("X-Authenticated-User-Id", "42")
                         .header("X-Authenticated-Role", "ADMIN")
@@ -259,13 +260,13 @@ class AttendanceAbsenteeControllerTest {
                 .andExpect(jsonPath("$.deliveryMode").value(reported));
     }
 
-    @ParameterizedTest(name = "mode {0} is reported as {1}")
-    @CsvSource({"dry-run, DRY_RUN", "live, LIVE"})
-    void absentees_reportTheWhatsAppChannelAndTheDeliveryMode(String mode, String reported) throws Exception {
+    @ParameterizedTest(name = "mode {0}, parents-receive {1} is reported as {2}")
+    @CsvSource({"dry-run, false, DRY_RUN", "dry-run, true, DRY_RUN", "live, false, DRY_RUN", "live, true, LIVE"})
+    void absentees_reportTheWhatsAppChannelAndTheDeliveryMode(String mode, boolean parentsReceive, String reported) throws Exception {
         when(attendance.absentees(LocalDate.parse("2026-04-06"), "c1", null, 10L))
                 .thenReturn(Map.of("totalAbsent", 2));
 
-        mvcWithDeliveryMode(mode).perform(get("/api/v1/attendance/absentees")
+        mvcWithDeliveryMode(mode, parentsReceive).perform(get("/api/v1/attendance/absentees")
                         .header("X-Attendance-Service-Token", TOKEN)
                         .header("X-Authenticated-User-Id", "42")
                         .header("X-Authenticated-Role", "TEACHER")
@@ -279,13 +280,13 @@ class AttendanceAbsenteeControllerTest {
                 .andExpect(jsonPath("$.deliveryMode").value(reported));
     }
 
-    @ParameterizedTest(name = "mode {0} is reported as {1}")
-    @CsvSource({"dry-run, DRY_RUN", "live, LIVE"})
-    void notify_reportsTheWhatsAppChannelAndTheDeliveryMode(String mode, String reported) throws Exception {
+    @ParameterizedTest(name = "mode {0}, parents-receive {1} is reported as {2}")
+    @CsvSource({"dry-run, false, DRY_RUN", "dry-run, true, DRY_RUN", "live, false, DRY_RUN", "live, true, LIVE"})
+    void notify_reportsTheWhatsAppChannelAndTheDeliveryMode(String mode, boolean parentsReceive, String reported) throws Exception {
         when(attendance.notifyAbsentees(LocalDate.parse("2026-04-06"), null, null, 10L, 42L))
                 .thenReturn(Map.of("queued", 2, "skippedNoContact", 0, "skippedAlreadyQueued", 1));
 
-        mvcWithDeliveryMode(mode).perform(post("/api/v1/attendance/absentees/notify")
+        mvcWithDeliveryMode(mode, parentsReceive).perform(post("/api/v1/attendance/absentees/notify")
                         .header("X-Attendance-Service-Token", TOKEN)
                         .header("X-Authenticated-User-Id", "42")
                         .header("X-Authenticated-Role", "ADMIN")
@@ -316,9 +317,10 @@ class AttendanceAbsenteeControllerTest {
                 .andExpect(jsonPath("$.deliveryMode").value("DRY_RUN"));
     }
 
-    private MockMvc mvcWithDeliveryMode(String mode) {
+    private MockMvc mvcWithDeliveryMode(String mode, boolean parentsReceive) {
         AbsenteeDeliveryProperties delivery = new AbsenteeDeliveryProperties();
         delivery.setMode(mode);
+        delivery.setParentsReceive(parentsReceive);
         return MockMvcBuilders
                 .standaloneSetup(new AttendanceReadController(attendance, null, delivery, TOKEN))
                 .addFilters(new TenantContextFilter())

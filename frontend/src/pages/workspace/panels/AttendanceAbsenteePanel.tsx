@@ -8,6 +8,7 @@ import type {
   AbsenteeDeliveryMode,
   AbsenteeNotificationStatus,
   AttendanceExceptionListResponse,
+  AttendanceExceptionStudent,
   NotifyAbsenteesResponse,
 } from '../../../types/attendance';
 import { AttendancePagination } from './attendance/AttendancePagination';
@@ -40,13 +41,58 @@ function deliveryChip(status: AbsenteeNotificationStatus | null | undefined) {
   }
 }
 
+/**
+ * Why the guardian-communication policy would refuse an alert, in staff words. Keys are every refusal
+ * reason GuardianCommunicationPolicy.decide() can give for WhatsApp.
+ */
+const ALERT_BLOCKED_TEXT: Record<string, string> = {
+  NO_PRIMARY_GUARDIAN: 'No primary guardian is recorded.',
+  GUARDIAN_INACTIVE: 'The primary guardian is inactive.',
+  // receives_notifications on the student-guardian link; staff or a data repair can switch it off too.
+  NOTIFICATION_PREFERENCE_DISABLED: 'School notifications are turned off for this guardian.',
+  CONTACT_NOT_VERIFIED: "The guardian's phone number isn't verified.",
+  DESTINATION_MISSING: 'The guardian has no phone number.',
+  SCHOOL_COMMUNICATIONS_DECISION_MISSING: 'No consent to school messages is recorded.',
+  CONSENT_GUARDIAN_UNSPECIFIED: "Consent wasn't recorded for the primary guardian.",
+  CONSENT_GUARDIAN_MISMATCH: "Consent wasn't recorded for the primary guardian.",
+  // The latest decision is PENDING, DENIED, WITHDRAWN or EXPIRED.
+  SCHOOL_COMMUNICATIONS_NOT_GRANTED: "The guardian hasn't agreed to school messages.",
+  // A record on another lawful basis (e.g. LEGAL_OBLIGATION) is refused until its meaning is defined.
+  LAWFUL_BASIS_NOT_CONSENT: 'The consent record uses a legal basis other than consent.',
+  CONSENT_NOTICE_VERSION_MISSING: 'The consent record is incomplete.',
+  SCHOOL_COMMUNICATIONS_EXPIRED: 'Consent to school messages has expired.',
+};
+
+function alertBlockedText(reason: string | null | undefined) {
+  return (reason && ALERT_BLOCKED_TEXT[reason]) || "The guardian's settings don't allow school messages.";
+}
+
+/**
+ * The alert column for an ABSENT row that has no alert yet. The backend's policy preview decides;
+ * an older backend without it falls back to whether the student record has a phone number.
+ */
+function pendingAlertChip(student: AttendanceExceptionStudent) {
+  if (student.alertAllowed === true) return <span className="ck-status spending">Ready</span>;
+  if (student.alertAllowed === false) {
+    return (
+      <>
+        <span className="ck-status sneutral">Can't alert</span>
+        <span className="ck-att-cell-sub">{alertBlockedText(student.alertBlockedReason)}</span>
+      </>
+    );
+  }
+  return student.hasContact
+    ? <span className="ck-status spending">Ready</span>
+    : <span className="ck-status sneutral">Unavailable</span>;
+}
+
 function plural(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`;
 }
 
 /** Queuing is not delivery: in test mode (or an older backend that does not say) nothing reaches a parent. */
-function notifyToast(result: NotifyAbsenteesResponse, fallbackMode: AbsenteeDeliveryMode | undefined) {
-  const live = (result.deliveryMode ?? fallbackMode) === 'LIVE';
+function notifyToast(result: NotifyAbsenteesResponse, fallbackMode: AbsenteeDeliveryMode | undefined, testModeSeen: boolean) {
+  const live = (result.deliveryMode ?? fallbackMode) === 'LIVE' && !testModeSeen;
   // Every policy refusal (no number, no consent, ...) is in suppressedCount; older backends only
   // report the no-number ones.
   const skipped = result.skippedAlreadyQueued + Math.max(result.suppressedCount ?? 0, result.skippedNoContact);
@@ -125,10 +171,15 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
   }, [query, statusFilter, pageSize]);
 
   const students = data?.students || [];
+  // A row the worker finished in test mode proves nothing is sending, whatever the API says.
+  const testModeSeen = students.some((student) => student.notificationStatus === 'SENT_DRY_RUN');
   // Only a LIVE answer means alerts can reach parents; a missing mode (older backend) is not live.
-  const sendingSwitchedOn = data?.deliveryMode === 'LIVE';
+  const sendingSwitchedOn = data?.deliveryMode === 'LIVE' && !testModeSeen;
   const absentStudents = students.filter((student) => student.status === 'ABSENT');
-  const notifiable = absentStudents.filter((student) => student.hasContact && !student.alreadyQueued).length;
+  // The policy preview decides; `?? hasContact` keeps an older backend without it working.
+  const notifiable = absentStudents
+    .filter((student) => !student.alreadyQueued && (student.alertAllowed ?? student.hasContact))
+    .length;
   const filteredStudents = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return students.filter((student) => {
@@ -161,7 +212,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
       const response = await api.post<NotifyAbsenteesResponse>('/attendance/absentees/notify', body);
       // Queuing is not delivery: a background worker drains the queue and the per-row status below
       // shows what actually happened.
-      setToast(notifyToast(response.data, data?.deliveryMode));
+      setToast(notifyToast(response.data, data?.deliveryMode, testModeSeen));
       await load(date, classId, sectionId);
     } catch (err) {
       setError(errMessage(err, 'Could not queue WhatsApp alerts'));
@@ -294,9 +345,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
                           ? <span className="ck-status sneutral">Not required</span>
                           : student.alreadyQueued
                           ? deliveryChip(student.notificationStatus)
-                          : student.hasContact
-                            ? <span className="ck-status spending">Ready</span>
-                            : <span className="ck-status sneutral">Unavailable</span>}
+                          : pendingAlertChip(student)}
                       </td>
                     </tr>
                   ))}
