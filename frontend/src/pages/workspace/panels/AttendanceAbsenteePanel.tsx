@@ -245,7 +245,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
       </div>
 
       <div className="ck-att-kpi-band">
-        <div className="ck-att-kpi ck-att-kpi--alert"><div><span>Absent</span><strong>{data?.absentCount ?? 0}</strong><small>{notifiable} can get a WhatsApp alert</small></div></div>
+        <div className="ck-att-kpi ck-att-kpi--alert"><div><span>Absent</span><strong>{data?.absentCount ?? 0}</strong><small>{notifiable} ready for a WhatsApp alert</small></div></div>
         <div className="ck-att-kpi"><div><span>Late arrivals</span><strong>{data?.lateCount ?? 0}</strong><small>Review arrival remarks</small></div></div>
         <div className="ck-att-kpi"><div><span>Excused leave</span><strong>{data?.leaveCount ?? 0}</strong><small>Excluded from percentage</small></div></div>
         <div className="ck-att-kpi"><div><span>WhatsApp alerts queued</span><strong>{data?.queuedCount ?? 0}</strong><small>One per student per day</small></div></div>

@@ -101,7 +101,7 @@ describe('AttendanceAbsenteePanel', () => {
     const button = screen.getByRole('button', { name: 'Queue WhatsApp alerts (1)' });
     expect(button.hasAttribute('disabled')).toBe(false);
     expect(screen.queryByRole('button', { name: /Notify eligible/ })).toBeNull();
-    expect(screen.getByText('1 can get a WhatsApp alert')).toBeTruthy();
+    expect(screen.getByText('1 ready for a WhatsApp alert')).toBeTruthy();
     expect(screen.getByText('WhatsApp alerts queued')).toBeTruthy();
     expect(screen.getByText('One per student per day')).toBeTruthy();
     expect(screen.queryByText('Parents queued')).toBeNull();
