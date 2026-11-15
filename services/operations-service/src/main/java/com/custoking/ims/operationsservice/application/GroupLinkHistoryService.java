@@ -81,8 +81,10 @@ public class GroupLinkHistoryService {
         if (before != null && before <= 0) throw bad("before must be a positive change id");
         int size = limit == null ? DEFAULT_LIMIT : limit;
         if (size < 1 || size > MAX_LIMIT) throw bad("limit must be between 1 and " + MAX_LIMIT);
-        // One more than asked tells whether an older page exists.
-        List<ChangeRow> rows = tx.execute(status -> repo.changes(schoolId, before, size + 1));
+        // One more than asked tells whether an older page exists. Worked out here, right after the bounds check, and not
+        // inside the transaction's lambda, so the check visibly guards it (size is at most MAX_LIMIT: no overflow).
+        int fetch = size + 1;
+        List<ChangeRow> rows = tx.execute(status -> repo.changes(schoolId, before, fetch));
         boolean more = rows.size() > size;
         List<ChangeRow> page = more ? rows.subList(0, size) : rows;
         // Identity is asked outside the transaction, which StaffNames requires.
