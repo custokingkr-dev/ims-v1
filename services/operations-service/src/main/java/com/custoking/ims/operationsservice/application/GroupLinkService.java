@@ -6,6 +6,8 @@ import com.custoking.ims.operationsservice.application.orderworkflow.OrderAccess
 import com.custoking.ims.operationsservice.application.orderworkflow.VendorLookup;
 import com.custoking.ims.operationsservice.application.orderworkflow.rules.Role;
 import com.custoking.ims.operationsservice.application.orderworkflow.rules.WorkflowRuleViolation;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository.Target;
 import com.custoking.ims.operationsservice.persistence.VendorRepository;
 import com.custoking.ims.operationsservice.persistence.WorkflowRequestScope;
 import com.custoking.ims.operationsservice.persistence.WorkflowSettingsRepository;
@@ -31,6 +33,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -45,9 +48,10 @@ import java.util.regex.Pattern;
  *       what it chose).</li>
  * </ul>
  * The order workflow asks {@link #resolve} for its view; the order's own endpoints use {@link #orderGroups} and
- * {@link #setOrderSchoolGroup}. Workflow set-up lists and edits a school's item groups through
- * {@link #schoolItemGroupLinks} and {@link #setSchoolItemGroupLink}, and imports many links at once through
- * {@link #importGroupLinks}.
+ * {@link #setOrderSchoolGroup}. Workflow set-up keeps a school's own groups through {@link #setSchoolGroupLink}, lists and
+ * edits its item groups through {@link #schoolItemGroupLinks} and {@link #setSchoolItemGroupLink}, and imports many links
+ * at once through {@link #importGroupLinks}. Every real change, from any of them, is logged with who made it and the link
+ * before and after ({@link GroupLinkChangeRepository}); saving the link already saved changes and logs nothing.
  */
 @Service
 public class GroupLinkService implements GroupLinkResolver {
@@ -62,6 +66,9 @@ public class GroupLinkService implements GroupLinkResolver {
     static final Pattern ITEM_CODE = Pattern.compile("[A-Z][A-Z0-9_]{1,59}");
     /** The most rows one import may carry; a school network's links are far fewer. */
     public static final int MAX_IMPORT_ROWS = 2000;
+    /** A school's own groups, by their workflow V15 target key. */
+    public static final Set<String> SCHOOL_TARGETS = Set.of(WorkflowSettingsRepository.SCHOOL_GROUP,
+            WorkflowSettingsRepository.INTERNAL_APPROVAL);
 
     private final WorkflowSettingsRepository settings;
     private final VendorRepository vendorRepository;
@@ -69,19 +76,21 @@ public class GroupLinkService implements GroupLinkResolver {
     private final OrderAccess access;
     private final WorkflowRequestScope scope;
     private final TransactionTemplate tx;
+    private final GroupLinkChangeRepository changes;
 
     /**
      * {@code access} is lazy, so the bean that implements {@link OrderAccess} may itself depend on this resolver (the order
      * workflow builds its view from it) without a dependency cycle.
      */
     public GroupLinkService(WorkflowSettingsRepository settings, VendorRepository vendorRepository, @Lazy OrderAccess access,
-                            WorkflowRequestScope scope, TransactionTemplate tx) {
+                            WorkflowRequestScope scope, TransactionTemplate tx, GroupLinkChangeRepository changes) {
         this.settings = settings;
         this.vendorRepository = vendorRepository;
         this.vendors = vendorRepository;
         this.access = access;
         this.scope = scope;
         this.tx = tx;
+        this.changes = changes;
     }
 
     // ---- GroupLinkResolver -------------------------------------------------------------------------------------------
@@ -128,7 +137,8 @@ public class GroupLinkService implements GroupLinkResolver {
     /**
      * Saves, or with a blank link removes, the school's group for the order's item; the school-wide group then shows
      * again. Superadmin, or the operator assigned the order's current stage (operators create the item groups). The
-     * change is recorded in the order's history as {@code GROUP_LINK_SET}; saving the link already saved changes nothing.
+     * change is recorded in the order's history as {@code GROUP_LINK_SET} and in the group link change log, with the
+     * order's number; saving the link already saved changes nothing.
      *
      * @throws WorkflowRuleViolation {@code INVALID_INVITE} (400) for anything but a WhatsApp group invite, and
      *         {@code NOT_ASSIGNEE} (403) for an operator who is not assigned the current stage
@@ -140,8 +150,9 @@ public class GroupLinkService implements GroupLinkResolver {
             AccessibleOrder order = access.require(orderId, true);
             if (!order.superadmin()) requireCurrentAssignee(order);
             String category = order.categoryCode();
+            changes.lockLinks();
             Optional<String> saved = settings.itemGroupLink(order.schoolId(), category);
-            if (!Objects.equals(saved.orElse(null), clean)) {
+            if (changes.record(Target.item(order.schoolId(), category), saved.orElse(null), clean, GroupLinkChangeRepository.Source.ORDER, order.orderId())) {
                 if (clean == null) settings.deleteItemGroupLink(order.schoolId(), category);
                 else settings.upsertItemGroupLink(order.schoolId(), category, clean, order.userId());
                 int step = order.activeStep() != null ? order.activeStep() : settings.lastStepOrder(order.instanceId());
@@ -158,6 +169,33 @@ public class GroupLinkService implements GroupLinkResolver {
             throw new WorkflowRuleViolation(WorkflowRuleViolation.NOT_ASSIGNEE,
                     "Only the operator assigned the current stage, or a superadmin, can change this order's group link");
         }
+    }
+
+    // ---- a school's own groups (Workflow set-up) ---------------------------------------------------------------------
+
+    /**
+     * Superadmin only: sets, or with a blank link removes, one of the school's own groups ({@code SCHOOL_GROUP} or
+     * {@code INTERNAL_APPROVAL}). Saving the link already saved changes nothing.
+     *
+     * @return the school's own groups after the change, by target key
+     * @throws WorkflowRuleViolation {@code SUPERADMIN_ONLY} (403) and {@code INVALID_INVITE} (400)
+     */
+    public Map<String, String> setSchoolGroupLink(long schoolId, String targetKey, String inviteUrl) {
+        requireSuperadmin("Only superadmin can maintain WhatsApp group links");
+        String target = targetKey == null ? "" : targetKey.strip();
+        if (!SCHOOL_TARGETS.contains(target)) throw bad("Choose the school group or the internal approval group");
+        String clean = canonicalInvite(inviteUrl);
+        requirePositiveSchool(schoolId);
+        long userId = TenantContext.get().userId();
+        return tx.execute(status -> {
+            changes.lockLinks();
+            String before = settings.schoolGroupLinks(schoolId).get(target);
+            if (changes.record(Target.schoolGroup(schoolId, target), before, clean, GroupLinkChangeRepository.Source.SETUP, null)) {
+                if (clean == null) settings.deleteSchoolGroupLink(schoolId, target);
+                else settings.upsertSchoolGroupLink(schoolId, target, clean, userId);
+            }
+            return settings.schoolGroupLinks(schoolId);
+        });
     }
 
     // ---- a school's item groups (Workflow set-up) --------------------------------------------------------------------
@@ -190,7 +228,8 @@ public class GroupLinkService implements GroupLinkResolver {
 
     /**
      * Superadmin only: sets, or with a blank link removes, the school's group for one item. Unlike a save from an order,
-     * this records no order history: it belongs to the school, not to one order.
+     * this records no order history: it belongs to the school, not to one order. The group link change log records it;
+     * saving the link already saved changes nothing.
      *
      * @throws WorkflowRuleViolation {@code SUPERADMIN_ONLY} (403) and {@code INVALID_INVITE} (400)
      */
@@ -202,8 +241,12 @@ public class GroupLinkService implements GroupLinkResolver {
         String clean = canonicalInvite(inviteUrl);
         long userId = TenantContext.get().userId();
         return tx.execute(status -> {
-            if (clean == null) settings.deleteItemGroupLink(schoolId, category);
-            else settings.upsertItemGroupLink(schoolId, category, clean, userId);
+            changes.lockLinks();
+            String before = settings.itemGroupLink(schoolId, category).orElse(null);
+            if (changes.record(Target.item(schoolId, category), before, clean, GroupLinkChangeRepository.Source.SETUP, null)) {
+                if (clean == null) settings.deleteItemGroupLink(schoolId, category);
+                else settings.upsertItemGroupLink(schoolId, category, clean, userId);
+            }
             return settings.itemGroupLinks(schoolId).stream().map(ItemGroupLinkView::of).toList();
         });
     }
@@ -251,7 +294,8 @@ public class GroupLinkService implements GroupLinkResolver {
      * Superadmin only: sets many school, item and vendor groups at once, from a spreadsheet the set-up screen reads. Every
      * row is checked first and the file is applied in one transaction, all of it or (when any row is in error) none of it.
      * A blank link removes that group. School ids are not checked against the schools: the set-up screen sends only the
-     * schools it lists, and the school endpoints accept any positive id in the same way.
+     * schools it lists, and the school endpoints accept any positive id in the same way. An applied file logs each row it
+     * changes in the group link change log.
      *
      * @throws WorkflowRuleViolation {@code SUPERADMIN_ONLY} (403)
      */
@@ -263,7 +307,13 @@ public class GroupLinkService implements GroupLinkResolver {
         boolean dryRun = !Boolean.FALSE.equals(request.dryRun());
         long userId = TenantContext.get().userId();
         return tx.execute(status -> {
-            List<ImportChange> changes = new ArrayList<>();
+            if (!dryRun) {
+                // Before anything is read, so each row's "before" is still the saved link when the file is applied: the
+                // group links first, then the vendor directory (the order every writer that needs both takes them in).
+                changes.lockLinks();
+                if (request.rows().stream().anyMatch(GroupLinkService::namesVendor)) vendorRepository.lockDirectory();
+            }
+            List<ImportChange> found = new ArrayList<>();
             List<ImportError> errors = new ArrayList<>();
             Map<String, Integer> seen = new HashMap<>();
             Map<Long, Map<String, String>> schoolLinks = new HashMap<>();
@@ -274,22 +324,19 @@ public class GroupLinkService implements GroupLinkResolver {
                     ImportChange change = understand(row, line, schoolLinks);
                     Integer first = seen.putIfAbsent(target(change), line);
                     if (first != null) throw bad("This sets the same group as line " + first);
-                    changes.add(change);
+                    found.add(change);
                 } catch (WorkflowRuleViolation | ResponseStatusException refused) {
                     errors.add(new ImportError(line, refused instanceof ResponseStatusException r ? r.getReason() : refused.getMessage()));
                 }
             }
             boolean apply = !dryRun && errors.isEmpty();
             if (apply) {
-                if (changes.stream().anyMatch(c -> c.kind() == ImportKind.VENDOR && c.outcome() != ImportOutcome.UNCHANGED)) {
-                    vendorRepository.lockDirectory();
-                }
-                changes.stream().filter(c -> c.outcome() != ImportOutcome.UNCHANGED).forEach(c -> write(c, userId));
+                found.stream().filter(c -> c.outcome() != ImportOutcome.UNCHANGED).forEach(c -> write(c, userId));
                 LOG.info("WhatsApp group links imported by user {}: {} added, {} changed, {} removed, {} unchanged", userId,
-                        count(changes, ImportOutcome.ADDED), count(changes, ImportOutcome.CHANGED),
-                        count(changes, ImportOutcome.REMOVED), count(changes, ImportOutcome.UNCHANGED));
+                        count(found, ImportOutcome.ADDED), count(found, ImportOutcome.CHANGED),
+                        count(found, ImportOutcome.REMOVED), count(found, ImportOutcome.UNCHANGED));
             }
-            return new ImportResult(dryRun, apply, List.copyOf(changes), List.copyOf(errors));
+            return new ImportResult(dryRun, apply, List.copyOf(found), List.copyOf(errors));
         });
     }
 
@@ -326,7 +373,13 @@ public class GroupLinkService implements GroupLinkResolver {
         return new ImportChange(line, kind, schoolId, category, vendorId, before, after, outcome);
     }
 
+    /** Whether an import row is about a vendor's group, read as {@link #importKind} reads it. */
+    private static boolean namesVendor(ImportRow row) {
+        return row != null && row.kind() != null && ImportKind.VENDOR.name().equals(row.kind().strip().toUpperCase(Locale.ROOT));
+    }
+
     private void write(ImportChange change, long userId) {
+        changes.record(logTarget(change), change.before(), change.after(), GroupLinkChangeRepository.Source.IMPORT, null);
         switch (change.kind()) {
             case SCHOOL_GROUP, INTERNAL_APPROVAL -> {
                 if (change.after() == null) settings.deleteSchoolGroupLink(change.schoolId(), change.kind().name());
@@ -338,6 +391,14 @@ public class GroupLinkService implements GroupLinkResolver {
             }
             case VENDOR -> vendorRepository.updateGroupLink(change.vendorId(), change.after(), userId);
         }
+    }
+
+    private static Target logTarget(ImportChange change) {
+        return switch (change.kind()) {
+            case SCHOOL_GROUP, INTERNAL_APPROVAL -> Target.schoolGroup(change.schoolId(), change.kind().name());
+            case ITEM -> Target.item(change.schoolId(), change.categoryCode());
+            case VENDOR -> Target.vendor(change.vendorId());
+        };
     }
 
     private static String target(ImportChange change) {

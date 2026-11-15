@@ -4,7 +4,7 @@ import { createOperatorAdminClient, type OperatorAssignment } from '../../../gen
 import {
   createOrderWorkflowClient, type DesignerRow, type InternalApprovalGroupView, type ItemGroupLinkView, type TimeSlotRow,
   type WhatsAppGroupImportChange, type WhatsAppGroupImportRequest, type WhatsAppGroupImportResult, type WhatsAppGroupImportRow,
-  type WorkflowDefinitionId, type WorkflowTemplate,
+  type WhatsAppGroupLinkChange, type WhatsAppGroupLinkChangePage, type WorkflowDefinitionId, type WorkflowTemplate,
 } from '../../../generated/orderWorkflowClient';
 import { createTenantSchoolClient } from '../../../generated/tenantSchoolClient';
 import {
@@ -24,7 +24,8 @@ export { WORKFLOW_DEFINITIONS, workflowDefinitionLabel };
 
 export type {
   DesignerRow, InternalApprovalGroupView, ItemGroupLinkView, TimeSlotRow, VendorCategoryRequest, VendorCategoryView, VendorRequest, VendorView,
-  WhatsAppGroupImportChange, WhatsAppGroupImportRequest, WhatsAppGroupImportResult, WhatsAppGroupImportRow, WorkflowDefinitionId, WorkflowTemplate,
+  WhatsAppGroupImportChange, WhatsAppGroupImportRequest, WhatsAppGroupImportResult, WhatsAppGroupImportRow,
+  WhatsAppGroupLinkChange, WhatsAppGroupLinkChangePage, WorkflowDefinitionId, WorkflowTemplate,
 };
 export type OperatorRow = OperatorAssignment;
 export interface OperatorUser { userId: number; fullName: string; email: string }
@@ -96,6 +97,14 @@ export const setupApi = {
     parseList(result.changes);
     parseList(result.errors);
     return result;
+  },
+  // Who changed which group link, newest first: superadmin only. Pass the previous page's nextBefore for older changes.
+  groupLinkChanges: async (schoolId: number | null, before: number | null): Promise<WhatsAppGroupLinkChangePage> => {
+    const page = parseRecord<WhatsAppGroupLinkChangePage>(await workflows.listWhatsAppGroupLinkChanges({
+      schoolId: schoolId ?? undefined, before: before ?? undefined, limit: 50,
+    }));
+    parseList(page.changes);
+    return page;
   },
 
   // Operators (existing set-up, moved here from the retired notebook tracker).

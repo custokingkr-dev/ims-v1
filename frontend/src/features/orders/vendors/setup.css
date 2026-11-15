@@ -60,6 +60,11 @@
 .ck-setup-import-errors { margin: var(--ck-space-2) 0 0; padding-left: var(--ck-space-5); }
 .ck-setup .ck-setup-import-table td { overflow-wrap: anywhere; }
 
+/* Change history: a change cell stacks its outcome and links; long invite links wrap rather than widen the table. */
+.ck-setup .ck-setup-history-table td { overflow-wrap: anywhere; vertical-align: top; }
+.ck-setup-change { display: grid; gap: 2px; }
+.ck-setup-change a { color: var(--ck-color-primary); font-weight: 600; }
+
 /* Vendor directory: categories beside vendors from 1024px, stacked below. */
 .ck-vd { display: grid; gap: var(--ck-space-4); min-width: 0; }
 .ck-vd-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--ck-space-3); }

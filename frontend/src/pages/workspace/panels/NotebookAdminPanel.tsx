@@ -8,6 +8,7 @@ import {
   WORKFLOW_DEFINITIONS, setupApi, workflowError, type InternalApprovalGroupView, type ItemGroupLinkView, type OperatorRow, type SchoolGroupTarget,
   type SchoolOption, type SlaUnit, type WorkflowDefinitionId,
 } from '../../../features/orders/vendors/api';
+import { GroupLinkHistory } from '../../../features/orders/vendors/GroupLinkHistory';
 import { GroupLinkImport } from '../../../features/orders/vendors/GroupLinkImport';
 import { VendorDirectory } from '../../../features/orders/vendors/VendorDirectory';
 import '../../../features/orders/vendors/setup.css';
@@ -354,9 +355,9 @@ const SCHOOL_TARGETS: ReadonlyArray<{ key: SchoolGroupTarget; label: string }> =
  * one from an order when the school has no group; here superadmin sees, changes, removes and adds them. The parent mounts
  * one per school (keyed by it), so nothing typed or still saving for one school can land on another.
  */
-function ItemGroups({ schoolId, attempt, categories, categoriesFailed, run }: {
+function ItemGroups({ schoolId, attempt, categories, categoriesFailed, run, onSaved }: {
   schoolId: number; attempt: number; categories: Array<{ code: string; label: string; active: boolean }> | null; categoriesFailed: boolean;
-  run: (operation: () => Promise<unknown>, done: string) => Promise<boolean>;
+  run: (operation: () => Promise<unknown>, done: string) => Promise<boolean>; onSaved: () => void;
 }) {
   const [rows, setRows] = useState<ItemGroupLinkView[] | null>(null);
   const [loadError, setLoadError] = useState('');
@@ -387,6 +388,7 @@ function ItemGroups({ schoolId, attempt, categories, categoriesFailed, run }: {
       setRows(next); setInputs(Object.fromEntries(next.map((row) => [row.categoryCode, row.inviteUrl])));
     }, trimmed ? `${label(code)} link saved.` : `${label(code)} link removed.`);
     setSaving(null);
+    if (saved) onSaved();
     // A removed row takes its focused button with it; keep the keyboard in this section.
     if (saved && !trimmed) heading.current?.focus();
     return saved;
@@ -439,6 +441,9 @@ function GroupsTab({ schools }: { schools: SchoolOption[] }) {
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [linksAttempt, setLinksAttempt] = useState(0);
   const [saving, setSaving] = useState<string | null>(null);
+  // Bumped after every save on this tab, so the change history shows it.
+  const [saves, setSaves] = useState(0);
+  const saved = () => setSaves((value) => value + 1);
   const { error, notice, run } = useAction();
   const categories = useList(setupApi.allCategories, 'Unable to load the items.');
 
@@ -466,20 +471,22 @@ function GroupsTab({ schools }: { schools: SchoolOption[] }) {
   const saveGlobal = async () => {
     const trimmed = globalInput.trim();
     setSaving('GLOBAL');
-    await run(async () => {
+    const done = await run(async () => {
       const view = await setupApi.setInternalApprovalGroup(trimmed ? normaliseInvite(trimmed) : null);
       setGlobal(view); setGlobalInput(view.inviteUrl ?? '');
     }, trimmed ? 'Internal approval group saved.' : 'Internal approval group removed.');
     setSaving(null);
+    if (done) saved();
   };
   const saveSchool = async (target: SchoolGroupTarget, label: string) => {
     const trimmed = (inputs[target] ?? '').trim();
     setSaving(target);
-    await run(async () => {
+    const done = await run(async () => {
       const next = await setupApi.saveSchoolGroup(Number(schoolId), target, trimmed ? normaliseInvite(trimmed) ?? trimmed : '');
       setLinks(next); setInputs((current) => ({ ...current, [target]: next[target] ?? '' }));
     }, trimmed ? `${label} link saved.` : `${label} link removed.`);
     setSaving(null);
+    if (done) saved();
   };
 
   return (
@@ -510,10 +517,11 @@ function GroupsTab({ schools }: { schools: SchoolOption[] }) {
         ))}
         {schoolId && categories.error && <LoadFailure message={categories.error} onRetry={() => void categories.reload()} />}
         {schoolId && <ItemGroups key={schoolId} schoolId={Number(schoolId)} attempt={linksAttempt} categories={categories.rows}
-          categoriesFailed={!!categories.error} run={run} />}
+          categoriesFailed={!!categories.error} run={run} onSaved={saved} />}
       </div>
       <Messages error={error} notice={notice} />
-      <GroupLinkImport schools={schools} onApplied={() => setLinksAttempt((value) => value + 1)} />
+      <GroupLinkImport schools={schools} onApplied={() => { setLinksAttempt((value) => value + 1); saved(); }} />
+      <GroupLinkHistory schools={schools} categories={categories.rows} refresh={saves} />
     </section>
   );
 }

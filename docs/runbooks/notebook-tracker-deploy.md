@@ -49,9 +49,11 @@ the gateway before any service is asked, whether or not the service still has th
 | `GET /school-whatsapp-groups/{schoolId}`, `PUT /school-whatsapp-groups/{schoolId}/{target}` (paths unchanged) | superadmin, or an operator assigned to the whole school / superadmin. Since SOP the keys are only `SCHOOL_GROUP` and `INTERNAL_APPROVAL` |
 | `GET /school-whatsapp-groups/{schoolId}/items`, `PUT /school-whatsapp-groups/{schoolId}/items/{categoryCode}` | superadmin, or an operator assigned to the whole school / superadmin |
 | `POST /whatsapp-groups/import` (dry run unless `"dryRun": false`) | superadmin |
+| `GET /whatsapp-groups/changes` (the group link change log, workflow V23) | superadmin |
 
 Controllers: `OrderWorkflowController`, `OrderCallLogController`, `OrderActivityController`,
-`WorkflowSettingsController`, `VendorDirectoryController`, `SchoolWhatsAppGroupController`, `WhatsAppGroupImportController`.
+`WorkflowSettingsController`, `VendorDirectoryController`, `SchoolWhatsAppGroupController`, `WhatsAppGroupImportController`,
+`WhatsAppGroupChangeController`.
 
 **School-core**, changed by the SOP release. `CatalogOrderFormController` serves both `/api/v1/catalog/orders` and
 `/api/v1/supply/orders`; `…` below is either.

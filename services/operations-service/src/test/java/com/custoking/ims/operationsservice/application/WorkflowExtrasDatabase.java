@@ -7,6 +7,7 @@ import com.custoking.ims.operationsservice.application.orderworkflow.template.Cl
 import com.custoking.ims.operationsservice.application.orderworkflow.template.WorkflowTemplates;
 import com.custoking.ims.operationsservice.persistence.ActivityRepository;
 import com.custoking.ims.operationsservice.persistence.CallLogRepository;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository;
 import com.custoking.ims.operationsservice.persistence.VendorRepository;
 import com.custoking.ims.operationsservice.persistence.WorkflowRequestScope;
 import com.custoking.ims.operationsservice.persistence.WorkflowSettingsRepository;
@@ -120,11 +121,17 @@ final class WorkflowExtrasDatabase {
 
     StaffNames names() { return new StaffNames(ids -> { var found = new java.util.HashMap<Long, String>(); ids.forEach(id -> { if (staff.containsKey(id)) found.put(id, staff.get(id)); }); return found; }, clock); }
 
-    VendorDirectoryService vendorDirectory() { return new VendorDirectoryService(vendorRepository(), tx); }
+    GroupLinkChangeRepository changeRepository() { return new GroupLinkChangeRepository(runtime, SCHEMA); }
 
-    WorkflowSettingsService settings() { return new WorkflowSettingsService(settingsRepository(), tx); }
+    VendorDirectoryService vendorDirectory() { return new VendorDirectoryService(vendorRepository(), changeRepository(), tx); }
 
-    GroupLinkService groups() { return new GroupLinkService(settingsRepository(), vendorRepository(), access(), scope(), tx); }
+    WorkflowSettingsService settings() { return new WorkflowSettingsService(settingsRepository(), changeRepository(), tx); }
+
+    GroupLinkService groups() {
+        return new GroupLinkService(settingsRepository(), vendorRepository(), access(), scope(), tx, changeRepository());
+    }
+
+    GroupLinkHistoryService history() { return new GroupLinkHistoryService(changeRepository(), names(), tx); }
 
     CallLogService calls() {
         return new CallLogService(new CallLogRepository(runtime, SCHEMA), vendorRepository(), access(), scope(), tx, clock, names());
