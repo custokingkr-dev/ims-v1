@@ -48,14 +48,15 @@ public class GroupLinkHistoryService {
      * @param outcome       {@code ADDED}, {@code CHANGED} or {@code REMOVED}
      * @param source        {@code SETUP}, {@code ORDER} (an order's School Group Chat card), {@code IMPORT} (the
      *                      spreadsheet import) or {@code VENDOR_DIRECTORY}
-     * @param orderId       the order's number, for {@code ORDER}
+     * @param orderId       the order's CK id (never the order number), for {@code ORDER}
+     * @param orderNumber   that order's SOP number as it is now; null before one is minted and for other sources
      * @param changedBy     the user id of who changed it
      * @param changedByName their name from identity; the email they were signed in with when identity does not answer;
      *                      null when neither is known
      */
     public record GroupLinkChangeView(long id, OffsetDateTime changedAt, String kind, Long schoolId, String categoryCode,
                                       Long vendorId, String vendorName, String before, String after, String outcome,
-                                      String source, String orderId, long changedBy, String changedByName) { }
+                                      String source, String orderId, String orderNumber, long changedBy, String changedByName) { }
 
     /**
      * A page of the log.
@@ -94,7 +95,7 @@ public class GroupLinkHistoryService {
         String outcome = row.before() == null ? "ADDED" : row.after() == null ? "REMOVED" : "CHANGED";
         return new GroupLinkChangeView(row.id(), row.changedAt(), row.kind().name(), row.schoolId(), row.categoryCode(),
                 row.vendorId(), row.vendorName(), row.before(), row.after(), outcome, row.source().name(), row.orderId(),
-                row.changedBy(), name != null ? name : row.changedByEmail());
+                row.orderNumber(), row.changedBy(), name != null ? name : row.changedByEmail());
     }
 
     private static ResponseStatusException bad(String message) {

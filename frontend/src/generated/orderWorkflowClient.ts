@@ -130,7 +130,7 @@ export type WhatsAppGroupImportError = { "line": number; "message": string; };
 
 export type WhatsAppGroupImportResult = { "dryRun": boolean; "applied": boolean; "changes": Array<WhatsAppGroupImportChange>; "errors": Array<WhatsAppGroupImportError>; };
 
-export type WhatsAppGroupLinkChange = { "id": number; "changedAt": string; "kind": "SCHOOL_GROUP" | "INTERNAL_APPROVAL" | "ITEM" | "GLOBAL_INTERNAL_APPROVAL" | "VENDOR"; "schoolId": number | null; "categoryCode": string | null; "vendorId": number | null; "vendorName": string | null; "before": string | null; "after": string | null; "outcome": "ADDED" | "CHANGED" | "REMOVED"; "source": "SETUP" | "ORDER" | "IMPORT" | "VENDOR_DIRECTORY"; "orderId": string | null; "changedBy": number; "changedByName": string | null; };
+export type WhatsAppGroupLinkChange = { "id": number; "changedAt": string; "kind": "SCHOOL_GROUP" | "INTERNAL_APPROVAL" | "ITEM" | "GLOBAL_INTERNAL_APPROVAL" | "VENDOR"; "schoolId": number | null; "categoryCode": string | null; "vendorId": number | null; "vendorName": string | null; "before": string | null; "after": string | null; "outcome": "ADDED" | "CHANGED" | "REMOVED"; "source": "SETUP" | "ORDER" | "IMPORT" | "VENDOR_DIRECTORY"; "orderId": string | null; "orderNumber": string | null; "changedBy": number; "changedByName": string | null; };
 
 export type WhatsAppGroupLinkChangePage = { "changes": Array<WhatsAppGroupLinkChange>; "nextBefore": number | null; };
 

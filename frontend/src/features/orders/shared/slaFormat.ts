@@ -183,6 +183,15 @@ export function formatStamp(iso: string, timeZone: string | null | undefined): s
   return `${day} ${MONTHS[month - 1]}, ${hour12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'am' : 'pm'}`;
 }
 
+/** An instant in the zone with its year, for a log read across years: "14 Nov 2026, 3:05 pm". */
+export function formatStampWithYear(iso: string, timeZone: string | null | undefined): string {
+  const ms = instant(iso);
+  if (ms === null) return iso;
+  const { year, month, day, hour, minute } = zoned(ms, timeZone);
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${day} ${MONTHS[month - 1]} ${year}, ${hour12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'am' : 'pm'}`;
+}
+
 export interface ListedStep {
   status: StepStatus;
   completedAt: string | null;

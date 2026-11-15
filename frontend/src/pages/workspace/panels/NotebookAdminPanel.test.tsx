@@ -281,7 +281,7 @@ describe('Groups', () => {
 describe('Group link change history', () => {
   const change = (id: number, fields: Partial<WhatsAppGroupLinkChange>): WhatsAppGroupLinkChange => ({
     id, changedAt: '2026-11-15T05:00:00Z', kind: 'SCHOOL_GROUP', schoolId: 7, categoryCode: null, vendorId: null, vendorName: null,
-    before: null, after: INVITE, outcome: 'ADDED', source: 'SETUP', orderId: null, changedBy: 1, changedByName: 'Asha Superadmin', ...fields,
+    before: null, after: INVITE, outcome: 'ADDED', source: 'SETUP', orderId: null, orderNumber: null, changedBy: 1, changedByName: 'Asha Superadmin', ...fields,
   });
   const history = () => screen.getByRole('table', { name: /Group link changes/ });
 
@@ -290,21 +290,23 @@ describe('Group link change history', () => {
     vi.mocked(setupApi.groupLinkChanges)
       .mockResolvedValueOnce({ changes: [
         change(9, { kind: 'ITEM', categoryCode: 'FLIERS', before: OLD, after: INVITE, outcome: 'CHANGED', source: 'ORDER', orderId: 'CK-101',
-          changedBy: 12, changedByName: null, changedAt: '2026-11-15T10:30:00Z' }),
+          orderNumber: 'FE-DPS_GUR-26-11-13-0042', changedBy: 12, changedByName: null, changedAt: '2026-11-15T10:30:00Z' }),
         change(8, { kind: 'VENDOR', schoolId: null, vendorId: 4, vendorName: 'Metro Offset', before: INVITE, after: null, outcome: 'REMOVED',
           source: 'VENDOR_DIRECTORY' }),
       ], nextBefore: 8 })
-      .mockResolvedValueOnce({ changes: [change(3, { kind: 'GLOBAL_INTERNAL_APPROVAL', schoolId: null, source: 'IMPORT' })], nextBefore: null });
+      .mockResolvedValueOnce({ changes: [change(3, { kind: 'GLOBAL_INTERNAL_APPROVAL', schoolId: null, source: 'IMPORT' }),
+        change(2, { kind: 'ITEM', categoryCode: 'FLIERS', source: 'ORDER', orderId: 'CK-7', orderNumber: null })], nextBefore: null });
     render(<NotebookAdminPanel />);
     fireEvent.click(tab('Groups'));
     await screen.findByRole('table', { name: /Group link changes/ });
     expect(setupApi.groupLinkChanges).toHaveBeenCalledWith(null, null);
     const rows = within(history()).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent('15 Nov, 4:00 pm');
+    expect(rows[0]).toHaveTextContent('15 Nov 2026, 4:00 pm');
     expect(rows[0]).toHaveTextContent('User 12');
     expect(rows[0]).toHaveTextContent('Fliers group · School Seven');
-    expect(rows[0]).toHaveTextContent('Order CK-101');
+    expect(rows[0]).toHaveTextContent('Order FE-DPS_GUR-26-11-13-0042');
+    expect(rows[0]).toHaveTextContent('Ref CK-101');
     expect(within(rows[0]).getByRole('link', { name: /OldFlierGroup01/ })).toHaveAttribute('href', OLD);
     expect(within(rows[0]).getByRole('link', { name: /AbCdEf12345/ })).toHaveAttribute('href', INVITE);
     expect(rows[0]).toHaveTextContent(/Changed\s*from chat\.whatsapp\.com\/OldFlierGroup01\s*to chat\.whatsapp\.com\/AbCdEf12345/);
@@ -313,31 +315,35 @@ describe('Group link change history', () => {
     expect(rows[1]).toHaveTextContent(/Removed\s*was chat\.whatsapp\.com\/AbCdEf12345/);
     expect(rows[1]).toHaveTextContent('Vendor directory');
 
+    expect(screen.queryByText(/This is the start of the log/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Show older changes' }));
-    await waitFor(() => expect(within(history()).getAllByRole('row')).toHaveLength(4));
+    await waitFor(() => expect(within(history()).getAllByRole('row')).toHaveLength(5));
     expect(setupApi.groupLinkChanges).toHaveBeenLastCalledWith(null, 8);
-    const last = within(history()).getAllByRole('row')[3];
-    expect(last).toHaveTextContent('Internal approval group (every school without its own)');
-    expect(last).toHaveTextContent('Spreadsheet import');
+    const older = within(history()).getAllByRole('row');
+    expect(older[3]).toHaveTextContent('Internal approval group (every school without its own)');
+    expect(older[3]).toHaveTextContent('Spreadsheet import');
+    expect(older[4]).toHaveTextContent('Order CK-7');
+    expect(older[4]).not.toHaveTextContent('Ref');
     expect(screen.queryByRole('button', { name: 'Show older changes' })).not.toBeInTheDocument();
+    expect(screen.getByText('This is the start of the log. Changes made before it was added were not recorded.')).toBeInTheDocument();
   });
 
   it("shows one school's changes when it is chosen, and says so when there are none", async () => {
     render(<NotebookAdminPanel />);
     fireEvent.click(tab('Groups'));
-    expect(await screen.findByText('No group link has been changed yet.')).toBeInTheDocument();
+    expect(await screen.findByText('No group link change has been logged.')).toBeInTheDocument();
     const show = screen.getByRole('combobox', { name: 'Show' });
     await waitFor(() => expect(within(show).getAllByRole('option')).toHaveLength(2));
     fireEvent.change(show, { target: { value: '7' } });
     await waitFor(() => expect(setupApi.groupLinkChanges).toHaveBeenLastCalledWith(7, null));
-    expect(await screen.findByText('No group link at School Seven has been changed yet.')).toBeInTheDocument();
+    expect(await screen.findByText('No change to a group link at School Seven has been logged.')).toBeInTheDocument();
   });
 
   it('shows a save made on the tab without a reload', async () => {
     vi.mocked(setupApi.setInternalApprovalGroup).mockResolvedValue({ inviteUrl: INVITE, updatedAt: '2026-11-15T05:00:00Z', updatedBy: 1 });
     render(<NotebookAdminPanel />);
     fireEvent.click(tab('Groups'));
-    await screen.findByText('No group link has been changed yet.');
+    await screen.findByText('No group link change has been logged.');
     vi.mocked(setupApi.groupLinkChanges).mockResolvedValue({ changes: [change(1, { kind: 'GLOBAL_INTERNAL_APPROVAL', schoolId: null })], nextBefore: null });
     fireEvent.change(screen.getByRole('textbox', { name: 'Internal approval group invite link' }), { target: { value: INVITE } });
     fireEvent.click(screen.getByRole('button', { name: 'Save internal approval group link' }));
@@ -352,7 +358,7 @@ describe('Group link change history', () => {
     expect(await screen.findByText('Only superadmin can see who changed WhatsApp group links')).toBeInTheDocument();
     fireEvent.click(within(screen.getByText('Only superadmin can see who changed WhatsApp group links').closest('.ck-alert') as HTMLElement)
       .getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByText('No group link has been changed yet.')).toBeInTheDocument();
+    expect(await screen.findByText('No group link change has been logged.')).toBeInTheDocument();
   });
 });
 

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { safeInviteHref } from '../shared/invite';
-import { formatStamp } from '../shared/slaFormat';
+import { orderLabel } from '../shared/orderLabel';
+import { formatStampWithYear } from '../shared/slaFormat';
 import { setupApi, workflowError, type SchoolOption, type WhatsAppGroupLinkChange } from './api';
 
 const SOURCE_LABELS: Record<WhatsAppGroupLinkChange['source'], string> = {
@@ -45,6 +46,15 @@ function InviteLink({ url }: { url: string }) {
   return href
     ? <a href={href} target="_blank" rel="noopener noreferrer">{text} <ExternalLink size={13} aria-hidden="true" /></a>
     : <span>{text}</span>;
+}
+
+/** Where the change was made; an order is named as every order screen names it, by its number with the CK id beneath. */
+function WhereCell({ change }: { change: WhatsAppGroupLinkChange }) {
+  if (change.source === 'ORDER' && change.orderId) {
+    const label = orderLabel({ orderId: change.orderId, orderNumber: change.orderNumber });
+    return <span className="ck-setup-change"><span>Order {label.headline}</span>{label.reference && <span className="ck-setup-muted">{label.reference}</span>}</span>;
+  }
+  return <>{SOURCE_LABELS[change.source] ?? change.source}</>;
 }
 
 function ChangeCell({ change }: { change: WhatsAppGroupLinkChange }) {
@@ -103,7 +113,7 @@ export function GroupLinkHistory({ schools, categories, refresh }: Names & { ref
   return (
     <div className="ck-setup-block">
       <h3>Change history</h3>
-      <p className="ck-setup-muted">Who added, changed or removed a WhatsApp group link, and what it was before, newest first. Saves from set-up, from an order&apos;s School Group Chat card, from the spreadsheet import and from the vendor directory are all listed.</p>
+      <p className="ck-setup-muted">Who added, changed or removed a WhatsApp group link, and what it was before, newest first. Saves from set-up, from an order&apos;s School Group Chat card, from the spreadsheet import and from the vendor directory are listed from the day this log was added; changes made before then are not. Times are India time (IST).</p>
       <div className="ck-setup-fields">
         <label className="field">Show
           <select value={schoolId} onChange={(e) => setSchoolId(e.target.value)}>
@@ -121,7 +131,7 @@ export function GroupLinkHistory({ schools, categories, refresh }: Names & { ref
       {!error && changes === null && <p className="ck-setup-muted" role="status">Loading the change history…</p>}
       {changes !== null && changes.length === 0 && (
         <p className="ck-setup-muted" role="status">
-          {chosen ? `No group link at ${chosen.name} has been changed yet.` : 'No group link has been changed yet.'}
+          {chosen ? `No change to a group link at ${chosen.name} has been logged.` : 'No group link change has been logged.'}
         </p>
       )}
       {changes !== null && changes.length > 0 && (
@@ -130,14 +140,17 @@ export function GroupLinkHistory({ schools, categories, refresh }: Names & { ref
           <thead><tr><th>When</th><th>Who</th><th>Group</th><th>Change</th><th>Where</th></tr></thead>
           <tbody>{changes.map((change) => (
             <tr key={change.id}>
-              <td><time dateTime={change.changedAt}>{formatStamp(change.changedAt, null)}</time></td>
+              <td><time dateTime={change.changedAt}>{formatStampWithYear(change.changedAt, null)}</time></td>
               <td>{change.changedByName ?? `User ${change.changedBy}`}</td>
               <td>{describeGroup(change, { schools, categories })}</td>
               <td><ChangeCell change={change} /></td>
-              <td>{change.source === 'ORDER' && change.orderId ? `Order ${change.orderId}` : SOURCE_LABELS[change.source] ?? change.source}</td>
+              <td><WhereCell change={change} /></td>
             </tr>
           ))}</tbody>
         </table></div>
+      )}
+      {changes !== null && changes.length > 0 && nextBefore === null && !error && (
+        <p className="ck-setup-muted">This is the start of the log. Changes made before it was added were not recorded.</p>
       )}
       {changes !== null && error && <p className="ck-setup-error" role="alert">{error}</p>}
       {changes !== null && nextBefore !== null && (

@@ -24,7 +24,7 @@ CREATE TABLE workflow.workflow_group_link_changes (
                            CHECK (after_url IS NULL OR after_url ~ '^https://chat\.whatsapp\.com/[A-Za-z0-9_-]{10,64}$'),
     source                 VARCHAR(20)   NOT NULL CONSTRAINT ck_wglc_source CHECK (source IN (
                                'SETUP', 'ORDER', 'IMPORT', 'VENDOR_DIRECTORY')),
-    -- The order's number when the change was made on an order's School Group Chat card.
+    -- The order's CK id (never the order number) when the change was made on an order's School Group Chat card.
     order_id               VARCHAR(255)  CONSTRAINT ck_wglc_order_id CHECK (order_id IS NULL OR order_id ~ '^[A-Za-z0-9_-]{1,255}$'),
     changed_by             BIGINT        NOT NULL,
     changed_by_email       VARCHAR(320),

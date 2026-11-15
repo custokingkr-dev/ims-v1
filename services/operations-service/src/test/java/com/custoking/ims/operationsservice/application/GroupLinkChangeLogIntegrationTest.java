@@ -237,6 +237,8 @@ class GroupLinkChangeLogIntegrationTest {
         long school = SCHOOLS.incrementAndGet();
         long other = SCHOOLS.incrementAndGet();
         Order order = db.flier(school, 1, ASSIGNEE);
+        db.owner.sql("UPDATE workflow.workflow_notebook_trackers SET order_number = :n WHERE order_id = :o")
+                .param("n", "FE-DPS_GUR-26-11-13-" + school).param("o", order.orderId()).update();
         db.staff.put(SUPER, "Asha Superadmin");
         superadmin();
         groups.setSchoolGroupLink(school, "SCHOOL_GROUP", A);
@@ -252,7 +254,9 @@ class GroupLinkChangeLogIntegrationTest {
         GroupLinkChangeView newest = first.changes().get(0);
         assertEquals("ITEM", newest.kind());
         assertEquals("ORDER", newest.source());
-        assertEquals(order.orderId(), newest.orderId());
+        assertEquals(order.orderId(), newest.orderId(), "the log keeps the CK id");
+        assertEquals("FE-DPS_GUR-26-11-13-" + school, newest.orderNumber(), "and the list adds the order's number as it is now");
+        assertNull(first.changes().get(1).orderNumber(), "a set-up change names no order");
         assertEquals(B, newest.before());
         assertEquals(C, newest.after());
         assertEquals("CHANGED", newest.outcome());

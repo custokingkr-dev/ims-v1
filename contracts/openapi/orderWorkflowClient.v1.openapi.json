@@ -5821,6 +5821,7 @@
           "outcome",
           "source",
           "orderId",
+          "orderNumber",
           "changedBy",
           "changedByName"
         ],
@@ -5911,7 +5912,14 @@
               "string",
               "null"
             ],
-            "description": "The order's number, when it was changed on the order"
+            "description": "The order's CK id (never the order number), when it was changed on the order's School Group Chat card"
+          },
+          "orderNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "That order's SOP number as it is now; null before one is minted and for other sources"
           },
           "changedBy": {
             "type": "integer",

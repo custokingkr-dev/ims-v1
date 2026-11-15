@@ -138,7 +138,7 @@ public class GroupLinkService implements GroupLinkResolver {
      * Saves, or with a blank link removes, the school's group for the order's item; the school-wide group then shows
      * again. Superadmin, or the operator assigned the order's current stage (operators create the item groups). The
      * change is recorded in the order's history as {@code GROUP_LINK_SET} and in the group link change log, with the
-     * order's number; saving the link already saved changes nothing.
+     * order's CK id; saving the link already saved changes nothing.
      *
      * @throws WorkflowRuleViolation {@code INVALID_INVITE} (400) for anything but a WhatsApp group invite, and
      *         {@code NOT_ASSIGNEE} (403) for an operator who is not assigned the current stage

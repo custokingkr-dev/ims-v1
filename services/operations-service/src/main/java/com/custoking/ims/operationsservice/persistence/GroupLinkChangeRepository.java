@@ -66,22 +66,25 @@ public class GroupLinkChangeRepository {
      * @param vendorName     the vendor's current name, for a vendor's group (null if the vendor row is gone)
      * @param before         the link before the change; null when the group was added
      * @param after          the link after it; null when the group was removed
-     * @param orderId        the order's number, when it was changed on the order
+     * @param orderId        the order's CK id (never the order number), when it was changed on the order
+     * @param orderNumber    that order's SOP number as it is now (null before one is minted, and for other sources)
      * @param changedByEmail the email the person was signed in with, as the gateway passed it (may be null)
      */
     public record ChangeRow(long id, OffsetDateTime changedAt, Kind kind, Long schoolId, String categoryCode, Long vendorId,
-                            String vendorName, String before, String after, Source source, String orderId, long changedBy,
-                            String changedByEmail) { }
+                            String vendorName, String before, String after, Source source, String orderId, String orderNumber,
+                            long changedBy, String changedByEmail) { }
 
     private final JdbcClient jdbc;
     private final String changes;
     private final String vendors;
+    private final String trackers;
 
     public GroupLinkChangeRepository(JdbcClient jdbc, @Value("${workflow.db.schema:workflow}") String schema) {
         if (!schema.matches("[A-Za-z_][A-Za-z0-9_]*")) throw new IllegalArgumentException("Invalid schema name");
         this.jdbc = jdbc;
         this.changes = schema + ".workflow_group_link_changes";
         this.vendors = schema + ".workflow_vendors";
+        this.trackers = schema + ".workflow_notebook_trackers";
     }
 
     /**
@@ -97,7 +100,7 @@ public class GroupLinkChangeRepository {
      * Logs the change as made by the signed-in user, when there is one: the same link before and after is no change and
      * logs nothing.
      *
-     * @param orderId the order's number for {@link Source#ORDER}, otherwise null
+     * @param orderId the order's CK id for {@link Source#ORDER}, otherwise null
      * @return whether a row was written
      * @throws IllegalStateException when no user is signed in (every caller has already required one)
      */
@@ -127,8 +130,9 @@ public class GroupLinkChangeRepository {
         // The optional filters are added only when given: a null parameter in ":p IS NULL" leaves PostgreSQL unable to
         // type it.
         StringBuilder sql = new StringBuilder("SELECT c.id, c.changed_at, c.kind, c.school_id, c.category_code, c.vendor_id, "
-                + "v.name AS vendor_name, c.before_url, c.after_url, c.source, c.order_id, c.changed_by, c.changed_by_email FROM "
-                + changes + " c LEFT JOIN " + vendors + " v ON v.id = c.vendor_id WHERE true");
+                + "v.name AS vendor_name, c.before_url, c.after_url, c.source, c.order_id, t.order_number, c.changed_by, "
+                + "c.changed_by_email FROM " + changes + " c LEFT JOIN " + vendors + " v ON v.id = c.vendor_id LEFT JOIN " + trackers
+                + " t ON t.order_id = c.order_id WHERE true");
         if (schoolId != null) sql.append(" AND c.school_id = :school");
         if (beforeId != null) sql.append(" AND c.id < :before");
         sql.append(" ORDER BY c.id DESC LIMIT :limit");
@@ -139,6 +143,6 @@ public class GroupLinkChangeRepository {
                 Kind.valueOf(rs.getString("kind")), rs.getObject("school_id", Long.class), rs.getString("category_code"),
                 rs.getObject("vendor_id", Long.class), rs.getString("vendor_name"), rs.getString("before_url"),
                 rs.getString("after_url"), Source.valueOf(rs.getString("source")), rs.getString("order_id"),
-                rs.getLong("changed_by"), rs.getString("changed_by_email"))).list();
+                rs.getString("order_number"), rs.getLong("changed_by"), rs.getString("changed_by_email"))).list();
     }
 }

@@ -61,7 +61,7 @@ class WhatsAppGroupChangeControllerTest {
 
     @Test void theFiltersArePassedAsGivenAndThePageAnswered() throws Exception {
         GroupLinkChangeView change = new GroupLinkChangeView(9, OffsetDateTime.parse("2026-11-15T10:00:00Z"), "ITEM", 12L, "FLIERS",
-                null, null, null, LINK, "ADDED", "ORDER", "CK-101", 51, "Asha Operator");
+                null, null, null, LINK, "ADDED", "ORDER", "CK-101", "FE-DPS_GUR-26-11-13-0001", 51, "Asha Operator");
         when(history.changes(12L, 40L, 2)).thenReturn(new GroupLinkChangePage(List.of(change), 9L));
         mvc.perform(get("/api/v1/workflows/whatsapp-groups/changes").header(TOKEN, "workflow-token")
                         .param("schoolId", "12").param("before", "40").param("limit", "2"))
@@ -70,6 +70,7 @@ class WhatsAppGroupChangeControllerTest {
                 .andExpect(jsonPath("$.changes[0].categoryCode").value("FLIERS"))
                 .andExpect(jsonPath("$.changes[0].after").value(LINK))
                 .andExpect(jsonPath("$.changes[0].orderId").value("CK-101"))
+                .andExpect(jsonPath("$.changes[0].orderNumber").value("FE-DPS_GUR-26-11-13-0001"))
                 .andExpect(jsonPath("$.changes[0].changedByName").value("Asha Operator"))
                 .andExpect(jsonPath("$.nextBefore").value(9));
 

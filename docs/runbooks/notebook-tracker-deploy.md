@@ -186,6 +186,17 @@ prod still need. The details, and why it is safe, are under [Clean-up](#clean-up
   "placed orders of a coded category without a number" can legitimately rise after a category edit; a rise with no
   category edit is the defect to chase.
 
+### The group link change log (workflow V23)
+
+- `workflow` V23 (`V23__group_link_changes.sql`) creates `workflow_group_link_changes`: a new, empty table, with no
+  backfill and no lock on an existing table. It has forced row-level security, and the runtime role may only add and
+  read rows (`app_rt` in the migration; afterMigrate gives `ims_operations_rt` the same).
+- Operations, its contract and the set-up screen change; no other service.
+- The log starts empty. Links set or changed before the release, and saves the previous operations revision serves
+  during the rollout, are not in it.
+- Check after the release: as superadmin, Workflow set-up → Groups → Change history loads; saving a group link there
+  adds a row at once. `GET /api/v1/workflows/whatsapp-groups/changes` answers 403 `SUPERADMIN_ONLY` to an operator.
+
 ### Production's first release
 
 One promotion takes prod from `main` to the dev head. Each Java service runs every pending version in one migration job
@@ -193,7 +204,7 @@ before its first canary, while `main` serves:
 
 - identity V11–V12;
 - school-core: `tenant_school` V31, `catalog` V27–V39, and V40–V41 if the contract release is promoted with it;
-- operations: `workflow` V8–V21, and V22 likewise;
+- operations: `workflow` V8–V23 (V22 from the contract release, V23 the group link change log);
 - platform: `reporting` V36.
 
 The other schemas are the same on `main` and dev. See [Production](#production) for what serves between services.
@@ -411,12 +422,13 @@ Expected `version/migrationsExecuted`, one value per schema, in the job's order:
 | Service | Schemas | SOP release on dev (done) | Contract release on dev | Prod's first release, from `main`'s heads |
 | --- | --- | --- | --- | --- |
 | identity | identity | 12/0 | 12/0 | 12/2 |
-| school-core | tenant_school, student, attendance, fee, catalog | 31/1, 39/0, 11/0, 11/0, 39/3 | 31/0, 39/0, 11/0, 11/0, 40/1 | 31/1, 39/0, 11/0, 11/0, 40/14 (39/13 without the contract release) |
-| operations | workflow, firefighting | 21/5, 14/0 | 22/1, 14/0 | 22/15 (21/14), 14/0 |
+| school-core | tenant_school, student, attendance, fee, catalog | 31/1, 39/0, 11/0, 11/0, 39/3 | 31/0, 39/0, 11/0, 11/0, 41/2 | 31/1, 39/0, 11/0, 11/0, 41/15 |
+| operations | workflow, firefighting | 21/5, 14/0 | 22/1, 14/0 | 23/16, 14/0 |
 | billing | billing | 10/0 | 10/0 | 10/0 |
 | platform | reporting, notification, audit | 36/1, 18/0, 3/0 | 36/0, 18/0, 3/0 | 36/1, 18/0, 3/0 |
 
-A release runs jobs only for the services it deploys. The prod column assumes prod is at `main`'s heads (identity V10,
+The group link change log (workflow V23) deploys operations: on dev expect `23/1, 14/0`. A release runs jobs only for
+the services it deploys. The prod column assumes prod is at `main`'s heads (identity V10,
 tenant_school V30, catalog V26, workflow V7, reporting V35). Read prod's heads before the release
 ([Production](#production)); if they are lower, expect more.
 
@@ -628,7 +640,7 @@ COMMIT;
 ```
 
 - **1.** SOP release: tenant_school 31, catalog 39, workflow 21, reporting 36. Contract release: catalog 41,
-  workflow 22.
+  workflow 22. Group link change log: workflow 23.
 - **2–5.** No dead-lettered row. Repair rows only while a revision that does not mint serves, and then none. 0 orders
   still pending, no rows from 4, and 0 facts from 5, once the queue and the inbox have drained (minutes on dev; in prod
   up to an hour after operations serves, unless you bring the rows forward).
