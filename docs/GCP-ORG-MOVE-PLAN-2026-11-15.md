@@ -1,5 +1,8 @@
 # Moving custoking-dev and custoking-prod to the company's Google Cloud organization
 
+> **Executed 2026-11-16 (IST): both projects moved; billing not yet switched.** See §12, "Execution record". It covers
+> how the actual destination differed from what this plan assumed, and what remains.
+
 **Status:** plan for review, not approved for execution. Written 2026-11-15 (IST) from a read-only inventory of both
 projects, the organization, billing, GitHub and this repository, the same day.
 **Decision recorded with the owner (2026-11-15):**
@@ -504,6 +507,49 @@ already in place.
 | Week of 30 Nov | Phase 4: clean-up |
 
 No parallel estate runs at any point, so the move adds no running cost.
+
+## 12. Execution record (2026-11-15/16 IST)
+
+**The destination differed from §3.** The owner created a **standalone** organization from a new Google account (no
+company domain or directory), not a Workspace/Cloud Identity one. Consequences:
+- There is no domain-restricted sharing. `iam.allowedPolicyMemberDomains` is allow-all, and the organization carries the
+  same six secure-default constraints as the source, so the projects landed under identical policies. No IMS folder
+  was needed: both projects sit at the organization root, as before.
+- The operations account already held Owner, Organization Admin, Project Mover and Project Creator in **both**
+  organizations. So it was the one account Google requires, and it ran every step. It also keeps inherited access in
+  the destination, so nobody was locked out.
+- The owner also created two empty projects in the new organization. They were not needed for a move, and were
+  deleted (recoverable for 30 days) after their billing was unlinked.
+
+**Steps and evidence.** Times are UTC, 15 Nov.
+
+| Step | Result |
+|---|---|
+| Read-only before-snapshot of both projects | About 60 files each: IAM, policies, services, jobs, schedulers, Pub/Sub, SQL, buckets, secrets, service accounts, WIF, registry, uptime checks, alert policies (67 dev / 76 prod), pipelines, public endpoints |
+| Org Policy Admin for the operations account at both organization roots; the four export/import allowances in both directions | Effective, verified |
+| Canary: empty project created in the source, moved to the destination, moved back, deleted | Both directions succeeded; the destination's effective policies equal the source's |
+| `gcloud asset analyze-move` for dev and prod | 0 blockers; the 4 expected warnings (inherited IAM, inherited policy, quotas, PAM), each with a disposition |
+| **Dev moved at 18:36:48**, in 7 s | Project number unchanged; endpoints 200 throughout |
+| Dev after-snapshot diff | Identical apart from the four export/import allowances |
+| Dev runtime | No ERROR logs; all 5 async relays ran after the move; login round trip answers 401 to a bad password |
+| Dev CI: `build-release.yml` dispatched with the baseline commit | "Successfully authenticated" in every build job; new revisions of 4 services deployed after the move (the other 3 already ran that build) |
+| Prod: on-demand Cloud SQL backup before the move | SUCCESSFUL (daily backups and PITR also on) |
+| **Prod moved at 19:04:27**, in 7 s | Project number unchanged; gateway 200, frontend 200, dashboard 302 at every check through the move |
+| Prod after-snapshot diff | Identical apart from the four export/import allowances; frontend, api-gateway and dashboard still `allUsers` |
+| Prod runtime | No ERROR logs; all 4 async relays ran after the move; **all 7 uptime checks passed every probe in the 10 minutes spanning the move**; login round trip 401; cross-project grants (dev registry readers, billing dataset ACL, collector grants) unchanged |
+
+**Not done, and why.**
+- **Billing switch blocked.** The new account's billing account refuses further project links with "Cloud billing quota
+  exceeded". Its owner had linked two empty projects and dev was linked third. Unlinking all of them did not free a slot
+  within the hour. Both projects therefore still bill to the old trial account, which must be upgraded, or the new
+  account's quota raised through Google's form or by upgrading it, before the trial ends.
+- **Prod CI not exercised.** No prod release ran: the promotion is on hold (§9). The prod WIF provider and its
+  service-account bindings are unchanged in the diff.
+- **Clean-up deliberately deferred** until the stabilization period ends (§6.5): the four export/import allowances, the
+  Org Policy Admin grants, and the old organization's remaining roles. The allowances are what makes a move back
+  possible.
+- **Deviation:** the pre-move "fresh export, restore-checked" became an on-demand Cloud SQL backup. The database
+  service agent has no write access to the 30-day-lifecycle snapshot bucket, and an organization move touches no data.
 
 ## 11. Sources
 
