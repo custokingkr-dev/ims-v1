@@ -1053,10 +1053,6 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
       <FeeDefaultersDrawer
         open={showFeeDefaulters}
         onClose={() => setShowFeeDefaulters(false)}
-        onMetricsRefresh={data => {
-          setCommandCenterMetrics(data);
-          setDataIssue('metrics', null);
-        }}
       />
 
       {/* Class Photography drawer */}

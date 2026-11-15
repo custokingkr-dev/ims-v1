@@ -95,19 +95,6 @@ export interface FeeDefaulterItem {
   paymentStatus: string;
 }
 
-export interface SendFeeRemindersRequest {
-  studentIds: number[];
-  channel: string;
-  message: string;
-  context?: string;
-}
-
-export interface SendFeeRemindersResult {
-  sentCount: number;
-  failedCount: number;
-  failedItems: Array<{ studentId: number; reason: string }>;
-}
-
 export interface PhotographySection {
   eventId: string | null;
   collectedAmount: number;

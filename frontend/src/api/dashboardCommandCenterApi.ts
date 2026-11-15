@@ -4,8 +4,6 @@ import { studentClient } from '../services/studentApi';
 import type {
   DashboardCommandCenterResponse,
   FeeDefaulterListResponse,
-  SendFeeRemindersRequest,
-  SendFeeRemindersResult,
   ClassPhotographyPaymentStatusResponse,
   IdCardReviewStatusResponse,
   FullNameVerificationStatusResponse,
@@ -67,11 +65,6 @@ export async function fetchFeeDefaulters(params: {
   size?: number;
 }): Promise<FeeDefaulterListResponse> {
   return reportingClient.getFeeDefaulters(params);
-}
-
-export async function sendFeeReminders(request: SendFeeRemindersRequest): Promise<SendFeeRemindersResult> {
-  const res = await api.post<SendFeeRemindersResult>('/fees/reminders/fee', request);
-  return res.data;
 }
 
 export async function fetchClassPhotographyPaymentStatus(params: {

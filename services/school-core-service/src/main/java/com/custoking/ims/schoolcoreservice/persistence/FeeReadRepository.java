@@ -29,7 +29,6 @@ public class FeeReadRepository {
 
     private final JdbcClient jdbc;
     private final OutboxWriter outbox;
-    private final GuardianCommunicationPolicy guardianCommunicationPolicy;
     private final FeeReceiptRepository receipts;
     private final FeeDocumentRenderer documents;
 
@@ -37,7 +36,6 @@ public class FeeReadRepository {
         FeeDocumentRenderer documents = new FeeDocumentRenderer();
         this.jdbc = jdbc;
         this.outbox = outbox;
-        this.guardianCommunicationPolicy = new GuardianCommunicationPolicy(jdbc);
         this.receipts = new FeeReceiptRepository(jdbc, documents);
         this.documents = documents;
     }
@@ -50,7 +48,6 @@ public class FeeReadRepository {
             FeeDocumentRenderer documents) {
         this.jdbc = jdbc;
         this.outbox = outbox;
-        this.guardianCommunicationPolicy = new GuardianCommunicationPolicy(jdbc);
         this.receipts = receipts;
         this.documents = documents;
     }
@@ -685,96 +682,6 @@ public class FeeReadRepository {
                         "daysOverdue", row.get("daysOverdue"),
                         "installments", row.get("installments")))
                 .toList());
-    }
-
-    @Transactional
-    public Map<String, Object> feeReminderRequests(
-            String classId, String sectionId, String academicYearId, Long schoolId, Long actorId) {
-        academicYearId = resolveAcademicYearId(academicYearId, schoolId);
-        List<String> overdueAssignmentIds = feeReportRows(
-                classId, sectionId, academicYearId, schoolId, true).stream()
-                .map(row -> String.valueOf(row.get("assignmentId")))
-                .toList();
-        if (overdueAssignmentIds.isEmpty()) {
-            return row("ok", true, "queued", 0, "classId", classId, "sectionId", sectionId,
-                    "content", List.of(), "suppressedCount", 0, "suppressed", List.of());
-        }
-        List<Map<String, Object>> candidates = jdbc.sql("""
-                        SELECT fa.id AS assignment_id, fa.academic_year_id,
-                               GREATEST(fa.net_payable - fa.paid_amount, 0) AS due_amount,
-                               s.id AS student_id, s.full_name AS student_name,
-                               s.school_id, s.class_id, s.section_id
-                        FROM fee.fee_assignments fa
-                        JOIN student.students s ON s.id = fa.student_id
-                        WHERE s.school_id = :schoolId
-                          AND s.class_id = :classId
-                          AND s.section_id = :sectionId
-                          AND s.deleted_at IS NULL
-                          AND fa.academic_year_id = :academicYearId
-                          AND GREATEST(fa.net_payable - fa.paid_amount, 0) > 0
-                        ORDER BY s.full_name ASC
-                        """)
-                .param("schoolId", schoolId)
-                .param("classId", classId)
-                .param("sectionId", sectionId)
-                .param("academicYearId", academicYearId)
-                .query((rs, rowNum) -> row(
-                            "assignmentId", rs.getString("assignment_id"),
-                            "studentId", rs.getLong("student_id"),
-                            "schoolId", rs.getLong("school_id"),
-                            "academicYearId", rs.getString("academic_year_id"),
-                            "classId", rs.getString("class_id"),
-                            "sectionId", rs.getString("section_id"),
-                            "dueAmount", rs.getLong("due_amount"),
-                            "recipientName", rs.getString("student_name"),
-                            "studentName", rs.getString("student_name")))
-                .list()
-                .stream()
-                .filter(request -> overdueAssignmentIds.contains(String.valueOf(request.get("assignmentId"))))
-                .toList();
-        List<Map<String, Object>> requests = new ArrayList<>();
-        List<Map<String, Object>> suppressed = new ArrayList<>();
-        for (Map<String, Object> candidate : candidates) {
-            long studentId = longValue(candidate.get("studentId"), 0);
-            var decision = guardianCommunicationPolicy.evaluate(schoolId, studentId, "SMS");
-            if (!decision.allowed()) {
-                suppressed.add(row(
-                        "assignmentId", candidate.get("assignmentId"),
-                        "studentId", studentId,
-                        "reason", decision.reason()));
-                continue;
-            }
-            String requestId = UUID.randomUUID().toString();
-            requests.add(row(
-                    "reminderRequestId", requestId,
-                    "assignmentId", candidate.get("assignmentId"),
-                    "studentId", studentId,
-                    "schoolId", candidate.get("schoolId"),
-                    "academicYearId", candidate.get("academicYearId"),
-                    "classId", candidate.get("classId"),
-                    "sectionId", candidate.get("sectionId"),
-                    "dueAmount", candidate.get("dueAmount"),
-                    "actorId", actorId,
-                    "sourceEventType", "fees.fee-reminder-requested.v1",
-                    "sourceEventId", requestId,
-                    "notificationType", "FEE_REMINDER",
-                    "channel", decision.channel(),
-                    "destination", decision.destination(),
-                    "recipientType", "GUARDIAN",
-                    "recipientId", decision.guardianId(),
-                    "recipientName", candidate.get("recipientName"),
-                    "subject", "Fee payment reminder",
-                    "template", "fee-reminder.v1",
-                    "policyEvidence", decision.evidence(requestId),
-                    "variables", row(
-                            "assignmentId", candidate.get("assignmentId"),
-                            "studentId", studentId,
-                            "studentName", candidate.get("studentName"),
-                            "academicYearId", candidate.get("academicYearId"),
-                            "dueAmount", candidate.get("dueAmount"))));
-        }
-        return row("ok", true, "queued", requests.size(), "classId", classId, "sectionId", sectionId,
-                "content", requests, "suppressedCount", suppressed.size(), "suppressed", suppressed);
     }
 
     @Transactional

@@ -331,20 +331,16 @@ public class FeeReadController {
         return fees.feeOverdue(classId, sectionId, academicYearId, scope);
     }
 
+    /** Refused with 409 FEE_REMINDERS_UNAVAILABLE once the caller passes every guard; see {@link FeeRemindersUnavailable}. */
     @PostMapping("/reminders/fee")
-    public Map<String, Object> feeReminderRequests(
+    public ResponseEntity<Map<String, Object>> feeReminderRequests(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:write");
         TenantScope.requireAnyPermissionIfAuthenticated("fee:collect", "notification:send");
         applyResolvedSchool(request);
         requireFeeModule(longValue(request.get("schoolId")));
-        return execute(() -> fees.feeReminderRequests(
-                text(request.get("classId")),
-                text(request.get("sectionId")),
-                text(request.get("academicYearId")),
-                longValue(request.get("schoolId")),
-                TenantContext.get().userId()));
+        return FeeRemindersUnavailable.response();
     }
 
     @GetMapping("/dashboard/module")
@@ -524,10 +520,6 @@ public class FeeReadController {
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
-    }
-
-    private String text(Object value) {
-        return value == null ? "" : String.valueOf(value);
     }
 
     private Long longValue(Object value) {

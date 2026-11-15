@@ -232,10 +232,11 @@
     "/api/v1/fees/reminders/fee": {
       "post": {
         "operationId": "requestFeeReminders",
+        "summary": "Refused while parent messaging is off: answers 409 FEE_REMINDERS_UNAVAILABLE; nothing is queued or sent",
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Successful response",
+            "description": "Reserved for when parent messaging is switched on; no request succeeds today",
             "content": {
               "application/json": {
                 "schema": {
@@ -257,7 +258,30 @@
             "description": "Insufficient permission or tenant scope"
           },
           "409": {
-            "description": "Conflicting state"
+            "description": "FEE_REMINDERS_UNAVAILABLE: fee reminders can't be sent yet because parent messaging isn't switched on. Returned to every caller that passes the token, permission, school and fee-module checks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "properties": {
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "FEE_REMINDERS_UNAVAILABLE"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "requestBody": {

@@ -3939,7 +3939,7 @@
       "path": "/api/v1/dashboard/finance/fee-defaulters/reminders",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 320
+      "line": 318
     },
     {
       "service": "school-core-service",
@@ -3957,7 +3957,7 @@
       "path": "/api/v1/fee-assignments",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 254
+      "line": 255
     },
     {
       "service": "school-core-service",
@@ -3966,7 +3966,7 @@
       "path": "/api/v1/fee-structure",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 53
+      "line": 54
     },
     {
       "service": "school-core-service",
@@ -3975,7 +3975,7 @@
       "path": "/api/v1/fee-structure/band",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 95
+      "line": 96
     },
     {
       "service": "school-core-service",
@@ -3984,7 +3984,7 @@
       "path": "/api/v1/fee-structure/band/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 135
+      "line": 136
     },
     {
       "service": "school-core-service",
@@ -3993,7 +3993,7 @@
       "path": "/api/v1/fee-structure/band/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 124
+      "line": 125
     },
     {
       "service": "school-core-service",
@@ -4002,7 +4002,7 @@
       "path": "/api/v1/fee-structure/band/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 113
+      "line": 114
     },
     {
       "service": "school-core-service",
@@ -4011,7 +4011,7 @@
       "path": "/api/v1/fee-structure/band/{id}/installments",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 159
+      "line": 160
     },
     {
       "service": "school-core-service",
@@ -4020,7 +4020,7 @@
       "path": "/api/v1/fee-structure/band/{id}/publish",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 185
+      "line": 186
     },
     {
       "service": "school-core-service",
@@ -4029,7 +4029,7 @@
       "path": "/api/v1/fee-structure/band/{id}/revision",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 195
+      "line": 196
     },
     {
       "service": "school-core-service",
@@ -4038,7 +4038,7 @@
       "path": "/api/v1/fee-structure/discount-rules",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 205
+      "line": 206
     },
     {
       "service": "school-core-service",
@@ -4047,7 +4047,7 @@
       "path": "/api/v1/fee-structure/discount-rules",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 216
+      "line": 217
     },
     {
       "service": "school-core-service",
@@ -4056,7 +4056,7 @@
       "path": "/api/v1/fee-structure/export",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 238
+      "line": 239
     },
     {
       "service": "school-core-service",
@@ -4065,7 +4065,7 @@
       "path": "/api/v1/fee-structure/health",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 227
+      "line": 228
     },
     {
       "service": "school-core-service",
@@ -4074,7 +4074,7 @@
       "path": "/api/v1/fee-structure/item",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 64
+      "line": 65
     },
     {
       "service": "school-core-service",
@@ -4083,7 +4083,7 @@
       "path": "/api/v1/fee-structure/item/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 85
+      "line": 86
     },
     {
       "service": "school-core-service",
@@ -4092,7 +4092,7 @@
       "path": "/api/v1/fee-structure/item/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 74
+      "line": 75
     },
     {
       "service": "school-core-service",
@@ -4101,7 +4101,7 @@
       "path": "/api/v1/fee-structure/match",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 148
+      "line": 149
     },
     {
       "service": "school-core-service",
@@ -4173,7 +4173,7 @@
       "path": "/api/v1/fees/bands/{id}/installments",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 394
+      "line": 390
     },
     {
       "service": "school-core-service",
@@ -4182,7 +4182,7 @@
       "path": "/api/v1/fees/bands/{id}/publish",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 420
+      "line": 416
     },
     {
       "service": "school-core-service",
@@ -4191,7 +4191,7 @@
       "path": "/api/v1/fees/bands/{id}/revision",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 430
+      "line": 426
     },
     {
       "service": "school-core-service",
@@ -4200,7 +4200,7 @@
       "path": "/api/v1/fees/dashboard/module",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 350
+      "line": 346
     },
     {
       "service": "school-core-service",
@@ -4209,7 +4209,7 @@
       "path": "/api/v1/fees/dashboard/overdue-count",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 361
+      "line": 357
     },
     {
       "service": "school-core-service",
@@ -4254,7 +4254,7 @@
       "path": "/api/v1/fees/overdue",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 291
+      "line": 292
     },
     {
       "service": "school-core-service",
@@ -4272,7 +4272,7 @@
       "path": "/api/v1/fees/payments",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 372
+      "line": 368
     },
     {
       "service": "school-core-service",
@@ -4290,7 +4290,7 @@
       "path": "/api/v1/fees/payments/{paymentId}/receipt/pdf",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 473
+      "line": 469
     },
     {
       "service": "school-core-service",
@@ -4299,7 +4299,7 @@
       "path": "/api/v1/fees/receipts/{paymentId}/pdf",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 336
+      "line": 329
     },
     {
       "service": "school-core-service",
@@ -4317,7 +4317,7 @@
       "path": "/api/v1/fees/reminders/fee",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 334
+      "line": 335
     },
     {
       "service": "school-core-service",
@@ -4326,7 +4326,7 @@
       "path": "/api/v1/fees/report",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 278
+      "line": 279
     },
     {
       "service": "school-core-service",
@@ -4353,7 +4353,7 @@
       "path": "/api/v1/fees/send-reminders",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 304
+      "line": 306
     },
     {
       "service": "school-core-service",
@@ -4371,7 +4371,7 @@
       "path": "/api/v1/fees/structure/discount-rules",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 440
+      "line": 436
     },
     {
       "service": "school-core-service",
@@ -4380,7 +4380,7 @@
       "path": "/api/v1/fees/structure/discount-rules",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 451
+      "line": 447
     },
     {
       "service": "school-core-service",
@@ -4398,7 +4398,7 @@
       "path": "/api/v1/fees/structure/health",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 462
+      "line": 458
     },
     {
       "service": "school-core-service",
@@ -4488,7 +4488,7 @@
       "path": "/api/v1/payments",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 266
+      "line": 267
     },
     {
       "service": "school-core-service",
@@ -4497,7 +4497,7 @@
       "path": "/api/v1/receipts/{paymentId}/pdf",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 336
+      "line": 329
     },
     {
       "service": "school-core-service",
@@ -5901,7 +5901,7 @@
       "path": "/api/v1/workspace/fees/assign-plan",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 254
+      "line": 255
     },
     {
       "service": "school-core-service",
@@ -5910,7 +5910,7 @@
       "path": "/api/v1/workspace/fees/receipts/{receiptNumber}/pdf",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 346
+      "line": 339
     },
     {
       "service": "school-core-service",
@@ -5919,7 +5919,7 @@
       "path": "/api/v1/workspace/fees/record-payment",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 266
+      "line": 267
     },
     {
       "service": "school-core-service",
