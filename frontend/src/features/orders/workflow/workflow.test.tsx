@@ -307,6 +307,66 @@ describe('the notebook workflow page', () => {
   });
 });
 
+describe("the school group and the item's own group (D34)", () => {
+  const NO_GROUPS = { school: { url: null, source: 'NONE' as const }, internalApproval: { url: null, source: 'NONE' as const }, vendors: [] };
+  const ITEM_GROUP = { ...NO_GROUPS, school: { url: 'https://chat.whatsapp.com/ItemGroup123456', source: 'ITEM' as const } };
+
+  it('lets superadmin save the item group right on the order when the school has none', async () => {
+    auth.user = { role: 'SUPERADMIN', userId: 1, fullName: 'Super Admin' };
+    const view = nb({ active: 1, superadmin: true, view: { groups: NO_GROUPS } });
+    api.setSchoolGroup.mockResolvedValue(ITEM_GROUP);
+    api.view.mockResolvedValue(nb({ active: 1, superadmin: true, view: { groups: ITEM_GROUP } }));
+    renderPage(view);
+    await heading('Step 1: Order Details');
+    expect(screen.getByText(/or add one for the whole school in Workflow set-up → Groups/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Save group link'), { target: { value: 'https://chat.whatsapp.com/ItemGroup123456?mode=ems_copy_t' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save group link' }));
+    // WhatsApp's copy-link tail is dropped before the link is sent.
+    await waitFor(() => expect(api.setSchoolGroup).toHaveBeenCalledWith('CK-1015', 'https://chat.whatsapp.com/ItemGroup123456'));
+    expect(await screen.findByText(/This is the item's own group at this school/)).toBeInTheDocument();
+  });
+
+  it("lets the stage's assignee change or remove the item's own group", async () => {
+    api.setSchoolGroup.mockResolvedValue(NO_GROUPS);
+    api.view.mockResolvedValue(nb({ active: 2, view: { groups: NO_GROUPS } }));
+    renderPage(nb({ active: 2, view: { groups: ITEM_GROUP } }));
+    await heading('Step 2: Designing Activity');
+    expect(screen.getByRole('link', { name: /Open Delhi Public School Group Chat/ })).toHaveAttribute('href', 'https://chat.whatsapp.com/ItemGroup123456');
+    expect(screen.getByText(/This is the item's own group at this school/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('New group link')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: "Change item's group" }));
+    expect(screen.getByLabelText('New group link')).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: "Change item's group" })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: "Change item's group" }));
+    fireEvent.click(screen.getByRole('button', { name: "Remove item's group" }));
+    await waitFor(() => expect(api.setSchoolGroup).toHaveBeenCalledWith('CK-1015', ''));
+    expect(await screen.findByText('No group chat saved for this school yet.', { exact: false })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Save group link')).toHaveFocus());
+  });
+
+  it("says so, and keeps the keyboard there, when removing the item's group brings back the school's", async () => {
+    const SCHOOL = { ...NO_GROUPS, school: { url: 'https://chat.whatsapp.com/SchoolGroup1234', source: 'SCHOOL' as const } };
+    api.setSchoolGroup.mockResolvedValue(SCHOOL);
+    api.view.mockResolvedValue(nb({ active: 2, view: { groups: SCHOOL } }));
+    renderPage(nb({ active: 2, view: { groups: ITEM_GROUP } }));
+    await heading('Step 2: Designing Activity');
+    fireEvent.click(screen.getByRole('button', { name: "Change item's group" }));
+    fireEvent.click(screen.getByRole('button', { name: "Remove item's group" }));
+    const note = await screen.findByText("The item's own group was removed; this order uses the school's group again.");
+    await waitFor(() => expect(note).toHaveFocus());
+    expect(screen.getByRole('link', { name: /Open Delhi Public School Group Chat/ })).toHaveAttribute('href', 'https://chat.whatsapp.com/SchoolGroup1234');
+  });
+
+  it("offers no change on a school-wide group, which lives in Workflow set-up", async () => {
+    renderPage(nb({ active: 2 }));
+    await heading('Step 2: Designing Activity');
+    expect(screen.getByRole('link', { name: /Open Delhi Public School Group Chat/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: "Change item's group" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Save group link')).not.toBeInTheDocument();
+  });
+});
+
 describe('order details and the introduction message', () => {
   it('fills {Name} as you type, copies the message and records it when ticked', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);

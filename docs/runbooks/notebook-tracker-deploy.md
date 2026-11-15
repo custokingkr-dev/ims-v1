@@ -47,9 +47,11 @@ the gateway before any service is asked, whether or not the service still has th
 | `GET /designers`, `GET /time-slots/{schoolId}?definitionId=`, `GET /vendor-categories`, `GET /vendors`, `GET /settings/internal-approval-group` | read (operators see active vendors only) |
 | `POST /designers`, `PUT /designers/{id}`, `PUT` and `DELETE /time-slots/{schoolId}/{definitionId}/{step}`, `PUT /vendor-categories/{code}`, `POST /vendors`, `PUT /vendors/{id}`, `PUT /settings/internal-approval-group` | superadmin |
 | `GET /school-whatsapp-groups/{schoolId}`, `PUT /school-whatsapp-groups/{schoolId}/{target}` (paths unchanged) | superadmin, or an operator assigned to the whole school / superadmin. Since SOP the keys are only `SCHOOL_GROUP` and `INTERNAL_APPROVAL` |
+| `GET /school-whatsapp-groups/{schoolId}/items`, `PUT /school-whatsapp-groups/{schoolId}/items/{categoryCode}` | superadmin, or an operator assigned to the whole school / superadmin |
+| `POST /whatsapp-groups/import` (dry run unless `"dryRun": false`) | superadmin |
 
 Controllers: `OrderWorkflowController`, `OrderCallLogController`, `OrderActivityController`,
-`WorkflowSettingsController`, `VendorDirectoryController`, `SchoolWhatsAppGroupController`.
+`WorkflowSettingsController`, `VendorDirectoryController`, `SchoolWhatsAppGroupController`, `WhatsAppGroupImportController`.
 
 **School-core**, changed by the SOP release. `CatalogOrderFormController` serves both `/api/v1/catalog/orders` and
 `/api/v1/supply/orders`; `…` below is either.
