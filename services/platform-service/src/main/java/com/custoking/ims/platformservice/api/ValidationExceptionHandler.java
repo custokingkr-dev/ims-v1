@@ -1,5 +1,6 @@
 package com.custoking.ims.platformservice.api;
 
+import com.custoking.ims.platformservice.persistence.WhatsappOnboardingStateException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.http.HttpStatus;
@@ -64,6 +65,14 @@ public class ValidationExceptionHandler {
             }
         }
         return message(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error");
+    }
+
+    /** A WhatsApp onboarding request that is unknown for the school (404) or already closed (409). */
+    @ExceptionHandler(WhatsappOnboardingStateException.class)
+    public ResponseEntity<Map<String, Object>> onWhatsappOnboardingState(WhatsappOnboardingStateException ex) {
+        HttpStatus status = ex.reason() == WhatsappOnboardingStateException.Reason.NOT_FOUND
+                ? HttpStatus.NOT_FOUND : HttpStatus.CONFLICT;
+        return message(status, ex.getMessage());
     }
 
     @ExceptionHandler(org.springframework.dao.DataAccessException.class)

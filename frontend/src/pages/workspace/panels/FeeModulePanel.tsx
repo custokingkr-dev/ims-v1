@@ -1,5 +1,5 @@
-import { getFeeCollectionRows, getFeeOverdueRows } from '../../../services/feeApi';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { getFeeCollectionRows } from '../../../services/feeApi';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Check,
@@ -114,7 +114,6 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
   const canManage = can('fee_structure:manage');
   const canAssign = can('fee:assign');
   const canCollect = canAny(['fee:collect', 'payment:create']);
-  const canRemind = canAny(['fee:collect', 'notification:send']);
   const currency = (paise: number) => formatSchoolCurrency(Number(paise || 0) / 100, workspace?.school);
 
   const [view, setView] = useState<FeeView>(initialView);
@@ -128,7 +127,6 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
   const [sectionId, setSectionId] = useState('');
   const [summary, setSummary] = useState({ collected: 0, target: 0, overdue: 0 });
   const [rows, setRows] = useState<any[]>([]);
-  const [overdueRows, setOverdueRows] = useState<any[]>([]);
   const [structure, setStructure] = useState<FeeStructureModel>(emptyStructure);
   const [health, setHealth] = useState<FeeConfigurationHealth | null>(null);
   const [rules, setRules] = useState<FeeDiscountRule[]>([]);
@@ -138,6 +136,7 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
   const [notice, setNotice] = useState('');
+  const remindersNoteId = useId();
   const [error, setError] = useState('');
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [paymentRow, setPaymentRow] = useState<any | null>(null);
@@ -301,7 +300,6 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
     setSections([]);
     setStudents([]);
     setRows([]);
-    setOverdueRows([]);
     if (!nextClassId) return;
     try {
       const result = await api.get<Option[]>(`/classes/${encodeURIComponent(nextClassId)}/sections`, { params: schoolParams });
@@ -314,19 +312,16 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
   const changeSection = async (nextSectionId: string, nextYearId = yearId) => {
     setSectionId(nextSectionId);
     setRows([]);
-    setOverdueRows([]);
     setStudents([]);
     if (!classId || !nextSectionId) return;
     setLoading(true);
     setError('');
     try {
-      const [reportResult, overdueResult, studentsResult] = await Promise.all([
+      const [reportResult, studentsResult] = await Promise.all([
         getFeeCollectionRows({ classId, sectionId: nextSectionId, academicYearId: nextYearId, ...schoolParams }),
-        getFeeOverdueRows({ classId, sectionId: nextSectionId, academicYearId: nextYearId, ...schoolParams }),
         api.get('/students/roster', { params: { classId, sectionId: nextSectionId, ...schoolParams } }),
       ]);
       setRows(Array.isArray(reportResult.data) ? reportResult.data : []);
-      setOverdueRows(Array.isArray(overdueResult.data) ? overdueResult.data : []);
       setStudents(Array.isArray(studentsResult.data) ? studentsResult.data : []);
     } catch (loadError) {
       setError(errorMessage(loadError, 'Student fee records could not be loaded.'));
@@ -611,20 +606,6 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
     }
   };
 
-  const sendReminders = async () => {
-    if (!classId || !sectionId || !canRemind || !isActiveYear) return;
-    setSaving('reminders');
-    setError('');
-    try {
-      const result = await api.post('/fees/reminders/fee', { classId, sectionId, academicYearId: yearId, ...schoolParams });
-      setNotice(`${Number(result.data?.queued || overdueRows.length)} overdue reminders queued.`);
-    } catch (saveError) {
-      setError(errorMessage(saveError, 'Reminders could not be queued.'));
-    } finally {
-      setSaving('');
-    }
-  };
-
   const exportCsv = () => {
     const header = ['Student', 'Admission no', 'Plan', 'Total', 'Paid', 'Due', 'Status'];
     const data = filteredRows.map((row) => [
@@ -710,7 +691,9 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
               </div>
               <div className="erp-action-group">
                 <button className="erp-btn secondary" disabled={!filteredRows.length} onClick={exportCsv}><Download size={16} /> Export</button>
-                <button className="erp-btn secondary" disabled={!isActiveYear || !canRemind || !overdueRows.length || saving === 'reminders'} onClick={() => void sendReminders()}><Send size={16} /> Remind overdue</button>
+                {/* Parent messaging is not live: the reminder endpoints answer 409 FEE_REMINDERS_UNAVAILABLE. */}
+                <button className="erp-btn secondary" disabled aria-describedby={remindersNoteId}><Send size={16} /> Remind overdue</button>
+                <span id={remindersNoteId} className="erp-action-note">Reminders can't be sent yet: parent messaging isn't switched on.</span>
               </div>
             </div>
 

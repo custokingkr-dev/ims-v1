@@ -1,8 +1,11 @@
 package com.custoking.ims.platformservice.persistence;
 
 import com.custoking.ims.platformservice.application.SenderProfile;
+import com.custoking.ims.platformservice.persistence.WhatsappOnboardingStateException.Reason;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -17,9 +20,14 @@ import java.util.UUID;
 public class SenderProfileRepository {
 
     private final JdbcClient jdbc;
+    private final TransactionTemplate transaction;
 
-    public SenderProfileRepository(JdbcClient jdbc) {
+    public SenderProfileRepository(JdbcClient jdbc, PlatformTransactionManager transactions) {
         this.jdbc = jdbc;
+        // Same pattern as the broadcast services: the transaction binds ONE connection, which
+        // TenantAwareDataSource has already given this request's RLS settings.
+        this.transaction = new TransactionTemplate(transactions);
+        this.transaction.setTimeout(10);
     }
 
     public SenderProfile resolve(Long schoolId) {
@@ -80,7 +88,23 @@ public class SenderProfileRepository {
         return spec.query(this::mapProfile).list();
     }
 
+    /**
+     * Writes the school's (or, with a null school, the default) sender profile, keeping stored values for absent fields.
+     * Writers of one profile are serialised for the rest of the transaction: two at once would otherwise both read the
+     * profile before either wrote, so one would restore the other's fields, or (with no profile yet) both would insert
+     * and the second would break the one-active-profile-per-school index. Joins the caller's transaction (onboarding
+     * completion) or opens its own.
+     */
     public SenderProfile upsert(Long schoolId, Map<String, Object> request) {
+        return transaction.execute(status -> {
+            jdbc.sql("SELECT pg_advisory_xact_lock(hashtext(:key))")
+                    .param("key", "notification.sender-profile:" + (schoolId == null ? "default" : schoolId))
+                    .query((rs, n) -> 1).list();
+            return upsertSerialised(schoolId, request);
+        });
+    }
+
+    private SenderProfile upsertSerialised(Long schoolId, Map<String, Object> request) {
         UUID id = findProfileId(schoolId).orElse(UUID.randomUUID());
         SenderProfile existing = schoolId == null
                 ? defaultProfile()
@@ -161,50 +185,66 @@ public class SenderProfileRepository {
                 .param("desiredPhoneNumber", digits(text(request, "desiredPhoneNumber")))
                 .param("notes", text(request, "notes"))
                 .update();
-        return onboarding(id).orElseThrow();
+        return onboarding(schoolId, id).orElseThrow();
     }
 
+    /**
+     * Closes a REQUESTED session of this school as COMPLETED and writes the school's sender profile, in one
+     * transaction. The profile is only written after the guarded session update matched, so an unknown id,
+     * another school's id or a session that is already closed changes nothing.
+     */
     public Map<String, Object> completeWhatsappOnboarding(Long schoolId, UUID sessionId, Map<String, Object> request) {
         String integratedNumber = required(request, "integratedNumber", null);
-        jdbc.sql("""
-                        UPDATE notification.whatsapp_onboarding_sessions
-                        SET status = 'COMPLETED',
-                            provider_reference = :providerReference,
-                            integrated_number = :integratedNumber,
-                            failure_reason = NULL,
-                            updated_at = now(),
-                            completed_at = now()
-                        WHERE id = :id AND school_id = :schoolId
-                        """)
-                .param("id", sessionId)
-                .param("schoolId", schoolId)
-                .param("providerReference", text(request, "providerReference"))
-                .param("integratedNumber", digits(integratedNumber))
-                .update();
-        Map<String, Object> profileUpdate = new LinkedHashMap<>(request);
-        profileUpdate.put("whatsappIntegratedNumber", integratedNumber);
-        if (profileUpdate.get("profileName") == null) {
-            profileUpdate.put("profileName", "School Sender Profile");
-        }
-        upsert(schoolId, profileUpdate);
-        return onboarding(sessionId).orElseThrow();
+        return transaction.execute(status -> {
+            int updated = jdbc.sql("""
+                            UPDATE notification.whatsapp_onboarding_sessions
+                            SET status = 'COMPLETED',
+                                provider_reference = :providerReference,
+                                integrated_number = :integratedNumber,
+                                failure_reason = NULL,
+                                updated_at = now(),
+                                completed_at = now()
+                            WHERE id = :id AND school_id = :schoolId AND status = 'REQUESTED'
+                            """)
+                    .param("id", sessionId)
+                    .param("schoolId", schoolId)
+                    .param("providerReference", text(request, "providerReference"))
+                    .param("integratedNumber", digits(integratedNumber))
+                    .update();
+            if (updated == 0) {
+                throw notOpen(schoolId, sessionId);
+            }
+            Map<String, Object> profileUpdate = new LinkedHashMap<>(request);
+            profileUpdate.put("whatsappIntegratedNumber", integratedNumber);
+            if (profileUpdate.get("profileName") == null) {
+                profileUpdate.put("profileName", "School Sender Profile");
+            }
+            upsert(schoolId, profileUpdate);
+            return onboarding(schoolId, sessionId).orElseThrow();
+        });
     }
 
+    /** Closes a REQUESTED session of this school as FAILED. Same guards as completion; no profile is touched. */
     public Map<String, Object> failWhatsappOnboarding(Long schoolId, UUID sessionId, Map<String, Object> request) {
-        jdbc.sql("""
-                        UPDATE notification.whatsapp_onboarding_sessions
-                        SET status = 'FAILED',
-                            provider_reference = :providerReference,
-                            failure_reason = :failureReason,
-                            updated_at = now()
-                        WHERE id = :id AND school_id = :schoolId
-                        """)
-                .param("id", sessionId)
-                .param("schoolId", schoolId)
-                .param("providerReference", text(request, "providerReference"))
-                .param("failureReason", required(request, "failureReason", "Onboarding failed"))
-                .update();
-        return onboarding(sessionId).orElseThrow();
+        return transaction.execute(status -> {
+            int updated = jdbc.sql("""
+                            UPDATE notification.whatsapp_onboarding_sessions
+                            SET status = 'FAILED',
+                                provider_reference = :providerReference,
+                                failure_reason = :failureReason,
+                                updated_at = now()
+                            WHERE id = :id AND school_id = :schoolId AND status = 'REQUESTED'
+                            """)
+                    .param("id", sessionId)
+                    .param("schoolId", schoolId)
+                    .param("providerReference", text(request, "providerReference"))
+                    .param("failureReason", required(request, "failureReason", "Onboarding failed"))
+                    .update();
+            if (updated == 0) {
+                throw notOpen(schoolId, sessionId);
+            }
+            return onboarding(schoolId, sessionId).orElseThrow();
+        });
     }
 
     public List<Map<String, Object>> onboardingSessions(Long schoolId) {
@@ -219,11 +259,34 @@ public class SenderProfileRepository {
                 .list();
     }
 
-    private Optional<Map<String, Object>> onboarding(UUID id) {
-        return jdbc.sql("SELECT * FROM notification.whatsapp_onboarding_sessions WHERE id = :id")
+    private Optional<Map<String, Object>> onboarding(Long schoolId, UUID id) {
+        return jdbc.sql("""
+                        SELECT *
+                        FROM notification.whatsapp_onboarding_sessions
+                        WHERE id = :id AND school_id = :schoolId
+                        """)
                 .param("id", id)
+                .param("schoolId", schoolId)
                 .query(this::mapOnboarding)
                 .optional();
+    }
+
+    /** Explains why a guarded REQUESTED -> COMPLETED/FAILED update matched no row. */
+    private WhatsappOnboardingStateException notOpen(Long schoolId, UUID id) {
+        Optional<String> status = jdbc.sql("""
+                        SELECT status
+                        FROM notification.whatsapp_onboarding_sessions
+                        WHERE id = :id AND school_id = :schoolId
+                        """)
+                .param("id", id)
+                .param("schoolId", schoolId)
+                .query(String.class)
+                .optional();
+        return new WhatsappOnboardingStateException(status.map(value -> switch (value) {
+            case "COMPLETED" -> Reason.ALREADY_COMPLETED;
+            case "FAILED" -> Reason.ALREADY_FAILED;
+            default -> Reason.NOT_OPEN;
+        }).orElse(Reason.NOT_FOUND));
     }
 
     private Optional<UUID> findProfileId(Long schoolId) {

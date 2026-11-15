@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class FeePublicCompatibilityControllerTest {
@@ -103,6 +104,7 @@ class FeePublicCompatibilityControllerTest {
     }
 
     // ---- sendReminders POST /api/v1/fees/send-reminders ----
+    // Both reminder aliases refuse with 409 FEE_REMINDERS_UNAVAILABLE after their guards pass.
 
     @Test
     void sendReminders_crossTenantSchoolId_isForbidden() throws Exception {
@@ -114,13 +116,24 @@ class FeePublicCompatibilityControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"classId\":\"c1\",\"sectionId\":\"s1\",\"schoolId\":99}"))
                 .andExpect(status().isForbidden());
-        verify(fees, never()).feeReminderRequests(any(), any(), any(), anyLong(), any());
+        verifyNoInteractions(fees);
     }
 
     @Test
-    void sendReminders_ownSchool_scopedToAuthenticatedSchool() throws Exception {
-        when(fees.feeReminderRequests(any(), any(), any(), eq(10L), any()))
-                .thenReturn(Map.of("queued", 0));
+    void sendReminders_withoutCollectOrNotifyPermission_isForbidden() throws Exception {
+        mvc.perform(post("/api/v1/fees/send-reminders")
+                        .header("X-Fee-Service-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:read")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"classId\":\"c1\",\"sectionId\":\"s1\",\"schoolId\":10}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(fees);
+    }
+
+    @Test
+    void sendReminders_ownSchool_isRefusedBecauseMessagingIsOff() throws Exception {
         mvc.perform(post("/api/v1/fees/send-reminders")
                         .header("X-Fee-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
@@ -128,8 +141,10 @@ class FeePublicCompatibilityControllerTest {
                         .header("X-Authenticated-Permissions", "fee:collect")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"classId\":\"c1\",\"sectionId\":\"s1\",\"schoolId\":10}"))
-                .andExpect(status().isOk());
-        verify(fees).feeReminderRequests(eq("c1"), eq("s1"), any(), eq(10L), any());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("FEE_REMINDERS_UNAVAILABLE"))
+                .andExpect(jsonPath("$.message").value("Fee reminders can't be sent yet: parent messaging isn't switched on."));
+        verifyNoInteractions(fees);
     }
 
     // ---- dashboardFeeReminders POST /api/v1/dashboard/finance/fee-defaulters/reminders ----
@@ -144,20 +159,19 @@ class FeePublicCompatibilityControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"schoolId\":99}"))
                 .andExpect(status().isForbidden());
-        verify(fees, never()).feeReminderRequests(any(), any(), any(), anyLong(), any());
+        verifyNoInteractions(fees);
     }
 
     @Test
-    void dashboardFeeReminders_superadmin_delegatesWithSchoolId() throws Exception {
-        when(fees.feeReminderRequests(any(), any(), any(), eq(1L), any()))
-                .thenReturn(Map.of("queued", 3));
+    void dashboardFeeReminders_superadmin_isRefusedBecauseMessagingIsOff() throws Exception {
         mvc.perform(post("/api/v1/dashboard/finance/fee-defaulters/reminders")
                         .header("X-Fee-Service-Token", "tok")
                         .header("X-Authenticated-Role", "SUPERADMIN")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"schoolId\":1}"))
-                .andExpect(status().isOk());
-        verify(fees).feeReminderRequests(any(), any(), any(), eq(1L), any());
+                        .content("{\"schoolId\":1,\"studentIds\":[1,2],\"channel\":\"WhatsApp\",\"message\":\"Pay\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("FEE_REMINDERS_UNAVAILABLE"));
+        verifyNoInteractions(fees);
     }
 
     @Test
@@ -168,6 +182,6 @@ class FeePublicCompatibilityControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"schoolId\":1}"))
                 .andExpect(status().isUnauthorized());
-        verify(fees, never()).feeReminderRequests(any(), any(), any(), any(), any());
+        verifyNoInteractions(fees);
     }
 }

@@ -31,9 +31,10 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       urgency: overdueCount > 50 ? 'high' : 'medium',
       code: `FEES-OVERDUE-${overdueCount}`,
       title: `${overdueCount} student${overdueCount !== 1 ? 's' : ''} have overdue fees`,
-      why: `${overdueCount} families have missed the payment deadline. Review the unpaid amounts and available reminder options.`,
+      // Reminders can't be sent yet (parent messaging is off), so the card promises a follow-up, not a reminder.
+      why: `${overdueCount} families have missed the payment deadline. Review the unpaid amounts and follow up with the families.`,
       impact: outstandingLakh,
-      state: 'Overdue → Reminded',
+      state: 'Overdue → Followed up',
       cta: 'Review overdue fees',
       count: overdueCount,
       amount: outstanding,

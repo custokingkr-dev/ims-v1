@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.api.compat;
 
+import com.custoking.ims.schoolcoreservice.api.FeeRemindersUnavailable;
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.PaymentConflictException;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
@@ -301,36 +302,28 @@ public class FeePublicCompatibilityController {
         return runObject(() -> fees.feeOverdue(classId, sectionId, academicYearId, scope).get("content"));
     }
 
+    /** Refused with 409 FEE_REMINDERS_UNAVAILABLE after the guards, like POST /api/v1/fees/reminders/fee. */
     @PostMapping("/api/v1/fees/send-reminders")
-    public Map<String, Object> sendReminders(
+    public ResponseEntity<Map<String, Object>> sendReminders(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
         TenantScope.requireAnyPermissionIfAuthenticated("fee:collect", "notification:send");
         Long scope = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
         requireFeeModule(scope);
-        return run(() -> fees.feeReminderRequests(
-                text(request.get("classId")),
-                text(request.get("sectionId")),
-                text(request.get("academicYearId")),
-                scope,
-                TenantContext.get().userId()));
+        return FeeRemindersUnavailable.response();
     }
 
+    /** Refused with 409 FEE_REMINDERS_UNAVAILABLE after the guards, like POST /api/v1/fees/reminders/fee. */
     @PostMapping("/api/v1/dashboard/finance/fee-defaulters/reminders")
-    public Map<String, Object> dashboardFeeReminders(
+    public ResponseEntity<Map<String, Object>> dashboardFeeReminders(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
         TenantScope.requireAnyPermissionIfAuthenticated("fee:collect", "notification:send");
         Long scope = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
         requireFeeModule(scope);
-        return run(() -> fees.feeReminderRequests(
-                text(request.get("classId")),
-                text(request.get("sectionId")),
-                text(request.get("academicYearId")),
-                scope,
-                TenantContext.get().userId()));
+        return FeeRemindersUnavailable.response();
     }
 
     @GetMapping(value = {"/api/v1/receipts/{paymentId}/pdf", "/api/v1/fees/receipts/{paymentId}/pdf"},
@@ -394,10 +387,6 @@ public class FeePublicCompatibilityController {
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
-    }
-
-    private String text(Object value) {
-        return value == null ? "" : String.valueOf(value);
     }
 
     private Long longValue(Object value) {
