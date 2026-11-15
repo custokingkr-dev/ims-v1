@@ -335,10 +335,27 @@ describe("the school group and the item's own group (D34)", () => {
     expect(screen.getByText(/This is the item's own group at this school/)).toBeInTheDocument();
     expect(screen.queryByLabelText('New group link')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: "Change item's group" }));
-    expect(screen.getByLabelText('New group link')).toBeInTheDocument();
+    expect(screen.getByLabelText('New group link')).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: "Change item's group" })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: "Change item's group" }));
     fireEvent.click(screen.getByRole('button', { name: "Remove item's group" }));
     await waitFor(() => expect(api.setSchoolGroup).toHaveBeenCalledWith('CK-1015', ''));
     expect(await screen.findByText('No group chat saved for this school yet.', { exact: false })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Save group link')).toHaveFocus());
+  });
+
+  it("says so, and keeps the keyboard there, when removing the item's group brings back the school's", async () => {
+    const SCHOOL = { ...NO_GROUPS, school: { url: 'https://chat.whatsapp.com/SchoolGroup1234', source: 'SCHOOL' as const } };
+    api.setSchoolGroup.mockResolvedValue(SCHOOL);
+    api.view.mockResolvedValue(nb({ active: 2, view: { groups: SCHOOL } }));
+    renderPage(nb({ active: 2, view: { groups: ITEM_GROUP } }));
+    await heading('Step 2: Designing Activity');
+    fireEvent.click(screen.getByRole('button', { name: "Change item's group" }));
+    fireEvent.click(screen.getByRole('button', { name: "Remove item's group" }));
+    const note = await screen.findByText("The item's own group was removed; this order uses the school's group again.");
+    await waitFor(() => expect(note).toHaveFocus());
+    expect(screen.getByRole('link', { name: /Open Delhi Public School Group Chat/ })).toHaveAttribute('href', 'https://chat.whatsapp.com/SchoolGroup1234');
   });
 
   it("offers no change on a school-wide group, which lives in Workflow set-up", async () => {

@@ -9,19 +9,24 @@
 export const INVALID_INVITE_MESSAGE = 'Paste a WhatsApp group invite link (https://chat.whatsapp.com/…)';
 
 /**
- * Mirrors the server's invite check (GroupLinkService.canonicalInvite, java.net.URI): https and chat.whatsapp.com in any
- * case, an empty port at most, no userinfo, and a 10 to 64 character invite code. A query or fragment made of URI
- * characters is allowed and dropped, since WhatsApp's own "copy link" adds one (`?mode=ems_copy_t`). The raw text is
- * tested, not `new URL()`, because the browser parser normalises inputs the server refuses (`:443`, `https://@…`,
- * backslashes, dot segments). No `u` flag, so `i` never folds a non-ASCII letter onto an ASCII one.
+ * Mirrors the server's invite check (GroupLinkService.canonicalInvite, java.net.URI): at most 2,048 characters; https and
+ * chat.whatsapp.com in any case, an empty port at most, no userinfo, and a 10 to 64 character invite code. Everything
+ * from the first `?` or `#` is dropped unread, on both sides, since WhatsApp's own "copy link" adds a query
+ * (`?mode=ems_copy_t`). The rest is tested as raw text, not with `new URL()`, because the browser parser normalises
+ * inputs the server refuses (`:443`, `https://@…`, backslashes, dot segments). No `u` flag, so `i` never folds a
+ * non-ASCII letter onto an ASCII one. `trim()` also removes a no-break space the server's `strip()` keeps; that only
+ * makes the screen kinder, since the screen sends the canonical link it builds here.
  */
-const URI_CHARS = "(?:%[0-9A-Fa-f]{2}|[A-Za-z0-9\\-._~!$&'()*+,;=:@/?])*";
-const WHATSAPP_INVITE = new RegExp(`^https://chat\\.whatsapp\\.com:?/([A-Za-z0-9_-]{10,64})(?:\\?${URI_CHARS})?(?:#${URI_CHARS})?$`, 'i');
+const WHATSAPP_INVITE = /^https:\/\/chat\.whatsapp\.com:?\/([A-Za-z0-9_-]{10,64})$/i;
 const INVITE_ORIGIN = 'https://chat.whatsapp.com/';
+const INVITE_MAX_CHARS = 2048;
 
 /** The one spelling the server stores: https://chat.whatsapp.com/<code>, the code kept exactly; null if invalid. */
 export function normaliseInvite(text: string): string | null {
-  const match = WHATSAPP_INVITE.exec(text.trim());
+  const clean = text.trim();
+  if (clean.length > INVITE_MAX_CHARS) return null;
+  const tail = clean.search(/[?#]/);
+  const match = WHATSAPP_INVITE.exec(tail < 0 ? clean : clean.slice(0, tail));
   return match ? `${INVITE_ORIGIN}${match[1]}` : null;
 }
 

@@ -392,9 +392,11 @@ public class GroupLinkService implements GroupLinkResolver {
     /**
      * The one spelling an invite is stored with, {@code https://chat.whatsapp.com/<code>}, or null for blank text. The
      * scheme and host may be typed in any case and with an empty port, as browsers allow; the invite code (10 to 64
-     * letters, digits, {@code _} or {@code -}) is kept exactly, since it is case-sensitive. A query or fragment is
-     * dropped: WhatsApp's own "copy link" adds one (such as {@code ?mode=ems_copy_t}) that the invite does not need. The
-     * browser's {@code features/orders/shared/invite.ts} accepts exactly the same links.
+     * letters, digits, {@code _} or {@code -}) is kept exactly, since it is case-sensitive. Everything from the first
+     * {@code ?} or {@code #} is dropped unread: WhatsApp's own "copy link" adds a query (such as {@code ?mode=ems_copy_t})
+     * the invite does not need. The browser's {@code features/orders/shared/invite.ts} applies the same rule; it trims with
+     * JavaScript's {@code trim()}, which also removes a no-break space this {@code strip()} keeps, and it only ever sends
+     * the canonical link.
      *
      * @throws WorkflowRuleViolation {@code INVALID_INVITE} (400) for anything else
      */
@@ -402,8 +404,9 @@ public class GroupLinkService implements GroupLinkResolver {
         if (value == null || value.isBlank()) return null;
         String clean = value.strip();
         if (clean.length() > 2048) throw invalidInvite();
+        int tail = indexOfQueryOrFragment(clean);
         try {
-            URI uri = new URI(clean);
+            URI uri = new URI(tail < 0 ? clean : clean.substring(0, tail));
             if (!"https".equalsIgnoreCase(uri.getScheme()) || !"chat.whatsapp.com".equalsIgnoreCase(uri.getHost())
                     || uri.getPort() != -1 || uri.getRawUserInfo() != null
                     || uri.getRawPath() == null || !uri.getRawPath().matches("/[A-Za-z0-9_-]{10,64}")) {
@@ -413,6 +416,12 @@ public class GroupLinkService implements GroupLinkResolver {
         } catch (URISyntaxException malformed) {
             throw invalidInvite();
         }
+    }
+
+    private static int indexOfQueryOrFragment(String text) {
+        int query = text.indexOf('?');
+        int fragment = text.indexOf('#');
+        return query < 0 ? fragment : fragment < 0 ? query : Math.min(query, fragment);
     }
 
     private static WorkflowRuleViolation invalidInvite() {

@@ -22,6 +22,10 @@ describe('WhatsApp group invites (D34)', () => {
     expect(normaliseInvite(`https://chat.whatsapp.com/${CODE}?mode=ems_copy_t`)).toBe(`https://chat.whatsapp.com/${CODE}`);
     expect(normaliseInvite(` https://chat.whatsapp.com/${CODE}?mode=r_c&x=%2F#join `)).toBe(`https://chat.whatsapp.com/${CODE}`);
     expect(normaliseInvite(`https://chat.whatsapp.com/${CODE}?`)).toBe(`https://chat.whatsapp.com/${CODE}`);
+    // Everything from the first ? or # is dropped unread, as GroupLinkService.canonicalInvite does.
+    for (const tail of ['?x=[1]', '?ref=café', '#é', '?a b', '?a%zz', '?a|b', '#a#b']) {
+      expect(normaliseInvite(`https://chat.whatsapp.com/${CODE}${tail}`)).toBe(`https://chat.whatsapp.com/${CODE}`);
+    }
   });
 
   it('refuses everything the server refuses', () => {
@@ -30,9 +34,7 @@ describe('WhatsApp group invites (D34)', () => {
       'https://chat.whatsapp.com/short', `https://chat.whatsapp.com/${'a'.repeat(65)}`, 'https://chat.whatsapp.com/short?mode=ems_copy_t',
       `https://chat.whatsapp.com:443/${CODE}`, `https://user@chat.whatsapp.com/${CODE}`,
       `https://chat.whatsapp.com/${CODE}/`, `https://chat.whatsapp.com.evil.test/${CODE}`, `javascript:alert(1)//chat.whatsapp.com/${CODE}`,
-      // Characters java.net.URI refuses in a query or fragment are refused here too.
-      `https://chat.whatsapp.com/${CODE}?a b`, `https://chat.whatsapp.com/${CODE}?a%zz`, `https://chat.whatsapp.com/${CODE}?a|b`,
-      `https://chat.whatsapp.com/${CODE}#a#b`,
+      `https://chat.whatsapp.com?x=/${CODE}`, `https://chat.whatsapp.com/${CODE}?${'a'.repeat(2048)}`,
     ]) {
       expect(isWhatsAppInvite(text)).toBe(false);
       expect(normaliseInvite(text)).toBeNull();

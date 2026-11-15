@@ -51,6 +51,10 @@ beforeEach(() => {
   vi.mocked(setupApi.schoolGroups).mockResolvedValue({});
   vi.mocked(setupApi.schoolItemGroups).mockResolvedValue([]);
   vi.mocked(setupApi.vendors).mockResolvedValue([]);
+  vi.mocked(setupApi.allCategories).mockResolvedValue([
+    { code: 'NOTEBOOKS', label: 'Notebooks', active: true }, { code: 'FLIERS', label: 'Fliers', active: true },
+    { code: 'CALENDARS', label: 'Calendars', active: false },
+  ]);
 });
 afterEach(cleanup);
 
@@ -240,6 +244,37 @@ describe('Groups', () => {
     expect(await screen.findByText('Notebooks group link saved.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Open notebooks group/ })).toHaveAttribute('href', INVITE);
   });
+
+  it('names a group saved for a switched-off item, but offers new groups only for items the catalogue still has', async () => {
+    vi.mocked(setupApi.schoolItemGroups).mockResolvedValue([{ categoryCode: 'CALENDARS', inviteUrl: INVITE, updatedAt: '2026-11-15T05:00:00Z', updatedBy: 1 }]);
+    render(<NotebookAdminPanel />);
+    fireEvent.click(tab('Groups'));
+    fireEvent.change(await screen.findByRole('combobox', { name: 'School' }), { target: { value: '7' } });
+    expect(await screen.findByRole('link', { name: /Open calendars group/ })).toHaveAttribute('href', INVITE);
+    const items = within(screen.getByRole('combobox', { name: 'Item' })).getAllByRole('option').map((option) => option.textContent);
+    expect(items).toEqual(['Select item…', 'Notebooks', 'Fliers']);
+  });
+
+  it("starts a school's item groups afresh when another school is chosen, so a half-filled add never reaches it", async () => {
+    vi.mocked(setupApi.schools).mockResolvedValue([{ id: 7, name: 'School Seven' }, { id: 8, name: 'School Eight' }]);
+    vi.mocked(setupApi.schoolItemGroups).mockImplementation(async (schoolId: number) => (schoolId === 8
+      ? [{ categoryCode: 'FLIERS', inviteUrl: 'https://chat.whatsapp.com/EightFliers0001', updatedAt: '2026-11-15T05:00:00Z', updatedBy: 1 }] : []));
+    render(<NotebookAdminPanel />);
+    fireEvent.click(tab('Groups'));
+    const school = await screen.findByRole('combobox', { name: 'School' });
+    await waitFor(() => expect(within(school).getAllByRole('option')).toHaveLength(3));
+    fireEvent.change(school, { target: { value: '7' } });
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Item' }), { target: { value: 'FLIERS' } });
+    fireEvent.change(screen.getByRole('textbox', { name: 'New item group invite link' }), { target: { value: INVITE } });
+    expect(screen.getByRole('button', { name: 'Add item group' })).toBeEnabled();
+
+    fireEvent.change(school, { target: { value: '8' } });
+    expect(await screen.findByRole('link', { name: /Open fliers group/ })).toHaveAttribute('href', 'https://chat.whatsapp.com/EightFliers0001');
+    expect(screen.getByRole('combobox', { name: 'Item' })).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: 'New item group invite link' })).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Add item group' })).toBeDisabled();
+    expect(setupApi.saveSchoolItemGroup).not.toHaveBeenCalled();
+  });
 });
 
 describe('Importing group links from a spreadsheet', () => {
@@ -266,6 +301,20 @@ describe('Importing group links from a spreadsheet', () => {
     await waitFor(() => expect(setupApi.importGroupLinks).toHaveBeenLastCalledWith({ dryRun: false, rows }));
     expect(await screen.findByText('Imported: 1 added, 0 changed, 0 removed.')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Check of links.csv' })).not.toBeInTheDocument();
+  });
+
+  it('reads back a group saved for an item the catalogue has since switched off', async () => {
+    const item = { ...ADDED, kind: 'ITEM', categoryCode: 'CALENDARS', before: INVITE, outcome: 'UNCHANGED' } as const;
+    vi.mocked(setupApi.importGroupLinks).mockResolvedValue({ dryRun: true, applied: false, changes: [item], errors: [] });
+    render(<NotebookAdminPanel />);
+    fireEvent.click(tab('Groups'));
+    await choose(`${HEADER}\nItem group,7,School Seven,CALENDARS,,,${INVITE}\n`);
+    await waitFor(() => expect(setupApi.importGroupLinks).toHaveBeenCalledWith({
+      dryRun: true, rows: [{ line: 2, kind: 'ITEM', inviteUrl: INVITE, schoolId: 7, categoryCode: 'CALENDARS' }],
+    }));
+    const check = await screen.findByRole('region', { name: 'Check of links.csv' });
+    expect(within(check).queryByRole('alert')).not.toBeInTheDocument();
+    expect(within(check).getByText('Nothing to change: every link in the file is already saved.')).toBeInTheDocument();
   });
 
   it('applies nothing while any line needs fixing, whether the screen or the server found it', async () => {

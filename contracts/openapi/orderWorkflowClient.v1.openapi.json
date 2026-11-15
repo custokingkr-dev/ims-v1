@@ -2731,7 +2731,7 @@
             }
           },
           "400": {
-            "description": "Invalid request (INVALID_INVITE, or a plain message); the message says what to change",
+            "description": "Invalid schoolId (not a positive number)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2744,7 +2744,7 @@
             "description": "Authentication required"
           },
           "403": {
-            "description": "The caller may not do this: SUPERADMIN_ONLY, or not superadmin or an operator assigned to the whole school",
+            "description": "Not superadmin or an operator assigned to the whole school (an item scope does not count), or without notebook-tracker:read",
             "content": {
               "application/json": {
                 "schema": {
@@ -2810,7 +2810,7 @@
             }
           },
           "400": {
-            "description": "Invalid request (INVALID_INVITE, or a plain message); the message says what to change",
+            "description": "INVALID_INVITE, or a plain message for a bad schoolId or item code",
             "content": {
               "application/json": {
                 "schema": {
@@ -2823,7 +2823,7 @@
             "description": "Authentication required"
           },
           "403": {
-            "description": "The caller may not do this: SUPERADMIN_ONLY, or not superadmin or an operator assigned to the whole school",
+            "description": "Not superadmin: SUPERADMIN_ONLY (operators), or \"WhatsApp group links are for superadmin and operators only\" (anyone else)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2862,7 +2862,7 @@
             }
           },
           "400": {
-            "description": "Invalid request (INVALID_INVITE, or a plain message); the message says what to change",
+            "description": "A missing, empty or oversized rows list (more than 2,000). A row in error is not a 400: it comes back in errors[] and nothing is applied",
             "content": {
               "application/json": {
                 "schema": {
@@ -2875,7 +2875,7 @@
             "description": "Authentication required"
           },
           "403": {
-            "description": "The caller may not do this: SUPERADMIN_ONLY, or not superadmin or an operator assigned to the whole school",
+            "description": "Not superadmin: SUPERADMIN_ONLY (operators), or \"WhatsApp group links are for superadmin and operators only\" (anyone else)",
             "content": {
               "application/json": {
                 "schema": {

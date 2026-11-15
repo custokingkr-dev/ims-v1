@@ -50,11 +50,11 @@ describe('downloading the saved links', () => {
 });
 
 describe('parsing CSV', () => {
-  it('handles quotes, doubled quotes, line breaks inside quotes, CRLF and a missing final newline', () => {
+  it('handles quotes, doubled quotes, line breaks inside quotes (one spreadsheet row), CRLF and a missing final newline', () => {
     expect(parseCsv('a,"b,c","say ""hi"""\r\n"multi\nline",x\ny,z')).toEqual([
       { line: 1, cells: ['a', 'b,c', 'say "hi"'] },
       { line: 2, cells: ['multi\nline', 'x'] },
-      { line: 4, cells: ['y', 'z'] },
+      { line: 3, cells: ['y', 'z'] },
     ]);
   });
 
@@ -86,6 +86,7 @@ describe('reading a filled-in sheet', () => {
     const read = readLinkSheet(sheet, CONTEXT);
     expect(read.errors).toEqual([]);
     expect(read.blank).toBe(1);
+    expect(read.linked).toBe(5);
     expect(read.rows).toEqual([
       { line: 2, kind: 'SCHOOL_GROUP', inviteUrl: A, schoolId: 7 },
       { line: 3, kind: 'INTERNAL_APPROVAL', inviteUrl: null, schoolId: 7 },
@@ -111,6 +112,7 @@ describe('reading a filled-in sheet', () => {
     ].join('\r\n');
     expect(readLinkSheet(sheet, CONTEXT)).toEqual({
       rows: [],
+      linked: 10,
       blank: 0,
       errors: [
         { line: 2, message: 'The type must be one of: School group, Internal approval group, Item group, Vendor group' },

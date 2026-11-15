@@ -113,4 +113,9 @@ export const setupApi = {
     operatorAdmin.provisionSchoolUser({ schoolId, role: 'OPERATIONS' }, { ...body, catalogCategory }),
   schools: async (): Promise<SchoolOption[]> =>
     parseList<Awaited<ReturnType<typeof tenant.listSuperadminSchools>>[number]>(await tenant.listSuperadminSchools()).map((school) => ({ id: school.id, name: school.name })),
+  // Every catalogue item, switched-off ones included (superadmin's catalogue view): an item group saved before its item
+  // was switched off is still saved, so it must still be named on screen and read back from a downloaded sheet.
+  allCategories: async (): Promise<Array<{ code: string; label: string; active: boolean }>> =>
+    parseProductCategories(await catalog.listAdminProductCategories())
+      .map((category) => ({ code: category.code, label: category.label, active: category.active })),
 };

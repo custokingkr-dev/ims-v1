@@ -211,9 +211,18 @@ class GroupLinkServiceIntegrationTest {
                 GroupLinkService.canonicalInvite("https://chat.whatsapp.com/AbCdEf1234567890?mode=ems_copy_t"));
         assertEquals("https://chat.whatsapp.com/AbCdEf1234567890",
                 GroupLinkService.canonicalInvite(" https://chat.whatsapp.com/AbCdEf1234567890?mode=r_c#join "));
+        // Everything from the first ? or # is dropped unread, as the browser's invite.ts does, so no tail can make the
+        // two disagree.
+        for (String tail : List.of("?x=[1]", "?ref=café", "#é", "?a b", "?a%zz", "?a|b", "#a#b", "?")) {
+            assertEquals("https://chat.whatsapp.com/AbCdEf1234567890",
+                    GroupLinkService.canonicalInvite("https://chat.whatsapp.com/AbCdEf1234567890" + tail), tail);
+        }
         assertEquals(WorkflowRuleViolation.INVALID_INVITE, assertThrows(WorkflowRuleViolation.class,
                 () -> GroupLinkService.canonicalInvite("https://chat.whatsapp.com/short?mode=ems_copy_t")).code(),
                 "the invite code itself is still checked");
+        assertEquals(WorkflowRuleViolation.INVALID_INVITE, assertThrows(WorkflowRuleViolation.class,
+                () -> GroupLinkService.canonicalInvite("https://chat.whatsapp.com?x=/AbCdEf1234567890")).code(),
+                "the invite code must come before the tail");
     }
 
     // ---- a school's item groups in Workflow set-up --------------------------------------------------------------------

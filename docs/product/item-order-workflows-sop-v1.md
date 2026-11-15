@@ -344,10 +344,13 @@ Superadmin sets the code, noun and template for any new category in Catalog mana
 - **School group.**
   - Kept per school (the existing `SCHOOL_GROUP` link, set by superadmin), with an optional per-item override in `workflow_school_item_group_links`. Superadmin or the order's current-step assignee may set the override, since operators create item groups.
   - Resolution order: item link → school link → none.
-  - When there is none, superadmin sees "No group chat saved for this school"; an assignee gets an inline "Save group link" field on Step 1.
+  - When there is none, superadmin and the current-step assignee get an inline "Save group link" field on every card that shows the school group; superadmin's text also points at set-up for a school-wide link. Anyone else sees "No group chat saved for this school yet."
+  - When the item has its own group, those cards say so, and the same people can change or remove it there ("Change item's group"). Removing it shows the school's group again. (Group links: set-up, order screen and import.)
+  - Workflow set-up → Groups lists a school's item groups, with change, remove and add, beside its two school-wide links.
 - **Vendor group.** Stored on the vendor record.
 - **Internal approval group.** One global link in `workflow_settings`, set by superadmin. The existing per-school `INTERNAL_APPROVAL` link, where one exists, overrides it.
-- **Accepted links.** Only `https://chat.whatsapp.com/<10–64 characters>`, opened in a new tab.
+- **Accepted links.** Only `https://chat.whatsapp.com/<10–64 characters>`, opened in a new tab. A query or fragment after the code (WhatsApp's own "copy link" adds `?mode=…`) is dropped, not refused; the stored link is always the bare invite.
+- **Spreadsheet import.** Superadmin downloads every saved link (school, internal approval, item and vendor groups) as CSV, fills in the link column and imports the file (CSV or the Excel workbook). The server checks every row first (a dry run) and applies the file whole or not at all. A blank link keeps what is saved; `REMOVE` removes it.
 - **Migration.** V19 copies the existing per-school links stored under vendor keys onto the sample vendors, where unambiguous. They are no longer read.
 
 **D35. Call logging (C7).**
@@ -837,6 +840,8 @@ interface CallbackSource { List<OpenCallback> openCallbacks(long instanceId); }
 | `GET /vendors?category&q&includeInactive`; `POST /vendors`; `PUT /vendors/{id}` | read / superadmin | Vendor fields of D31 |
 | `GET` and `PUT /settings/internal-approval-group` | read / superadmin | `{inviteUrl}` |
 | `GET` and `PUT /school-whatsapp-groups/{schoolId}[/{target}]` | unchanged | Writes accept only `SCHOOL_GROUP` and `INTERNAL_APPROVAL` |
+| `GET /school-whatsapp-groups/{schoolId}/items`; `PUT /school-whatsapp-groups/{schoolId}/items/{categoryCode}` | superadmin or school-wide operator / superadmin | `[{categoryCode, inviteUrl, updatedAt, updatedBy}]`; `{url}`, blank removes. No order history |
+| `POST /whatsapp-groups/import` | superadmin | `{dryRun?, rows:[{line, kind, schoolId?, categoryCode?, vendorId?, inviteUrl}]}` → `{dryRun, applied, changes[], errors[]}`; dry run unless `dryRun:false`; all or nothing; at most 2,000 rows |
 | Machine: `POST /api/v1/internal/order-workflows` (alias `/internal/notebook-trackers` for one release) | school-core service account | Today's create body plus `definitionId, categoryCode, itemCode, itemNoun, orderNumber, importedProgress[]`. Idempotent, and fills a missing `order_number` on an existing tracker |
 | Machine: `POST /api/v1/internal/order-workflows/{orderId}/design-file-access` (alias `…/image-access`) | school-core service account | `{allowed, reason}` for any workflow order |
 
@@ -1007,7 +1012,7 @@ interface CallbackSource { List<OpenCallback> openCallbacks(long instanceId); }
 | --- | --- | --- |
 | `ORDER_PDF_LINK` | "School order PDF link" | URL input; "Save PDF link" |
 | `INTRO_MESSAGE` | "School Group Chat & Introduction Message" | School chip and order number; "Your name"; resizable "Message template" with `{Name}` substituted as you type; "Copy message" (clipboard, falling back to select-all); "Open <School> Group Chat ↗"; helper text; the [Ours] intro checkbox |
-| `SCHOOL_GROUP` | "School Group Chat" | Chip; "Open <School> Group Chat ↗"; "Opens the WhatsApp group mapped to this order's school in a new tab." If no link is saved: an inline "Save group link" field for the assignee, a set-up pointer for superadmin |
+| `SCHOOL_GROUP` | "School Group Chat" | Chip; "Open <School> Group Chat ↗"; "Opens the WhatsApp group mapped to this order's school in a new tab." If no link is saved: an inline "Save group link" field for the assignee and superadmin (superadmin's text also points at set-up). If the item has its own group: a note saying so, and "Change item's group" (new link, or "Remove item's group") for the same people |
 | `DESIGN_FILES` | "Upload Design Files" | Dashed drop zone: "Select files to upload" / "Up to 4 files · 25 MB in total · PDF, CDR, PNG, JPEG". "Choose files" (multiple); "Upload selected files"; "Refresh file list". A usage meter "2 of 4 files · 18.4 of 25 MB". The file list shows name, size, uploader and time, with Preview/Download and Remove. Limits are checked in the browser before upload, and server errors are shown verbatim |
 | `FIELDS` | e.g. CDR details, QC evidence, documents, dispatch | Template labels and placeholders (verbatim [Proto]); a card-level save button using the template's label; word counters on `WORDS` fields; URL fields show an "Open ↗" link once saved |
 | `CDR_FOR_APPROVAL` | "Design version for approval" / "CDR file submitted for approval" | The Step 3 link, with when and by whom it was saved; or the amber missing-link warning |
@@ -1084,7 +1089,7 @@ The prototype's Assignment widget is not added; assignment lives on the identity
 
 Tabs, using the existing WAI-ARIA tab pattern: **Vendors** (§4.5) | **Designers** (existing) | **Time slots** | **Groups** | **Operators** (existing).
 - **Time slots.** A template select, then a table of steps with the default SLA (value and unit, editable) and the per-school overrides (the existing screen, with "Use default").
-- **Groups.** The global internal approval group link, plus the existing per-school School group and Internal approval links.
+- **Groups.** The global internal approval group link, plus the existing per-school School group and Internal approval links. For the chosen school, its item groups (change, remove, and add for any item the catalogue still offers). Then "Import from a spreadsheet": download every saved link as CSV, choose the filled-in file (CSV or Excel), check the changes the server reports, and apply them.
 
 ### 4.8 Codes, numbers and other screens
 
@@ -2144,3 +2149,20 @@ probe and clean up". The file name is kept, since other documents link to it.
 
 - **No sweep in the final placement-trigger clean-up (integration fix).** The runbook's draft of the final catalog migration repeated V38 step 2b: queue every placed, unnumbered order of a coded category for repair. After this release that would be wrong. An order placed before superadmin gave its category an order code stays unnumbered by design (D8, D11; `aCategoryGivenAnOrderCodeNumbersOnlyItsLaterPlacements`), and the repair would number it. Once the conditions for that clean-up hold, no path places an order without minting, so the sweep has nothing legitimate to find. The runbook's pre-check (query 1) and post-deploy query 4 now say the same: such orders are expected there, and a rise with no category edit is the defect.
 - **The final clean-up takes the next free numbers.** The runbook's scratch drafts were numbered catalog V41 and reporting V37; catalog V41 is now the consolidation fix, so the real ones take catalog V42 or later.
+
+### Group links: set-up, order screen and import
+
+What changed (2026-11-15), and why. Links are still only opened; nothing is sent.
+
+- **Item groups are visible and editable.** Before, an item's own school group saved from an order could not be seen, changed or removed on any screen, and it overrides the school's group for every order of that item at the school.
+  - *Set-up.* Workflow set-up → Groups lists the chosen school's item groups, with change, remove and add. New groups are offered only for items the catalogue still has; a group saved for an item since switched off is still listed by its name. `GET` and `PUT /school-whatsapp-groups/{schoolId}/items[/{categoryCode}]`: superadmin writes, and the same readers as the school's own groups. A set-up change records no order history, since it belongs to the school, not to one order.
+  - *Order screen.* Superadmin now gets the inline "Save group link" field the server already allowed, instead of a pointer to set-up. When the item has its own group, the cards say so, and superadmin or the current stage's assignee can change it or remove it ("Change item's group"). Removing it brings back the school's group, and the card says that too.
+- **Spreadsheet import.** `POST /whatsapp-groups/import`, superadmin only. Rows are `SCHOOL_GROUP`, `INTERNAL_APPROVAL`, `ITEM` or `VENDOR`, each with the line it came from.
+  - *Dry run by default.* The answer lists each row's outcome (added, changed, removed, unchanged) with the link saved now and after, plus every row in error.
+  - *Whole or nothing.* `"dryRun": false` applies the file in one transaction, and only when no row is in error. A group named twice is an error on its second line. At most 2,000 rows.
+  - *A vendor row changes only the vendor's group;* every other vendor field is kept (unlike `PUT /vendors/{id}`, which replaces them all).
+  - *The screen.* "Download saved links (CSV)" writes every school's two groups and item groups, then every vendor, one link per row, with ids and names. A name a spreadsheet would run as a formula is written as text. "Choose filled-in sheet" takes the CSV or the Excel workbook (its first sheet). Schools, items and vendors are found by id, else by name. A blank link keeps what is saved; `REMOVE` removes it. Error line numbers are the sheet's row numbers. The changes are shown before "Apply".
+  - *Limits.* A workbook is read from the cells actually present, not from its own dimension tag, which Excel often bloats and a crafted file can set to the whole grid; more than 10,000 rows or 40 columns is refused. The download reads four schools at a time, to stay inside the gateway's per-user burst.
+- **Links copied from WhatsApp.** WhatsApp's "copy link" adds `?mode=…`, which the server and the screen used to refuse. Both now drop everything from the first `?` or `#` unread and keep the invite, so they cannot disagree about a tail. `OrderWorkflowService`'s duplicate invite check now calls `GroupLinkService.canonicalInvite`.
+- **Review.** A four-angle review (backend, security, frontend, contract) found 14 issues; 13 survived an adversarial check and are fixed here. They were: a downloaded sheet that could not be imported back when an item group belonged to a switched-off item; a half-filled "Add an item group" or a late save landing on the next school chosen; screen and server disagreeing about some link tails; an unbounded workbook read; the download firing every request at once; focus lost when the editors open and close; line numbers off after a cell with a line break; a stuck "Loading the items…"; a headline counting file errors as links; and stale docs and contract text. The one refuted was one-click removal on the order: it is two clicks, and reversible.
+- **Not changed.** School-wide and vendor link changes still keep no history beyond `updated_by` and `updated_at`.

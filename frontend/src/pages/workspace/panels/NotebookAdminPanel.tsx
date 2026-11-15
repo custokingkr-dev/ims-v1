@@ -351,10 +351,11 @@ const SCHOOL_TARGETS: ReadonlyArray<{ key: SchoolGroupTarget; label: string }> =
 
 /**
  * A school's own group per item (D34): it replaces the school group on that item's orders at the school. Operators save
- * one from an order when the school has no group; here superadmin sees, changes, removes and adds them.
+ * one from an order when the school has no group; here superadmin sees, changes, removes and adds them. The parent mounts
+ * one per school (keyed by it), so nothing typed or still saving for one school can land on another.
  */
-function ItemGroups({ schoolId, attempt, categories, run }: {
-  schoolId: number; attempt: number; categories: Array<{ code: string; label: string }> | null;
+function ItemGroups({ schoolId, attempt, categories, categoriesFailed, run }: {
+  schoolId: number; attempt: number; categories: Array<{ code: string; label: string; active: boolean }> | null; categoriesFailed: boolean;
   run: (operation: () => Promise<unknown>, done: string) => Promise<boolean>;
 }) {
   const [rows, setRows] = useState<ItemGroupLinkView[] | null>(null);
@@ -364,6 +365,7 @@ function ItemGroups({ schoolId, attempt, categories, run }: {
   const [saving, setSaving] = useState<string | null>(null);
   const [newItem, setNewItem] = useState('');
   const [newLink, setNewLink] = useState('');
+  const heading = useRef<HTMLHeadingElement>(null);
   const ids = useId();
 
   useEffect(() => {
@@ -385,16 +387,20 @@ function ItemGroups({ schoolId, attempt, categories, run }: {
       setRows(next); setInputs(Object.fromEntries(next.map((row) => [row.categoryCode, row.inviteUrl])));
     }, trimmed ? `${label(code)} link saved.` : `${label(code)} link removed.`);
     setSaving(null);
+    // A removed row takes its focused button with it; keep the keyboard in this section.
+    if (saved && !trimmed) heading.current?.focus();
     return saved;
   };
 
   if (loadError) return <LoadFailure message={loadError} onRetry={() => setRetry((value) => value + 1)} />;
   if (rows === null) return <p className="ck-setup-muted" role="status">Loading the item groups…</p>;
-  const free = (categories ?? []).filter((category) => !rows.some((row) => row.categoryCode === category.code));
+  // New groups only for items the catalogue still offers; saved ones are listed whatever the item's state.
+  const free = (categories ?? []).filter((category) => category.active && !rows.some((row) => row.categoryCode === category.code));
   const newInvalid = newLink.trim() !== '' && !normaliseInvite(newLink.trim());
+  const newChosen = free.some((category) => category.code === newItem);
   return (
     <div className="ck-setup-block">
-      <h4>Item groups at this school</h4>
+      <h4 ref={heading} tabIndex={-1}>Item groups at this school</h4>
       <p className="ck-setup-muted">An item&apos;s own group replaces the school group on that item&apos;s orders here. Operators can also save one from an order when the school has no group.</p>
       {rows.length === 0 && <p className="ck-setup-muted">No item has its own group at this school.</p>}
       {rows.map((row) => (
@@ -402,7 +408,7 @@ function ItemGroups({ schoolId, attempt, categories, run }: {
           saving={saving === row.categoryCode} onChange={(value) => setInputs((current) => ({ ...current, [row.categoryCode]: value }))}
           onSave={() => void save(row.categoryCode, inputs[row.categoryCode] ?? '')} />
       ))}
-      {categories === null ? <p className="ck-setup-muted" role="status">Loading the items…</p> : free.length > 0 && (
+      {categories === null ? !categoriesFailed && <p className="ck-setup-muted" role="status">Loading the items…</p> : free.length > 0 && (
         <div className="ck-setup-group" role="group" aria-labelledby={`${ids}-add`}>
           <strong id={`${ids}-add`}>Add an item group</strong>
           <div className="ck-setup-group-edit">
@@ -412,7 +418,7 @@ function ItemGroups({ schoolId, attempt, categories, run }: {
             <input aria-label="New item group invite link" type="url" inputMode="url" placeholder="https://chat.whatsapp.com/…" value={newLink}
               disabled={saving !== null} aria-invalid={newInvalid || undefined} aria-describedby={newInvalid ? `${ids}-add-error` : undefined}
               onChange={(e) => setNewLink(e.target.value)} />
-            <button type="button" className="ck-btn ck-btn-ghost" disabled={saving !== null || !newItem || !newLink.trim() || newInvalid}
+            <button type="button" className="ck-btn ck-btn-ghost" disabled={saving !== null || !newChosen || !newLink.trim() || newInvalid}
               onClick={() => void save(newItem, newLink).then((saved) => { if (saved) { setNewItem(''); setNewLink(''); } })}>Add item group</button>
             {newInvalid && <span id={`${ids}-add-error`} className="ck-setup-error">{INVALID_INVITE_MESSAGE}</span>}
           </div>
@@ -434,7 +440,7 @@ function GroupsTab({ schools }: { schools: SchoolOption[] }) {
   const [linksAttempt, setLinksAttempt] = useState(0);
   const [saving, setSaving] = useState<string | null>(null);
   const { error, notice, run } = useAction();
-  const categories = useList(setupApi.categories, 'Unable to load the items.');
+  const categories = useList(setupApi.allCategories, 'Unable to load the items.');
 
   useEffect(() => {
     let active = true;
@@ -503,7 +509,8 @@ function GroupsTab({ schools }: { schools: SchoolOption[] }) {
             onChange={(value) => setInputs((current) => ({ ...current, [key]: value }))} onSave={() => void saveSchool(key, label)} />
         ))}
         {schoolId && categories.error && <LoadFailure message={categories.error} onRetry={() => void categories.reload()} />}
-        {schoolId && <ItemGroups schoolId={Number(schoolId)} attempt={linksAttempt} categories={categories.rows} run={run} />}
+        {schoolId && <ItemGroups key={schoolId} schoolId={Number(schoolId)} attempt={linksAttempt} categories={categories.rows}
+          categoriesFailed={!!categories.error} run={run} />}
       </div>
       <Messages error={error} notice={notice} />
       <GroupLinkImport schools={schools} onApplied={() => setLinksAttempt((value) => value + 1)} />

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Copy, ExternalLink, House } from 'lucide-react';
 import { Field } from '../../../../pages/workspace/ui';
 import { INVALID_INVITE_MESSAGE, fillIntroMessage, hasUnfilledPlaceholders, normaliseInvite, safeInviteHref } from '../../shared/invite';
@@ -47,10 +47,26 @@ function SchoolGroupLinkEditor() {
   const [text, setText] = useState('');
   const [touched, setTouched] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [removed, setRemoved] = useState(false);
+  // Opening, closing, saving and removing each unmount the focused control; this says where the keyboard goes next.
+  const [focusNext, setFocusNext] = useState<'input' | 'toggle' | 'afterRemove' | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const noteRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!focusNext) return;
+    const target = focusNext === 'input' ? inputRef.current : focusNext === 'toggle' ? toggleRef.current : noteRef.current ?? inputRef.current;
+    target?.focus();
+    setFocusNext(null);
+  }, [focusNext]);
   const resolved = safeInviteHref(view.groups.school.url);
   const itemOwn = resolved !== null && view.groups.school.source === 'ITEM';
   const canSet = view.can.canSetSchoolGroup;
-  if (resolved && !itemOwn) return null;
+  if (resolved && !itemOwn) {
+    return removed
+      ? <p ref={noteRef} tabIndex={-1} className="ck-wf-muted">The item&apos;s own group was removed; this order uses the school&apos;s group again.</p>
+      : null;
+  }
   if (!resolved && !canSet) return <Warning>No group chat saved for this school yet.</Warning>;
 
   const invite = normaliseInvite(text);
@@ -58,20 +74,20 @@ function SchoolGroupLinkEditor() {
   const save = async () => {
     setTouched(true);
     if (!invite) return;
-    if (await run(() => workflowApi.setSchoolGroup(view.orderId, invite), 'Group link saved')) close();
+    if (await run(() => workflowApi.setSchoolGroup(view.orderId, invite), 'Group link saved')) { close(); setRemoved(false); setFocusNext('toggle'); }
   };
   const remove = async () => {
-    if (await run(() => workflowApi.setSchoolGroup(view.orderId, ''), "Item's group removed")) close();
+    if (await run(() => workflowApi.setSchoolGroup(view.orderId, ''), "Item's group removed")) { close(); setRemoved(true); setFocusNext('afterRemove'); }
   };
   const form = (
     <>
       <Field label={itemOwn ? 'New group link' : 'Save group link'} error={touched && !invite ? INVALID_INVITE_MESSAGE : undefined}>
-        <input type="url" value={text} placeholder="https://chat.whatsapp.com/…" onChange={(e) => setText(e.target.value)} onBlur={() => setTouched(!!text)} />
+        <input ref={inputRef} type="url" value={text} placeholder="https://chat.whatsapp.com/…" onChange={(e) => setText(e.target.value)} onBlur={() => setTouched(!!text)} />
       </Field>
       <div className="ck-wf-block-actions">
         <button type="button" className="ck-btn ck-btn-ghost" disabled={!text.trim()} onClick={() => void save()}>Save group link</button>
         {itemOwn && <button type="button" className="ck-btn ck-btn-ghost" onClick={() => void remove()}>Remove item&apos;s group</button>}
-        {itemOwn && <button type="button" className="ck-btn ck-btn-ghost" onClick={close}>Cancel</button>}
+        {itemOwn && <button type="button" className="ck-btn ck-btn-ghost" onClick={() => { close(); setFocusNext('toggle'); }}>Cancel</button>}
       </div>
     </>
   );
@@ -80,7 +96,11 @@ function SchoolGroupLinkEditor() {
     return (
       <div className="ck-wf-inline-form">
         <p className="ck-wf-muted">This is the item&apos;s own group at this school; it replaces the school group on every order of this item here.</p>
-        {canSet && !editing && <button type="button" className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => setEditing(true)}>Change item&apos;s group</button>}
+        {canSet && !editing && (
+          <button ref={toggleRef} type="button" className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => { setEditing(true); setFocusNext('input'); }}>
+            Change item&apos;s group
+          </button>
+        )}
         {canSet && editing && form}
       </div>
     );

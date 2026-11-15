@@ -81,7 +81,10 @@ function delimiterOf(text: string): string {
   return count > 0 ? best : ',';
 }
 
-/** CSV records (RFC 4180, quoted cells may hold line breaks), each with the line of the file it starts on. */
+/**
+ * CSV records (RFC 4180, quoted cells may hold line breaks), each numbered as the spreadsheet row it is: one record is
+ * one row, blank rows included, however many line breaks its cells hold. That is the number the user sees in Excel.
+ */
 export function parseCsv(input: string): Array<{ line: number; cells: string[] }> {
   const text = input.replace(/^\uFEFF/, '');
   const delimiter = delimiterOf(text);
@@ -89,26 +92,19 @@ export function parseCsv(input: string): Array<{ line: number; cells: string[] }
   let cells: string[] = [];
   let value = '';
   let quoted = false;
-  let line = 1;
-  let start = 1;
   const endCell = () => { cells.push(value); value = ''; };
-  const endRecord = () => { endCell(); records.push({ line: start, cells }); cells = []; };
+  const endRecord = () => { endCell(); records.push({ line: records.length + 1, cells }); cells = []; };
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (quoted) {
       if (c === '"' && text[i + 1] === '"') { value += '"'; i++; }
       else if (c === '"') quoted = false;
-      else {
-        if (c === '\n' || (c === '\r' && text[i + 1] !== '\n')) line++;
-        value += c;
-      }
+      else value += c;
     } else if (c === '"' && value === '') quoted = true;
     else if (c === delimiter) endCell();
     else if (c === '\r' || c === '\n') {
       if (c === '\r' && text[i + 1] === '\n') i++;
       endRecord();
-      line++;
-      start = line;
     } else value += c;
   }
   if (value !== '' || cells.length) endRecord();
@@ -157,6 +153,10 @@ function resolve<T extends { id: number; name: string }>(
   return { error: matches.length ? `More than one ${noun} is named "${nameText}": give its ${noun} ID` : `There is no ${noun} named "${nameText}"` };
 }
 
+/**
+ * The item a cell names, by code or by label. `categories` must hold the catalogue's inactive categories too: an item
+ * group saved for a category the catalogue later switched off is still saved, so it is still in the downloaded file.
+ */
 function resolveItem(categories: SheetCategory[], text: string): { code: string } | { error: string } {
   if (!text) return { error: 'Give the item, such as FLIERS' };
   const byCode = categories.find((category) => category.code === text.toUpperCase());
@@ -171,6 +171,8 @@ export interface SheetReadResult {
   rows: WhatsAppGroupImportRow[];
   /** Lines that cannot be imported, and why. */
   errors: SheetError[];
+  /** Lines with a link (or REMOVE), whether or not they could be read. */
+  linked: number;
   /** Lines whose link was left blank: they keep what is saved. */
   blank: number;
 }
@@ -182,18 +184,20 @@ export interface SheetReadResult {
  */
 export function readLinkSheet(text: string, context: { schools: Array<{ id: number; name: string }>; vendors: SheetVendor[]; categories: SheetCategory[] }): SheetReadResult {
   const records = parseCsv(text).filter((record) => record.cells.some((value) => value.trim() !== ''));
-  if (!records.length) return { rows: [], errors: [{ line: 1, message: 'The file is empty.' }], blank: 0 };
+  if (!records.length) return { rows: [], errors: [{ line: 1, message: 'The file is empty.' }], linked: 0, blank: 0 };
   const columns = findColumns(records[0].cells);
   if (columns.type < 0 || columns.link < 0) {
-    return { rows: [], blank: 0, errors: [{ line: records[0].line, message: `The first line must name the columns, as the downloaded file does: ${SHEET_COLUMNS.join(', ')}.` }] };
+    return { rows: [], linked: 0, blank: 0, errors: [{ line: records[0].line, message: `The first line must name the columns, as the downloaded file does: ${SHEET_COLUMNS.join(', ')}.` }] };
   }
   const rows: WhatsAppGroupImportRow[] = [];
   const errors: SheetError[] = [];
+  let linked = 0;
   let blank = 0;
   for (const { line, cells } of records.slice(1)) {
     const get = (index: number) => (index >= 0 ? (cells[index] ?? '').trim() : '');
     const link = get(columns.link);
     if (!link) { blank++; continue; }
+    linked++;
     const fail = (message: string) => { errors.push({ line, message }); };
     const kind = kindOf(get(columns.type));
     if (!kind) { fail(`The type must be one of: ${Object.values(KIND_LABELS).join(', ')}`); continue; }
@@ -218,7 +222,7 @@ export function readLinkSheet(text: string, context: { schools: Array<{ id: numb
     rows.push(row);
   }
   if (rows.length > MAX_SHEET_ROWS) {
-    return { rows: [], blank, errors: [...errors, { line: 1, message: `Import at most ${MAX_SHEET_ROWS} links at a time; this file has ${rows.length}.` }] };
+    return { rows: [], linked, blank, errors: [...errors, { line: 1, message: `Import at most ${MAX_SHEET_ROWS} links at a time; this file has ${rows.length}.` }] };
   }
-  return { rows, errors, blank };
+  return { rows, errors, linked, blank };
 }

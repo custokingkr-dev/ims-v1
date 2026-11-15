@@ -2,12 +2,14 @@ import { useRef, useState } from 'react';
 import { Download, Upload } from 'lucide-react';
 import { setupApi, workflowError, type SchoolOption, type WhatsAppGroupImportChange, type WhatsAppGroupImportResult, type WhatsAppGroupImportRow } from './api';
 import {
-  KIND_LABELS, MAX_SHEET_BYTES, REMOVE_WORD, linksToCsv, readLinkSheet, type SheetCategory, type SheetError, type SheetVendor,
+  KIND_LABELS, MAX_SHEET_BYTES, REMOVE_WORD, linksToCsv, readLinkSheet, type SheetCategory, type SheetError, type SheetSchool, type SheetVendor,
 } from './groupLinkSheet';
+import { workbookToCsv } from './groupLinkWorkbook';
 
 interface Preview {
   fileName: string;
   rows: WhatsAppGroupImportRow[];
+  linked: number;
   blank: number;
   errors: SheetError[];
   result: WhatsAppGroupImportResult | null;
@@ -33,17 +35,21 @@ function readText(file: File): Promise<string> {
 }
 
 const WORKBOOK = /\.(xlsx|xls|ods)$/i;
+/** How many schools' links the download reads at once: well inside the gateway's per-user burst at any school count. */
+const DOWNLOAD_CONCURRENCY = 4;
 
-/**
- * The first sheet of an Excel or OpenDocument workbook as CSV, so a sheet edited in Excel can be chosen as it is. Blank
- * rows are kept, so line numbers match the sheet's row numbers. SheetJS is loaded only when a workbook is chosen.
- */
-async function workbookText(file: File): Promise<string> {
-  const XLSX = await import('xlsx');
-  const book = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-  const first = book.SheetNames[0];
-  if (!first) throw new Error('The workbook has no sheets.');
-  return XLSX.utils.sheet_to_csv(book.Sheets[first], { blankrows: true });
+/** `work` for every item, at most `limit` at a time, answered in the items' order; the first failure fails the lot. */
+async function mapLimited<T, R>(items: T[], limit: number, work: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  const lane = async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await work(items[index]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane));
+  return results;
 }
 
 function saveCsv(csv: string, fileName: string) {
@@ -68,20 +74,19 @@ export function GroupLinkImport({ schools, onApplied }: { schools: SchoolOption[
   const [notice, setNotice] = useState('');
   const [preview, setPreview] = useState<Preview | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
 
   const download = async () => {
     setBusy('download'); setError(''); setNotice('');
     try {
-      const [vendors, perSchool] = await Promise.all([
-        setupApi.vendors(),
-        Promise.all(schools.map(async (school) => {
-          const [links, items] = await Promise.all([setupApi.schoolGroups(school.id), setupApi.schoolItemGroups(school.id)]);
-          return {
-            id: school.id, name: school.name, schoolGroup: links.SCHOOL_GROUP ?? null, internalApproval: links.INTERNAL_APPROVAL ?? null,
-            items: items.map((item) => ({ categoryCode: item.categoryCode, inviteUrl: item.inviteUrl })),
-          };
-        })),
-      ]);
+      const vendors = await setupApi.vendors();
+      const perSchool = await mapLimited(schools, DOWNLOAD_CONCURRENCY, async (school): Promise<SheetSchool> => {
+        const [links, items] = await Promise.all([setupApi.schoolGroups(school.id), setupApi.schoolItemGroups(school.id)]);
+        return {
+          id: school.id, name: school.name, schoolGroup: links.SCHOOL_GROUP ?? null, internalApproval: links.INTERNAL_APPROVAL ?? null,
+          items: items.map((item) => ({ categoryCode: item.categoryCode, inviteUrl: item.inviteUrl })),
+        };
+      });
       saveCsv(linksToCsv(perSchool, vendors), `whatsapp-group-links-${new Date().toISOString().slice(0, 10)}.csv`);
       setNotice('Downloaded. Fill in the WhatsApp group link column, then choose the file below.');
     } catch (e) {
@@ -95,8 +100,9 @@ export function GroupLinkImport({ schools, onApplied }: { schools: SchoolOption[
     setBusy('read'); setError(''); setNotice(''); setPreview(null);
     try {
       if (file.size > MAX_SHEET_BYTES) throw new Error('This file is too large to be a list of group links. Choose the sheet you filled in.');
+      // Every catalogue item, switched-off ones included, so a downloaded sheet always reads back.
       const [text, vendors, categories] = await Promise.all([
-        WORKBOOK.test(file.name) ? workbookText(file) : readText(file), setupApi.vendors(), setupApi.categories(),
+        WORKBOOK.test(file.name) ? file.arrayBuffer().then(workbookToCsv) : readText(file), setupApi.vendors(), setupApi.allCategories(),
       ]);
       const sheet = readLinkSheet(text, { schools, vendors, categories });
       const result = sheet.rows.length ? await setupApi.importGroupLinks({ dryRun: true, rows: sheet.rows }) : null;
@@ -121,6 +127,7 @@ export function GroupLinkImport({ schools, onApplied }: { schools: SchoolOption[
       }
       setPreview(null);
       setNotice(`Imported: ${countOf(result.changes, 'ADDED')} added, ${countOf(result.changes, 'CHANGED')} changed, ${countOf(result.changes, 'REMOVED')} removed.`);
+      heading.current?.focus();
       onApplied();
     } catch (e) {
       setError(workflowError(e, 'The links could not be imported. Nothing was saved.'));
@@ -144,7 +151,7 @@ export function GroupLinkImport({ schools, onApplied }: { schools: SchoolOption[
 
   return (
     <div className="ck-setup-block">
-      <h3>Import from a spreadsheet</h3>
+      <h3 ref={heading} tabIndex={-1}>Import from a spreadsheet</h3>
       <p className="ck-setup-muted">
         Download the saved links, fill in the WhatsApp group link column in Excel or Google Sheets, and choose the file here
         (Excel or CSV). You see every change before anything is saved. A blank link keeps what is saved; {REMOVE_WORD} removes it.
@@ -164,7 +171,7 @@ export function GroupLinkImport({ schools, onApplied }: { schools: SchoolOption[
       {preview && (
         <div className="ck-setup-import" aria-label={`Check of ${preview.fileName}`} role="region">
           <p className="ck-setup-muted">
-            {preview.fileName}: {preview.rows.length + preview.errors.length} {preview.rows.length + preview.errors.length === 1 ? 'line has' : 'lines have'} a link
+            {preview.fileName}: {preview.linked} {preview.linked === 1 ? 'line has' : 'lines have'} a link
             {preview.blank === 1 ? '; 1 line left blank keeps what is saved' : preview.blank ? `; ${preview.blank} lines left blank keep what is saved` : ''}.
           </p>
           {errors.length > 0 && (
@@ -199,7 +206,7 @@ export function GroupLinkImport({ schools, onApplied }: { schools: SchoolOption[
             <button type="button" className="ck-btn ck-btn-g" disabled={busy !== '' || errors.length > 0 || !pending.length} onClick={() => void apply()}>
               {busy === 'apply' ? 'Importing…' : `Apply ${pending.length} ${pending.length === 1 ? 'change' : 'changes'}`}
             </button>
-            <button type="button" className="ck-btn ck-btn-ghost" disabled={busy !== ''} onClick={() => setPreview(null)}>Cancel</button>
+            <button type="button" className="ck-btn ck-btn-ghost" disabled={busy !== ''} onClick={() => { setPreview(null); heading.current?.focus(); }}>Cancel</button>
           </div>
         </div>
       )}
