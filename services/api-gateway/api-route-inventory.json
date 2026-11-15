@@ -11,9 +11,9 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 60,
-    "endpoints": 503,
-    "canonicalEndpoints": 392,
+    "controllers": 61,
+    "endpoints": 504,
+    "canonicalEndpoints": 393,
     "compatibilityEndpoints": 90,
     "internalEndpoints": 21,
     "diagnosticAliases": 12,
@@ -1182,6 +1182,16 @@
       ],
       "endpointCount": 5,
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/VendorDirectoryController.java"
+    },
+    {
+      "service": "operations-service",
+      "controller": "WhatsAppGroupChangeController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/workflows/whatsapp-groups"
+      ],
+      "endpointCount": 1,
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/WhatsAppGroupChangeController.java"
     },
     {
       "service": "operations-service",
@@ -2825,6 +2835,15 @@
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/VendorDirectoryController.java",
       "line": 84
+    },
+    {
+      "service": "operations-service",
+      "controller": "WhatsAppGroupChangeController",
+      "method": "GET",
+      "path": "/api/v1/workflows/whatsapp-groups/changes",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/WhatsAppGroupChangeController.java",
+      "line": 43
     },
     {
       "service": "operations-service",

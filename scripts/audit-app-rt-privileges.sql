@@ -38,6 +38,7 @@ FROM (VALUES
   ('workflow.workflow_internal_notes',               'UPDATE,DELETE',                 'workflow V11: append-only'),
   ('workflow.workflow_follow_ups',                   'UPDATE,DELETE',                 'workflow V11: append-only'),
   ('workflow.workflow_call_logs',                    'UPDATE,DELETE,TRUNCATE',        'workflow V20: append-only'),
+  ('workflow.workflow_group_link_changes',           'UPDATE,DELETE,TRUNCATE',        'workflow V23: append-only'),
   ('notification.notification_broadcast_recipients', 'UPDATE,DELETE',                 'notification V11: UPDATE on nine columns only'),
   ('notification.broadcast_live_submissions',        'UPDATE,DELETE',                 'notification V12: UPDATE on five columns only'),
   ('notification.broadcast_live_reports',            'UPDATE,DELETE',                 'notification V12: append-only'),

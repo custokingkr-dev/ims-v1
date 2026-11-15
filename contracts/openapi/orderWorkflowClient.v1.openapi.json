@@ -2886,6 +2886,83 @@
           }
         }
       }
+    },
+    "/api/v1/workflows/whatsapp-groups/changes": {
+      "get": {
+        "operationId": "listWhatsAppGroupLinkChanges",
+        "x-ims-controller": "WhatsAppGroupChangeController",
+        "summary": "Superadmin: who changed which WhatsApp group link, when, from where, and the link before and after, newest first",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "description": "Only that school's own groups and item groups; every change when absent",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "description": "Only changes older than this id: the previous page's nextBefore",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "At most this many (1 to 200); 50 when absent",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatsAppGroupLinkChangePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A schoolId, before or limit out of range, or not a number",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Not superadmin: SUPERADMIN_ONLY (operators), or \"WhatsApp group links are for superadmin and operators only\" (anyone else)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderWorkflowError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5725,6 +5802,169 @@
         "x-ims-java-record": {
           "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/GroupLinkService.java",
           "name": "ImportResult",
+          "requireAll": true
+        }
+      },
+      "WhatsAppGroupLinkChange": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "changedAt",
+          "kind",
+          "schoolId",
+          "categoryCode",
+          "vendorId",
+          "vendorName",
+          "before",
+          "after",
+          "outcome",
+          "source",
+          "orderId",
+          "orderNumber",
+          "changedBy",
+          "changedByName"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "SCHOOL_GROUP",
+              "INTERNAL_APPROVAL",
+              "ITEM",
+              "GLOBAL_INTERNAL_APPROVAL",
+              "VENDOR"
+            ],
+            "description": "SCHOOL_GROUP and INTERNAL_APPROVAL are a school's own groups, ITEM a school's group for one item, GLOBAL_INTERNAL_APPROVAL the one every school without its own uses, VENDOR a vendor's group"
+          },
+          "schoolId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "For a school's groups and item groups"
+          },
+          "categoryCode": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For an item group, such as FLIERS"
+          },
+          "vendorId": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "For a vendor's group"
+          },
+          "vendorName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The vendor's current name; null for other groups"
+          },
+          "before": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The link before; null when the group was added"
+          },
+          "after": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The link after; null when the group was removed"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "ADDED",
+              "CHANGED",
+              "REMOVED"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "SETUP",
+              "ORDER",
+              "IMPORT",
+              "VENDOR_DIRECTORY"
+            ],
+            "description": "Workflow set-up, an order's School Group Chat card, the spreadsheet import, or the vendor directory"
+          },
+          "orderId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The order's CK id (never the order number), when it was changed on the order's School Group Chat card"
+          },
+          "orderNumber": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "That order's SOP number as it is now; null before one is minted and for other sources"
+          },
+          "changedBy": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "changedByName": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Their name; the email they were signed in with when identity does not answer; null when neither is known"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/GroupLinkHistoryService.java",
+          "name": "GroupLinkChangeView",
+          "requireAll": true
+        }
+      },
+      "WhatsAppGroupLinkChangePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "changes",
+          "nextBefore"
+        ],
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WhatsAppGroupLinkChange"
+            }
+          },
+          "nextBefore": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Pass as before for the next, older page; null when there is none"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/application/GroupLinkHistoryService.java",
+          "name": "GroupLinkChangePage",
           "requireAll": true
         }
       }

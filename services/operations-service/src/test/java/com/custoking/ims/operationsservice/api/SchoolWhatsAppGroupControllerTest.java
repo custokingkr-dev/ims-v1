@@ -4,8 +4,14 @@ import com.custoking.ims.operationsservice.application.GroupLinkService;
 import com.custoking.ims.operationsservice.application.GroupLinkService.ItemGroupLinkView;
 import com.custoking.ims.operationsservice.application.OrderWorkflowService;
 import com.custoking.ims.operationsservice.application.orderworkflow.rules.WorkflowRuleViolation;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository.Source;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository.Target;
 import com.custoking.ims.operationsservice.persistence.OrderWorkflowRepository;
+import com.custoking.ims.operationsservice.persistence.VendorRepository;
 import com.custoking.ims.operationsservice.persistence.WorkflowReadRepository;
+import com.custoking.ims.operationsservice.persistence.WorkflowRequestScope;
+import com.custoking.ims.operationsservice.persistence.WorkflowSettingsRepository;
 import com.custoking.ims.operationsservice.security.TenantContext;
 import com.custoking.ims.operationsservice.security.TenantContextFilter;
 import org.junit.jupiter.api.AfterEach;
@@ -22,7 +28,9 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -71,7 +79,7 @@ class SchoolWhatsAppGroupControllerTest {
         mvc.perform(put("/api/v1/workflows/school-whatsapp-groups/12/SCHOOL_GROUP").header(TOKEN, "")
                         .contentType("application/json").content("{\"url\":\"" + LINK + "\"}"))
                 .andExpect(status().isUnauthorized());
-        verifyNoInteractions(service);
+        verifyNoInteractions(service, groups);
     }
 
     @Test void aBlankConfiguredTokenRefusesEveryCall() throws Exception {
@@ -91,29 +99,29 @@ class SchoolWhatsAppGroupControllerTest {
     }
 
     @Test void savingPassesTheSchoolTargetAndUrlAndAnswersWithTheLinks() throws Exception {
-        when(service.setSchoolWhatsAppGroupLink(12L, "INTERNAL_APPROVAL", LINK)).thenReturn(Map.of("INTERNAL_APPROVAL", LINK));
+        when(groups.setSchoolGroupLink(12L, "INTERNAL_APPROVAL", LINK)).thenReturn(Map.of("INTERNAL_APPROVAL", LINK));
         mvc.perform(put("/api/v1/workflows/school-whatsapp-groups/12/INTERNAL_APPROVAL").header(TOKEN, "workflow-token")
                         .contentType("application/json").content("{\"url\":\"" + LINK + "\"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.INTERNAL_APPROVAL").value(LINK));
-        verify(service).setSchoolWhatsAppGroupLink(12L, "INTERNAL_APPROVAL", LINK);
+        verify(groups).setSchoolGroupLink(12L, "INTERNAL_APPROVAL", LINK);
 
         // A blank or absent url reaches the service as such; the service treats it as "remove the group".
-        when(service.setSchoolWhatsAppGroupLink(12L, "SCHOOL_GROUP", "")).thenReturn(Map.of());
+        when(groups.setSchoolGroupLink(12L, "SCHOOL_GROUP", "")).thenReturn(Map.of());
         mvc.perform(put("/api/v1/workflows/school-whatsapp-groups/12/SCHOOL_GROUP").header(TOKEN, "workflow-token")
                         .contentType("application/json").content("{\"url\":\"\"}"))
                 .andExpect(status().isOk());
-        verify(service).setSchoolWhatsAppGroupLink(12L, "SCHOOL_GROUP", "");
+        verify(groups).setSchoolGroupLink(12L, "SCHOOL_GROUP", "");
         mvc.perform(put("/api/v1/workflows/school-whatsapp-groups/12/SCHOOL_GROUP").header(TOKEN, "workflow-token")
                         .contentType("application/json").content("{}"))
                 .andExpect(status().isOk());
-        verify(service).setSchoolWhatsAppGroupLink(12L, "SCHOOL_GROUP", null);
+        verify(groups).setSchoolGroupLink(12L, "SCHOOL_GROUP", null);
     }
 
     @Test void aRefusalCarriesItsReasonAsAMessage() throws Exception {
         when(service.schoolWhatsAppGroupLinks(12L)).thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "No access to this school"));
         mvc.perform(get("/api/v1/workflows/school-whatsapp-groups/12").header(TOKEN, "workflow-token"))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.message").value("No access to this school"));
-        when(service.setSchoolWhatsAppGroupLink(12L, "SCHOOL_GROUP", "http://chat.whatsapp.com/AbCdEf1234567890"))
+        when(groups.setSchoolGroupLink(12L, "SCHOOL_GROUP", "http://chat.whatsapp.com/AbCdEf1234567890"))
                 .thenThrow(new WorkflowRuleViolation(WorkflowRuleViolation.INVALID_INVITE, "Paste a WhatsApp group invite link"));
         mvc.perform(put("/api/v1/workflows/school-whatsapp-groups/12/SCHOOL_GROUP").header(TOKEN, "workflow-token")
                         .contentType("application/json").content("{\"url\":\"http://chat.whatsapp.com/AbCdEf1234567890\"}"))
@@ -136,12 +144,12 @@ class SchoolWhatsAppGroupControllerTest {
         mvc.perform(put("/api/v1/workflows/school-whatsapp-groups/12/SCHOOL_GROUP").header(TOKEN, "workflow-token")
                         .contentType("application/json"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").exists());
-        verifyNoInteractions(service);
+        verifyNoInteractions(service, groups);
     }
 
     /**
-     * Who reaches a school's links, end to end from the gateway's identity headers through the real service (only its
-     * repository and transactions stubbed): superadmin reads and writes, an operator assigned to the whole school reads,
+     * Who reaches a school's links, end to end from the gateway's identity headers through the real services (only their
+     * repositories and transactions stubbed): superadmin reads and writes (a write is logged), an operator assigned to the whole school reads,
      * and an operator scoped there to one item only, notebooks included, is refused with the reason: these are the
      * school-wide rows, and an item-scoped operator reads an order's groups through the order (design D34, D42).
      */
@@ -151,7 +159,15 @@ class SchoolWhatsAppGroupControllerTest {
         when(repo.whatsappGroupLinks(41L)).thenReturn(Map.of("INTERNAL_APPROVAL", LINK, "PRODUCT_VENDOR", LINK, "board_shree", LINK));
         OrderWorkflowService real = new OrderWorkflowService(repo, null, null, new TransactionTemplate(mock(PlatformTransactionManager.class)),
                 Clock.systemUTC(), null, null, null, null, null, null, null, null);
-        MockMvc gateway = MockMvcBuilders.standaloneSetup(new SchoolWhatsAppGroupController(real, mock(GroupLinkService.class), "workflow-token"))
+        WorkflowSettingsRepository settingsRepo = mock(WorkflowSettingsRepository.class);
+        GroupLinkChangeRepository changeRepo = mock(GroupLinkChangeRepository.class);
+        // Before the write the school has no approval group of its own; after it, the saved one.
+        when(settingsRepo.schoolGroupLinks(41L)).thenReturn(Map.of(), Map.of("INTERNAL_APPROVAL", LINK));
+        when(changeRepo.record(any(), any(), any(), any(), any()))
+                .thenAnswer(call -> !Objects.equals(call.getArgument(1), call.getArgument(2)));
+        GroupLinkService realGroups = new GroupLinkService(settingsRepo, mock(VendorRepository.class), null,
+                mock(WorkflowRequestScope.class), new TransactionTemplate(mock(PlatformTransactionManager.class)), changeRepo);
+        MockMvc gateway = MockMvcBuilders.standaloneSetup(new SchoolWhatsAppGroupController(real, realGroups, "workflow-token"))
                 .addFilters(new TenantContextFilter()).build();
         String itemOnlyCodes = "workspace:access,notebook-tracker:read,notebook-tracker:act,order:read,order:update";
         String operationsCodes = "workspace:access,order:read,order:update,workflow:read,notebook-tracker:read,notebook-tracker:act";
@@ -183,7 +199,8 @@ class SchoolWhatsAppGroupControllerTest {
                         .contentType("application/json").content("{\"url\":\"" + LINK + "\"}"))
                 .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("SUPERADMIN_ONLY"))
                 .andExpect(jsonPath("$.message").value("Only superadmin can maintain WhatsApp group links"));
-        verify(repo, never()).upsertWhatsAppGroupLink(anyLong(), anyString(), anyString(), anyLong());
+        verify(settingsRepo, never()).upsertSchoolGroupLink(anyLong(), anyString(), anyString(), anyLong());
+        verifyNoInteractions(changeRepo);
 
         gateway.perform(get("/api/v1/workflows/school-whatsapp-groups/41").header(TOKEN, "workflow-token")
                         .header("X-Authenticated-User-Id", "1").header("X-Authenticated-Role", "SUPERADMIN"))
@@ -192,7 +209,8 @@ class SchoolWhatsAppGroupControllerTest {
                         .header("X-Authenticated-User-Id", "1").header("X-Authenticated-Role", "SUPERADMIN")
                         .contentType("application/json").content("{\"url\":\" HTTPS://CHAT.WHATSAPP.COM:/AbCdEf1234567890 \"}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.INTERNAL_APPROVAL").value(LINK));
-        verify(repo).upsertWhatsAppGroupLink(41L, "INTERNAL_APPROVAL", LINK, 1L);
+        verify(settingsRepo).upsertSchoolGroupLink(41L, "INTERNAL_APPROVAL", LINK, 1L);
+        verify(changeRepo).record(Target.schoolGroup(41L, "INTERNAL_APPROVAL"), null, LINK, Source.SETUP, null);
 
         // Only the school's own two groups are kept here; vendor groups live on the vendor records now (D34).
         gateway.perform(put("/api/v1/workflows/school-whatsapp-groups/41/PRODUCT_VENDOR").header(TOKEN, "workflow-token")
@@ -203,7 +221,8 @@ class SchoolWhatsAppGroupControllerTest {
                         .header("X-Authenticated-User-Id", "1").header("X-Authenticated-Role", "SUPERADMIN")
                         .contentType("application/json").content("{\"url\":\"https://example.com/AbCdEf1234567890\"}"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_INVITE"));
-        verify(repo, never()).upsertWhatsAppGroupLink(anyLong(), org.mockito.ArgumentMatchers.eq("PRODUCT_VENDOR"), anyString(), anyLong());
+        verify(settingsRepo, never()).upsertSchoolGroupLink(anyLong(), org.mockito.ArgumentMatchers.eq("PRODUCT_VENDOR"), anyString(), anyLong());
+        verify(settingsRepo, never()).upsertSchoolGroupLink(anyLong(), org.mockito.ArgumentMatchers.eq("SCHOOL_GROUP"), anyString(), anyLong());
     }
 
     @Test void aSchoolsItemGroupsAreReadAndSavedThroughTheGroupLinkService() throws Exception {

@@ -28,7 +28,8 @@ The script is idempotent. A re-run on a migrated database now leaves what the mi
     (all four, V26), `erasure_journal_receipts` (U, D, V39), `students` (I, V39: see the column rule below).
   - tenant_school: `photo_cleanup_outbox` (D, V30).
   - firefighting: `quotation_documents` (U, D, V12), `creation_replays` (U, D, V13).
-  - workflow: `workflow_internal_notes` and `workflow_follow_ups` (U, D, V11), `workflow_call_logs` (U, D, TRUNCATE, V20).
+  - workflow: `workflow_internal_notes` and `workflow_follow_ups` (U, D, V11), `workflow_call_logs` (U, D, TRUNCATE, V20),
+    `workflow_group_link_changes` (U, D, TRUNCATE, V23).
   - notification: `notification_broadcast_recipients` (V11), `broadcast_live_submissions` and `broadcast_live_reports`
     (V12), `generic_submissions` (V15 and V16): U, D. `generic_delivery_results`, `generic_delivery_reports` (V17) and
     `generic_unknown_report_assertions` (V18): I, U, D.

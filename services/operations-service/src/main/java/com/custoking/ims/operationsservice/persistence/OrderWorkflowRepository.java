@@ -175,19 +175,6 @@ public class OrderWorkflowRepository {
                         (first, ignored) -> first, LinkedHashMap::new));
     }
 
-    public void upsertWhatsAppGroupLink(long schoolId, String targetKey, String inviteUrl, long userId) {
-        jdbc.sql("INSERT INTO " + groupLinks + " (school_id, target_key, invite_url, updated_by, updated_at) "
-                        + "VALUES (:school, :target, :url, :user, now()) "
-                        + "ON CONFLICT (school_id, target_key) DO UPDATE SET invite_url = EXCLUDED.invite_url, "
-                        + "updated_by = EXCLUDED.updated_by, updated_at = now()")
-                .param("school", schoolId).param("target", targetKey).param("url", inviteUrl).param("user", userId).update();
-    }
-
-    public int deleteWhatsAppGroupLink(long schoolId, String targetKey) {
-        return jdbc.sql("DELETE FROM " + groupLinks + " WHERE school_id = :school AND target_key = :target")
-                .param("school", schoolId).param("target", targetKey).update();
-    }
-
     // ---- the order's tracker row ------------------------------------------------------------------------------------------
 
     public Optional<TrackerRow> findByOrder(String orderId, boolean lock) {

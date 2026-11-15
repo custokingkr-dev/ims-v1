@@ -1475,22 +1475,24 @@ class OrderWorkflowServiceIntegrationTest {
         assertEquals("Asha Operator", page.items().get(0).assigneeName());
     }
 
-    /** The school's own groups, with row-level security: superadmin keeps them, school-wide operators read them. */
+    /**
+     * The school's own groups, with row-level security: superadmin and school-wide operators read them (superadmin keeps
+     * them through GroupLinkService, which logs each change; see GroupLinkChangeLogIntegrationTest).
+     */
     @Test
-    void aSchoolsOwnGroupsAreKeptBySuperadminAndReadBySchoolWideOperators() {
+    void aSchoolsOwnGroupsAreReadBySuperadminAndSchoolWideOperators() {
         long school = 50;
-        Map<String, String> saved = as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(school, "SCHOOL_GROUP",
-                " HTTPS://chat.whatsapp.com/AbCdEf1234567890 "));
-        assertEquals(Map.of("SCHOOL_GROUP", "https://chat.whatsapp.com/AbCdEf1234567890"), saved);
-        assertEquals(saved, as(() -> asOperator(OP_A, school), () -> service.schoolWhatsAppGroupLinks(school)));
-        assertEquals(403, as(() -> asScopedOperator(OP_A, school + ":FLIERS"), () -> http(() -> service.schoolWhatsAppGroupLinks(school))));
-        assertEquals(WorkflowRuleViolation.SUPERADMIN_ONLY, as(() -> asOperator(OP_A, school),
-                () -> codeOf(() -> service.setSchoolWhatsAppGroupLink(school, "SCHOOL_GROUP", ""))));
-        assertEquals(WorkflowRuleViolation.INVALID_INVITE, as(() -> asSuper(),
-                () -> codeOf(() -> service.setSchoolWhatsAppGroupLink(school, "SCHOOL_GROUP", "https://example.com/AbCdEf1234567890"))));
-        assertEquals(400, as(() -> asSuper(), () -> http(() -> service.setSchoolWhatsAppGroupLink(school, "PRODUCT_VENDOR",
-                "https://chat.whatsapp.com/AbCdEf1234567890"))));
-        assertEquals(Map.of(), as(() -> asSuper(), () -> service.setSchoolWhatsAppGroupLink(school, "SCHOOL_GROUP", " ")));
+        String invite = "https://chat.whatsapp.com/AbCdEf1234567890";
+        owner.sql("INSERT INTO workflow.workflow_school_whatsapp_group_links (school_id, target_key, invite_url, updated_by) "
+                + "VALUES (:s, 'SCHOOL_GROUP', :u, 1)").param("s", school).param("u", invite).update();
+        try {
+            Map<String, String> saved = Map.of("SCHOOL_GROUP", invite);
+            assertEquals(saved, as(() -> asSuper(), () -> service.schoolWhatsAppGroupLinks(school)));
+            assertEquals(saved, as(() -> asOperator(OP_A, school), () -> service.schoolWhatsAppGroupLinks(school)));
+            assertEquals(403, as(() -> asScopedOperator(OP_A, school + ":FLIERS"), () -> http(() -> service.schoolWhatsAppGroupLinks(school))));
+        } finally {
+            owner.sql("DELETE FROM workflow.workflow_school_whatsapp_group_links WHERE school_id = :s").param("s", school).update();
+        }
     }
 
     // ==== status delivery: a retried, versioned outbox (§3.6) ===========================================================

@@ -1,6 +1,9 @@
 package com.custoking.ims.operationsservice.application;
 
 import com.custoking.ims.operationsservice.application.orderworkflow.rules.WorkflowRuleViolation;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository.Source;
+import com.custoking.ims.operationsservice.persistence.GroupLinkChangeRepository.Target;
 import com.custoking.ims.operationsservice.persistence.WorkflowSettingsRepository;
 import com.custoking.ims.operationsservice.persistence.WorkflowSettingsRepository.Setting;
 import com.custoking.ims.operationsservice.security.TenantContext;
@@ -14,15 +17,18 @@ import java.time.OffsetDateTime;
 /**
  * The order workflow's global settings (design D34, §4.7 Groups tab). Today that is one link: the internal approval
  * group every order shows on its approval stages, unless the order's school keeps its own {@code INTERNAL_APPROVAL}
- * group. Superadmin sets it; anyone who works orders may read it. The system only opens the link; it sends nothing.
+ * group. Superadmin sets it; anyone who works orders may read it. Every change is logged in the group link change log.
+ * The system only opens the link; it sends nothing.
  */
 @Service
 public class WorkflowSettingsService {
     private final WorkflowSettingsRepository repo;
+    private final GroupLinkChangeRepository changes;
     private final TransactionTemplate tx;
 
-    public WorkflowSettingsService(WorkflowSettingsRepository repo, TransactionTemplate tx) {
+    public WorkflowSettingsService(WorkflowSettingsRepository repo, GroupLinkChangeRepository changes, TransactionTemplate tx) {
         this.repo = repo;
+        this.changes = changes;
         this.tx = tx;
     }
 
@@ -47,7 +53,7 @@ public class WorkflowSettingsService {
     }
 
     /**
-     * Superadmin only. A blank or null link removes the group.
+     * Superadmin only. A blank or null link removes the group; saving the link already saved changes nothing.
      *
      * @throws WorkflowRuleViolation {@code INVALID_INVITE} (400) for anything but a WhatsApp group invite
      */
@@ -60,8 +66,12 @@ public class WorkflowSettingsService {
         String clean = GroupLinkService.canonicalInvite(inviteUrl);
         long userId = ctx.userId();
         return tx.execute(status -> {
-            if (clean == null) repo.deleteSetting(WorkflowSettingsRepository.INTERNAL_APPROVAL_GROUP_URL);
-            else repo.upsertSetting(WorkflowSettingsRepository.INTERNAL_APPROVAL_GROUP_URL, clean, userId);
+            changes.lockLinks();
+            String before = repo.setting(WorkflowSettingsRepository.INTERNAL_APPROVAL_GROUP_URL).map(Setting::value).orElse(null);
+            if (changes.record(Target.globalInternalApproval(), before, clean, Source.SETUP, null)) {
+                if (clean == null) repo.deleteSetting(WorkflowSettingsRepository.INTERNAL_APPROVAL_GROUP_URL);
+                else repo.upsertSetting(WorkflowSettingsRepository.INTERNAL_APPROVAL_GROUP_URL, clean, userId);
+            }
             return InternalApprovalGroupView.of(repo.setting(WorkflowSettingsRepository.INTERNAL_APPROVAL_GROUP_URL).orElse(null));
         });
     }

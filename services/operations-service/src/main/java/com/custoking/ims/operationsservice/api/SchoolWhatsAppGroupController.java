@@ -71,7 +71,7 @@ public class SchoolWhatsAppGroupController {
                                     @PathVariable long schoolId, @PathVariable String target,
                                     @RequestBody WhatsAppGroupLinkRequest request) {
         requireToken(token, "workflow:write");
-        return workflows.setSchoolWhatsAppGroupLink(schoolId, target, request == null ? null : request.url());
+        return groups.setSchoolGroupLink(schoolId, target, request == null ? null : request.url());
     }
 
     /**
