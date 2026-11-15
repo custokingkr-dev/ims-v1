@@ -53,7 +53,33 @@ drainer re-evaluates `guardian-communications.v2` immediately before every attem
 retries, and needs the outcome back on the queued row. The command reuses the persisted inbox and
 `NotificationInboxProcessor`, so the guard, row lock, delivery-attempt audit and terminal-state
 idempotency apply unchanged. school-core ships with `ATTENDANCE_ABSENTEE_DELIVERY_MODE=dry-run`,
-which never calls platform-service and marks rows `SENT_DRY_RUN`. The v2 evidence binds the school, student, guardian, channel, normalized
+which never calls platform-service and marks rows `SENT_DRY_RUN`.
+
+Since 2026-11-15 `GET /attendance/exceptions`, `GET /attendance/absentees` and
+`POST /attendance/absentees/notify` also return `channel: WHATSAPP` and `deliveryMode: DRY_RUN | LIVE`.
+`deliveryMode` is `LIVE` only when `ATTENDANCE_ABSENTEE_DELIVERY_MODE=live` **and**
+`ATTENDANCE_ABSENTEE_PARENTS_RECEIVE=true` (`attendance.absentee-delivery.parents-receive`, default
+false). Live mode alone reaches no parent: platform-service's `Msg91NotificationDeliveryProvider`
+refuses every live send (`liveDeliveryBlocked`) and answers dry run, which the gateway records as
+`SENT_DRY_RUN`. Set `parents-receive` only once platform-service really sends WhatsApp; it changes
+only what the screen says, not which gateway the worker uses. Unless the mode is `LIVE`, the
+attendance Exceptions screen says that absence alerts go to parents on WhatsApp but WhatsApp sending
+isn't switched on, so no parent receives them. Its button reads "Queue WhatsApp alerts (N)" and
+`SENT_DRY_RUN` rows read "Not sent (test mode)". The page does not infer the mode from those rows:
+rows queued before a go-live stay `SENT_DRY_RUN` for good, and each says so on its own chip.
+
+The two list endpoints also preview the policy for every ABSENT row that has no alert yet:
+`alertAllowed` (boolean) and `alertBlockedReason` (the `guardian-communications.v2` reason when
+refused, else null); other rows carry null for both. The preview is one snapshot query per school
+(`GuardianCommunicationPolicy.preview`, the same joins and `decide()` as `evaluate`) and skips the
+erasure-journal fence, so it is advisory: queuing still evaluates every student, and the drainer
+re-evaluates before every attempt. The screen counts and offers only allowed rows ("N ready for a
+WhatsApp alert"), and labels refused rows "Can't alert" with the reason in words, for example "The
+guardian's phone number is missing or not verified." (verification is checked before the number) or
+"No consent to school messages is recorded."; a backend
+without the preview falls back to whether the student record has a phone number.
+
+The v2 evidence binds the school, student, guardian, channel, normalized
 destination SHA-256, source event, immutable consent event and notice version, evaluation time, and
 expiry. Platform compares every binding and rejects future, expired, or more-than-two-minute-old
 evidence before invoking the provider. Missing, invalid, stale, or mismatched evidence produces a

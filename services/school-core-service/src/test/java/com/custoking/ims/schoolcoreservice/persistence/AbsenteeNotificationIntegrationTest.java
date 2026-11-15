@@ -17,6 +17,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
@@ -24,6 +26,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -346,16 +349,137 @@ class AbsenteeNotificationIntegrationTest {
                 .containsEntry("skippedAlreadyQueued", 0).containsEntry("suppressedCount", 0);
     }
 
+    // ── alert preview on the lists ──────────────────────────────────────────────
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void exceptions_alertPreview_agreesWithWhatNotifyThenDoes() {
+        // Dev's consent record is gone; Farah (6, c1/s1) has a consented guardian whose phone is unverified.
+        jdbc.sql("DELETE FROM student.student_consent_events WHERE student_id = 4").update();
+        student(6L, "ADM6", "4", "Farah", 1L, "c1", "s1", "919000000006");
+        guardian(6L, 1L, "919000000006", false, true);
+        mark(DAY, "c1", "s1", 6, "ABSENT");
+
+        Map<Long, String> preview = alertPreview(
+                (List<Map<String, Object>>) repo.exceptions(DAY, null, null, 1L).get("students"));
+        assertThat(preview).containsExactlyInAnyOrderEntriesOf(Map.of(
+                1L, "ALLOWED",                                    // Asha
+                2L, "NO_PRIMARY_GUARDIAN",                        // Bala
+                3L, "DESTINATION_MISSING",                        // Chitra: guardian without a phone
+                4L, "SCHOOL_COMMUNICATIONS_DECISION_MISSING",     // Dev: no consent
+                6L, "CONTACT_NOT_VERIFIED"));                     // Farah
+
+        Map<String, Object> notified = repo.notifyAbsentees(DAY, null, null, 1L, 42L);
+        assertThat(notified).containsEntry("queued", 1).containsEntry("suppressedCount", 4);
+        assertThat(queuedStudentIds()).as("queued exactly the students the list called allowed").containsExactly(1L);
+        assertThat((List<Map<String, Object>>) notified.get("suppressed"))
+                .extracting(s -> s.get("studentId") + ":" + s.get("reason"))
+                .as("refused each blocked student for the reason the list gave")
+                .containsExactlyInAnyOrder("2:NO_PRIMARY_GUARDIAN", "3:DESTINATION_MISSING",
+                        "4:SCHOOL_COMMUNICATIONS_DECISION_MISSING", "6:CONTACT_NOT_VERIFIED");
+
+        // Once queued, a row has no preview; the refused rows still say why.
+        List<Map<String, Object>> after = (List<Map<String, Object>>) repo.exceptions(DAY, null, null, 1L).get("students");
+        assertThat(after).filteredOn(s -> Long.valueOf(1L).equals(s.get("studentId"))).singleElement()
+                .satisfies(asha -> assertThat(asha).containsEntry("alreadyQueued", true)
+                        .containsEntry("alertAllowed", null).containsEntry("alertBlockedReason", null));
+        assertThat(alertPreview(after)).containsExactlyInAnyOrderEntriesOf(Map.of(
+                2L, "NO_PRIMARY_GUARDIAN", 3L, "DESTINATION_MISSING",
+                4L, "SCHOOL_COMMUNICATIONS_DECISION_MISSING", 6L, "CONTACT_NOT_VERIFIED"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void absentees_carryTheSamePreview_andLateOrLeaveRowsHaveNone() {
+        mark(DAY, "c1", "s1", 3, "LATE");                          // Chitra becomes LATE
+
+        List<Map<String, Object>> exceptions = (List<Map<String, Object>>) repo.exceptions(DAY, "c1", "s1", 1L).get("students");
+        assertThat(exceptions).filteredOn(s -> Long.valueOf(3L).equals(s.get("studentId"))).singleElement()
+                .satisfies(chitra -> assertThat(chitra).containsEntry("status", "LATE")
+                        .containsEntry("alertAllowed", null).containsEntry("alertBlockedReason", null));
+
+        List<Map<String, Object>> absentees = (List<Map<String, Object>>) repo.absentees(DAY, "c1", "s1", 1L).get("students");
+        assertThat(absentees).extracting(s -> s.get("studentId") + ":" + s.get("alertAllowed") + ":" + s.get("alertBlockedReason"))
+                .containsExactly("1:true:null", "2:false:NO_PRIMARY_GUARDIAN");
+    }
+
+    @Test
+    void preview_answersManyStudentsWithOneQuery_andAgreesWithEvaluate() {
+        AtomicInteger statements = new AtomicInteger();
+        JdbcClient counting = (JdbcClient) Proxy.newProxyInstance(JdbcClient.class.getClassLoader(),
+                new Class<?>[] {JdbcClient.class}, (proxy, method, args) -> {
+                    if ("sql".equals(method.getName())) statements.incrementAndGet();
+                    try {
+                        return method.invoke(jdbc, args);
+                    } catch (InvocationTargetException ex) {
+                        throw ex.getCause();
+                    }
+                });
+
+        // 999 does not exist; 5 belongs to school 2; 1 is asked for twice.
+        Map<Long, GuardianCommunicationPolicy.Decision> preview = new GuardianCommunicationPolicy(counting)
+                .preview(1L, List.of(4L, 1L, 2L, 3L, 999L, 5L, 1L), "WHATSAPP");
+
+        assertThat(statements).as("one snapshot query for every student").hasValue(1);
+        assertThat(preview.keySet()).containsExactly(4L, 1L, 2L, 3L, 999L, 5L);
+        assertThat(preview.values()).extracting(GuardianCommunicationPolicy.Decision::reason)
+                .containsExactly("ALLOWED", "ALLOWED", "NO_PRIMARY_GUARDIAN", "DESTINATION_MISSING",
+                        "STUDENT_NOT_FOUND", "STUDENT_NOT_FOUND");
+        GuardianCommunicationPolicy authoritative = new GuardianCommunicationPolicy(jdbc);
+        preview.forEach((studentId, decision) -> {
+            GuardianCommunicationPolicy.Decision evaluated = authoritative.evaluate(1L, studentId, "WHATSAPP");
+            assertThat(decision.allowed()).as("student %d allowed", studentId).isEqualTo(evaluated.allowed());
+            assertThat(decision.reason()).as("student %d reason", studentId).isEqualTo(evaluated.reason());
+            assertThat(decision.guardianId()).isEqualTo(evaluated.guardianId());
+            assertThat(decision.destination()).isEqualTo(evaluated.destination());
+            assertThat(decision.consentEventId()).isEqualTo(evaluated.consentEventId());
+        });
+    }
+
     // ── helpers ─────────────────────────────────────────────────────────────────
 
+    /** studentId to "ALLOWED" or the refusal reason, for rows that carry a preview. */
+    private static Map<Long, String> alertPreview(List<Map<String, Object>> rows) {
+        Map<Long, String> preview = new java.util.LinkedHashMap<>();
+        for (Map<String, Object> row : rows) {
+            Object allowed = row.get("alertAllowed");
+            if (allowed == null) continue;
+            preview.put((Long) row.get("studentId"),
+                    Boolean.TRUE.equals(allowed) ? "ALLOWED" : String.valueOf(row.get("alertBlockedReason")));
+        }
+        return preview;
+    }
+
+    private static void student(long id, String admissionNo, String rollNo, String name, long schoolId,
+                                String classId, String sectionId, String phone) {
+        jdbc.sql("""
+                INSERT INTO student.students
+                    (id, admission_no, roll_no, full_name, school_id, class_id, section_id, academic_year_id,
+                     father_contact, phone)
+                VALUES (:id, :admissionNo, :rollNo, :name, :schoolId, :classId, :sectionId, :academicYearId,
+                        :phone, :phone)
+                """)
+                .param("id", id).param("admissionNo", admissionNo).param("rollNo", rollNo).param("name", name)
+                .param("schoolId", schoolId).param("classId", classId).param("sectionId", sectionId)
+                .param("academicYearId", AcademicCalendar.currentAcademicYear(
+                        AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH).id())
+                .param("phone", phone)
+                .update();
+    }
+
     private static void consentedGuardian(long studentId, long schoolId, String phone) {
+        guardian(studentId, schoolId, phone, true, true);
+    }
+
+    private static void guardian(long studentId, long schoolId, String phone, boolean verified, boolean consented) {
         String guardianId = "guardian-" + studentId;
         jdbc.sql("""
                 INSERT INTO student.guardians (id, school_id, full_name, phone, contact_verified_at, status)
-                VALUES (:id, :schoolId, :name, :phone, now(), 'ACTIVE')
+                VALUES (:id, :schoolId, :name, :phone, CASE WHEN :verified THEN now() END, 'ACTIVE')
                 """)
                 .param("id", guardianId).param("schoolId", schoolId)
                 .param("name", "Guardian " + studentId).param("phone", phone)
+                .param("verified", verified)
                 .update();
         jdbc.sql("""
                 INSERT INTO student.student_guardians
@@ -365,6 +489,7 @@ class AbsenteeNotificationIntegrationTest {
                 .param("id", "link-" + studentId).param("schoolId", schoolId)
                 .param("studentId", studentId).param("guardianId", guardianId)
                 .update();
+        if (!consented) return;
         jdbc.sql("""
                 INSERT INTO student.student_consent_events
                     (id, school_id, student_id, guardian_id, purpose, status, notice_version, evidence_source)

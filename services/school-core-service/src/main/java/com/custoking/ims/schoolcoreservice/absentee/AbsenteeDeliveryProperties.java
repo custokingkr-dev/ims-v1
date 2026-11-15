@@ -26,10 +26,21 @@ public class AbsenteeDeliveryProperties {
     private long initialDelayMs = 20_000;
     /** MSG91 WhatsApp template name to send with; blank until the product owner supplies one. */
     private String whatsappTemplateName = "";
+    /**
+     * Whether a live hand-off actually reaches parents. {@code live} mode alone does not: today
+     * platform-service refuses every live provider send (Msg91NotificationDeliveryProvider
+     * liveDeliveryBlocked), so it only ever answers dryRun. Only what the attendance API reports to the
+     * screen reads this; it does not change which gateway the worker uses.
+     */
+    private boolean parentsReceive = false;
 
     public String getMode() { return mode; }
     public void setMode(String mode) { this.mode = mode == null ? MODE_DRY_RUN : mode.trim().toLowerCase(); }
     public boolean isLive() { return MODE_LIVE.equals(mode); }
+    public boolean isParentsReceive() { return parentsReceive; }
+    public void setParentsReceive(boolean parentsReceive) { this.parentsReceive = parentsReceive; }
+    /** Live mode and a provider that really sends: the only case in which a queued alert reaches a parent. */
+    public boolean reachesParents() { return isLive() && parentsReceive; }
     public int getBatchSize() { return batchSize; }
     public void setBatchSize(int batchSize) { this.batchSize = batchSize; }
     public int getMaxAttempts() { return maxAttempts; }

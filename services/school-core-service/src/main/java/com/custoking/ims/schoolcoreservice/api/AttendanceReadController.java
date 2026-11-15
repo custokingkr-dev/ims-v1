@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.api;
 
+import com.custoking.ims.schoolcoreservice.absentee.AbsenteeDeliveryProperties;
 import com.custoking.ims.schoolcoreservice.api.dto.DailyEntryRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.NotifyAbsenteesRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.SaveSectionRegisterRequest;
@@ -35,6 +36,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -43,24 +45,31 @@ import java.util.function.Function;
 @RequestMapping("/api/v1/attendance")
 public class AttendanceReadController {
 
+    static final String DELIVERY_MODE_DRY_RUN = "DRY_RUN";
+    static final String DELIVERY_MODE_LIVE = "LIVE";
+
     private final AttendanceReadRepository attendance;
     private final String readToken;
     private final ModuleEntitlementGuard moduleGuard;
+    private final AbsenteeDeliveryProperties absenteeDelivery;
 
     @Autowired
     public AttendanceReadController(
             AttendanceReadRepository attendance,
             ModuleEntitlementGuard moduleGuard,
+            AbsenteeDeliveryProperties absenteeDelivery,
             @Value("${attendance.read-token:}") String readToken) {
         this.attendance = attendance;
         this.moduleGuard = moduleGuard;
+        // Without delivery configuration nothing can send, so report the default (dry run).
+        this.absenteeDelivery = absenteeDelivery == null ? new AbsenteeDeliveryProperties() : absenteeDelivery;
         this.readToken = readToken == null ? "" : readToken.trim();
     }
 
     public AttendanceReadController(
             AttendanceReadRepository attendance,
             @Value("${attendance.read-token:}") String readToken) {
-        this(attendance, null, readToken);
+        this(attendance, null, null, readToken);
     }
 
     @GetMapping("/daily")
@@ -139,7 +148,7 @@ public class AttendanceReadController {
         TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         requireAttendanceModule(scope);
-        return execute(() -> attendance.absentees(date, classId, sectionId, scope));
+        return withAbsenteeDelivery(execute(() -> attendance.absentees(date, classId, sectionId, scope)));
     }
 
     @GetMapping("/exceptions")
@@ -153,7 +162,7 @@ public class AttendanceReadController {
         TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         requireAttendanceModule(scope);
-        return execute(() -> attendance.exceptions(date, classId, sectionId, scope));
+        return withAbsenteeDelivery(execute(() -> attendance.exceptions(date, classId, sectionId, scope)));
     }
 
     @PostMapping("/absentees/notify")
@@ -167,10 +176,10 @@ public class AttendanceReadController {
         Long actorId = TenantContext.get() != null ? TenantContext.get().userId() : null;
         // Parse inside execute() so a malformed date is a 400 like every other date on this
         // controller, not an unhandled DateTimeParseException (500).
-        return execute(() -> {
+        return withAbsenteeDelivery(execute(() -> {
             LocalDate date = body.date() == null || body.date().isBlank() ? LocalDate.now() : LocalDate.parse(body.date());
             return attendance.notifyAbsentees(date, body.classId(), body.sectionId(), scope, actorId);
-        });
+        }));
     }
 
     @GetMapping("/report/register")
@@ -350,6 +359,19 @@ public class AttendanceReadController {
         String date = request.date() == null ? "today" : request.date();
         Long actorId = TenantContext.get().userId();
         return execute(() -> attendance.submitAttendanceDay(date, scope, actorId));
+    }
+
+    /**
+     * Absence alerts go to parents on WhatsApp only. {@code deliveryMode} is {@code LIVE} only when the
+     * delivery worker runs in live mode AND the provider is declared to really send
+     * ({@code attendance.absentee-delivery.parents-receive}); otherwise it is {@code DRY_RUN}: every
+     * step runs except sending the message, so the screen must not imply that parents receive anything.
+     */
+    private Map<String, Object> withAbsenteeDelivery(Map<String, Object> body) {
+        Map<String, Object> response = body == null ? new LinkedHashMap<>() : new LinkedHashMap<>(body);
+        response.put("channel", AttendanceReadRepository.ABSENTEE_ALERT_CHANNEL);
+        response.put("deliveryMode", absenteeDelivery.reachesParents() ? DELIVERY_MODE_LIVE : DELIVERY_MODE_DRY_RUN);
+        return response;
     }
 
     private void requireAttendanceModule(Long schoolId) {

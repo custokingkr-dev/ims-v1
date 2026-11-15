@@ -35,6 +35,7 @@ class AbsenteeDeliveryWiringTest {
             assertThat(context).hasSingleBean(AbsenteeDeliveryScheduler.class);
             assertThat(context.getBean(AbsenteeDeliveryGateway.class)).isInstanceOf(DryRunAbsenteeDeliveryGateway.class);
             assertThat(context.getBean(AbsenteeDeliveryProperties.class).isLive()).isFalse();
+            assertThat(context.getBean(AbsenteeDeliveryProperties.class).reachesParents()).isFalse();
         });
     }
 
@@ -49,6 +50,27 @@ class AbsenteeDeliveryWiringTest {
                     assertThat(context.getBean(AbsenteeDeliveryGateway.class)).isInstanceOf(PlatformAbsenteeDeliveryGateway.class);
                     assertThat(((PlatformAbsenteeDeliveryGateway) context.getBean(AbsenteeDeliveryGateway.class)).configured()).isTrue();
                     assertThat(context.getBean(AbsenteeDeliveryProperties.class).getMaxAttempts()).isEqualTo(4);
+                    // Live hand-off alone does not reach parents: platform-service still refuses live sends.
+                    assertThat(context.getBean(AbsenteeDeliveryProperties.class).reachesParents()).isFalse();
+                });
+    }
+
+    @Test
+    void parentsReceiveBindsButDoesNotChangeTheGateway() {
+        runner.withPropertyValues(
+                        "attendance.absentee-delivery.mode=live",
+                        "attendance.absentee-delivery.parents-receive=true",
+                        "platform.base-url=https://custoking-platform-service-dev-1.asia-south2.run.app",
+                        "platform.notification-status-token=secret")
+                .run(context -> {
+                    assertThat(context.getBean(AbsenteeDeliveryGateway.class)).isInstanceOf(PlatformAbsenteeDeliveryGateway.class);
+                    assertThat(context.getBean(AbsenteeDeliveryProperties.class).isParentsReceive()).isTrue();
+                    assertThat(context.getBean(AbsenteeDeliveryProperties.class).reachesParents()).isTrue();
+                });
+        runner.withPropertyValues("attendance.absentee-delivery.parents-receive=true")
+                .run(context -> {
+                    assertThat(context.getBean(AbsenteeDeliveryGateway.class)).isInstanceOf(DryRunAbsenteeDeliveryGateway.class);
+                    assertThat(context.getBean(AbsenteeDeliveryProperties.class).reachesParents()).isFalse();
                 });
     }
 }

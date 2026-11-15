@@ -25,6 +25,8 @@ import java.time.Clock;
  *   PLATFORM_CLOUD_RUN_AUTH           = auto (default) | never | always                                     (live)
  *   NOTIFICATION_STATUS_TOKEN         = the same secret platform-service reads as notification.status.token (live)
  *   ATTENDANCE_ABSENTEE_WHATSAPP_TEMPLATE_NAME = approved MSG91 WhatsApp template (live; blank until supplied)
+ *   ATTENDANCE_ABSENTEE_PARENTS_RECEIVE = false (default) | true: true only once platform-service really
+ *                                         sends WhatsApp; it only changes what the attendance screen says
  * </pre>
  *
  * Live mode with an incomplete configuration fails startup rather than dead-lettering every row.
@@ -74,8 +76,8 @@ public class AbsenteeDeliveryConfiguration {
                                                    @Value("${platform.notification-status-token:}") String serviceToken) {
         return args -> {
             validate(properties, platformBaseUrl, serviceToken);
-            log.info("absentee.delivery.mode mode={} batchSize={} maxAttempts={} whatsappTemplateName={}",
-                    properties.getMode(), properties.getBatchSize(), properties.getMaxAttempts(),
+            log.info("absentee.delivery.mode mode={} parentsReceive={} batchSize={} maxAttempts={} whatsappTemplateName={}",
+                    properties.getMode(), properties.isParentsReceive(), properties.getBatchSize(), properties.getMaxAttempts(),
                     properties.getWhatsappTemplateName().isBlank() ? "(unset)" : properties.getWhatsappTemplateName());
         };
     }

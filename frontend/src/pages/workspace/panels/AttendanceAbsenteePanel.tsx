@@ -1,12 +1,14 @@
 import { Phone, PhoneOff, Search, Send } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { todayIso } from '../utils';
 import type {
+  AbsenteeDeliveryMode,
   AbsenteeNotificationStatus,
   AttendanceExceptionListResponse,
+  AttendanceExceptionStudent,
   NotifyAbsenteesResponse,
 } from '../../../types/attendance';
 import { AttendancePagination } from './attendance/AttendancePagination';
@@ -24,9 +26,9 @@ function errMessage(err: unknown, fallback: string): string {
 function deliveryChip(status: AbsenteeNotificationStatus | null | undefined) {
   switch (status) {
     case 'SENT':
-      return <span className="ck-status sapproved">Sent</span>;
+      return <span className="ck-status sapproved" title="Sent to the parent on WhatsApp.">Sent</span>;
     case 'SENT_DRY_RUN':
-      return <span className="ck-status sinfo" title="Delivery is in dry-run mode: every step ran except the actual message.">Sent (dry run)</span>;
+      return <span className="ck-status sinfo" title="WhatsApp sending is in test mode: every step ran except sending the message.">Not sent (test mode)</span>;
     case 'FAILED':
       return <span className="ck-status spending" title="Delivery failed; the worker will retry.">Retrying</span>;
     case 'DEAD_LETTER':
@@ -37,6 +39,68 @@ function deliveryChip(status: AbsenteeNotificationStatus | null | undefined) {
     default:
       return <span className="ck-status spending" title="Waiting for the background delivery worker.">Queued</span>;
   }
+}
+
+/**
+ * Why the guardian-communication policy would refuse an alert, in staff words. Keys are every refusal
+ * reason GuardianCommunicationPolicy.decide() can give for WhatsApp.
+ */
+const ALERT_BLOCKED_TEXT: Record<string, string> = {
+  NO_PRIMARY_GUARDIAN: 'No primary guardian is recorded.',
+  GUARDIAN_INACTIVE: 'The primary guardian is inactive.',
+  // receives_notifications on the student-guardian link; staff or a data repair can switch it off too.
+  NOTIFICATION_PREFERENCE_DISABLED: 'School notifications are turned off for this guardian.',
+  // The policy checks verification before the number, so an unverified guardian may have no number at all.
+  CONTACT_NOT_VERIFIED: "The guardian's phone number is missing or not verified.",
+  DESTINATION_MISSING: 'The guardian has no phone number.',
+  SCHOOL_COMMUNICATIONS_DECISION_MISSING: 'No consent to school messages is recorded.',
+  CONSENT_GUARDIAN_UNSPECIFIED: "Consent wasn't recorded for the primary guardian.",
+  CONSENT_GUARDIAN_MISMATCH: "Consent wasn't recorded for the primary guardian.",
+  // The latest decision is PENDING, DENIED, WITHDRAWN or EXPIRED.
+  SCHOOL_COMMUNICATIONS_NOT_GRANTED: "The guardian hasn't agreed to school messages.",
+  // A record on another lawful basis (e.g. LEGAL_OBLIGATION) is refused until its meaning is defined.
+  LAWFUL_BASIS_NOT_CONSENT: 'The consent record uses a legal basis other than consent.',
+  CONSENT_NOTICE_VERSION_MISSING: 'The consent record is incomplete.',
+  SCHOOL_COMMUNICATIONS_EXPIRED: 'Consent to school messages has expired.',
+};
+
+function alertBlockedText(reason: string | null | undefined) {
+  return (reason && ALERT_BLOCKED_TEXT[reason]) || "The guardian's settings don't allow school messages.";
+}
+
+/**
+ * The alert column for an ABSENT row that has no alert yet. The backend's policy preview decides;
+ * an older backend without it falls back to whether the student record has a phone number.
+ */
+function pendingAlertChip(student: AttendanceExceptionStudent) {
+  if (student.alertAllowed === true) return <span className="ck-status spending">Ready</span>;
+  if (student.alertAllowed === false) {
+    return (
+      <>
+        <span className="ck-status sneutral">Can't alert</span>
+        <span className="ck-att-cell-sub">{alertBlockedText(student.alertBlockedReason)}</span>
+      </>
+    );
+  }
+  return student.hasContact
+    ? <span className="ck-status spending">Ready</span>
+    : <span className="ck-status sneutral">Unavailable</span>;
+}
+
+function plural(count: number, one: string, many: string) {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/** Queuing is not delivery: in test mode (or an older backend that does not say) nothing reaches a parent. */
+function notifyToast(result: NotifyAbsenteesResponse, fallbackMode: AbsenteeDeliveryMode | undefined) {
+  const live = (result.deliveryMode ?? fallbackMode) === 'LIVE';
+  // Every policy refusal (no number, no consent, ...) is in suppressedCount; older backends only
+  // report the no-number ones.
+  const skipped = result.skippedAlreadyQueued + Math.max(result.suppressedCount ?? 0, result.skippedNoContact);
+  const queued = plural(result.queued, 'WhatsApp alert', 'WhatsApp alerts');
+  return live
+    ? `Queued ${queued}; skipped ${skipped}. Each row shows whether its message was sent.`
+    : `Queued ${queued} in test mode; skipped ${skipped}. WhatsApp sending isn't switched on, so no parent will receive ${result.queued === 1 ? 'it' : 'them'}.`;
 }
 
 export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
@@ -60,6 +124,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
   const [notifying, setNotifying] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+  const deliveryNoteId = useId();
 
   useEffect(() => {
     void api.get<ClassOpt[]>('/classes', { params: scoped })
@@ -107,8 +172,15 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
   }, [query, statusFilter, pageSize]);
 
   const students = data?.students || [];
+  // Only a LIVE answer means alerts can reach parents; a missing mode (older backend) is not live. The server says LIVE
+  // only once parents really receive alerts (parents-receive). A row finished in test mode says so on its own chip; it is
+  // not used here, because rows from before a go-live stay "test mode" for good.
+  const sendingSwitchedOn = data?.deliveryMode === 'LIVE';
   const absentStudents = students.filter((student) => student.status === 'ABSENT');
-  const notifiable = absentStudents.filter((student) => student.hasContact && !student.alreadyQueued).length;
+  // The policy preview decides; `?? hasContact` keeps an older backend without it working.
+  const notifiable = absentStudents
+    .filter((student) => !student.alreadyQueued && (student.alertAllowed ?? student.hasContact))
+    .length;
   const filteredStudents = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return students.filter((student) => {
@@ -127,7 +199,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
 
   const notify = async () => {
     if (!canManageAttendance) {
-      setError('You need attendance:manage permission to queue absentee notifications.');
+      setError('You need attendance:manage permission to queue WhatsApp alerts.');
       setToast('');
       return;
     }
@@ -139,13 +211,12 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
       if (classId) body.classId = classId;
       if (sectionId) body.sectionId = sectionId;
       const response = await api.post<NotifyAbsenteesResponse>('/attendance/absentees/notify', body);
-      const result = response.data;
       // Queuing is not delivery: a background worker drains the queue and the per-row status below
       // shows what actually happened.
-      setToast(`Queued ${result.queued} for delivery by the background worker; skipped ${result.skippedNoContact + result.skippedAlreadyQueued}. Refresh to see each row's delivery status.`);
+      setToast(notifyToast(response.data, data?.deliveryMode));
       await load(date, classId, sectionId);
     } catch (err) {
-      setError(errMessage(err, 'Could not queue notifications'));
+      setError(errMessage(err, 'Could not queue WhatsApp alerts'));
     } finally {
       setNotifying(false);
     }
@@ -155,10 +226,19 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
     <div className="ck-panel-stack">
       {toast && <div className="ck-alert ck-alert-g"><span>OK</span><div>{toast}</div></div>}
       {error && <div className="ck-alert ck-alert-re"><span>!</span><div>{error}</div></div>}
+      {!sendingSwitchedOn && (
+        <div className="ck-alert ck-alert-am" role="note" id={deliveryNoteId}>
+          <span>i</span>
+          <div>
+            Absence alerts go to parents on WhatsApp, but WhatsApp sending isn't switched on yet.
+            Queued alerts go through every step except sending, so no parent receives them.
+          </div>
+        </div>
+      )}
       {!canManageAttendance && (
         <div className="ck-alert ck-alert-am">
           <span>i</span>
-          <div>You can review absentees. Notification queuing requires attendance:manage.</div>
+          <div>You can review absentees. Queuing WhatsApp alerts requires attendance:manage.</div>
         </div>
       )}
 
@@ -207,26 +287,27 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
             type="button"
             className="ck-att-button ck-att-button--primary"
             disabled={!canManageAttendance || notifiable === 0 || notifying}
+            aria-describedby={sendingSwitchedOn ? undefined : deliveryNoteId}
             onClick={notify}
           >
             <Send size={16} />
-            {notifying ? 'Queuing...' : `Notify eligible (${notifiable})`}
+            {notifying ? 'Queuing…' : `Queue WhatsApp alerts (${notifiable})`}
           </button>
         </div>
       </div>
 
       <div className="ck-att-kpi-band">
-        <div className="ck-att-kpi ck-att-kpi--alert"><div><span>Absent</span><strong>{data?.absentCount ?? 0}</strong><small>{notifiable} can be notified</small></div></div>
+        <div className="ck-att-kpi ck-att-kpi--alert"><div><span>Absent</span><strong>{data?.absentCount ?? 0}</strong><small>{notifiable} ready for a WhatsApp alert</small></div></div>
         <div className="ck-att-kpi"><div><span>Late arrivals</span><strong>{data?.lateCount ?? 0}</strong><small>Review arrival remarks</small></div></div>
         <div className="ck-att-kpi"><div><span>Excused leave</span><strong>{data?.leaveCount ?? 0}</strong><small>Excluded from percentage</small></div></div>
-        <div className="ck-att-kpi"><div><span>Parents queued</span><strong>{data?.queuedCount ?? 0}</strong><small>No duplicate notification</small></div></div>
+        <div className="ck-att-kpi"><div><span>WhatsApp alerts queued</span><strong>{data?.queuedCount ?? 0}</strong><small>One per student per day</small></div></div>
       </div>
 
       <div className="ck-att-report-card">
         <div className="ck-att-report-heading">
           <div><strong>Attendance exceptions</strong><span>{filteredStudents.length} students in the current view</span></div>
           <span className={`ck-status ${canManageAttendance ? 'sapproved' : 'sneutral'}`}>
-            {canManageAttendance ? 'Can notify' : 'Read-only'}
+            {canManageAttendance ? 'Can queue alerts' : 'Read-only'}
           </span>
         </div>
         {loading ? (
@@ -238,7 +319,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
             <div className="ck-att-table-scroll">
               <table className="ck-att-table">
                 <thead>
-                  <tr><th>Student</th><th>Class and section</th><th>Exception</th><th>Remarks</th><th>Parent contact</th><th>Notification</th></tr>
+                  <tr><th>Student</th><th>Class and section</th><th>Exception</th><th>Remarks</th><th>Parent contact</th><th>WhatsApp alert</th></tr>
                 </thead>
                 <tbody>
                   {visibleStudents.map((student) => (
@@ -265,9 +346,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
                           ? <span className="ck-status sneutral">Not required</span>
                           : student.alreadyQueued
                           ? deliveryChip(student.notificationStatus)
-                          : student.hasContact
-                            ? <span className="ck-status spending">Ready</span>
-                            : <span className="ck-status sneutral">Unavailable</span>}
+                          : pendingAlertChip(student)}
                       </td>
                     </tr>
                   ))}

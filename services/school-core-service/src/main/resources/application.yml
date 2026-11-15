@@ -127,6 +127,11 @@ attendance:
     # Approved MSG91 WhatsApp template name. Blank until the product owner supplies one; in live mode
     # the provider would otherwise fall back to the contract template id, which MSG91 does not know.
     whatsapp-template-name: ${ATTENDANCE_ABSENTEE_WHATSAPP_TEMPLATE_NAME:}
+    # Set true only once platform-service really sends WhatsApp: today
+    # Msg91NotificationDeliveryProvider.liveDeliveryBlocked refuses every live send, so even mode=live
+    # reaches no parent. The attendance API reports deliveryMode LIVE (and the Exceptions screen drops its
+    # "no parent receives them" notice) only when mode=live AND this is true. It changes nothing else.
+    parents-receive: ${ATTENDANCE_ABSENTEE_PARENTS_RECEIVE:false}
 
 notification:
   broadcast:

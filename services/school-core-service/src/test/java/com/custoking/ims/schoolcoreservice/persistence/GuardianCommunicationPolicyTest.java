@@ -1,10 +1,14 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class GuardianCommunicationPolicyTest {
 
@@ -79,6 +83,16 @@ class GuardianCommunicationPolicyTest {
                 source.consentExpiresAt()), "SMS", now, 10L, 1L);
 
         assertThat(decision.reason()).isEqualTo("LAWFUL_BASIS_NOT_CONSENT");
+    }
+
+    @Test
+    void previewOfNoStudentsRunsNoQuery() {
+        JdbcClient jdbc = mock(JdbcClient.class);
+        GuardianCommunicationPolicy policy = new GuardianCommunicationPolicy(jdbc);
+
+        assertThat(policy.preview(10L, List.of(), "WHATSAPP")).isEmpty();
+        assertThat(policy.preview(10L, null, "WHATSAPP")).isEmpty();
+        verifyNoInteractions(jdbc);
     }
 
     private GuardianCommunicationPolicy.Snapshot snapshot() {

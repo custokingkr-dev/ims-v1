@@ -122,6 +122,22 @@ export type AbsenteeNotificationStatus =
   | 'DEAD_LETTER'
   | 'SUPPRESSED';
 
+/** Absence alerts go to parents on WhatsApp only. */
+export type AbsenteeAlertChannel = 'WHATSAPP';
+
+/**
+ * How the school-core delivery worker runs. DRY_RUN runs every step except sending the message, so no
+ * parent receives anything; LIVE hands each alert to the messaging provider. Older backends omit it,
+ * and the screen then treats delivery as not switched on.
+ */
+export type AbsenteeDeliveryMode = 'DRY_RUN' | 'LIVE';
+
+/** Present on every absentee/exception list and on the notify response. */
+interface AbsenteeAlertDelivery {
+  channel?: AbsenteeAlertChannel;
+  deliveryMode?: AbsenteeDeliveryMode;
+}
+
 export interface AbsenteeStudent {
   studentId: number;
   fullName: string;
@@ -133,8 +149,15 @@ export interface AbsenteeStudent {
   alreadyQueued: boolean;
   /** null when no notification has been queued for this student on this date. */
   notificationStatus?: AbsenteeNotificationStatus | null;
+  /**
+   * For an ABSENT row with no alert yet: whether queuing would pass the guardian-communication policy
+   * (primary guardian, verified phone, consent). null on other rows; missing from older backends.
+   */
+  alertAllowed?: boolean | null;
+  /** The policy's reason code when alertAllowed is false (e.g. CONTACT_NOT_VERIFIED), else null. */
+  alertBlockedReason?: string | null;
 }
-export interface AbsenteeListResponse {
+export interface AbsenteeListResponse extends AbsenteeAlertDelivery {
   date: string;
   sectionId: string | null;
   students: AbsenteeStudent[];
@@ -145,7 +168,7 @@ export interface AttendanceExceptionStudent extends AbsenteeStudent {
   status: 'ABSENT' | 'LATE' | 'LEAVE';
   remarks: string;
 }
-export interface AttendanceExceptionListResponse {
+export interface AttendanceExceptionListResponse extends AbsenteeAlertDelivery {
   date: string;
   sectionId: string | null;
   students: AttendanceExceptionStudent[];
@@ -155,9 +178,12 @@ export interface AttendanceExceptionListResponse {
   leaveCount: number;
   queuedCount: number;
 }
-export interface NotifyAbsenteesResponse {
+export interface NotifyAbsenteesResponse extends AbsenteeAlertDelivery {
   date: string;
   queued: number;
+  /** Students whose guardian has no phone number; they are also counted in suppressedCount. */
   skippedNoContact: number;
   skippedAlreadyQueued: number;
+  /** Students the guardian-communication policy refused (no number, unverified contact, no consent, ...). */
+  suppressedCount?: number;
 }
