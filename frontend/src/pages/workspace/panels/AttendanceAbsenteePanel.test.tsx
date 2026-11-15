@@ -145,7 +145,7 @@ describe('AttendanceAbsenteePanel', () => {
       const bala = alertCell('Bala Iyer');
       expect(bala.querySelector('.ck-status')?.textContent).toBe("Can't alert");
       // The reason is visible text, not only a tooltip.
-      expect(bala.querySelector('.ck-att-cell-sub')?.textContent).toBe("The guardian's phone number isn't verified.");
+      expect(bala.querySelector('.ck-att-cell-sub')?.textContent).toBe("The guardian's phone number is missing or not verified.");
       expect(alertCell('Charu Nair').textContent).toContain('No consent to school messages is recorded.');
       expect(alertCell('Dev Menon').textContent).toContain("The guardian's settings don't allow school messages.");
       expect(alertCell('Farah Khan').textContent).toBe('Not required');
@@ -187,7 +187,7 @@ describe('AttendanceAbsenteePanel', () => {
         ['NO_PRIMARY_GUARDIAN', 'No primary guardian is recorded.'],
         ['GUARDIAN_INACTIVE', 'The primary guardian is inactive.'],
         ['NOTIFICATION_PREFERENCE_DISABLED', 'School notifications are turned off for this guardian.'],
-        ['CONTACT_NOT_VERIFIED', "The guardian's phone number isn't verified."],
+        ['CONTACT_NOT_VERIFIED', "The guardian's phone number is missing or not verified."],
         ['DESTINATION_MISSING', 'The guardian has no phone number.'],
         ['SCHOOL_COMMUNICATIONS_DECISION_MISSING', 'No consent to school messages is recorded.'],
         ['CONSENT_GUARDIAN_UNSPECIFIED', "Consent wasn't recorded for the primary guardian."],
@@ -243,20 +243,21 @@ describe('AttendanceAbsenteePanel', () => {
     expect(screen.getByRole('button', { name: /Queue WhatsApp alerts/ }).hasAttribute('aria-describedby')).toBe(false);
   });
 
-  it('keeps the notice when the API says LIVE but a row finished in test mode', async () => {
-    // ALL_STATUSES includes a SENT_DRY_RUN row: whatever the mode says, that alert reached nobody.
+  it('trusts a LIVE answer even on a date with rows from before the go-live, which keep their own test-mode chip', async () => {
+    // ALL_STATUSES includes a SENT_DRY_RUN row, as every date queued before a go-live does for good.
     mockExceptions({ channel: 'WHATSAPP', deliveryMode: 'LIVE' });
     vi.mocked(api.post).mockResolvedValue({
       data: { date: '2026-09-10', queued: 1, skippedNoContact: 0, skippedAlreadyQueued: 6, suppressedCount: 0, deliveryMode: 'LIVE' },
     });
     await renderLoaded();
 
-    expect(screen.getByRole('note').textContent).toMatch(NOTICE);
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.getByText('Not sent (test mode)')).toBeTruthy();
 
     await queueAlerts();
 
     expect((await screen.findByText(/^Queued 1 WhatsApp alert/)).textContent).toBe(
-      "Queued 1 WhatsApp alert in test mode; skipped 6. WhatsApp sending isn't switched on, so no parent will receive it.",
+      'Queued 1 WhatsApp alert; skipped 6. Each row shows whether its message was sent.',
     );
   });
 

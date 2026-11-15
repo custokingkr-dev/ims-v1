@@ -50,7 +50,8 @@ const ALERT_BLOCKED_TEXT: Record<string, string> = {
   GUARDIAN_INACTIVE: 'The primary guardian is inactive.',
   // receives_notifications on the student-guardian link; staff or a data repair can switch it off too.
   NOTIFICATION_PREFERENCE_DISABLED: 'School notifications are turned off for this guardian.',
-  CONTACT_NOT_VERIFIED: "The guardian's phone number isn't verified.",
+  // The policy checks verification before the number, so an unverified guardian may have no number at all.
+  CONTACT_NOT_VERIFIED: "The guardian's phone number is missing or not verified.",
   DESTINATION_MISSING: 'The guardian has no phone number.',
   SCHOOL_COMMUNICATIONS_DECISION_MISSING: 'No consent to school messages is recorded.',
   CONSENT_GUARDIAN_UNSPECIFIED: "Consent wasn't recorded for the primary guardian.",
@@ -91,8 +92,8 @@ function plural(count: number, one: string, many: string) {
 }
 
 /** Queuing is not delivery: in test mode (or an older backend that does not say) nothing reaches a parent. */
-function notifyToast(result: NotifyAbsenteesResponse, fallbackMode: AbsenteeDeliveryMode | undefined, testModeSeen: boolean) {
-  const live = (result.deliveryMode ?? fallbackMode) === 'LIVE' && !testModeSeen;
+function notifyToast(result: NotifyAbsenteesResponse, fallbackMode: AbsenteeDeliveryMode | undefined) {
+  const live = (result.deliveryMode ?? fallbackMode) === 'LIVE';
   // Every policy refusal (no number, no consent, ...) is in suppressedCount; older backends only
   // report the no-number ones.
   const skipped = result.skippedAlreadyQueued + Math.max(result.suppressedCount ?? 0, result.skippedNoContact);
@@ -171,10 +172,10 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
   }, [query, statusFilter, pageSize]);
 
   const students = data?.students || [];
-  // A row the worker finished in test mode proves nothing is sending, whatever the API says.
-  const testModeSeen = students.some((student) => student.notificationStatus === 'SENT_DRY_RUN');
-  // Only a LIVE answer means alerts can reach parents; a missing mode (older backend) is not live.
-  const sendingSwitchedOn = data?.deliveryMode === 'LIVE' && !testModeSeen;
+  // Only a LIVE answer means alerts can reach parents; a missing mode (older backend) is not live. The server says LIVE
+  // only once parents really receive alerts (parents-receive). A row finished in test mode says so on its own chip; it is
+  // not used here, because rows from before a go-live stay "test mode" for good.
+  const sendingSwitchedOn = data?.deliveryMode === 'LIVE';
   const absentStudents = students.filter((student) => student.status === 'ABSENT');
   // The policy preview decides; `?? hasContact` keeps an older backend without it working.
   const notifiable = absentStudents
@@ -212,7 +213,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
       const response = await api.post<NotifyAbsenteesResponse>('/attendance/absentees/notify', body);
       // Queuing is not delivery: a background worker drains the queue and the per-row status below
       // shows what actually happened.
-      setToast(notifyToast(response.data, data?.deliveryMode, testModeSeen));
+      setToast(notifyToast(response.data, data?.deliveryMode));
       await load(date, classId, sectionId);
     } catch (err) {
       setError(errMessage(err, 'Could not queue WhatsApp alerts'));

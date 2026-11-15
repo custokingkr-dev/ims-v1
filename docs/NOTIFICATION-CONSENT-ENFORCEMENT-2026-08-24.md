@@ -62,10 +62,11 @@ Since 2026-11-15 `GET /attendance/exceptions`, `GET /attendance/absentees` and
 false). Live mode alone reaches no parent: platform-service's `Msg91NotificationDeliveryProvider`
 refuses every live send (`liveDeliveryBlocked`) and answers dry run, which the gateway records as
 `SENT_DRY_RUN`. Set `parents-receive` only once platform-service really sends WhatsApp; it changes
-only what the screen says, not which gateway the worker uses. Unless the mode is `LIVE`, and also
-whenever any listed row is `SENT_DRY_RUN`, the attendance Exceptions screen says that absence alerts
-go to parents on WhatsApp but WhatsApp sending isn't switched on, so no parent receives them. Its
-button reads "Queue WhatsApp alerts (N)" and `SENT_DRY_RUN` rows read "Not sent (test mode)".
+only what the screen says, not which gateway the worker uses. Unless the mode is `LIVE`, the
+attendance Exceptions screen says that absence alerts go to parents on WhatsApp but WhatsApp sending
+isn't switched on, so no parent receives them. Its button reads "Queue WhatsApp alerts (N)" and
+`SENT_DRY_RUN` rows read "Not sent (test mode)". The page does not infer the mode from those rows:
+rows queued before a go-live stay `SENT_DRY_RUN` for good, and each says so on its own chip.
 
 The two list endpoints also preview the policy for every ABSENT row that has no alert yet:
 `alertAllowed` (boolean) and `alertBlockedReason` (the `guardian-communications.v2` reason when
@@ -74,7 +75,8 @@ refused, else null); other rows carry null for both. The preview is one snapshot
 erasure-journal fence, so it is advisory: queuing still evaluates every student, and the drainer
 re-evaluates before every attempt. The screen counts and offers only allowed rows ("N ready for a
 WhatsApp alert"), and labels refused rows "Can't alert" with the reason in words, for example "The
-guardian's phone number isn't verified." or "No consent to school messages is recorded."; a backend
+guardian's phone number is missing or not verified." (verification is checked before the number) or
+"No consent to school messages is recorded."; a backend
 without the preview falls back to whether the student record has a phone number.
 
 The v2 evidence binds the school, student, guardian, channel, normalized
