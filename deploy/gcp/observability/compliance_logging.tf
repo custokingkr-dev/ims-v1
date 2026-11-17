@@ -26,7 +26,9 @@ resource "google_logging_project_sink" "compliance_india" {
   # and userId that is the wrong bucket on both counts: DPDP Rules 6(1)(e) and 8(3) require logs of
   # processing personal data be retained a minimum of one year, and CERT-In requires 180 days held
   # within Indian jurisdiction.
-  filter = <<-EOT
+  # replace(): a CRLF checkout embeds \r in this text, so Windows and LF checkouts would plan
+  # different values. Normalised as in cost_metric_job.tf.
+  filter = replace(<<-EOT
     log_id("cloudaudit.googleapis.com/activity") OR
     log_id("cloudaudit.googleapis.com/system_event") OR
     log_id("cloudaudit.googleapis.com/access_transparency") OR
@@ -39,4 +41,5 @@ resource "google_logging_project_sink" "compliance_india" {
       textPayload=~"(?i)(authentication|authorization|login|logout|permission denied|audit)"
     ))
   EOT
+  , "\r\n", "\n")
 }

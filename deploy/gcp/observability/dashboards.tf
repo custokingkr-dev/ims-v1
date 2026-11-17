@@ -6,7 +6,9 @@ resource "google_monitoring_dashboard" "service" {
   dashboard_json = jsonencode({
     displayName = "Custoking ${var.env} - ${local.service_display_names[each.key]}"
     gridLayout = {
-      columns = 2
+      # int64 in the Monitoring API: it reads back as the string "2". A number here defeats the
+      # provider's diff suppression and leaves a perpetual diff.
+      columns = "2"
       widgets = [
         {
           title = "Request latency p50/p95/p99"
@@ -213,7 +215,9 @@ resource "google_monitoring_dashboard" "async_health" {
   dashboard_json = jsonencode({
     displayName = "Custoking ${var.env} - Async Health"
     gridLayout = {
-      columns = 2
+      # int64 in the Monitoring API: it reads back as the string "2". A number here defeats the
+      # provider's diff suppression and leaves a perpetual diff.
+      columns = "2"
       widgets = [
         {
           title = "Outbox pending count"

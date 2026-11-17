@@ -95,6 +95,9 @@ enable_per_service_latency_incidents   = false
 
 # Shared dashboard, IAP-gated. The OAuth client ID is a public identifier, not a secret.
 enable_shared_dashboard        = true
+# Applied in prod 2026-11-17 (Firestore ims-dashboard-prod, custom role, conditional binding). Keep it on
+# so turning the shared dashboard off later cannot plan to destroy prevent_destroy resources.
+enable_dashboard_security_state = true
 dashboard_image                = "asia-south2-docker.pkg.dev/custoking-prod/custoking/custoking-dashboard:v12"
 dashboard_viewers              = ["user:REPLACE-primary@example.com"]
 enable_dashboard_load_balancer = false

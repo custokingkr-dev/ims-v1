@@ -50,7 +50,9 @@ resource "google_monitoring_dashboard" "live_operations" {
   dashboard_json = jsonencode({
     displayName = "Custoking ${var.env} - Live Operations"
     gridLayout = {
-      columns = 2
+      # int64 in the Monitoring API: it reads back as the string "2". A number here defeats the
+      # provider's diff suppression and leaves a perpetual diff.
+      columns = "2"
       widgets = [
         {
           title = "Active users (distinct people with an unexpired session)"

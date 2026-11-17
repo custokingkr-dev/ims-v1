@@ -191,7 +191,9 @@ resource "google_monitoring_alert_policy" "product_liveness" {
   }
 
   documentation {
-    content   = <<-DOC
+    # replace(): a CRLF checkout embeds \r in this text, so Windows and LF checkouts would plan
+    # different values. Normalised as in cost_metric_job.tf.
+    content = replace(<<-DOC
       No active users, no open sessions and no sign-ins for a full hour of school time.
 
       This is a SYMPTOM alert. Infrastructure can be entirely green while it fires, which is the point --
@@ -201,6 +203,7 @@ resource "google_monitoring_alert_policy" "product_liveness" {
       identity-service healthy; is Cloud SQL reachable. If all four are fine, suspect the metric pipeline
       rather than the product, and run scripts/assert-telemetry-liveness.sh.
     DOC
+    , "\r\n", "\n")
     mime_type = "text/markdown"
   }
 

@@ -54,7 +54,9 @@ resource "google_monitoring_alert_policy" "gateway_5xx_aggregate" {
   }
 
   documentation {
-    content   = <<-DOC
+    # replace(): a CRLF checkout embeds \r in this text, so Windows and LF checkouts would plan
+    # different values. Normalised as in cost_metric_job.tf.
+    content = replace(<<-DOC
       Real users received server errors. Probe traffic is excluded, so every counted request was
       somebody trying to do their job.
 
@@ -67,6 +69,7 @@ resource "google_monitoring_alert_policy" "gateway_5xx_aggregate" {
 
       If a release went out in the last hour, roll it back before diagnosing -- see docs/runbooks/3am.md.
     DOC
+    , "\r\n", "\n")
     mime_type = "text/markdown"
   }
 
