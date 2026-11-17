@@ -22,6 +22,11 @@
 locals {
   dashboard_enabled          = var.enable_shared_dashboard ? 1 : 0
   dashboard_security_enabled = (var.enable_shared_dashboard || var.enable_dashboard_security_state) ? 1 : 0
+
+  # With the shared dashboard off (dev), the account only holds the adopted replay/revocation state, so
+  # it keeps the name it was created with rather than claiming to render dashboards.
+  dashboard_sa_display_name = var.enable_shared_dashboard ? "Shared operations dashboard" : "${title(var.env)} dashboard isolated security state"
+  dashboard_sa_description  = var.enable_shared_dashboard ? "Reads Cloud Monitoring to render the shared owner and ops dashboards." : ""
 }
 
 resource "google_service_account" "dashboard" {
@@ -29,8 +34,8 @@ resource "google_service_account" "dashboard" {
 
   project      = var.project
   account_id   = "ims-dashboard"
-  display_name = "Shared operations dashboard"
-  description  = "Reads Cloud Monitoring to render the shared owner and ops dashboards."
+  display_name = local.dashboard_sa_display_name
+  description  = local.dashboard_sa_description
   lifecycle {
     prevent_destroy = true
   }

@@ -99,7 +99,9 @@ resource "google_monitoring_alert_policy" "daily_spend_jump" {
   }
 
   documentation {
-    content   = <<-DOC
+    # replace(): a CRLF checkout embeds \r in this text, so Windows and LF checkouts would plan
+    # different values. Normalised as in cost_metric_job.tf.
+    content = replace(<<-DOC
       A single calendar day's GROSS spend for ${local.cost_metric_scope_label} exceeded INR
       ${var.daily_spend_alert_inr}. Gross, not net: the free-trial credit nets everything to zero, which
       is why nobody sees the burn.
@@ -130,6 +132,7 @@ resource "google_monitoring_alert_policy" "daily_spend_jump" {
       cloud-run-instance-time-runaway (Cloud Run only) and the budgets (hours late, and only at their
       thresholds) see spend.
     DOC
+    , "\r\n", "\n")
     mime_type = "text/markdown"
   }
 
@@ -210,7 +213,9 @@ resource "google_monitoring_alert_policy" "billing_export_stale" {
   }
 
   documentation {
-    content   = <<-DOC
+    # replace(): a CRLF checkout embeds \r in this text, so Windows and LF checkouts would plan
+    # different values. Normalised as in cost_metric_job.tf.
+    content = replace(<<-DOC
       The spend figures for ${local.cost_metric_scope_label} cannot be trusted right now: the billing
       export is more than ${var.billing_export_stale_hours} hours behind, or the exporter job has stopped
       publishing altogether. While this is open, daily-spend-jump is blind.
@@ -239,6 +244,7 @@ resource "google_monitoring_alert_policy" "billing_export_stale" {
       Do not wait for this to close by itself. With no data arriving it stays open for about eight days
       and then closes even if nothing was fixed; only new points from the exporter prove it is working.
     DOC
+    , "\r\n", "\n")
     mime_type = "text/markdown"
   }
 
@@ -294,7 +300,9 @@ resource "google_monitoring_alert_policy" "cloud_run_instance_time_runaway" {
   }
 
   documentation {
-    content   = <<-DOC
+    # replace(): a CRLF checkout embeds \r in this text, so Windows and LF checkouts would plan
+    # different values. Normalised as in cost_metric_job.tf.
+    content = replace(<<-DOC
       Cloud Run in ${var.project} has billed more than ${var.cloud_run_instance_seconds_per_hour_alert}
       instance-seconds per hour for two consecutive hours. Measured normal for prod is ~200 s/h across
       all seven services; a single instance that never scales to zero is 3,600 s/h and costs roughly
@@ -313,6 +321,7 @@ resource "google_monitoring_alert_policy" "cloud_run_instance_time_runaway" {
       where every probe boots a JVM that cannot become healthy -- container/startup_latencies count in the
       hundreds per day is the tell, and the dev environment did exactly this against a stopped database.
     DOC
+    , "\r\n", "\n")
     mime_type = "text/markdown"
   }
 

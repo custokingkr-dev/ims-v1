@@ -44,7 +44,9 @@ resource "google_monitoring_dashboard" "product_usage" {
   dashboard_json = jsonencode({
     displayName = "Custoking ${var.env} - Product & Usage"
     gridLayout = {
-      columns = 2
+      # int64 in the Monitoring API: it reads back as the string "2". A number here defeats the
+      # provider's diff suppression and leaves a perpetual diff.
+      columns = "2"
       widgets = [
         {
           title = "Active users right now"
@@ -183,7 +185,9 @@ resource "google_monitoring_dashboard" "engineering_infrastructure" {
   dashboard_json = jsonencode({
     displayName = "Custoking ${var.env} - Engineering & Infrastructure"
     gridLayout = {
-      columns = 2
+      # int64 in the Monitoring API: it reads back as the string "2". A number here defeats the
+      # provider's diff suppression and leaves a perpetual diff.
+      columns = "2"
       widgets = [
         {
           # Cold starts are the largest latency a user can experience and are invisible in request

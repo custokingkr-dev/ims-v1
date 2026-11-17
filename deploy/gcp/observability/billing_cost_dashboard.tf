@@ -55,7 +55,9 @@ resource "google_monitoring_dashboard" "billing_cost" {
   dashboard_json = jsonencode({
     displayName = "Custoking ${var.env} - Billing & Cost"
     gridLayout = {
-      columns = 2
+      # int64 in the Monitoring API: it reads back as the string "2". A number here defeats the
+      # provider's diff suppression and leaves a perpetual diff.
+      columns = "2"
       widgets = [
         {
           title = "Billing export available (1 = usable, 0 = unavailable)"
