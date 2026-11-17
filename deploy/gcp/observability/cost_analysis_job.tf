@@ -6,12 +6,13 @@
 # cannot be enabled -- six attempts across every configuration available to us fail with a server-side
 # error while the pricing export succeeds on the same account and dataset, and there is no API for
 # export configuration, so there is no scripted workaround. (Written 2026-08-20. That export was enabled
-# on 2026-08-25; the projects moved to a new billing account on 2026-11-16, whose export only its owner
-# can enable. The collector covers any such gap.)
+# on 2026-08-25; the projects moved to a new billing account on 2026-11-16, and that account's Standard
+# and Detailed exports were enabled into the same dataset on 2026-11-17, its tables appearing on first
+# delivery. The collector covers any such gap.)
 #
 # Distinct from cost_metric_job.tf, which reads the billing export and publishes a Monitoring metric.
-# That job stays: if Google ever repairs the export it resumes on its own. This one does not depend on
-# the export at all, which is the whole point.
+# That job stays: it reads every account's export table by wildcard, so it picks up a newly enabled
+# export on its own. This one does not depend on the export at all, which is the whole point.
 # ---------------------------------------------------------------------------------------------------
 
 locals {

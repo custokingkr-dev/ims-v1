@@ -68,8 +68,8 @@ enable_cost_metric_export = true
 # their export. custoking-dev and custoking-prod share one billing account and its export lands in
 # custoking-prod.billing_export, so dev reads that dataset, filters to its own project, and publishes the
 # metric into itself. Leave both empty when a project owns its own export. (After the 2026-11-16 move to
-# a new billing account, the new account's export must be enabled into that same dataset in the Console
-# before these figures cover current spend.)
+# a new billing account, that account's Standard and Detailed exports were enabled into this same
+# dataset on 2026-11-17; these figures cover current spend once its first delivery lands.)
 cost_metric_bq_project    = "custoking-prod"
 cost_metric_scope_project = "custoking-dev"
 

@@ -119,14 +119,16 @@ resource "google_monitoring_alert_policy" "daily_spend_jump" {
       or a second instance; a load test.
 
       The billing account that custoking-prod and custoking-dev bill to is on a free trial that ends at
-      the earlier of ${var.trial_expiry_date} and credit exhaustion. Check the trial-runway budget's
-      latest notification before deciding this can wait -- that budget exists only once it has been
-      re-created on the current billing account (deploy/gcp/observability/budget.tf). Until then, read
-      the remaining credit in Console -> Billing -> Credits instead.
+      the earlier of ${var.trial_expiry_date} and credit exhaustion. Check the latest notification from
+      the custoking-trial-credit-runway-to-${var.trial_expiry_date} budget (on that account since
+      2026-11-17; deploy/gcp/observability/budget.tf) before deciding this can wait, and read the
+      remaining credit in Console -> Billing -> Credits.
 
       This also fires when the exporter has stopped publishing altogether (missing data counts as over
       the line). If the chart shows no recent points rather than a high one, billing-export-stale will be
-      open too: follow its runbook, because nothing can see spend until the exporter is fixed.
+      open too: follow its runbook, because until the exporter is fixed only
+      cloud-run-instance-time-runaway (Cloud Run only) and the budgets (hours late, and only at their
+      thresholds) see spend.
     DOC
     mime_type = "text/markdown"
   }
@@ -223,9 +225,16 @@ resource "google_monitoring_alert_policy" "billing_export_stale" {
 
       After the projects move to another billing account (as on 2026-11-16), the old account's table
       stops receiving rows and this opens about a day and a half later. It clears only when the new
-      account's export delivers into the same dataset: that account's administrator enables Standard and
-      Detailed usage cost export into custoking-prod.billing_export in the Console. The exporter reads the
-      tables by wildcard, so it picks the new one up with no Terraform or script change.
+      account's export delivers into the same dataset: someone holding Billing Account Administrator or
+      Billing Account Costs Manager on that account enables Standard and Detailed usage cost export into
+      custoking-prod.billing_export in the Console. The exporter reads the tables by wildcard, so it
+      picks the new one up with no Terraform or script change.
+
+      For the 2026-11-16 move both exports were enabled on 2026-11-17. Google creates the account's
+      tables on the first delivery, normally within hours but allow up to five days, and that delivery
+      backfills from the start of the previous month, so no history is lost. If no new
+      gcp_billing_export_v1_* table has appeared after 2026-11-22, check that both exports still show
+      Enabled in Console -> Billing -> Billing export.
 
       Do not wait for this to close by itself. With no data arriving it stays open for about eight days
       and then closes even if nothing was fixed; only new points from the exporter prove it is working.

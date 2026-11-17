@@ -11,13 +11,15 @@ So cost is reconstructed from usage instead.
 
 > **Update 2026-11-17.** The paragraph above is history. That account's usage-cost export was enabled
 > on 2026-08-25, and its tables in `custoking-prod.billing_export` run until the account closed on
-> 2026-11-16. The account the projects have billed to since then has **no export until its owner
-> enables one** (see *Billing Export* in `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`; the deadline is
-> 2026-12-31). Until it exists, `cost_analysis` is the only per-service cost source after 2026-11-16.
-> Its collector job has itself failed on every run since 2026-11-03, when the floating
-> `google/cloud-sdk:slim` image lost python3, and keeps failing until the image pin is applied. Missed
+> 2026-11-16. The account the projects have billed to since then had its Standard and Detailed usage
+> cost export enabled into the same dataset on 2026-11-17 (see *Billing Export* in
+> `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`). Its tables appear only on the first delivery. Because it was
+> enabled in November, that delivery backfills from 2026-10-01 and covers all of the account's
+> usage, which starts 2026-11-16. Until it delivers, `cost_analysis` is the only per-service cost source
+> after 2026-11-16. Its collector job failed on every run from 2026-11-03, when the floating
+> `google/cloud-sdk:slim` image lost python3, until the image pin was applied on 2026-11-17. Missed
 > days can be reloaded with the workstation command under *Running it* while Cloud Monitoring still
-> holds their usage. Once the new export exists, the wildcard query below adds both accounts' tables
+> holds their usage. Once the new tables exist, the wildcard query below adds both accounts' tables
 > together, so November's two tables need no change to the query.
 
 ## What exists

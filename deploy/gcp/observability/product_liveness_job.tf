@@ -62,8 +62,9 @@ resource "google_cloud_run_v2_job" "product_liveness" {
         image   = local.cloud_sdk_job_image
         command = ["bash"]
         # No `|| true`. It used to be here so that "nobody is active" (exit 1) would not also fail the
-        # execution, but it hid every other failure too: from 2026-11-03 the image had no python3, the
-        # check never ran, and every execution still reported success. The script exits 0 when it sees
+        # execution, but it hid every other failure too: from 2026-11-03 until the pin was applied on
+        # 2026-11-17 the image had no python3, the check never ran, and every execution still reported
+        # success. The script exits 0 when it sees
         # activity or no signal at all, and 1 when nobody is active; the alert still comes from the ERROR
         # log line, not from the exit code. A failed execution here therefore means either an outage
         # (with that ERROR line) or a broken check (without it) -- both worth seeing, and nothing alerts

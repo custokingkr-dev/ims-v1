@@ -70,6 +70,11 @@ REQUIRED_CUSTOM_METRICS=()
 # support. NOTE: spend ALERTING is unaffected -- the budgets in deploy/gcp/observability/budget.tf
 # read Google's billing data directly and do not depend on this export. What is lost is cost
 # ATTRIBUTION and the dashboard's spend panels.
+#
+# Later: that export was enabled on 2026-08-25. The cost jobs failed again from 2026-11-03 (floating
+# image without python3) until the pin was applied on 2026-11-17, and the account the projects have
+# billed to since 2026-11-16 had its exports enabled on 2026-11-17. When this script reports these
+# metrics RECOVERED, remove them here as it says.
 KNOWN_BROKEN_METRICS=(
   "custom.googleapis.com/custoking/cost/gross_month_to_date"
   "custom.googleapis.com/custoking/cost/gross_yesterday"

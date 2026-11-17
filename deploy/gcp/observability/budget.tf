@@ -11,13 +11,15 @@
 # not have permission", which reads as an IAM denial and was not one. Checked directly with an explicit
 # quota project, that account granted billing.budgets.create and billing.budgets.list.
 #
-# That is NOT true of the current account (2026-11-17). The ops identity holds only Billing Account
-# User on the billing account that custoking-prod and custoking-dev now bill to, and there the same
-# "does not have permission" error IS a real denial, even with the quota project set. Creating, listing
-# or replacing these budgets needs Billing Account Costs Manager (roles/billing.costsManager) or Billing
-# Account Administrator on the current account -- the owner grants it, or creates the budgets in the
-# Console. Set the quota project first (USER_PROJECT_OVERRIDE / GOOGLE_BILLING_PROJECT); if the error
-# persists, it is IAM.
+# On the current account (the one custoking-prod and custoking-dev have billed to since 2026-11-16) the
+# ops identity at first held only Billing Account User, and there the same "does not have permission"
+# error WAS a real denial, even with the quota project set. Creating, listing or replacing these budgets
+# needs Billing Account Costs Manager (roles/billing.costsManager) or Billing Account Administrator. The
+# account's administrator granted Costs Manager on 2026-11-17 (~15:55 IST; testIamPermissions confirms
+# billing.budgets.{create,list,update,delete} and billing.accounts.updateUsageExportSpec), and all three
+# budgets were re-created there the same day by a targeted apply. Set the quota project first
+# (USER_PROJECT_OVERRIDE / GOOGLE_BILLING_PROJECT); if a permission error then persists, check that the
+# grant is still in place.
 #
 # THE CREDIT TRAP -- read this before touching threshold values.
 #
@@ -142,8 +144,8 @@ resource "google_billing_budget" "environment" {
 # 11-12..15. At ~192/day only the 50% threshold fires, around the end of January; 75% before the expiry
 # means a sustained INR ~240/day, and 90% or 100% before 2027-02-14 means the credit, not the date, is
 # about to end the trial. The runbook (docs/GCP-COST-GUARDRAILS-RUNBOOK.md, Free-trial expiry) carries
-# the same reading; change both together. No budget on the current account exists until it is
-# re-created there (see the permission note above).
+# the same reading; change both together. Re-created on the current account by a targeted apply on
+# 2026-11-17; Terraform replaced the old runway budget, deleting it from the closed first account.
 #
 # This budget is scoped to the WHOLE billing account, runs over a custom period ending on the expiry
 # date, and its amount is the credit remaining at the start of that period. Each threshold is therefore

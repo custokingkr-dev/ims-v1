@@ -84,7 +84,7 @@ expiry is a shutdown date, not a cost event.
 
 The trial also ends **early** if the credit is exhausted first, and every project linked to the account
 draws on the same credit. None of the following was measured on the new account: nothing can be measured
-there until its export exists, so the rates come from the first account's export. The promotion draw was
+there until its export delivers (enabled 2026-11-17), so the rates come from the first account's export. The promotion draw was
 about INR 192/day over 2026-10-17..2026-11-15 (gross: prod ~INR 132/day, dev ~INR 76/day). Over
 2026-11-12..15 it was INR 230-302/day, because the monthly Cloud Run free tier ran out and dev Artifact
 Registry egress jumped. INR 28,569 over the 90 days from 2026-11-16 to 2027-02-14 covers up to about INR
@@ -96,19 +96,22 @@ Registry egress jumped. INR 28,569 over the 90 days from 2026-11-16 to 2027-02-1
 account owner in the Console: Billing -> the account custoking-prod is linked to (see the lookup above)
 -> Activate / Upgrade. No API, no gcloud, no automation can do it.
 
-Owner actions on 2026-11-17: 1 and 4 are done; 2, 3 and 5 are open. The ops identity holds only
-Billing Account User on the new account, so it cannot do 2 or 3:
+Owner actions on 2026-11-17: 1 to 4 are done; only 5 is open. Action 3 (granted at about 15:55 IST)
+let the ops identity re-create the budgets and do action 2 itself:
 
 1. **Confirm the expiry date.** Done 2026-11-17: Console -> Billing -> Overview shows "Ends 14
    February 2027". If it ever changes, change `TRIAL_EXPIRY_DATE` in
    `.github/workflows/gcp-cost-controls.yml` and `trial_expiry_date` in
    `deploy/gcp/observability/variables.tf` together. If unsure, use the earlier date.
-2. **Enable the BigQuery billing export before 2026-12-31.** See *Billing Export* for the target and
-   for why the deadline exists.
-3. **Grant the ops identity Billing Account Costs Manager** (`roles/billing.costsManager`) on the account,
-   so that the budgets can be re-created (see *Budget Setup*). Alternatively, create them in the Console.
+2. **Enable the BigQuery billing export before 2026-12-31.** Done 2026-11-17 (about 16:03 IST): Standard
+   and Detailed usage cost, into `custoking-prod.billing_export`. Its first delivery is still pending;
+   see *Billing Export*.
+3. **Grant the ops identity Billing Account Costs Manager** (`roles/billing.costsManager`) on the account.
+   Done 2026-11-17 (about 15:55 IST). The budgets were re-created by the targeted apply in *Budget
+   Setup* at about 16:00 IST.
 4. **Decide the dev monthly budget amount.** Done 2026-11-17: INR 3,000 (see *Budget Setup*).
-5. **Decide when to upgrade, and record that date here.**
+5. **Decide when to upgrade, and record that date here.** Open: on 2026-11-17 the owner said not yet.
+   It must happen before 2027-02-14.
 
 What reminds us, in order of reliability:
 
@@ -139,17 +142,17 @@ What reminds us, in order of reliability:
 3. **The `custoking-trial-credit-runway-to-2027-02-14` budget** (Terraform, prod root). It is
    account-wide, runs over a custom period from the day the balance was read (2026-11-15) to the expiry
    date, takes the credit remaining (INR 28,569) as its amount, and has thresholds at 50 / 75 / 90 / 100%
-   of the runway. It is the only signal for the credit-exhaustion path, and **it does not exist yet**. A
-   budget belongs to a billing account. The one that exists today,
-   `custoking-trial-credit-runway-to-2026-11-16`, sits on the closed first account and its period has
-   ended. The new one exists only after owner action 3 and the targeted apply in *Budget Setup*. At
+   of the runway. It is the only signal for the credit-exhaustion path. It has existed on the current
+   account since about 16:00 IST on 2026-11-17, created by the targeted apply in *Budget Setup*, which
+   also deleted `custoking-trial-credit-runway-to-2026-11-16` from the closed first account. At
    ~INR 190/day, expect only the 50% threshold, around the end of January. Reaching 75% before the
    expiry date means a sustained ~INR 240/day, and 90% means ~INR 290/day. Re-base
    `trial_credit_remaining_inr` and `trial_runway_start_date` together whenever the balance is re-read
    from the Console.
 
 After the upgrade: close the issue, set `manage_trial_runway_budget = false`, remove the countdown job,
-delete any budgets still left on the closed first account, and record the date here.
+and record the date here. No budgets are left on the closed first account (the 2026-11-17 apply deleted
+them).
 
 ## If billing lapses again
 
@@ -217,7 +220,9 @@ one of ours, add `--billing-project=custoking-prod` to the commands below.
 
    Repeat steps 2, 5 and 6 for dev (`custoking-db-dev`, `custoking-dev`, `-Environment dev`).
 7. **Afterwards:** if the projects are now on a different account, its budgets and billing export do
-   not exist yet. Re-aim them (*Budget Setup*, *Billing Export*). If the new account is another trial,
+   not exist yet. Re-aim them (*Budget Setup*, *Billing Export*), as was done on 2026-11-17 after the
+   first lapse. The ops identity's Billing Account Costs Manager grant is per account, so a new account
+   needs that grant before the ops identity can re-aim either. If the new account is another trial,
    update this section, `TRIAL_EXPIRY_DATE` and the `trial_*` values.
 
 ## Budget Setup
@@ -233,19 +238,20 @@ account-wide runway budget above:
 | `custoking-dev-monthly` | project custoking-dev, calendar month, GROSS | INR 3,000 | same |
 | `custoking-trial-credit-runway-to-2027-02-14` | whole account, 2026-11-15..2027-02-14, net of every credit except the promotion | credit remaining (INR 28,569) | 50%, 75%, 90%, 100% current |
 
-**On 2026-11-17 none of these is watching anything.** A budget belongs to a billing account. The three
-that exist (`custoking-prod-monthly`, `custoking-dev-monthly`, `custoking-trial-credit-runway-to-2026-11-16`)
-sit on the closed first account, which no longer carries any custoking spend. They have to be re-created
-on the account the projects bill to now. The ops identity cannot do that yet: it holds only Billing
-Account User there, so "does not have permission" is a real denial (see
-`docs/operations/foundation-controls-runbook.md`). The owner either grants it Billing Account Costs
-Manager (`roles/billing.costsManager`) on that account, or creates the budgets in the Console with the
-names and values above. Console-created budgets must be brought into Terraform state before the next
-apply of either root, or that apply creates duplicates. Each address still holds the old account's
-budget, and Terraform will not import into an address it already manages, so for each root: `terraform
-state rm 'google_billing_budget.environment[0]'` (and `'google_billing_budget.trial_runway[0]'` in prod),
-delete the orphaned budget on the closed first account in the Console, then `terraform import` the new
-budget into that address.
+**Since about 16:00 IST on 2026-11-17 all three watch the account the projects bill to.** A budget
+belongs to a billing account. The targeted apply below replaced them: it deleted the old three on the
+closed first account (none is left there) and created these. Read back through the Billing Budget API:
+both monthly budgets are calendar-month, `EXCLUDE_ALL_CREDITS`, 90 / 100 / 150% current plus 100%
+forecast; the runway budget runs 2026-11-15..2027-02-14, `INCLUDE_SPECIFIED_CREDITS`, 50 / 75 / 90 /
+100% current; each notifies two channels. It worked because the account's administrator had granted the
+ops identity Billing Account Costs Manager (`roles/billing.costsManager`) at about 15:55 IST; Billing
+Account User alone carries no `billing.budgets.*` permission. If a future account is beyond the ops
+identity's reach, the owner can create the budgets in the Console with the names and values above.
+Console-created budgets must be brought into Terraform state before the next apply of either root, or
+that apply creates duplicates. Terraform will not import into an address that still holds another
+account's budget, so for each root: `terraform state rm 'google_billing_budget.environment[0]'` (and
+`'google_billing_budget.trial_runway[0]'` in prod), delete the orphaned budget in the Console, then
+`terraform import` the new budget into that address.
 
 **Dev budget: INR 3,000 (owner's decision, 2026-11-17).** Since the dev database became always-on
 (~2026-10-15), dev's gross has been about INR 2,292 per 30 days. Re-created at the old INR 2,000, the
@@ -253,8 +259,9 @@ budget would fire its 90% and 100% rules every month, and the load-certification
 (`load-tests/README.md`) would block for part of every month. At INR 3,000 the 90% rule fires at INR
 2,700, about 18% above a normal month.
 
-**Re-aiming, once the grant exists.** Use a checkout of `dev` that includes the 2026-11-17 re-base of
-the `trial_*` defaults and holds the gitignored `custoking-prod.tfvars` and `custoking-dev.tfvars`. Put
+**Re-aiming after an account change** (last done 2026-11-17, once the grant existed). Use a checkout of
+`dev` that includes the 2026-11-17 re-base of the `trial_*` defaults and holds the gitignored
+`custoking-prod.tfvars` and `custoking-dev.tfvars`. Put
 the account ID in those files (`billing_account_id`) and nowhere else, and check that they do not
 override `trial_*`.
 
@@ -285,14 +292,14 @@ terraform -chdir=deploy/gcp/observability apply "-var-file=custoking-prod.tfvars
 For dev, set `$env:GOOGLE_BILLING_PROJECT = "custoking-dev"`, run `init -reconfigure` against
 `custoking-dev-terraform-state` / `observability/dev`, and use `"-var-file=custoking-dev.tfvars"` with
 `"-target=google_billing_budget.environment"` only, because the runway budget is prod-only. Deleting a
-budget on a closed account is untested. If the delete fails, run `terraform state rm` on that budget,
-delete it in the Console, and apply again.
+budget on a closed account worked on 2026-11-17. If a delete ever fails, run `terraform state rm` on that
+budget, delete it in the Console, and apply again.
 
 **They must measure GROSS** (`credit_types_treatment = "EXCLUDE_ALL_CREDITS"`). This runbook has said
 so since it was written; the Terraform did not do it until 2026-09-11, and for the whole of August
 both budgets measured a net of exactly zero and could not fire. Verify, do not assume. The command
-below looks the account up, so no ID is written down. Until the owner grants a budgets role it returns
-403 `PERMISSION_DENIED`:
+below looks the account up, so no ID is written down. Since the Costs Manager grant on 2026-11-17 it
+lists the three budgets; a 403 `PERMISSION_DENIED` now means that grant is gone or the account changed:
 
 ```bash
 ACCT=$(gcloud billing projects describe custoking-prod --billing-project=custoking-prod --format='value(billingAccountName)' | tr -d '\r')
@@ -317,27 +324,40 @@ plus anything in `budget_notification_channel_ids`, and (unless `budget_notify_d
 channels being deleted.
 
 The faster signals -- one day's gross spend, export staleness, Cloud Run instance time -- are alert
-policies in `spend_anomaly_alerts.tf`; see that file and `deploy/gcp/observability/README.md`. On
-2026-11-17 the two export-based ones are blind. The cost jobs have failed since 2026-11-03, when the
-floating `google/cloud-sdk:slim` image lost python3; the image pin is merged on `dev` (PR #381) but has
-not been applied. The new account also has no export yet. Until both are fixed, only
-`cloud-run-instance-time-runaway` works.
+policies in `spend_anomaly_alerts.tf`; see that file and `deploy/gcp/observability/README.md`. The cost
+jobs failed from 2026-11-03, when the floating `google/cloud-sdk:slim` image lost python3, to
+2026-11-17, when the `google/cloud-sdk:591.0.0-slim` digest pin from PR #381 was applied to prod
+(`ims-cost-metric-prod`, `ims-cost-analysis-prod`, `ims-product-liveness-prod`) and dev
+(`ims-cost-metric-dev`); manual runs then succeeded and published. The same day `billing-export-stale`
+(seven-day auto-close) and `daily-spend-jump` (missing data now fires it) were applied on both. Neither
+can see the current account's spend until its export delivers its first rows (enabled 2026-11-17, see
+*Billing Export*). Until then, of these faster signals only `cloud-run-instance-time-runaway` sees it
+(the budgets above do too, more slowly), and `billing-export-stale` may open; it clears on the first
+delivery.
 
 ## Billing Export
 
 Enable detailed Cloud Billing export to BigQuery. Put it in a billing/admin dataset rather than an application database.
 
-**State on 2026-11-17: the account the projects bill to has no export.** The first account's two tables
-in `custoking-prod.billing_export` stop with usage on 2026-11-16. Keep them: they are the only
-invoice-grade record of the projects up to the move. The new account's owner enables its export in the
-Console (Billing -> Billing export -> BigQuery export; there is no API for export configuration). Enable
-both **Standard usage cost** and **Detailed usage cost**, into project `custoking-prod`, dataset
-`billing_export`. Using the same dataset means no code change: the queries below, the cost-metric
-exporter and the dashboards all read `gcp_billing_export_v1_*` / `gcp_billing_export_resource_v1_*`.
-They pick up the new table automatically and add both accounts together across the move. The dataset is
-in the US multi-region, where a first export backfills only from the start of the previous month.
-Enabled in December, it covers 2026-11-16..30. Enabled on or after 2027-01-01, that half-month never
-reaches BigQuery. **Enable it before 2026-12-31**, and allow a few days for the first delivery.
+**State on 2026-11-17 (~16:03 IST): the export is enabled; its first delivery is pending.** The ops
+identity enabled both **Standard usage cost** and **Detailed usage cost** export in the Console
+(Billing -> Billing export -> BigQuery export; there is no API for export configuration), into project
+`custoking-prod`, dataset `billing_export`, and the Console shows both as Enabled. The pricing export
+was not enabled; nothing here reads it. The account's tables (`gcp_billing_export_v1_<account>` and
+`gcp_billing_export_resource_v1_<account>`) do not exist until Google's first delivery, normally within
+hours; until they appear, BigQuery holds none of this account's spend. Using the same dataset means no
+code change: the queries below, the cost-metric exporter and the dashboards all read
+`gcp_billing_export_v1_*` / `gcp_billing_export_resource_v1_*`. They pick up the new tables
+automatically and add both accounts together across the move.
+
+The first account's two tables in `custoking-prod.billing_export` stop with usage on 2026-11-16. Keep
+them: they are the only invoice-grade record of the projects up to the move.
+
+The dataset is in the US multi-region, where a first export backfills only from the start of the
+previous month. Enabled in November, this one backfills from 2026-10-01, which covers everything the
+account has billed (since 2026-11-16). On the next move, enable the new account's export before the end
+of the month after the move, or the first days on that account never reach BigQuery. Delivery normally
+starts within hours, but allow a few days before treating its absence as a fault.
 
 Daily cost by service:
 

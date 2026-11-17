@@ -279,14 +279,14 @@ async function fetchPanel(panel, token, windowMinutes) {
       //
       // The cost panels are why. They froze on 2026-08-19 and kept rendering, and the frozen figures
       // carry labels project_id="custoking" and billing_account="018AC9-E669C1-2FC9B8": a project that
-      // has since been DELETED, billed to an account this one does not run on (it runs on 014C0A). A
+      // has since been DELETED, billed to an account this one did not run on (it ran on 014C0A then). A
       // panel headed "Spend, month to date" was reporting a dead project's bill on somebody else's
       // account. "Last seen 2 days ago" reads as "roughly right, slightly behind", which is precisely
       // the wrong inference.
       //
-      // Withholding is also self-repairing. The hourly collector still runs and still fails against the
-      // broken billing export; if Google ever fixes it, fresh points arrive and the panels light up on
-      // their own with no code change.
+      // Withholding is also self-repairing: whenever the hourly collector publishes fresh points again (as
+      // after the export was enabled on 2026-08-25, and after the job image was pinned on 2026-11-17), the
+      // panels light up on their own with no code change.
       const ageHours = (end.getTime() - new Date(last.t).getTime()) / 3_600_000;
       if (panel.expiresAfterHours && ageHours > panel.expiresAfterHours) {
         return { ...base, state: "expired", lastSeen: last.t };
@@ -333,8 +333,10 @@ async function fetchPanel(panel, token, windowMinutes) {
 // ---------------------------------------------------------------------------------------------------
 // Live cost estimate
 //
-// Computed from resource usage rather than read from the billing export, because that export is broken
-// at the billing-account level and Google owns the fix. See cost.mjs for the method and its limits.
+// Computed from resource usage rather than read from the billing export, which lands hours after the
+// usage it describes and has been missing for days at a time (2026-08-19..25, and after the 2026-11-16
+// billing-account move until the new account's export first delivers). See cost.mjs for the method
+// and its limits.
 
 async function estimateCost(token) {
   const end = new Date();
