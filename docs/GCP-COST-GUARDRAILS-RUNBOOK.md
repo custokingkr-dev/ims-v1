@@ -89,16 +89,15 @@ about INR 192/day over 2026-10-17..2026-11-15 (gross: prod ~INR 132/day, dev ~IN
 2026-11-12..15 it was INR 230-302/day, because the monthly Cloud Run free tier ran out and dev Artifact
 Registry egress jumped. INR 28,569 over the 90 days from 2026-11-16 to 2027-02-14 covers up to about INR
 317/day. At ~INR 190/day, about 60% is used and the date is what ends the trial. At ~INR 300/day, about
-93% is used, which leaves less than a week of margin. A runaway (one always-on instance costs ~INR
+95% is used, which leaves less than a week of margin. A runaway (one always-on instance costs ~INR
 240/day) ends the trial early.
 
 **Upgrading has no downside.** Remaining credit stays usable until its original expiry. It needs the
 account owner in the Console: Billing -> the account custoking-prod is linked to (see the lookup above)
 -> Activate / Upgrade. No API, no gcloud, no automation can do it.
 
-Owner actions still open on 2026-11-17. The ops identity holds only Billing Account User on the new
-account, so it cannot do 2 or 3. That role does include `billing.credits.list`, so the operator can
-probably read the Credits page and confirm 1 as well:
+Owner actions on 2026-11-17: 1 and 4 are done; 2, 3 and 5 are open. The ops identity holds only
+Billing Account User on the new account, so it cannot do 2 or 3:
 
 1. **Confirm the expiry date.** Done 2026-11-17: Console -> Billing -> Overview shows "Ends 14
    February 2027". If it ever changes, change `TRIAL_EXPIRY_DATE` in
@@ -113,7 +112,7 @@ probably read the Credits page and confirm 1 as well:
 
 What reminds us, in order of reliability:
 
-1. **A human calendar.** The account owner and the operator each create three calendar events with
+1. **A human calendar.** The account owner and the operator each create four calendar events with
    notifications: **2027-01-14** (one month out: upgrade now), **2027-01-29** (about two weeks, a Friday:
    confirm the upgrade is done), **2027-02-05** (nine days out, a Friday: if not upgraded, nothing
    else matters this week), and **2027-02-12** (the last working day before the Sunday expiry). This is the primary mechanism. Everything below is a backstop, because every
@@ -133,8 +132,10 @@ What reminds us, in order of reliability:
    dev -> main promotion, and promotion is on hold. Until then, main's copy still counts down to
    2026-11-16, fails every weekday and comments "-N day(s)" on issue #308. **Leave #308 open.** If it is
    closed by hand, the old job opens a fresh issue naming the old account and date on its next run. The
-   first run of the new version closes #308 itself. Promote by **2026-12-16** to keep the full 60-day
-   lead. A later promotion still opens the issue on its first run.
+   first run of the new version closes #308 itself. Promote by **2026-12-15** (on 2026-12-16, only
+   before that day's 08:00 IST run) to keep the full 60-day lead. A later promotion still opens the
+   issue on its first run; to open it the same day, run the workflow by hand from `main`
+   (workflow_dispatch) right after the merge.
 3. **The `custoking-trial-credit-runway-to-2027-02-14` budget** (Terraform, prod root). It is
    account-wide, runs over a custom period from the day the balance was read (2026-11-15) to the expiry
    date, takes the credit remaining (INR 28,569) as its amount, and has thresholds at 50 / 75 / 90 / 100%
@@ -247,9 +248,10 @@ delete the orphaned budget on the closed first account in the Console, then `ter
 budget into that address.
 
 **Dev budget: INR 3,000 (owner's decision, 2026-11-17).** Since the dev database became always-on
-(~2026-10-15), dev's gross has been about INR 2,292 per 30 days. At the old INR 2,000 the budget fired
-its 90% and 100% rules every month and the load-certification guard (`load-tests/README.md`) blocked
-for part of every month. At INR 3,000 the 90% rule fires at INR 2,700, about 18% above a normal month.
+(~2026-10-15), dev's gross has been about INR 2,292 per 30 days. Re-created at the old INR 2,000, the
+budget would fire its 90% and 100% rules every month, and the load-certification guard
+(`load-tests/README.md`) would block for part of every month. At INR 3,000 the 90% rule fires at INR
+2,700, about 18% above a normal month.
 
 **Re-aiming, once the grant exists.** Use a checkout of `dev` that includes the 2026-11-17 re-base of
 the `trial_*` defaults and holds the gitignored `custoking-prod.tfvars` and `custoking-dev.tfvars`. Put
@@ -302,9 +304,12 @@ Every `creditTypesTreatment` must read `EXCLUDE_ALL_CREDITS` or `INCLUDE_SPECIFI
 `INCLUDE_ALL_CREDITS`.
 
 Sizing: the prod budget puts the measured run rate (INR 4,209/month, 2026-08-27..2026-09-09) at ~84%,
-so a normal month fires nothing and the 90% rule means ~7% real drift. Dev's honest floor with uptime
-probes off is ~INR 1,100/month; INR 2,000 leaves room for releases and still reports the cold-start
-loop (INR ~3,750/month) at 188%. Raise a budget when real load arrives, not when it alerts.
+so a normal month fires nothing and the 90% rule means ~7% real drift. Dev's floor with uptime probes
+off was ~INR 1,100/month while its database ran only about half the day, which is what the old INR
+2,000 was sized on. Since the database became always-on (~2026-10-15) dev runs about INR 2,292 per 30
+days, which INR 3,000 puts at ~76%, so a normal month fires nothing; a month the size of August 2026's
+cold-start loop (INR ~3,750) would read ~125%. Raise a budget when real load arrives, not when it
+alerts.
 
 Budget alerts do not stop spend. They are escalation triggers. They notify the operator email channels
 plus anything in `budget_notification_channel_ids`, and (unless `budget_notify_default_iam_recipients

@@ -14,9 +14,14 @@ function gcloud.cmd {
   if($command -like 'auth print-access-token *'){return 'fixture-token'}
   throw 'Unexpected mocked cloud command'
 }
+$global:capacityFixtureBillingMode='current'
 function bq.cmd {
   $global:LASTEXITCODE=0
   if($args -notcontains '--project_id=custoking-dev' -or $args[-1] -notmatch '^SELECT'){throw 'Unexpected billing query'}
+  # Freshness must be scoped to the linked account, passed as a parameter and never spliced into the SQL.
+  if($args -notcontains '--parameter=billing_account_id:STRING:fixture' -or $args[-1] -notmatch '@billing_account_id' -or $args[-1] -match 'fixture'){throw 'Billing freshness is not scoped to the linked account by query parameter'}
+  # 'closed-only': rows exist (from a closed account's table) but none from the linked account, so freshness is NULL.
+  if($global:capacityFixtureBillingMode -eq 'closed-only'){return '[{"currency":"INR","matching_rows":"609","gross_cost_inr":"1302.86","latest_export_time":null,"latest_usage_end":null}]'}
   return '[{"currency":"INR","matching_rows":"1","gross_cost_inr":"1966.31","latest_export_time":"2026-09-26 13:00:00","latest_usage_end":"2026-09-26 12:00:00"}]'
 }
 function Invoke-RestMethod {
@@ -45,4 +50,7 @@ if($raw.Count -ne 1 -or $aggregated.Count -ne 1){throw 'Require separate raw fre
 $global:capacityFixtureRawMode='empty';Expect-Rejected {&$collector} 'Recent raw Logging samples'
 $global:capacityFixtureRawMode='fresh';$global:capacityFixtureRawAt=[datetime]::UtcNow.AddHours(-3).ToString('o');Expect-Rejected {&$collector} 'stale or in the future'
 $global:capacityFixtureRawAt=[datetime]::UtcNow.AddMinutes(5).ToString('o');Expect-Rejected {&$collector} 'stale or in the future'
-Write-Output 'PASS: full mocked collector retains raw Logging freshness, separates aggregation, and rejects missing/stale/future samples; no cloud calls.'
+$global:capacityFixtureRawAt=[datetime]::UtcNow.AddMinutes(-70).ToString('o')
+$global:capacityFixtureBillingMode='closed-only';Expect-Rejected {&$collector} 'No current-month dev billing rows from the linked billing account'
+$global:capacityFixtureBillingMode='current'
+Write-Output 'PASS: full mocked collector retains raw Logging freshness, separates aggregation, rejects missing/stale/future samples, and scopes billing freshness to the linked account; no cloud calls.'

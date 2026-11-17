@@ -166,12 +166,22 @@ if (-not (Get-Command $bq -ErrorAction SilentlyContinue)) {
   throw "The bq CLI is required for the gross-spend preflight."
 }
 $invoiceMonth = [datetime]::UtcNow.ToString("yyyyMM")
+$billingQueryArgs = @("--project_id=$ProjectId", "--use_legacy_sql=false", "--format=json")
 if ($billingSpendFromExport) {
-  # Gross = SUM(cost) before credits, the same measure the budget uses. Rows in another currency are
-  # excluded rather than mixed; with none left the guard fails closed below. export_time is when the
-  # export last delivered, so a stopped export ages out through MaximumBillingDataAgeHours.
+  # Gross = SUM(cost) before credits, the same measure the budget uses, summed over every account's
+  # table so a month that spans a move between billing accounts stays whole. Rows in another currency
+  # are excluded rather than mixed. Freshness comes ONLY from rows of $BillingAccount, the account whose
+  # budget was read above: a closed account's export keeps delivering late rows after its usage stops
+  # (the first account's did on 2026-11-17, hours after it closed), so it must never hold the gate
+  # open. With no current-account row both freshness columns are NULL and the guard fails closed below.
+  # The account ID is passed as a query parameter, never spliced into the SQL text.
+  if ($BillingAccount -notmatch '^[0-9A-F]{6}-[0-9A-F]{6}-[0-9A-F]{6}$') {
+    throw "The billing account ID has an unexpected format; load certification remains blocked."
+  }
+  $billingQueryArgs += "--parameter=billing_account_id:STRING:$BillingAccount"
   $billingSql = "SELECT ROUND(SUM(cost), 2) AS gross_cost_inr, " +
-    "MAX(usage_end_time) AS latest_usage_end, MAX(export_time) AS latest_export " +
+    "MAX(IF(billing_account_id = @billing_account_id, usage_end_time, NULL)) AS latest_usage_end, " +
+    "MAX(IF(billing_account_id = @billing_account_id, export_time, NULL)) AS latest_export " +
     "FROM ``$BillingCostTable`` WHERE project.id = '$ProjectId' " +
     "AND invoice.month = '$invoiceMonth' AND currency = 'INR'"
 } else {
@@ -180,13 +190,16 @@ if ($billingSpendFromExport) {
     "FROM ``$BillingCostTable`` WHERE project = '$ProjectId' " +
     "AND FORMAT_DATE('%Y%m', usage_date) = '$invoiceMonth'"
 }
-$billingRowsJson = & $bq query "--project_id=$ProjectId" --use_legacy_sql=false --format=json $billingSql
+$billingRowsJson = & $bq query @billingQueryArgs $billingSql
 if ($LASTEXITCODE -ne 0) {
   throw "Could not query the governed cost table before load certification."
 }
 $billingRows = @($billingRowsJson | ConvertFrom-Json)
 if ($billingRows.Count -ne 1 -or $null -eq $billingRows[0].latest_usage_end -or
     $null -eq $billingRows[0].latest_export) {
+  if ($billingSpendFromExport) {
+    throw "The billing export ($BillingCostTable) has no current-month row for $ProjectId from the billing account it is linked to now; that account's export may not be delivering yet. Load certification remains blocked."
+  }
   throw "The governed cost table $BillingCostTable has no current-month row for $ProjectId; load certification remains blocked."
 }
 $grossSpendInr = [double]$billingRows[0].gross_cost_inr

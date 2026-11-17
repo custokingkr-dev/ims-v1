@@ -191,17 +191,23 @@ dev, and every certification since August failed closed with "has no current-mon
 `-BillingCostTable` still accepts a table of that shape as an override.
 
 **The guard still fails closed in two cases:**
-- The export has not delivered for more than `-MaximumBillingDataAgeHours` (24 h). The closed first
-  account's table stops receiving rows, so certification waits until the current account's export is
-  delivering (see *Billing Export* in `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`).
+- No `custoking-dev` row from the billing account it is linked to now has been exported within
+  `-MaximumBillingDataAgeHours` (24 h). Rows from the closed first account still count toward the
+  month's gross but never toward freshness: that table kept receiving late rows for hours after the
+  account closed on 2026-11-16, so it cannot hold the gate open. Certification therefore waits until
+  the current account's export is delivering (see *Billing Export* in
+  `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`). The account ID reaches BigQuery only as a query parameter.
 - There is no `custoking-dev-monthly` budget on the account `custoking-dev` bills to, or the operator
   cannot list budgets there (see *Budget Setup*). The wrapper reads the budget's AMOUNT, not its spend.
 
 The dev budget is INR 3,000, so the 80% rule allows INR 2,400 of projected spend. Dev's gross runs about
 INR 2,292 per 30 days, so a soak (INR 1,200) fits only in roughly the first half of a month; a
 staff-workload run (INR 60) fits almost all month. Do not pass `-BillingAccount` with the closed first
-account to get past the budget check: its budget no longer sees any spend. A blocked preflight writes
-the billing account ID into its evidence JSON, so keep that file out of committed files.
+account to get past the budget check: the wrapper would then take the amount from the orphaned
+`custoking-dev-monthly` budget left there (the old INR 2,000, not the decided INR 3,000), and freshness
+would then come from that closed account's table, which is exactly the stale data the gate exists to
+refuse. A blocked preflight writes the billing account ID into its evidence JSON, so keep that file
+out of committed files.
 
 The mixed profile itself performs only GET requests plus login POSTs. Its 300 VUs model 300 active
 browser sessions distributed over the 100 schools, not all 300,000 student records or a claim that

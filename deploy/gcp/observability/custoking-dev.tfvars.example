@@ -26,9 +26,9 @@ storage_bucket_ids = ["custoking-dev-student-photos"]
 
 # OFF in dev, and the reason is money, not noise. Measured 2026-09-03..2026-09-10 in custoking-dev:
 # every service receives exactly 4,040 requests a week -- six checker regions x 96 probes a day -- and
-# nothing else. Dev's Cloud SQL is stopped outside weekday hours, Spring Boot cannot start without it
-# ("Application run failed"), so each probe buys a fresh ~23-second failed JVM boot: 1,100-1,700
-# container startups a week PER SERVICE, 68% of probes answered 5xx, and INR ~83/day of Cloud Run CPU
+# nothing else. Dev's Cloud SQL was then stopped outside weekday hours (always-on since ~2026-10-15),
+# and Spring Boot cannot start without it ("Application run failed"), so each probe bought a fresh
+# ~23-second failed JVM boot: 1,100-1,700 container startups a week PER SERVICE, 68% of probes answered 5xx, and INR ~83/day of Cloud Run CPU
 # (INR ~2,500/month, roughly two-thirds of dev's whole bill) spent proving that a database that is
 # meant to be off is off. Dev notifications are disabled anyway, so the probes were paging nobody.
 #
@@ -75,16 +75,17 @@ cost_metric_scope_project = "custoking-dev"
 
 # Set the scope to "*" instead for a cumulative view: one labelled series per project in the export.
 
-# Spend tripwire, GROSS of credits. Dev's honest floor with probes off is roughly INR 35/day (Cloud SQL
-# micro on weekdays + storage, Artifact Registry, Secret Manager, the hourly cost job) -- about INR
-# 1,100/month -- so INR 2,000 leaves headroom for releases and still reports the cold-start loop above
-# at 188% the moment it comes back. This budget notifies even though enable_alert_notifications is
+# Spend tripwire, GROSS of credits. This budget notifies even though enable_alert_notifications is
 # false: see budget.tf for why money is the exception.
 #
-# Raised to INR 3,000 on 2026-11-17 (owner's decision): the floor above predates the dev database
-# becoming always-on (~2026-10-15). Dev's measured gross since then is about INR 2,292 per 30 days,
-# so INR 2,000 would have fired its 90% and 100% rules every month. At INR 3,000 the 90% rule fires at
-# INR 2,700, about 18% above that normal month.
+# INR 3,000 since 2026-11-17 (owner's decision; it was INR 2,000). INR 2,000 was sized on a floor of
+# roughly INR 35/day (~INR 1,100/month: Cloud SQL micro on weekdays only + storage, Artifact Registry,
+# Secret Manager, the hourly cost job), measured while the dev database was still stopped outside
+# weekday hours. Since it became always-on (~2026-10-15) dev's measured gross is about INR 2,292 per
+# 30 days, so INR 2,000 would have fired its 90% and 100% rules every month. At INR 3,000 a normal
+# month sits at ~76% and the 90% rule fires at INR 2,700, about 18% above it. A month the size of
+# August 2026 (INR ~3,750 gross, during the probe-driven cold-start loop described under
+# enable_uptime_checks above) would read ~125%.
 manage_billing_budget = true
 
 # Deliberately NOT mirrored from the live file: this repository is public, so the real ID lives only in
