@@ -145,3 +145,6 @@ docs/security-remediation/acceptance-owner-execution-verifier-review.json -text 
 docs/security-remediation/acceptance-owner-execution-public-helper-review.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/security-remediation/acceptance-owner-execution-current-scan-inventory.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 docs/security-remediation/acceptance-owner-execution-completion.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
+# Workflows are parsed on Linux runners; a Windows edit once committed CRLF plus stray CRs, which made
+# git treat the release workflow as binary and showed a 35-line change as a full-file rewrite.
+.github/workflows/*.yml text eol=lf

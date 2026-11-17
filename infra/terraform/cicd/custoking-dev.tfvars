@@ -30,5 +30,8 @@ runtime_service_account_emails = {
     "ims-frontend-dev@custoking-dev.iam.gserviceaccount.com",
   ]
 }
-billing_export_dataset = ""
-# No Cloud Billing export exists in this project: the destination billing account is not accessible.
+# Read access for the Artifact Registry egress report (artifact-registry-egress in
+# .github/workflows/gcp-cost-controls.yml). The billing export for both projects lives in custoking-prod,
+# so this dev root grants the dev cost-control identity dataViewer on that one dataset across projects.
+billing_export_dataset = "billing_export"
+billing_export_project = "custoking-prod"

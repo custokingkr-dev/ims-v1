@@ -23,8 +23,9 @@ recovery_validation_bucket = "custoking-prod-db-snapshots"
 
 # The Cloud Billing export lives in this project's `billing_export` dataset: the first account's since
 # 2026-08-25, and the account the projects have billed to since 2026-11-16 exports there too (enabled
-# 2026-11-17). This grant (the Artifact Registry egress report's read access) stays off until that
-# report is wired up; see the artifact-registry-egress job in .github/workflows/gcp-cost-controls.yml.
+# 2026-11-17). The egress report's read grant on it is made by the DEV root (custoking-dev.tfvars), where
+# the cost-control identity lives; this root never creates it (the resource requires "dev" in
+# environments), so it stays empty here.
 billing_export_dataset = ""
 
 runtime_service_account_emails = {

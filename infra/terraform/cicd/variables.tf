@@ -104,6 +104,12 @@ variable "billing_export_dataset" {
   default     = "billing_export"
 }
 
+variable "billing_export_project" {
+  description = "Project that holds billing_export_dataset. Both projects' Cloud Billing exports land in custoking-prod, so the dev root (where the cost-control identity lives) grants across projects. Empty means project_id."
+  type        = string
+  default     = ""
+}
+
 variable "enable_recovery_bindings" {
   description = "Whether to manage the recovery-drill identity's permissions. The custoking-recovery-operator account exists, but as of 2026-08-16 none of these three bindings exist live as declared: roles/cloudsql.admin, roles/serviceusage.serviceUsageConsumer, the recovery-drill workload identity binding, and the recovery bucket binding, which is live unconditionally where this module scopes it to recovery-drills/. Enabling this grants real permissions including clone and delete on Cloud SQL, and replaces an unconditional bucket binding, so it needs a security owner's review rather than riding along with a state-adoption apply. See infra/terraform/cicd/README.md and docs/TERRAFORM-CICD-STATE-ADOPTION-SCOPE-2026-08-17.md."
   type        = bool

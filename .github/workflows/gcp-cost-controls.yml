@@ -100,10 +100,14 @@ jobs:
     # passed every time and the failure surfaced later as an opaque BigQuery error instead.
     #
     # With the fallback gone the condition is honest: no table configured means nothing to report, so
-    # the job skips. It resumes by itself the moment the variable is set. Do not point it at the current
-    # account's table (that account's export was enabled on 2026-11-17): repository variables are not
-    # masked, so the table name would print the account ID in public run logs. The egress report must
-    # first accept the gcp_billing_export_v1_* wildcard, which its table-name check rejects today.
+    # the job skips. It resumes by itself the moment the variable is set. Set it to the WILDCARD
+    #   custoking-prod.billing_export.gcp_billing_export_resource_v1_*
+    # which the report accepts since 2026-11-17 and which covers every billing account's detailed table.
+    # Never one account's table: repository variables are not masked, so its name would print the
+    # account ID in public run logs. The identity's read grant on that dataset comes from the dev cicd
+    # root (infra/terraform/cicd/custoking-dev.tfvars). Scheduled runs use main's copy of this file and
+    # of the report, and the cost-control identity trusts only main's workflow, so the job works only
+    # after the next dev -> main promotion.
     if: vars.BILLING_EXPORT_TABLE != ''
     env:
       GCP_PROJECT_ID: ${{ vars.DEV_GCP_PROJECT_ID }}

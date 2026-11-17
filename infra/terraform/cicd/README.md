@@ -245,4 +245,8 @@ expires after about an hour**; a stale one surfaces as a 401 reading state, whic
 but is not. Re-run `init -reconfigure` with a fresh token.
 
 A destination project sets `enable_dev_identities = true` because there is no shared `github-actions-sa`
-to fall back on, and `billing_export_dataset = ""` until its billing account is accessible.
+to fall back on. Both projects' Cloud Billing exports land in `custoking-prod.billing_export`, so the dev
+root grants the cost-control identity `roles/bigquery.dataViewer` on that dataset across projects
+(`billing_export_dataset = "billing_export"` and `billing_export_project = "custoking-prod"` in
+`custoking-dev.tfvars`). The prod root keeps `billing_export_dataset = ""`: the grant is only created when
+`"dev"` is in `environments`.
