@@ -6,10 +6,18 @@
 # would have been discovered by looking rather than by being told.
 #
 # The reason it did not exist earlier was believed to be a permission problem on the billing account.
-# That was wrong: `gcloud billing` defaults its quota project to the gcloud core project, and if that
-# project has the Cloud Billing API disabled the resulting error says "does not have permission", which
-# reads as an IAM denial and is not one. Checked directly with an explicit quota project, this account
-# grants billing.budgets.create and billing.budgets.list.
+# On the first trial account that was wrong: `gcloud billing` defaults its quota project to the gcloud
+# core project, and if that project has the Cloud Billing API disabled the resulting error says "does
+# not have permission", which reads as an IAM denial and was not one. Checked directly with an explicit
+# quota project, that account granted billing.budgets.create and billing.budgets.list.
+#
+# That is NOT true of the current account (2026-11-17). The ops identity holds only Billing Account
+# User on the billing account that custoking-prod and custoking-dev now bill to, and there the same
+# "does not have permission" error IS a real denial, even with the quota project set. Creating, listing
+# or replacing these budgets needs Billing Account Costs Manager (roles/billing.costsManager) or Billing
+# Account Administrator on the current account -- the owner grants it, or creates the budgets in the
+# Console. Set the quota project first (USER_PROJECT_OVERRIDE / GOOGLE_BILLING_PROJECT); if the error
+# persists, it is IAM.
 #
 # THE CREDIT TRAP -- read this before touching threshold values.
 #
@@ -114,15 +122,28 @@ resource "google_billing_budget" "environment" {
 # Trial-credit runway budget
 #
 # The two monthly budgets answer "is this month normal". They cannot answer the question that actually
-# ends the product: "will the free-trial credit last until its expiry date". Billing account 014C0A is a
-# Free Trial account. Google stops every resource when the trial ends -- and the trial ends at the
-# EARLIER of the expiry date and credit exhaustion. Measured 2026-09-11: INR 28,262.87 remained on
-# 2026-08-20; INR 4,958.57 of promotion credit was drawn between then and 2026-09-10; combined burn is
-# INR ~262/day gross, of which roughly INR 240/day draws on the promotion once the monthly Cloud Run
-# free tier is used up (it ran out on 2026-09-05 this month). Sixty-seven days remain to 2026-11-16, so
-# the projected draw is INR ~16,500 against INR ~23,300 remaining. That is a margin of roughly one
-# month of burn. A runaway that lasts three weeks exhausts the credit BEFORE the expiry date, and the
-# monthly budgets above would report it only as a percentage of a month.
+# ends the product: "will the free-trial credit last until its expiry date". The billing account is a
+# free trial. Google stops every resource when the trial ends -- and the trial ends at the EARLIER of
+# the expiry date and credit exhaustion. A runaway that lasts a few weeks exhausts the credit BEFORE the
+# expiry date, and the monthly budgets above would report it only as a percentage of a month.
+#
+# History, measured 2026-09-11 on the previous trial account: INR 28,262.87 remained on 2026-08-20; INR
+# 4,958.57 of promotion credit was drawn between then and 2026-09-10; combined burn was INR ~262/day
+# gross, of which roughly INR 240/day drew on the promotion once the monthly Cloud Run free tier was
+# used up (it ran out on 2026-09-05 that month). Sixty-seven days remained to 2026-11-16, so the
+# projected draw was INR ~16,500 against INR ~23,300 remaining: a margin of roughly one month of burn.
+# That trial ended on 2026-11-16 and stopped production (down 00:19-02:36 IST on 2026-11-17).
+#
+# Re-based 2026-11-17: both projects now bill to a new billing account, which is ALSO a free trial --
+# INR 28,569 of credit (Console banner, 2026-11-15) and an expiry of 2027-02-13 (creation + 90 days;
+# confirm in the Console). Every project on the account draws the same credit, so this budget counts
+# all of them. Over the 90-day period the break-even draw is INR ~317/day. The latest measured promotion
+# draw (previous account's export, 2026-10-17..11-15) is INR ~192/day, with a spike to INR 230-302/day on
+# 11-12..15. At ~192/day only the 50% threshold fires, around the end of January; 75% before the expiry
+# means a sustained INR ~240/day, and 90% or 100% before 2027-02-13 means the credit, not the date, is
+# about to end the trial. The runbook (docs/GCP-COST-GUARDRAILS-RUNBOOK.md, Free-trial expiry) carries
+# the same reading; change both together. No budget on the current account exists until it is
+# re-created there (see the permission note above).
 #
 # This budget is scoped to the WHOLE billing account, runs over a custom period ending on the expiry
 # date, and its amount is the credit remaining at the start of that period. Each threshold is therefore
@@ -143,8 +164,9 @@ resource "google_billing_budget" "trial_runway" {
   display_name    = "custoking-trial-credit-runway-to-${var.trial_expiry_date}"
 
   budget_filter {
-    # No project filter: the credit is an account-level fact and every project on the account draws it,
-    # including the auto-created "My First Project" that sits on 014C0A at zero cost today.
+    # No project filter: the credit is an account-level fact. Every project on the account draws the
+    # same credit -- including any project on it that this root does not manage -- and this budget
+    # counts all of them.
     custom_period {
       start_date {
         year  = tonumber(split("-", var.trial_runway_start_date)[0])

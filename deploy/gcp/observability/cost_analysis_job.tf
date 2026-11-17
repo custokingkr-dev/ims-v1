@@ -5,7 +5,9 @@
 # rates. This exists because the Cloud Billing usage-cost export for account 014C0A-C6B9AF-5FABC0
 # cannot be enabled -- six attempts across every configuration available to us fail with a server-side
 # error while the pricing export succeeds on the same account and dataset, and there is no API for
-# export configuration, so there is no scripted workaround.
+# export configuration, so there is no scripted workaround. (Written 2026-08-20. That export was enabled
+# on 2026-08-25; the projects moved to a new billing account on 2026-11-16, whose export only its owner
+# can enable. The collector covers any such gap.)
 #
 # Distinct from cost_metric_job.tf, which reads the billing export and publishes a Monitoring metric.
 # That job stays: if Google ever repairs the export it resumes on its own. This one does not depend on

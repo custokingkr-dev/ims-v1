@@ -28,6 +28,12 @@
 # 2026-11-03, (2) opened, then closed itself two days later while the exporter was still broken, and from
 # then on nothing said that spend was unwatched -- for the last two weeks of a free trial.
 #
+# A billing-account move blinds (1) more quietly. The exporter reads every account's export table by
+# wildcard over a 62-day window, so after the projects moved on 2026-11-16 it keeps publishing
+# gross_yesterday = 0 for the old account's series -- data under the line, not absence. (1) stays silent
+# and its missing-data rule never trips; only (2), through export lag, reports that spend is unwatched,
+# until the new account's export delivers into the same dataset.
+#
 # Notifications use local.spend_notification_channel_ids -- the money channels, not the health
 # channels -- for the reason given in budget.tf: dev may not page about health and must still be able
 # to say it is burning money.
@@ -102,7 +108,7 @@ resource "google_monitoring_alert_policy" "daily_spend_jump" {
 
           bq query --project_id=custoking-prod --use_legacy_sql=false '
           SELECT service.description, sku.description, ROUND(SUM(cost),2) AS inr, ROUND(SUM(usage.amount),2) AS usage, ANY_VALUE(usage.unit) AS unit
-          FROM `custoking-prod.billing_export.gcp_billing_export_v1_014C0A_C6B9AF_5FABC0`
+          FROM `custoking-prod.billing_export.gcp_billing_export_v1_*`
           WHERE project.id="${local.cost_metric_scope_label}" AND DATE(usage_start_time) = CURRENT_DATE() - 1
           GROUP BY 1,2 ORDER BY inr DESC LIMIT 15'
 
@@ -112,8 +118,11 @@ resource "google_monitoring_alert_policy" "daily_spend_jump" {
       zero, or the dev cold-start loop -- see docs/alerting-remediation-plan.md); a Cloud SQL tier change
       or a second instance; a load test.
 
-      This account is on a free trial that ends at the earlier of ${var.trial_expiry_date} and credit
-      exhaustion. Check the trial-runway budget's latest notification before deciding this can wait.
+      The billing account that custoking-prod and custoking-dev bill to is on a free trial that ends at
+      the earlier of ${var.trial_expiry_date} and credit exhaustion. Check the trial-runway budget's
+      latest notification before deciding this can wait -- that budget exists only once it has been
+      re-created on the current billing account (deploy/gcp/observability/budget.tf). Until then, read
+      the remaining credit in Console -> Billing -> Credits instead.
 
       This also fires when the exporter has stopped publishing altogether (missing data counts as over
       the line). If the chart shows no recent points rather than a high one, billing-export-stale will be
@@ -206,12 +215,17 @@ resource "google_monitoring_alert_policy" "billing_export_stale" {
 
       Check, in order: the Cloud Scheduler job `cost-metric-export-${var.env}` (asia-south1) is enabled
       and its last run succeeded; the Cloud Run job `ims-cost-metric-${var.env}` has a recent successful
-      execution and its logs do not end in a BigQuery permission error; the table
-      `custoking-prod.billing_export.gcp_billing_export_v1_014C0A_C6B9AF_5FABC0` has rows with
-      export_time in the last day.
+      execution and its logs do not end in a BigQuery permission error; the tables
+      `custoking-prod.billing_export.gcp_billing_export_v1_*` have rows with export_time in the last day.
 
-      Billing-export configuration is Console-only (no API, no gcloud). If the table has simply stopped
+      Billing-export configuration is Console-only (no API, no gcloud). If the tables have simply stopped
       receiving rows, the fix is Console -> Billing -> Billing export, and there is no scripted retry.
+
+      After the projects move to another billing account (as on 2026-11-16), the old account's table
+      stops receiving rows and this opens about a day and a half later. It clears only when the new
+      account's export delivers into the same dataset: that account's administrator enables Standard and
+      Detailed usage cost export into custoking-prod.billing_export in the Console. The exporter reads the
+      tables by wildcard, so it picks the new one up with no Terraform or script change.
 
       Do not wait for this to close by itself. With no data arriving it stays open for about eight days
       and then closes even if nothing was fixed; only new points from the exporter prove it is working.

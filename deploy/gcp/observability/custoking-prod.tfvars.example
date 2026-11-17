@@ -1,7 +1,8 @@
 # Observability inputs for the production environment (custoking-prod).
-# Real *.tfvars are gitignored because they carry operator email addresses; copy this to
-# custoking-prod.tfvars and fill in the channels. This example is the only committed record of which
-# production switches are on -- keep it in step with the live file.
+# Real *.tfvars are gitignored because they carry operator email addresses and the billing account ID;
+# copy this to custoking-prod.tfvars and fill in the channels and the account. This example is the only
+# committed record of which production switches are on -- keep it in step with the live file, with ONE
+# carve-out: billing_account_id is deliberately NOT mirrored (see the Spend section below).
 #
 #   $tok = gcloud auth print-access-token
 #   $env:GOOGLE_OAUTH_ACCESS_TOKEN = $tok
@@ -51,7 +52,14 @@ storage_bucket_ids        = ["custoking-prod-student-photos"]
 # Spend. Read budget.tf and spend_anomaly_alerts.tf before changing any of these.
 # ---------------------------------------------------------------------------------------------------
 manage_billing_budget = true
-billing_account_id    = "014C0A-C6B9AF-5FABC0"
+
+# Deliberately NOT mirrored from the live file: this repository is public, so the real ID lives only in
+# the gitignored custoking-prod.tfvars. It is the billing account that custoking-prod and custoking-dev
+# bill to. Look it up with
+#   gcloud billing projects describe custoking-prod --format="value(billingAccountName)"
+# (prints billingAccounts/<ID>; use the part after the slash) or Console -> Billing -> Account
+# management. Never copy it back here, and never paste a plan that shows it.
+billing_account_id = "REPLACE_WITH_BILLING_ACCOUNT_ID"
 
 # Monthly GROSS budget for this project. Measured 2026-08-27..2026-09-09: INR 4,209/month, so the
 # default of 5,000 puts a normal month at ~84% and the 90% rule fires only on real drift.
@@ -60,11 +68,12 @@ billing_account_id    = "014C0A-C6B9AF-5FABC0"
 # Account-wide trial-credit runway budget (prod root only). The amount is the credit remaining at the
 # start date, read from Console -> Billing -> Credits; the balance is not available from any API.
 # Re-read and update both when the runway is re-based; set manage_trial_runway_budget = false once the
-# account has been upgraded off the free trial.
+# account has been upgraded off the free trial. The values below are the variables.tf defaults, re-based
+# 2026-11-17 to the current trial account (Console banner 2026-11-15; confirm the expiry in the Console).
 # manage_trial_runway_budget = true
-# trial_credit_remaining_inr = 23300
-# trial_runway_start_date    = "2026-09-11"
-# trial_expiry_date          = "2026-11-16"
+# trial_credit_remaining_inr = 28569
+# trial_runway_start_date    = "2026-11-15"
+# trial_expiry_date          = "2027-02-13"
 
 # Spend-anomaly policies. Defaults are sized from measured September 2026 data; see variables.tf.
 # enable_spend_anomaly_alerts               = true

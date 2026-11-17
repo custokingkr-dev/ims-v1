@@ -63,6 +63,22 @@ The dashboard intentionally does not turn missing export data into zero spend. A
 export is shown as a telemetry problem, and the live usage panels continue to show which resources are
 driving cost while it is repaired.
 
+**A billing-account move is the exception: it does read as zero.** The exporter reads every account's
+table through the wildcard and publishes one series per account. On 2026-11-16 the projects moved to a
+new account that has no export yet. The old account's table stopped growing, but it stays inside the
+exporter's 62-day window, so its series keeps arriving:
+
+- `gross_yesterday` reads 0.
+- Month-to-date freezes at the 1-16 November figure, then reads 0 from 1 December.
+- **Export available** stays green.
+
+Only **source lag** tells the truth. `export_lag_hours` is the minimum across accounts, and it climbs
+from the old account's last delivery (2026-11-17). Once the new account's export lands in the same
+`custoking-prod.billing_export` dataset, the dashboard recovers with no code change. If the new export
+still does not exist when the old rows age out of the window (about mid-January 2027), **Export
+available** drops to 0. Until then, use the `cost_analysis` views above. None of this moves until the
+pinned job image below is applied, because the exporter has failed on every run since 2026-11-03.
+
 ## Spend: budgets and anomaly alerts
 
 Three files, three speeds. Read `budget.tf` before touching any number in it.
@@ -74,6 +90,12 @@ Three files, three speeds. Read `budget.tf` before touching any number in it.
 | `custoking-<env>-daily-spend-jump` | `spend_anomaly_alerts.tf` | ~12-24 h | one calendar day's gross spend above `daily_spend_alert_inr`; sees everything the invoice sees, including Artifact Registry egress. Also fires about 3 h after the exporter stops publishing, because it is blind until the feed is back |
 | `custoking-<env>-billing-export-stale` | `spend_anomaly_alerts.tf` | 2 h | the export or the exporter job has stopped. With no data it stays open for about 8 days (`auto_close` 7 days + 24 h), and then closes whether or not anything was fixed |
 | `custoking-<env>-cloud-run-instance-time-runaway` | `spend_anomaly_alerts.tf` | 2 h | project-wide Cloud Run instance time above `cloud_run_instance_seconds_per_hour_alert` per hour; the near-real-time signal |
+
+`daily-spend-jump` does **not** fire after a billing-account move. The old account's series keeps
+publishing 0 instead of going missing (see *Billing and cost reporting*), so missing-data handling never
+trips. Until the new account's export lands, only `billing-export-stale` (about 36 h after the old
+account's last delivery, and it stays open) and `cloud-run-instance-time-runaway` can report spend
+problems. The budgets live on a billing account, so they go blind too until they are re-created (below).
 
 **Budgets must measure GROSS.** `credit_types_treatment` defaults to `INCLUDE_ALL_CREDITS`, which on a
 free-trial account is a budget that reads INR 0 forever. The first version of `budget.tf` omitted it
@@ -90,6 +112,10 @@ Applying anything in `budget.tf` needs the Cloud Billing quota project set (`USE
 `GOOGLE_BILLING_PROJECT`; see State below). The runway budget's amount is read from the Console
 (Billing -> Credits) -- the balance is not exposed by any API -- and its start date should match the day
 it was read. Set `manage_trial_runway_budget = false` after the account is upgraded off the trial.
+Since 2026-11-17 the committed defaults describe the second trial account: `trial_credit_remaining_inr =
+28569`, `trial_runway_start_date = "2026-11-15"` and `trial_expiry_date = "2027-02-13"`, from the
+Console banner read on 2026-11-15 (90 days remaining). `trial_expiry_date` duplicates `TRIAL_EXPIRY_DATE`
+in `.github/workflows/gcp-cost-controls.yml`: change both together.
 
 After applying, confirm the anomaly policies can see their metrics: query
 `custom.googleapis.com/custoking/cost/gross_yesterday` and `export_lag_hours` for the last day and
@@ -100,6 +126,32 @@ The three script jobs (`ims-cost-metric-<env>`, `ims-cost-analysis-<env>`, `ims-
 run on `local.cloud_sdk_job_image` in `cost_metric_job.tf`, which is pinned by digest. Do not point them
 back at `google/cloud-sdk:slim`. A job looks its tag up again on every run, and on 2026-11-03 upstream
 dropped python3 from that tag. All three jobs then failed in both environments, with no change here.
+
+### When the billing account changes
+
+This happened on 2026-11-16, and on 2026-11-17 steps 1, 2 and 4 are still open. See *Free-trial expiry*
+in `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`. Never write the new account's ID in a committed file: this
+repository is public.
+
+1. The new account's owner grants the identity that applies this root Billing Account Costs Manager
+   (`roles/billing.costsManager`) or Admin on that account. Billing Account User cannot list or create
+   budgets. The owner also enables Standard and Detailed usage cost export into
+   `custoking-prod.billing_export` (Console only). Keeping that dataset means no Terraform or script
+   change: the cost-metric exporter and the dev capacity preflight read the `gcp_billing_export_v1_*`
+   and `gcp_billing_export_resource_v1_*` wildcards, never one account's table.
+2. Put the new ID in `billing_account_id` in the gitignored `custoking-prod.tfvars` and
+   `custoking-dev.tfvars`, and nowhere else. The committed `*.tfvars.example` files carry a placeholder
+   on purpose.
+3. If the new account is another trial, re-base the three `trial_*` defaults and `TRIAL_EXPIRY_DATE`.
+4. Plan, then apply. `billing_account` cannot change in place, so every budget is replaced: deleted on the
+   old account and created on the new one. Without step 1 the create fails after the delete has already
+   succeeded. A delete on a closed account is untested. If it fails, run `terraform state rm` on that
+   budget, delete it in the Console, and apply again. To move only the budgets, target
+   `google_billing_budget.environment` and `google_billing_budget.trial_runway` (the runbook's *Budget
+   Setup* has the full command). The plan prints the account ID: never save a plan inside the
+   repository, and never paste one into an issue, PR or chat.
+5. Expect `billing-export-stale` to stay open until the new account's table delivers. `daily-spend-jump`
+   stays quiet throughout.
 
 ## Prerequisites
 
@@ -170,7 +222,10 @@ terraform -chdir=deploy/gcp/observability init -reconfigure `
 
 Anything touching Cloud Billing (the budget resources) additionally needs
 `$env:USER_PROJECT_OVERRIDE = "true"` and `$env:GOOGLE_BILLING_PROJECT = "<project>"`, or it fails with
-a 403 naming an unrelated project number.
+a 403 naming an unrelated project number. A 403 that persists with the quota project set is a real
+denial. On the account the projects have billed to since 2026-11-16, the ops identity holds only Billing
+Account User, which grants no `billing.budgets.*` permission (verified 2026-11-17). It needs Billing
+Account Costs Manager or Admin on that account.
 
 ## Plan and Apply
 
