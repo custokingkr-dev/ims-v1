@@ -27,7 +27,7 @@ class FullReleaseRoutingTest(unittest.TestCase):
                 self.assertEqual(serial,self.evaluate('Create and promote Cloud Deploy dependency groups',environment,changed,force))
                 self.assertEqual(serial,self.evaluate('Confirm Cloud Deploy rollouts',environment,changed,force))
     def test_serial_step_preserves_wait_and_readiness_verification(self):
-        source=(ROOT/'.github/workflows/build-release.yml').read_text()
+        source=(ROOT/'.github/workflows/build-release.yml').read_text(encoding='utf-8-sig')
         block=source.split('- name: Create and promote Cloud Deploy dependency groups',1)[1].split('- name: Confirm Cloud Deploy rollouts',1)[0]
         self.assertIn('WaitForRollout = $true',block)
         self.assertIn('./scripts/invoke-clouddeploy-release.ps1 @arguments',block)

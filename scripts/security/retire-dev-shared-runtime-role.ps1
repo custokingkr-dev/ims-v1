@@ -42,7 +42,8 @@ BEGIN
 END $check$;
 ALTER ROLE app_rt NOLOGIN;
 COMMIT;
-SELECT count(pg_terminate_backend(pid)) FROM pg_stat_activity WHERE usename='app_rt' AND pid<>pg_backend_pid();
+SELECT count(pg_terminate_backend(pid, 5000)) FROM pg_stat_activity WHERE usename='app_rt' AND pid<>pg_backend_pid();
+SELECT pg_stat_clear_snapshot();
 SELECT jsonb_build_object('sharedRole','app_rt','canLogin',(SELECT rolcanlogin FROM pg_roles WHERE rolname='app_rt'),'remainingSessions',(SELECT count(*) FROM pg_stat_activity WHERE usename='app_rt'))::text;
 '@
 New-Item -ItemType Directory -Force -Path $OutputDirectory|Out-Null
