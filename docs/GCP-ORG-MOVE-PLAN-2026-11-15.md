@@ -508,7 +508,7 @@ already in place.
 
 No parallel estate runs at any point, so the move adds no running cost.
 
-## 12. Execution record (2026-11-15/16 IST)
+## 12. Execution record (2026-11-15 to 17 IST)
 
 **The destination differed from §3.** The owner created a **standalone** organization from a new Google account (no
 company domain or directory), not a Workspace/Cloud Identity one. Consequences:
@@ -539,10 +539,9 @@ company domain or directory), not a Workspace/Cloud Identity one. Consequences:
 | Prod runtime | No ERROR logs; all 4 async relays ran after the move; **all 7 uptime checks passed every probe in the 10 minutes spanning the move**; login round trip 401; cross-project grants (dev registry readers, billing dataset ACL, collector grants) unchanged |
 
 **Not done, and why.**
-- **Billing switch blocked.** The new account's billing account refuses further project links with "Cloud billing quota
-  exceeded". Its owner had linked two empty projects and dev was linked third. Unlinking all of them did not free a slot
-  within the hour. Both projects therefore still bill to the old trial account, which must be upgraded, or the new
-  account's quota raised through Google's form or by upgrading it, before the trial ends.
+- **Billing switch blocked at first** (superseded below). The new account's billing account refused further project
+  links with "Cloud billing quota exceeded". Its owner had linked two empty projects and dev was linked third.
+  Unlinking all of them did not free a slot within the hour, so both projects stayed on the old trial account.
 - **Prod CI not exercised.** No prod release ran: the promotion is on hold (§9). The prod WIF provider and its
   service-account bindings are unchanged in the diff.
 - **Clean-up deliberately deferred** until the stabilization period ends (§6.5): the four export/import allowances, the
@@ -550,6 +549,31 @@ company domain or directory), not a Workspace/Cloud Identity one. Consequences:
   possible.
 - **Deviation:** the pre-move "fresh export, restore-checked" became an on-demand Cloud SQL backup. The database
   service agent has no write access to the 30-day-lifecycle snapshot bucket, and an organization move touches no data.
+
+**Billing switch and the trial-expiry outage (16–17 Nov).** The old trial billing account ended on its stated expiry
+date, 16 Nov, at about 18:50 UTC, before the new account accepted the projects. Google disabled billing on both
+projects: prod's Cloud SQL instance went SUSPENDED and every public URL returned 500. **Production was down from
+00:19 to 02:36 IST on 17 Nov (2 h 17 min).** No data was lost.
+
+| Time (UTC, 16 Nov) | Event |
+|---|---|
+| ~18:50 | Old trial ends; last successful prod request 18:49:39 |
+| 18:57–18:59 | Prod Cloud SQL suspended (an UPDATE operation) |
+| 20:32 | Prod, then dev, linked to the new billing account on the first attempt: the link quota had freed about a day after the refusals, without an upgrade |
+| 20:42–20:47 | Cloud SQL resumes (another UPDATE operation); prod RUNNABLE at 20:47 |
+| 20:46 | Three services that started before the database was up exit 1 on Flyway "The connection attempt failed"; they start normally on the next request |
+| 20:32–21:06 | Cloud Run's front end answers Google-branded 503 "not available yet" and drops most requests before any container sees them. This is Google's documented "delayed service recovery after re-enabling billing" (up to 30 minutes, no manual workaround), so nothing was redeployed |
+| 21:06 | Prod serving consistently; dev had recovered by about 20:52 |
+
+Verified afterwards: endpoints and a 401 login round trip; all 7 uptime checks with zero failures; the four relays;
+empty Pub/Sub backlogs; all buckets readable; no ERROR logs; a fresh snapshot diff equal to the post-move one apart from
+the billing account. Side effects: every Cloud Scheduler job's run history was reset (benign), and the 02:00 IST
+automated backup was skipped while the database was suspended, so an on-demand backup was taken.
+
+**The new billing account is also a free trial** (90 days, expiring about 13 Feb 2027). The owner chose not to upgrade
+yet; the trial-expiry countdown, the trial-runway budget and the runbook were re-aimed at it in a separate change
+(docs/GCP-COST-GUARDRAILS-RUNBOOK.md). Budgets, the BigQuery billing export and the dev monthly budget amount on the
+new account are owner actions listed there.
 
 ## 11. Sources
 
