@@ -135,12 +135,12 @@ resource "google_billing_budget" "environment" {
 # That trial ended on 2026-11-16 and stopped production (down 00:19-02:36 IST on 2026-11-17).
 #
 # Re-based 2026-11-17: both projects now bill to a new billing account, which is ALSO a free trial --
-# INR 28,569 of credit (Console banner, 2026-11-15) and an expiry of 2027-02-13 (creation + 90 days;
-# confirm in the Console). Every project on the account draws the same credit, so this budget counts
-# all of them. Over the 90-day period the break-even draw is INR ~317/day. The latest measured promotion
+# INR 28,569 of credit (Console banner, 2026-11-15) and an expiry of 2027-02-14 (Console -> Billing ->
+# Overview, read 2026-11-17). Every project on the account draws the same credit, so this budget counts
+# all of them. Over the 91-day period the break-even draw is INR ~314/day. The latest measured promotion
 # draw (previous account's export, 2026-10-17..11-15) is INR ~192/day, with a spike to INR 230-302/day on
 # 11-12..15. At ~192/day only the 50% threshold fires, around the end of January; 75% before the expiry
-# means a sustained INR ~240/day, and 90% or 100% before 2027-02-13 means the credit, not the date, is
+# means a sustained INR ~240/day, and 90% or 100% before 2027-02-14 means the credit, not the date, is
 # about to end the trial. The runbook (docs/GCP-COST-GUARDRAILS-RUNBOOK.md, Free-trial expiry) carries
 # the same reading; change both together. No budget on the current account exists until it is
 # re-created there (see the permission note above).

@@ -81,11 +81,10 @@ cost_metric_scope_project = "custoking-dev"
 # at 188% the moment it comes back. This budget notifies even though enable_alert_notifications is
 # false: see budget.tf for why money is the exception.
 #
-# OWNER DECISION, open since 2026-11-17: the floor above predates the dev database becoming always-on
-# (~2026-10-15). Dev's measured gross since then is about INR 2,292 per 30 days, above this INR 2,000,
-# so a budget re-created unchanged on the current billing account fires its 90% and 100% rules every
-# month. Raising the amount, or bringing dev's spend back under it, is the owner's call; the value
-# below is deliberately unchanged until then.
+# Raised to INR 3,000 on 2026-11-17 (owner's decision): the floor above predates the dev database
+# becoming always-on (~2026-10-15). Dev's measured gross since then is about INR 2,292 per 30 days,
+# so INR 2,000 would have fired its 90% and 100% rules every month. At INR 3,000 the 90% rule fires at
+# INR 2,700, about 18% above that normal month.
 manage_billing_budget = true
 
 # Deliberately NOT mirrored from the live file: this repository is public, so the real ID lives only in
@@ -95,7 +94,7 @@ manage_billing_budget = true
 # (prints billingAccounts/<ID>; use the part after the slash) or Console -> Billing -> Account
 # management. Never copy it back here, and never paste a plan that shows it.
 billing_account_id = "REPLACE_WITH_BILLING_ACCOUNT_ID"
-monthly_budget_inr = 2000
+monthly_budget_inr = 3000
 
 # Cloud Scheduler is not offered in asia-south2, so the trigger runs from the nearest region that has it
 # and calls into the job's own region.

@@ -73,7 +73,7 @@ billing_account_id = "REPLACE_WITH_BILLING_ACCOUNT_ID"
 # manage_trial_runway_budget = true
 # trial_credit_remaining_inr = 28569
 # trial_runway_start_date    = "2026-11-15"
-# trial_expiry_date          = "2027-02-13"
+# trial_expiry_date          = "2027-02-14"
 
 # Spend-anomaly policies. Defaults are sized from measured September 2026 data; see variables.tf.
 # enable_spend_anomaly_alerts               = true

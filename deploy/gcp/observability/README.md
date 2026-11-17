@@ -113,8 +113,8 @@ Applying anything in `budget.tf` needs the Cloud Billing quota project set (`USE
 (Billing -> Credits) -- the balance is not exposed by any API -- and its start date should match the day
 it was read. Set `manage_trial_runway_budget = false` after the account is upgraded off the trial.
 Since 2026-11-17 the committed defaults describe the second trial account: `trial_credit_remaining_inr =
-28569`, `trial_runway_start_date = "2026-11-15"` and `trial_expiry_date = "2027-02-13"`, from the
-Console banner read on 2026-11-15 (90 days remaining). `trial_expiry_date` duplicates `TRIAL_EXPIRY_DATE`
+28569`, `trial_runway_start_date = "2026-11-15"` and `trial_expiry_date = "2027-02-14"`: the credit from
+the Console banner read on 2026-11-15, the expiry from Console -> Billing -> Overview on 2026-11-17. `trial_expiry_date` duplicates `TRIAL_EXPIRY_DATE`
 in `.github/workflows/gcp-cost-controls.yml`: change both together.
 
 After applying, confirm the anomaly policies can see their metrics: query

@@ -192,9 +192,9 @@ the evidence JSON; it does not weaken CPU, memory, connection, or correctness th
   (Billing Account User only).
 
 Certification resumes only when both are fixed: the budget is re-created on the current account (see
-*Budget Setup* in `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`, including the open decision on the dev amount:
-dev's gross is about INR 2,292 per 30 days, so an INR 2,000 budget leaves no headroom under the 80% rule
-for part of every month), and a `-BillingCostTable` source carries current-month dev cost. Do not pass
+*Budget Setup* in `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`, where the dev amount is now INR 3,000:
+dev's gross is about INR 2,292 per 30 days, so the 80% rule, at INR 2,400, leaves only about 5% of
+headroom), and a `-BillingCostTable` source carries current-month dev cost. Do not pass
 `-BillingAccount` with the closed first account to get past the first check: its budget no longer sees
 any spend. A blocked preflight writes the billing account ID into its evidence JSON, so keep that file
 out of committed files.
