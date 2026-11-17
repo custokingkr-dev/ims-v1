@@ -12,8 +12,9 @@ variables {
   enable_spend_anomaly_alerts    = true
 }
 
-# On 2026-11-03 upstream's google/cloud-sdk:slim lost python3. All three jobs re-resolved the floating tag
-# and failed on every run, in dev and prod, and the liveness job hid it behind `|| true`.
+# On 2026-11-03 upstream's google/cloud-sdk:slim lost python3. The script jobs re-resolved the floating tag
+# and failed on every run (all three in prod; dev runs only the cost-metric job), and the liveness job
+# hid it behind `|| true`.
 run "script_jobs_run_a_pinned_image_and_report_failure" {
   command = plan
 

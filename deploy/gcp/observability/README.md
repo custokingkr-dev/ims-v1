@@ -66,8 +66,9 @@ driving cost while it is repaired.
 **A billing-account move is the exception: it does read as zero.** The exporter reads every account's
 table through the wildcard and publishes one series per account. On 2026-11-16 the projects moved to a
 new account. Its Standard and Detailed export was enabled on 2026-11-17, but Google creates the
-account's tables only on the first delivery, and none had arrived that day. The old account's table
-stopped growing, but it stays inside the exporter's 62-day window, so its series keeps arriving:
+account's tables only on the first delivery, and none had arrived by about 17:00 IST that day. The old
+account's table stopped growing, but it stays inside the exporter's 62-day window, so its series
+keeps arriving:
 
 - `gross_yesterday` reads 0.
 - Month-to-date freezes at the 1-16 November figure, then reads 0 from 1 December.
@@ -97,9 +98,10 @@ Three files, three speeds. Read `budget.tf` before touching any number in it.
 `daily-spend-jump` does **not** fire after a billing-account move. The old account's series keeps
 publishing 0 instead of going missing (see *Billing and cost reporting*), so missing-data handling never
 trips. Until the new account's export lands, only `billing-export-stale` (about 36 h after the old
-account's last delivery, and it stays open), `cloud-run-instance-time-runaway` and the budgets can report
-spend problems. Budgets live on a billing account, so a move blinds them until they are re-created on the
-new one (below). After the 2026-11-16 move that was done on 2026-11-17. Budgets read Cloud Billing
+account's last delivery, and it stays open), `cloud-run-instance-time-runaway` and, once they are
+re-created on the new account, the budgets can report spend problems. Budgets live on a billing
+account, so a move blinds them until then (below). After the 2026-11-16 move that was done on
+2026-11-17. Budgets read Cloud Billing
 directly, not the BigQuery export, so they work while the export is still pending.
 
 **Budgets must measure GROSS.** `credit_types_treatment` defaults to `INCLUDE_ALL_CREDITS`, which on a
@@ -119,8 +121,9 @@ Applying anything in `budget.tf` needs the Cloud Billing quota project set (`USE
 it was read. Set `manage_trial_runway_budget = false` after the account is upgraded off the trial.
 Since 2026-11-17 the committed defaults describe the second trial account: `trial_credit_remaining_inr =
 28569`, `trial_runway_start_date = "2026-11-15"` and `trial_expiry_date = "2027-02-14"`: the credit from
-the Console banner read on 2026-11-15, the expiry from Console -> Billing -> Overview on 2026-11-17. `trial_expiry_date` duplicates `TRIAL_EXPIRY_DATE`
-in `.github/workflows/gcp-cost-controls.yml`: change both together.
+the Console banner read on 2026-11-15, the expiry from Console -> Billing -> Overview on 2026-11-17.
+`trial_expiry_date` duplicates `TRIAL_EXPIRY_DATE` in `.github/workflows/gcp-cost-controls.yml`: change
+both together.
 
 After applying, confirm the anomaly policies can see their metrics: query
 `custom.googleapis.com/custoking/cost/gross_yesterday` and `export_lag_hours` for the last day and

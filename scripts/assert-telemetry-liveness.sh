@@ -79,7 +79,7 @@ KNOWN_BROKEN_METRICS=(
   "custom.googleapis.com/custoking/cost/gross_month_to_date"
   "custom.googleapis.com/custoking/cost/gross_yesterday"
   # Added after an audit found it frozen at the same instant as the two above and listed in neither
-  # place. All three come from the same collector against the same broken export, so any one of them
+  # place. All three come from the same collector against the same export (broken then), so any one of them
   # missing from this list means the check reports a partial truth: two known failures and one
   # apparently-fine metric that is failing for the identical reason. List siblings together.
   "custom.googleapis.com/custoking/cost/net_month_to_date"

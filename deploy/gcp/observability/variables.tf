@@ -441,9 +441,9 @@ variable "enable_cost_analysis_collector" {
     Independent of the billing export by design: cost is reconstructed from Cloud Monitoring usage
     priced at real SKU rates. It was written (2026-08-20) when the first trial account's usage-cost
     export could not be enabled; that export was enabled on 2026-08-25. It still matters whenever an
-    export is missing or late, such as the current billing account's: enabled on 2026-11-17, with no
-    rows until its first delivery. Enable in prod; dev's spend is a stopped database and is not worth a
-    daily job.
+    export is missing or late, such as between a billing-account move and the new account's first
+    export delivery (the current account's export was enabled on 2026-11-17). Enable in prod; dev's
+    spend is small and steady and is not worth a daily job.
   DESC
   type        = bool
   default     = false

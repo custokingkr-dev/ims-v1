@@ -84,9 +84,9 @@ expiry is a shutdown date, not a cost event.
 
 The trial also ends **early** if the credit is exhausted first, and every project linked to the account
 draws on the same credit. None of the following was measured on the new account: nothing can be measured
-there until its export delivers (enabled 2026-11-17), so the rates come from the first account's export. The promotion draw was
-about INR 192/day over 2026-10-17..2026-11-15 (gross: prod ~INR 132/day, dev ~INR 76/day). Over
-2026-11-12..15 it was INR 230-302/day, because the monthly Cloud Run free tier ran out and dev Artifact
+there until its export delivers (enabled 2026-11-17), so the rates come from the first account's
+export. The promotion draw was about INR 192/day over 2026-10-17..2026-11-15 (gross: prod ~INR
+132/day, dev ~INR 76/day). Over 2026-11-12..15 it was INR 230-302/day, because the monthly Cloud Run free tier ran out and dev Artifact
 Registry egress jumped. INR 28,569 over the 90 days from 2026-11-16 to 2027-02-14 covers up to about INR
 317/day. At ~INR 190/day, about 60% is used and the date is what ends the trial. At ~INR 300/day, about
 95% is used, which leaves less than a week of margin. A runaway (one always-on instance costs ~INR
@@ -118,7 +118,8 @@ What reminds us, in order of reliability:
 1. **A human calendar.** The account owner and the operator each create four calendar events with
    notifications: **2027-01-14** (one month out: upgrade now), **2027-01-29** (about two weeks, a Friday:
    confirm the upgrade is done), **2027-02-05** (nine days out, a Friday: if not upgraded, nothing
-   else matters this week), and **2027-02-12** (the last working day before the Sunday expiry). This is the primary mechanism. Everything below is a backstop, because every
+   else matters this week), and **2027-02-12** (the last working day before the Sunday expiry). This is
+   the primary mechanism. Everything below is a backstop, because every
    automated path here depends on something that can silently stop: a workflow on a branch, a channel
    in a project, an export Google can break server-side.
 2. **The `trial-expiry-countdown` job** in `.github/workflows/gcp-cost-controls.yml`. It runs once each
@@ -260,9 +261,9 @@ budget would fire its 90% and 100% rules every month, and the load-certification
 2,700, about 18% above a normal month.
 
 **Re-aiming after an account change** (last done 2026-11-17, once the grant existed). Use a checkout of
-`dev` that includes the 2026-11-17 re-base of the `trial_*` defaults and holds the gitignored
-`custoking-prod.tfvars` and `custoking-dev.tfvars`. Put
-the account ID in those files (`billing_account_id`) and nowhere else, and check that they do not
+`dev` whose `trial_*` defaults describe the account being moved to (for the current account, the
+2026-11-17 re-base) and that holds the gitignored `custoking-prod.tfvars` and `custoking-dev.tfvars`.
+Put the account ID in those files (`billing_account_id`) and nowhere else, and check that they do not
 override `trial_*`.
 
 - `-target` keeps prod clear of the dev-only observability changes that are held for promotion.

@@ -299,9 +299,10 @@ furniture and stop alerting on them.
 
 ## 7. Apply order for this PR (human, after merge)
 
-> **2026-11-17:** this is the 2026-09-11 apply order, kept as history. The budgets it created sit on the
-> closed first account and must be re-created on the account the projects bill to now. For the budgets,
-> use the targeted apply in the runbook's *Budget Setup*.
+> **2026-11-17:** this is the 2026-09-11 apply order, kept as history. The budgets it created sat on the
+> closed first account. Later that day the targeted apply in the runbook's *Budget Setup* replaced them
+> on the account the projects bill to now, which deleted them from the closed account. For any future
+> re-aim, use that targeted apply, not this order.
 
 ```powershell
 # prod root -- budgets need the Cloud Billing quota project or they 403 naming a random project number

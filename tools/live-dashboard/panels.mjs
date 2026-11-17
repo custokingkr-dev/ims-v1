@@ -306,7 +306,7 @@ export const PANELS = [
   // project's spend on an account this project does not use, marked only "last seen 2 days ago".
   //
   // A one-hour expiry is generous for an hourly job and short enough that nothing from a previous era
-  // survives on screen. The panels withhold rather than disappear, so the broken export stays visible
+  // survives on screen. The panels withhold rather than disappear, so a broken export stays visible
   // as a known gap instead of quietly vanishing from the page.
   //
   // The live cost band at the top of the page is unaffected -- it is computed from resource usage and
