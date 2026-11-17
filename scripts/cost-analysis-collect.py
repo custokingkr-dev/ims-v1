@@ -3,14 +3,16 @@
 
 WHY THIS EXISTS
 
-The Cloud Billing usage-cost export for account 014C0A-C6B9AF-5FABC0 cannot be enabled. Six attempts
+The Cloud Billing usage-cost export for account 014C0A-C6B9AF-5FABC0 could not be enabled. Six attempts
 across every configuration available on our side -- original dataset, clean dataset, pre-granted
 dataset, asia-south2 (rejected as an unsupported region), and a virgin config after clearing all three
 exports -- fail with a generic server error, while the PRICING export succeeds every time on the same
 account and dataset. Google's own docs put pricing at strictly higher privilege than usage cost, so the
 export needing MORE permission works and the one needing less does not. That isolates the fault to a
 broken config record on their side, and cloudbilling v1/v1beta expose no export-configuration methods,
-so there is no scripted workaround either.
+so there was no scripted workaround either. (Written 2026-08-20. That export was enabled on 2026-08-25;
+the projects moved to a new billing account on 2026-11-16, whose Standard and Detailed exports were
+enabled into the same dataset on 2026-11-17. The collector still covers any gap or delay in the export.)
 
 So cost is reconstructed from what each service actually consumed.
 

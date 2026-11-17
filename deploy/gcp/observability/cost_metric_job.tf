@@ -23,8 +23,10 @@ locals {
 
   # The image for all three script jobs (this one, cost_analysis_job.tf, product_liveness_job.tf). PINNED,
   # never a floating tag: the jobs re-resolve the tag on every run, and on 2026-11-03 upstream's 592.0.0
-  # release dropped python3 from google/cloud-sdk:slim. Every run of all three jobs failed from then on
-  # (exit 127, "python3: command not found"), in dev and prod, with no change on our side.
+  # release dropped python3 from google/cloud-sdk:slim. Every run of these jobs (all three in prod; dev
+  # runs only the cost-metric job) broke from then until this pin was applied on 2026-11-17 ("python3:
+  # command not found", exit 127), with no change on our side. The cost jobs' executions failed; the
+  # liveness job's old `|| true` reported each one as a success (see product_liveness_job.tf).
   # 591.0.0-slim is the last slim build that installs python3. The digest is what actually runs; the tag
   # is there for people. To move it, check the new build still ships python3 first:
   #   docker run --rm --entrypoint python3 google/cloud-sdk:<version>-slim --version

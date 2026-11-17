@@ -100,8 +100,10 @@ jobs:
     # passed every time and the failure surfaced later as an opaque BigQuery error instead.
     #
     # With the fallback gone the condition is honest: no table configured means nothing to report, so
-    # the job skips. It resumes by itself the moment the variable is set, which is the right behaviour
-    # while the usage-cost export for billing account 014C0A remains unfixable on Google's side.
+    # the job skips. It resumes by itself the moment the variable is set. Do not point it at the current
+    # account's table (that account's export was enabled on 2026-11-17): repository variables are not
+    # masked, so the table name would print the account ID in public run logs. The egress report must
+    # first accept the gcp_billing_export_v1_* wildcard, which its table-name check rejects today.
     if: vars.BILLING_EXPORT_TABLE != ''
     env:
       GCP_PROJECT_ID: ${{ vars.DEV_GCP_PROJECT_ID }}
@@ -177,8 +179,9 @@ jobs:
   #     account (update TRIAL_EXPIRY_DATE).
   #
   # The trial also ends EARLY if the credit runs out first. The trial-runway budget in
-  # deploy/gcp/observability/budget.tf watches for that, but only once the budgets are re-created on
-  # the current billing account; as of 2026-11-17 they still sit on the closed 2026-11-16 trial account.
+  # deploy/gcp/observability/budget.tf watches for that: custoking-trial-credit-runway-to-2027-02-14,
+  # re-created on the current billing account on 2026-11-17 (INR 28,569 from 2026-11-15; it notifies at
+  # 50/75/90/100% of that).
   #
   # Deliberately has no `needs:` on dev-database and no GCP credentials: a billing or auth hiccup must
   # never be able to silence a calendar countdown, and vice versa. Issue housekeeping (listing,
@@ -239,7 +242,7 @@ jobs:
             "At expiry without an upgrade, Google stops every resource on the account and marks data for deletion after a 30-day grace period. It happened when the previous trial expired on 2026-11-16: production was down 00:19-02:36 IST on 2026-11-17.",
             $findAccount,
             "Upgrade: Console -> Billing -> that account -> **Activate** / **Upgrade**. Remaining credit is kept.",
-            "The trial also ends EARLY if the credit is exhausted first. The ``custoking-trial-credit-runway-to-$expiryDate`` budget reports that, but only once the budgets are re-created on the current billing account."
+            "The trial also ends EARLY if the credit is exhausted first. The ``custoking-trial-credit-runway-to-$expiryDate`` budget on that account notifies at 50/75/90/100% of the credit remaining when its runway started."
           )
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ($summary -join "`n") -Encoding utf8
           Write-Host "Days until trial expiry: $daysLeft"

@@ -21,9 +21,10 @@ scan_evidence_bucket            = "custoking-prod-scan-evidence"
 # the security owner reviews the clone/delete and conditioned bucket-policy permissions.
 recovery_validation_bucket = "custoking-prod-db-snapshots"
 
-# No Cloud Billing export exists in this project yet. The source export lives in custoking and dies with
-# it, so a replacement has to be configured before that project is deleted; until then this grant has
-# nothing to point at.
+# The Cloud Billing export lives in this project's `billing_export` dataset: the first account's since
+# 2026-08-25, and the account the projects have billed to since 2026-11-16 exports there too (enabled
+# 2026-11-17). This grant (the Artifact Registry egress report's read access) stays off until that
+# report is wired up; see the artifact-registry-egress job in .github/workflows/gcp-cost-controls.yml.
 billing_export_dataset = ""
 
 runtime_service_account_emails = {

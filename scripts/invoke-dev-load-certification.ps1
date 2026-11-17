@@ -240,8 +240,9 @@ if (-not $AllowBudgetOverrun -and $projectedGrossSpendInr -gt $guardrailInr) {
 # ingestion inside the monthly allowance bills zero, so the gross-spend guard above reports a run as
 # free right up until the allowance is crossed, after which every further GiB is charged.
 if ([string]::IsNullOrWhiteSpace($BillingExportTable)) {
-  # The linked split-project billing account may not yet have a raw export. Cloud Logging publishes
-  # an authoritative month-to-date GAUGE, so use it instead of weakening or skipping the allowance.
+  # The linked billing account's raw export can be missing or late (after a billing-account move its
+  # tables appear only on the first delivery). Cloud Logging publishes an authoritative month-to-date
+  # GAUGE, so use it instead of weakening or skipping the allowance.
   $loggingToken = ((& $gcloud auth print-access-token) -join "").Trim()
   if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($loggingToken)) {
     throw "Could not obtain an access token for the Cloud Logging ingestion guard."

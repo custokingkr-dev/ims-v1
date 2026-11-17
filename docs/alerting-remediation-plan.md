@@ -4,9 +4,12 @@
 > as described below. Production was down 00:19-02:36 IST on 2026-11-17, until both projects were
 > relinked to a second free-trial account, which expires on 2027-02-14. Everything below that names
 > `014C0A`, the 2026-11-16 date, the credit figures, the budgets on that account, its export table or
-> its budgets endpoint describes the closed first account. It is kept as the 2026-09-11 record. For
-> current facts and procedures see `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`, *Free-trial expiry*, *If
-> billing lapses again* and *Budget Setup*.
+> its budgets endpoint describes the closed first account. It is kept as the 2026-09-11 record. Later on
+> 2026-11-17 the three budgets were re-created on the current account (Terraform deleted them from
+> `014C0A`), that account's billing export was enabled, and the cost-job image pin and spend policies
+> were applied, so the 2026-11-17 note in section 7 (re-create the budgets) is done. Items 3 and 4 in
+> section 5 (merge to `main`, upgrade) are still open. For current facts and procedures see
+> `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`, *Free-trial expiry*, *If billing lapses again* and *Budget Setup*.
 
 Measured 2026-09-11 against `custoking-prod` (182609177023) and `custoking-dev` (1087017280590),
 billing account `014C0A-C6B9AF-5FABC0`. Every number below was queried, not estimated; where something
@@ -296,9 +299,10 @@ furniture and stop alerting on them.
 
 ## 7. Apply order for this PR (human, after merge)
 
-> **2026-11-17:** this is the 2026-09-11 apply order, kept as history. The budgets it created sit on the
-> closed first account and must be re-created on the account the projects bill to now. For the budgets,
-> use the targeted apply in the runbook's *Budget Setup*.
+> **2026-11-17:** this is the 2026-09-11 apply order, kept as history. The budgets it created sat on the
+> closed first account. Later that day the targeted apply in the runbook's *Budget Setup* replaced them
+> on the account the projects bill to now, which deleted them from the closed account. For any future
+> re-aim, use that targeted apply, not this order.
 
 ```powershell
 # prod root -- budgets need the Cloud Billing quota project or they 403 naming a random project number

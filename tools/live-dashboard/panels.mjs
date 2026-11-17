@@ -293,19 +293,20 @@ export const PANELS = [
 
   // ---------------------------------------------------------------- Money
   //
-  // These three read from the Cloud Billing BigQuery export, and the export is broken on Google's side.
-  // The hourly collector ims-cost-metric-prod still runs and still fails -- every execution since
-  // 2026-08-19T12:28Z has exited 1 against an empty usage-cost table -- which is the correct behaviour:
-  // it refuses to write a number it cannot compute.
+  // These three read from the Cloud Billing BigQuery export. When this was written (2026-08-20) the export
+  // was broken on Google's side, and every ims-cost-metric-prod execution since 2026-08-19T12:28Z had
+  // exited 1 against an empty usage-cost table -- the correct behaviour: it refuses to write a number it
+  // cannot compute. (That export was enabled on 2026-08-25. The collector failed again from 2026-11-03
+  // until its image pin was applied on 2026-11-17.)
   //
   // The dashboard was not being equally careful. It kept rendering the last values the collector
   // managed to write, and those values carry labels project_id="custoking" and
   // billing_account="018AC9-E669C1-2FC9B8". That project was DELETED on 2026-08-20, and production
-  // bills to 014C0A-C6B9AF-5FABC0. So a panel headed "Spend, month to date" was showing a dead
+  // billed to 014C0A-C6B9AF-5FABC0 then. So a panel headed "Spend, month to date" was showing a dead
   // project's spend on an account this project does not use, marked only "last seen 2 days ago".
   //
   // A one-hour expiry is generous for an hourly job and short enough that nothing from a previous era
-  // survives on screen. The panels withhold rather than disappear, so the broken export stays visible
+  // survives on screen. The panels withhold rather than disappear, so a broken export stays visible
   // as a known gap instead of quietly vanishing from the page.
   //
   // The live cost band at the top of the page is unaffected -- it is computed from resource usage and

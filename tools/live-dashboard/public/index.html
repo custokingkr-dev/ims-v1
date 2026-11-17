@@ -375,8 +375,8 @@ function renderCost(c) {
   n.textContent =
     `${c.evidenceGrade || "ESTIMATED_RUN_RATE"}: estimate, not an invoice — computed from resource usage ` +
     `priced at ${c.pricingRegion || "asia-south2"} SKU rates, ` +
-    "because the billing export is broken at the account level. More current than the export, which " +
-    "lags hours by design. Cloud SQL is a measured constant; it is fixed regardless of tenants.";
+    "independent of the billing export. More current than the export, which lags hours by design. " +
+    "Cloud SQL is a measured constant; it is fixed regardless of tenants.";
   el.appendChild(n);
 }
 

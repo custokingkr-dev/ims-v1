@@ -2,10 +2,12 @@
 //
 // WHY THIS EXISTS
 //
-// The Cloud Billing BigQuery export for account 014C0A-C6B9AF-5FABC0 cannot be enabled: it registered
-// on 2026-08-19, delivered zero rows, and now fails to save with a server-side error against three
-// different target datasets. Google owns that fault. Until they fix it there is no billing data for
-// this project at all -- no spend panels, no attribution, no unit economics.
+// When this was written (2026-08-19/20) the Cloud Billing BigQuery export for account
+// 014C0A-C6B9AF-5FABC0 could not be enabled: it registered on 2026-08-19, delivered zero rows, and then
+// failed to save with a server-side error against three different target datasets, so there was no
+// billing data for this project at all. (That export was enabled on 2026-08-25. The projects moved to a
+// new billing account on 2026-11-16, whose Standard and Detailed exports were enabled into the same
+// dataset on 2026-11-17.)
 //
 // So this computes cost the other way round: from what the resources actually did, priced with real
 // SKU rates. That is not merely a substitute. Billing export lands HOURS after the usage it describes
