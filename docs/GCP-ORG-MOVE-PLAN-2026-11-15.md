@@ -546,7 +546,8 @@ company domain or directory), not a Workspace/Cloud Identity one. Consequences:
   service-account bindings are unchanged in the diff.
 - **Clean-up deliberately deferred** until the stabilization period ends (§6.5): the four export/import allowances, the
   Org Policy Admin grants, and the old organization's remaining roles. The allowances are what makes a move back
-  possible.
+  possible. *(Superseded: the allowances and the Org Policy Admin grants were removed on 17 Nov at the owner's request;
+  see "Clean-up (17 Nov)" below.)*
 - **Deviation:** the pre-move "fresh export, restore-checked" became an on-demand Cloud SQL backup. The database
   service agent has no write access to the 30-day-lifecycle snapshot bucket, and an organization move touches no data.
 
@@ -570,10 +571,31 @@ empty Pub/Sub backlogs; all buckets readable; no ERROR logs; a fresh snapshot di
 the billing account. Side effects: every Cloud Scheduler job's run history was reset (benign), and the 02:00 IST
 automated backup was skipped while the database was suspended, so an on-demand backup was taken.
 
-**The new billing account is also a free trial** (90 days, expiring about 13 Feb 2027). The owner chose not to upgrade
-yet; the trial-expiry countdown, the trial-runway budget and the runbook were re-aimed at it in a separate change
-(docs/GCP-COST-GUARDRAILS-RUNBOOK.md). Budgets, the BigQuery billing export and the dev monthly budget amount on the
-new account are owner actions listed there.
+**The new billing account is also a free trial.** The Console's billing overview reads "Ends 14 February 2027" (89 days
+remaining on 17 Nov). The owner chose not to upgrade yet. The trial-expiry countdown, the trial-runway budget and the
+runbook were re-aimed at it in separate changes (PRs #397 and #400; docs/GCP-COST-GUARDRAILS-RUNBOOK.md). The countdown
+goes live only with the next dev -> main promotion. Also on 17 Nov:
+
+- The owner granted the operations account Billing Account Costs Manager on the new account.
+- The three budgets were re-created there by a targeted Terraform apply, which also deleted the old ones on the closed
+  account: prod INR 5,000 a month, dev INR 3,000 a month (raised from 2,000 by the owner), and a trial-credit runway of
+  INR 28,569 from 15 Nov to 14 Feb.
+- The Standard and Detailed usage cost exports were enabled into the same `billing_export` dataset, well before the
+  31 Dec backfill deadline.
+- The cost jobs' image pin and two spend-alert fixes were applied in both projects.
+
+**Clean-up (17 Nov), done at the owner's request ahead of the §6.5 schedule.**
+
+- The four export/import allowances were deleted, not replaced with an explicit deny. Before the move neither
+  organization set these constraints explicitly; their DENY-all came from the constraint default. Afterwards the
+  effective value is `allValues: DENY` for both constraints on both organizations and on both projects, the same as
+  the before-snapshot.
+- Org Policy Admin was revoked from the operations account in both organizations. It had been granted for the move,
+  and nobody holds it now.
+- The operations account's other organization roles (Owner, Organization Admin, Project Mover, Project Creator and the
+  rest) predate the move and were left as they are. The personal-account step-down (P6) is still a separate decision.
+- A move back now needs the allowances and Org Policy Admin again (§6, Phase 0, step 5).
+- Production answered 200/200/302 afterwards.
 
 ## 11. Sources
 
