@@ -1,6 +1,7 @@
 # Observability inputs for the migrated dev environment (custoking-dev).
-# Real *.tfvars are gitignored because they carry operator email addresses; copy this to
-# custoking-dev.tfvars and fill in the channels.
+# Real *.tfvars are gitignored because they carry operator email addresses and the billing account ID;
+# copy this to custoking-dev.tfvars and fill in the channels and the account. Keep this example in step
+# with the live file, with ONE carve-out: billing_account_id is deliberately NOT mirrored (see below).
 #
 #   terraform init -reconfigure \
 #     -backend-config="bucket=custoking-dev-terraform-state" \
@@ -64,9 +65,11 @@ max_instances_by_service = {
 enable_cost_metric_export = true
 
 # A billing account exports to exactly ONE dataset, so environments sharing an account cannot each own
-# their export. custoking-dev and custoking-prod share account 014C0A and the export lands in
-# custoking-prod, so dev reads that dataset, filters to its own project, and publishes the metric into
-# itself. Leave both empty when a project owns its own export.
+# their export. custoking-dev and custoking-prod share one billing account and its export lands in
+# custoking-prod.billing_export, so dev reads that dataset, filters to its own project, and publishes the
+# metric into itself. Leave both empty when a project owns its own export. (After the 2026-11-16 move to
+# a new billing account, the new account's export must be enabled into that same dataset in the Console
+# before these figures cover current spend.)
 cost_metric_bq_project    = "custoking-prod"
 cost_metric_scope_project = "custoking-dev"
 
@@ -77,9 +80,22 @@ cost_metric_scope_project = "custoking-dev"
 # 1,100/month -- so INR 2,000 leaves headroom for releases and still reports the cold-start loop above
 # at 188% the moment it comes back. This budget notifies even though enable_alert_notifications is
 # false: see budget.tf for why money is the exception.
+#
+# OWNER DECISION, open since 2026-11-17: the floor above predates the dev database becoming always-on
+# (~2026-10-15). Dev's measured gross since then is about INR 2,292 per 30 days, above this INR 2,000,
+# so a budget re-created unchanged on the current billing account fires its 90% and 100% rules every
+# month. Raising the amount, or bringing dev's spend back under it, is the owner's call; the value
+# below is deliberately unchanged until then.
 manage_billing_budget = true
-billing_account_id    = "014C0A-C6B9AF-5FABC0"
-monthly_budget_inr    = 2000
+
+# Deliberately NOT mirrored from the live file: this repository is public, so the real ID lives only in
+# the gitignored custoking-dev.tfvars. It is the billing account that custoking-prod and custoking-dev
+# bill to. Look it up with
+#   gcloud billing projects describe custoking-dev --format="value(billingAccountName)"
+# (prints billingAccounts/<ID>; use the part after the slash) or Console -> Billing -> Account
+# management. Never copy it back here, and never paste a plan that shows it.
+billing_account_id = "REPLACE_WITH_BILLING_ACCOUNT_ID"
+monthly_budget_inr = 2000
 
 # Cloud Scheduler is not offered in asia-south2, so the trigger runs from the nearest region that has it
 # and calls into the job's own region.

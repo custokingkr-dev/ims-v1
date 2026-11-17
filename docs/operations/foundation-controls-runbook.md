@@ -98,12 +98,19 @@ $env:GOOGLE_BILLING_PROJECT = "custoking-prod"
 ```
 
 The same trap catches `gcloud billing` from the command line, and there it is worse because the error
-is actively misleading. gcloud takes its quota project from the gcloud core project, which is still the
-pre-split `custoking`, and that project has the Cloud Billing API disabled. The resulting message says
-`does not have permission to access billingAccounts instance`, which reads as an IAM denial and is not
-one -- this account grants `billing.budgets.create` and `billing.budgets.list` when asked with a valid
-quota project. Pass `--billing-project=custoking-prod`, or query the REST API with an explicit
+is actively misleading. gcloud takes its quota project from the gcloud core project, and if that project
+has the Cloud Billing API disabled, the message says `does not have permission to access billingAccounts
+instance`. Pass `--billing-project=custoking-prod`, or query the REST API with an explicit
 `x-goog-user-project` header, before concluding anything about billing permissions.
+
+On the first trial account (`014C0A-C6B9AF-5FABC0`, closed 2026-11-16) that message was never an IAM
+denial: asked with a valid quota project, the account granted `billing.budgets.create` and
+`billing.budgets.list`. **On the account the projects have billed to since 2026-11-16 it IS a real
+denial** (verified 2026-11-17 with `--billing-project=custoking-prod`). The ops identity holds only
+Billing Account User there, which carries no `billing.budgets.*` permission. If the message survives an
+explicit quota project, stop adjusting it. Ask the account owner for Billing Account Costs Manager
+(`roles/billing.costsManager`) or Admin on that account, or ask them to create the budgets. See *Budget
+Setup* in `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`.
 
 The production state was applied on 2026-08-05 and its email channel was attached
 to all managed policies. Google sends a verification message for email channels.

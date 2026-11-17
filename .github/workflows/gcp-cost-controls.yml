@@ -143,30 +143,53 @@ jobs:
   # ------------------------------------------------------------------------------------------------
   # Free-trial expiry countdown
   #
-  # Billing account 014C0A-C6B9AF-5FABC0 -- the one custoking-prod and custoking-dev bill to -- is a
-  # Free Trial account whose credit expires on 2026-11-16 (confirmed by the account owner and by Google
-  # billing support). At trial end without an upgrade Google STOPS every resource on the account and
-  # marks data for deletion after a 30-day grace period. For a product serving live schools that is a
-  # shutdown date, not a cost event. Nothing in GCP will say so in advance: budgets measure money, not
-  # calendars, and Cloud Monitoring has no date-based condition.
+  # custoking-prod and custoking-dev bill to a Free Trial billing account. At trial end without an
+  # upgrade Google STOPS every resource on the account and marks data for deletion after a 30-day
+  # grace period. For a product serving live schools that is a shutdown date, not a cost event. It has
+  # already happened once: the previous trial account expired on 2026-11-16, Google disabled billing on
+  # both projects, and production was down 00:19-02:36 IST on 2026-11-17 until they were relinked to a
+  # new billing account. That account is ALSO a free trial, and it expires on 2027-02-13 (created
+  # 2026-11-15 + 90 days; the owner should confirm the date in Console -> Billing -> Credits). Nothing in
+  # GCP will say so in advance: budgets measure money, not calendars, and Cloud Monitoring has no
+  # date-based condition.
+  #
+  # The account ID is deliberately not in this file, a repository variable or a secret: the repository,
+  # the run log, the step summary and the issue are all public. Find the account with
+  #   gcloud billing projects describe custoking-prod --format="value(billingAccountName)"
+  # or Console -> Billing -> Account management.
   #
   # This job is the automated backstop, not the primary reminder. The primary reminder is a human
-  # calendar entry -- see docs/GCP-COST-GUARDRAILS-RUNBOOK.md, "Free-trial expiry". What this adds:
+  # calendar entry -- see docs/GCP-COST-GUARDRAILS-RUNBOOK.md, "Free-trial expiry". The cron runs once
+  # every weekday, never at weekends; 2027-02-13 is a Saturday, so the last run before it is Friday
+  # 2027-02-12. What every run does:
   #
-  #   - every scheduled run prints the countdown to the step summary;
-  #   - from 45 days out it keeps ONE open GitHub issue labelled `trial-expiry`, assigned to the
-  #     repository owner, so it appears in their notifications and on the repo's front page;
-  #   - from 14 days out it comments on that issue every run (twice a day), which re-notifies;
-  #   - from 7 days out the job FAILS, so the workflow shows red and GitHub emails the failure.
+  #   - prints the countdown to the step summary;
+  #   - closes, as superseded, every open `trial-expiry` issue whose title does not contain
+  #     TRIAL_EXPIRY_DATE (this is what closes #308, the issue for the 2026-11-16 expiry);
+  #   - from 60 days out (2026-12-15) keeps ONE open issue labelled `trial-expiry`, with the date in
+  #     its title, assigned to the repository owner, so it appears in their notifications;
+  #   - from 21 days out (2027-01-23, a Saturday, so first on Monday 2027-01-25) comments on that issue
+  #     on every run, which re-notifies;
+  #   - from 10 days out (2027-02-03) the job FAILS, so the workflow shows red and GitHub emails the
+  #     failure;
+  #   - after the date has passed it fails with a message saying so, and comments "expired N day(s)
+  #     ago": either the account was upgraded (remove this job) or the projects moved to another trial
+  #     account (update TRIAL_EXPIRY_DATE).
+  #
+  # The trial also ends EARLY if the credit runs out first. The trial-runway budget in
+  # deploy/gcp/observability/budget.tf watches for that, but only once the budgets are re-created on
+  # the current billing account; as of 2026-11-17 they still sit on the closed 2026-11-16 trial account.
   #
   # Deliberately has no `needs:` on dev-database and no GCP credentials: a billing or auth hiccup must
-  # never be able to silence a calendar countdown, and vice versa. Scheduled workflows run from the
-  # default branch, so this only becomes live once merged to main.
+  # never be able to silence a calendar countdown, and vice versa. Issue housekeeping (listing,
+  # closing, commenting) never fails the run by itself; only the day thresholds do. Scheduled workflows
+  # run from the default branch, so this version becomes live only after dev is promoted to main; until
+  # then main's copy keeps counting down to 2026-11-16, failing every weekday and commenting on #308.
   #
-  # It is idempotent on the issue: it searches for an open issue with the label before creating one,
-  # and creates the label if it does not exist. Closing the issue after the upgrade is done ends it;
-  # to retire the job entirely, remove it -- there is no variable to set, on purpose, because a
-  # variable that silences a shutdown countdown is a footgun.
+  # It is idempotent on the issue: it reuses the open issue whose title carries the current date, and
+  # creates the label if it does not exist. After the upgrade, REMOVE the job and close the issue --
+  # closing the issue alone makes the next run open a new one. There is no variable to set, on
+  # purpose, because a variable that silences a shutdown countdown is a footgun.
   # ------------------------------------------------------------------------------------------------
   trial-expiry-countdown:
     runs-on: ubuntu-latest
@@ -175,8 +198,9 @@ jobs:
       contents: read
       issues: write
     env:
-      TRIAL_EXPIRY_DATE: "2026-11-16"
-      BILLING_ACCOUNT_ID: "014C0A-C6B9AF-5FABC0"
+      TRIAL_EXPIRY_DATE: "2027-02-13"
+      # A description, not an ID, on purpose (see the header).
+      BILLING_ACCOUNT_LABEL: "the billing account that custoking-prod and custoking-dev bill to"
       ISSUE_LABEL: trial-expiry
       ISSUE_ASSIGNEE: ${{ github.repository_owner }}
       GH_TOKEN: ${{ github.token }}
@@ -184,62 +208,143 @@ jobs:
       - name: Count down to trial expiry
         shell: pwsh
         run: |
-          $expiry = [datetime]::ParseExact($env:TRIAL_EXPIRY_DATE, 'yyyy-MM-dd', $null)
+          # The runner sets $ErrorActionPreference = 'stop'. gh failures are read from $LASTEXITCODE
+          # instead, so issue housekeeping cannot fail the run; only the day thresholds below can.
+          $PSNativeCommandUseErrorActionPreference = $false
+          $expiryDate = $env:TRIAL_EXPIRY_DATE
+          $account = $env:BILLING_ACCOUNT_LABEL
+          $expiry = [datetime]::ParseExact($expiryDate, 'yyyy-MM-dd', [System.Globalization.CultureInfo]::InvariantCulture)
           $today = [datetime]::UtcNow.Date
           $daysLeft = [int]($expiry - $today).TotalDays
-          $repo = "${{ github.repository }}"
-          $title = "GCP free trial on billing account $env:BILLING_ACCOUNT_ID expires $env:TRIAL_EXPIRY_DATE - upgrade before then or production stops"
+          $daysAgo = -$daysLeft
+          $repo = $env:GITHUB_REPOSITORY
+          # Issues are managed only from main, where the schedule runs. A manual run from another branch
+          # (dev before promotion, say) must not close or open issues that main's copy of this job owns:
+          # closing #308 from dev would make main's old job reopen it with the old title the next weekday.
+          $manageIssues = $env:GITHUB_REF -eq 'refs/heads/main'
+          $title = "GCP free trial expires $expiryDate - upgrade the billing account for custoking-prod and custoking-dev before then or production stops"
+          $findAccount = 'Find the account: `gcloud billing projects describe custoking-prod --format=''value(billingAccountName)''`, or Console -> Billing -> Account management. Do not paste its ID here: this repository is public.'
 
+          $daysCell = "**$daysLeft**"
+          if ($daysLeft -lt 0) { $daysCell = "**$daysLeft** (the date passed $daysAgo day(s) ago)" }
           $summary = @(
             "## Free-trial expiry countdown",
             "",
             "| | |",
             "| --- | --- |",
-            "| Billing account | ``$env:BILLING_ACCOUNT_ID`` |",
-            "| Trial expires | **$env:TRIAL_EXPIRY_DATE** |",
-            "| Days remaining (UTC) | **$daysLeft** |",
+            "| Billing account | $account |",
+            "| Trial expires | **$expiryDate** |",
+            "| Days remaining (UTC) | $daysCell |",
             "",
-            "At expiry without an upgrade, Google stops every resource on the account and marks data for deletion after a 30-day grace period.",
-            "Upgrade: Console -> Billing -> account ``$env:BILLING_ACCOUNT_ID`` -> **Activate** / **Upgrade**. Remaining credit is kept.",
-            "The trial also ends EARLY if the credit is exhausted first; the ``custoking-trial-credit-runway`` budget reports that."
+            "At expiry without an upgrade, Google stops every resource on the account and marks data for deletion after a 30-day grace period. It happened when the previous trial expired on 2026-11-16: production was down 00:19-02:36 IST on 2026-11-17.",
+            $findAccount,
+            "Upgrade: Console -> Billing -> that account -> **Activate** / **Upgrade**. Remaining credit is kept.",
+            "The trial also ends EARLY if the credit is exhausted first. The ``custoking-trial-credit-runway-to-$expiryDate`` budget reports that, but only once the budgets are re-created on the current billing account."
           )
-          $summary -join "`n" >> $env:GITHUB_STEP_SUMMARY
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ($summary -join "`n") -Encoding utf8
           Write-Host "Days until trial expiry: $daysLeft"
 
-          if ($daysLeft -gt 45) {
-            Write-Host "More than 45 days out; nothing to raise."
+          # Before any early exit: close every open countdown issue that tracks a different expiry date
+          # (a trial that has ended, or a corrected date). A gh failure here is only a warning.
+          $listed = $false
+          $issues = @()
+          $current = @()
+          $raw = $null
+          if (-not $manageIssues) {
+            Write-Host "Not running on main ($env:GITHUB_REF): countdown issues are left alone."
+          } else {
+            $raw = gh issue list --repo $repo --label $env:ISSUE_LABEL --state open --json 'number,title' --limit 50
+          }
+          if (-not $manageIssues) {
+            # Nothing to list.
+          } elseif ($LASTEXITCODE -eq 0) {
+            try {
+              $json = ($raw | Out-String).Trim()
+              $parsed = $null
+              if ($json) { $parsed = $json | ConvertFrom-Json }
+              $issues = @($parsed | Where-Object { $null -ne $_ })
+              $listed = $true
+            } catch {
+              Write-Host "::warning::Could not read the open $env:ISSUE_LABEL issues: $($_.Exception.Message)"
+            }
+          } else {
+            Write-Host "::warning::Could not list the open $env:ISSUE_LABEL issues (gh exit $LASTEXITCODE). Superseded issues were not checked, and no issue is opened or commented on this run."
+          }
+
+          foreach ($issue in $issues) {
+            if (([string]$issue.title).Contains($expiryDate)) {
+              $current += $issue
+              continue
+            }
+            $note = "Closing as superseded: the free trial this issue tracked has ended, and the ``trial-expiry-countdown`` job now tracks the new expiry date, **$expiryDate**, on $account. A new issue opens 60 days before that date."
+            gh issue close $issue.number --repo $repo --reason 'not planned' --comment $note | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "Closed superseded countdown issue #$($issue.number)."
+            } else {
+              Write-Host "::warning::Could not close superseded countdown issue #$($issue.number) (gh exit $LASTEXITCODE). The next run tries again."
+            }
+          }
+
+          if ($daysLeft -gt 60) {
+            Write-Host "More than 60 days out; nothing to raise."
             exit 0
           }
 
-          # Ensure the label exists. `gh label create` errors if it already does, which is fine.
-          gh label create $env:ISSUE_LABEL --repo $repo --color B60205 --description "Free-trial expiry countdown" --force 2>$null | Out-Null
-
-          $open = gh issue list --repo $repo --label $env:ISSUE_LABEL --state open --json number,title --limit 5 | ConvertFrom-Json
-          $body = @(
-            "**The GCP free trial on billing account ``$env:BILLING_ACCOUNT_ID`` expires on $env:TRIAL_EXPIRY_DATE.**",
-            "",
-            "``custoking-prod`` and ``custoking-dev`` both bill to this account. Google's documented behaviour at trial end without an upgrade:",
-            "all resources are stopped, billing is disabled, and data is marked for deletion after a 30-day grace period.",
-            "",
-            "**Action:** Console -> Billing -> account -> Activate/Upgrade to a paid account. Remaining credit stays usable until its original expiry.",
-            "There is no downside to upgrading early and there is no automation that can do it -- it needs the account owner in the Console.",
-            "",
-            "This issue is maintained by the ``Ops / GCP cost controls`` workflow (``trial-expiry-countdown`` job). Close it once the upgrade is confirmed.",
-            "Runbook: docs/GCP-COST-GUARDRAILS-RUNBOOK.md, section *Free-trial expiry*."
-          ) -join "`n"
-
-          if (-not $open -or $open.Count -eq 0) {
-            gh issue create --repo $repo --title $title --label $env:ISSUE_LABEL --assignee $env:ISSUE_ASSIGNEE --body $body
-            Write-Host "Opened the countdown issue."
-          } elseif ($daysLeft -le 14) {
-            $number = $open[0].number
-            gh issue comment $number --repo $repo --body "**$daysLeft day(s) until the free trial expires on $env:TRIAL_EXPIRY_DATE.** Upgrade the billing account now if not already done; close this issue once confirmed."
-            Write-Host "Commented on issue #$number."
-          } else {
-            Write-Host "Countdown issue #$($open[0].number) already open; $daysLeft days remain."
+          # Ensure the label exists (also when the listing failed, in case that was the cause); --force
+          # makes this a no-op update when it already does.
+          if ($manageIssues) {
+            gh label create $env:ISSUE_LABEL --repo $repo --color B60205 --description "Free-trial expiry countdown" --force 2>$null | Out-Null
           }
 
-          if ($daysLeft -le 7) {
-            Write-Error "Free trial expires in $daysLeft day(s). This job fails on purpose so the run is red and notifies."
+          if ($listed) {
+            $headline = "**The GCP free trial on $account expires on $expiryDate.**"
+            if ($daysLeft -lt 0) { $headline = "**The GCP free trial on $account expired on $expiryDate, $daysAgo day(s) ago.**" }
+            $body = @(
+              $headline,
+              "",
+              "``custoking-prod`` and ``custoking-dev`` both bill to this account. Google's documented behaviour at trial end without an upgrade:",
+              "all resources are stopped, billing is disabled, and data is marked for deletion after a 30-day grace period.",
+              "That already happened once: the previous trial account expired on 2026-11-16 and production was down 00:19-02:36 IST on 2026-11-17, until both projects were relinked to the current account.",
+              "",
+              $findAccount,
+              "",
+              "**Action:** Console -> Billing -> that account -> Activate/Upgrade to a paid account. Remaining credit stays usable until its original expiry.",
+              "There is no downside to upgrading early and there is no automation that can do it -- it needs the account owner in the Console.",
+              "",
+              "This issue is maintained by the ``Ops / GCP cost controls`` workflow (``trial-expiry-countdown`` job). Once the upgrade is confirmed, remove that job and close this issue; closing the issue alone makes the next run open a new one.",
+              "Runbook: docs/GCP-COST-GUARDRAILS-RUNBOOK.md, section *Free-trial expiry*."
+            ) -join "`n"
+
+            if ($current.Count -eq 0) {
+              gh issue create --repo $repo --title $title --label $env:ISSUE_LABEL --assignee $env:ISSUE_ASSIGNEE --body $body
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "Opened the countdown issue."
+              } else {
+                Write-Host "::warning::Could not open the countdown issue (gh exit $LASTEXITCODE)."
+              }
+            } elseif ($daysLeft -le 21) {
+              $number = $current[0].number
+              $comment = "**$daysLeft day(s) until the free trial on $account expires on $expiryDate.** Upgrade the billing account now if not already done; once confirmed, remove the ``trial-expiry-countdown`` job and close this issue."
+              if ($daysLeft -lt 0) {
+                $comment = "**The free trial on $account expired $daysAgo day(s) ago, on $expiryDate.** If the account was upgraded, remove the ``trial-expiry-countdown`` job and close this issue. If the projects moved to another trial account, update ``TRIAL_EXPIRY_DATE`` in .github/workflows/gcp-cost-controls.yml. Otherwise production has probably stopped: see the runbook, docs/GCP-COST-GUARDRAILS-RUNBOOK.md."
+              }
+              gh issue comment $number --repo $repo --body $comment
+              if ($LASTEXITCODE -eq 0) {
+                Write-Host "Commented on issue #$number."
+              } else {
+                Write-Host "::warning::Could not comment on issue #$number (gh exit $LASTEXITCODE)."
+              }
+            } else {
+              Write-Host "Countdown issue #$($current[0].number) already open; $daysLeft days remain."
+            }
+          }
+
+          if ($daysLeft -lt 0) {
+            Write-Host "::error::The free-trial expiry date $expiryDate passed $daysAgo day(s) ago. If the billing account was upgraded, remove the trial-expiry-countdown job. If custoking-prod and custoking-dev moved to another trial account, update TRIAL_EXPIRY_DATE."
             exit 1
           }
+          if ($daysLeft -le 10) {
+            Write-Host "::error::The free trial on $account expires in $daysLeft day(s), on $expiryDate. This job fails on purpose so the run is red and notifies. Upgrade the billing account, then remove this job."
+            exit 1
+          }
+          exit 0

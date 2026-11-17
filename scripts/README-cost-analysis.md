@@ -9,6 +9,17 @@ none), so there is no scripted workaround either.
 
 So cost is reconstructed from usage instead.
 
+> **Update 2026-11-17.** The paragraph above is history. That account's usage-cost export was enabled
+> on 2026-08-25, and its tables in `custoking-prod.billing_export` run until the account closed on
+> 2026-11-16. The account the projects have billed to since then has **no export until its owner
+> enables one** (see *Billing Export* in `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`; the deadline is
+> 2026-12-31). Until it exists, `cost_analysis` is the only per-service cost source after 2026-11-16.
+> Its collector job has itself failed on every run since 2026-11-03, when the floating
+> `google/cloud-sdk:slim` image lost python3, and keeps failing until the image pin is applied. Missed
+> days can be reloaded with the workstation command under *Running it* while Cloud Monitoring still
+> holds their usage. Once the new export exists, the wildcard query below adds both accounts' tables
+> together, so November's two tables need no change to the query.
+
 ## What exists
 
 | Object | What it is |

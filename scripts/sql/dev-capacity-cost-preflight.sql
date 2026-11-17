@@ -1,5 +1,7 @@
 -- Read-only invoice-grade cost preflight. Query job must be billed to custoking-dev.
 -- The shared billing account exports to custoking-prod; WHERE isolates dev usage.
+-- The wildcard covers every billing account's DETAILED export in the dataset, so the month stays whole
+-- when the projects move between billing accounts (they did on 2026-11-16). Never name one account's table.
 -- Do not sum standard and detailed exports together: they describe the same usage.
 -- Use --maximum_bytes_billed=104857600 and do not replace gross with credit-adjusted net.
 SELECT
@@ -14,7 +16,7 @@ SELECT
   2000.0 AS observed_dev_budget_inr,
   1600.0 AS unchanged_80_percent_guard_inr,
   ROUND(SUM(cost), 4) > 1600.0 AS already_over_guard_before_run
-FROM `custoking-prod.billing_export.gcp_billing_export_resource_v1_014C0A_C6B9AF_5FABC0`
+FROM `custoking-prod.billing_export.gcp_billing_export_resource_v1_*`
 WHERE project.id = 'custoking-dev'
   AND DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH)
 GROUP BY currency;

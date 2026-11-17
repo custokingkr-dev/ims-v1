@@ -6,6 +6,11 @@ crash.*.log
 *.tfvars
 *.tfvars.json
 backend*.hcl
+# Saved plans embed every variable value, including the billing account ID. This repository is public.
+*.tfplan
+tfplan
+plan.out
+*.plan
 override.tf
 override.tf.json
 *_override.tf

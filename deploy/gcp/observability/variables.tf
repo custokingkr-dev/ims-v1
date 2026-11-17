@@ -92,7 +92,7 @@ variable "manage_billing_budget" {
 }
 
 variable "billing_account_id" {
-  description = "Billing account the environment's project bills to, without the billingAccounts/ prefix."
+  description = "Billing account the environment's project bills to, without the billingAccounts/ prefix. Set it only in the gitignored *.tfvars: this repository is public, so the ID is never committed."
   type        = string
   default     = ""
 }
@@ -152,22 +152,25 @@ variable "manage_trial_runway_budget" {
 
 variable "trial_credit_remaining_inr" {
   description = <<-DESC
-    Free-trial credit remaining, in INR, at trial_runway_start_date. Read it from Console -> Billing ->
-    Credits; the balance is not queryable through any API (consumption is, balance is not).
+    Free-trial credit remaining, in INR, at trial_runway_start_date, on the billing account that
+    custoking-prod and custoking-dev bill to. Read it from Console -> Billing -> Credits (or the
+    free-trial banner); the balance is not queryable through any API (consumption is, balance is not).
 
-    Default derivation, 2026-09-11: Google support reported INR 28,262.87 remaining on 2026-08-20; the
-    billing export shows INR 4,958.57 of promotion credit drawn from 2026-08-21 through 2026-09-10;
-    28,262.87 - 4,958.57 = 23,304.30, rounded down. If the 2026-08-20 figure was itself a day stale,
-    the true remainder is up to INR ~520 lower, which is inside the rounding of the 90% threshold.
+    Default, 2026-11-15: the Console banner for the current billing account read "INR 28,569.00 credit
+    and 90 days remaining" at 2026-11-15T19:31Z. Re-read it in the Console before re-basing.
+
+    History, 2026-09-11, for the previous trial account (014C0A, which ended on 2026-11-16): Google
+    support reported INR 28,262.87 remaining on 2026-08-20, INR 4,958.57 of promotion credit was drawn
+    from 2026-08-21 through 2026-09-10, and the default was 23,300 (28,262.87 - 4,958.57, rounded down).
   DESC
   type        = number
-  default     = 23300
+  default     = 28569
 }
 
 variable "trial_runway_start_date" {
-  description = "First day the runway budget counts spend from, ISO date. Should match the day trial_credit_remaining_inr was read."
+  description = "First day the runway budget counts spend from, ISO date. Should match the day trial_credit_remaining_inr was read (2026-11-15, the Console banner reading)."
   type        = string
-  default     = "2026-09-11"
+  default     = "2026-11-15"
 
   validation {
     condition     = can(regex("^\\d{4}-\\d{2}-\\d{2}$", var.trial_runway_start_date))
@@ -177,13 +180,25 @@ variable "trial_runway_start_date" {
 
 variable "trial_expiry_date" {
   description = <<-DESC
-    The day the free trial on the billing account ends, ISO date. Confirmed by the account owner and by
-    Google billing support: 2026-11-16 for account 014C0A-C6B9AF-5FABC0. At this date, without an
-    upgrade, Google stops every resource on the account and marks data for deletion after a 30-day grace
-    period. This is a hard shutdown date for the product, not a cost event.
+    The day the free trial on the billing account that custoking-prod and custoking-dev bill to ends,
+    ISO date. At this date, without an upgrade, Google stops every resource on the account and marks
+    data for deletion after a 30-day grace period. This is a hard shutdown date for the product, not a
+    cost event.
+
+    Default 2027-02-13: the account was created on 2026-11-15 and the Console banner read "90 days
+    remaining" that day. Creation date + 90 days is the rule the previous account followed (created
+    2026-08-18, ended 2026-11-16). This is derived, not read: confirm it in Console -> Billing ->
+    Credits. 2027-02-13 is a Saturday; by the previous account's pattern Google stops resources around
+    18:50 UTC that day (about 00:20 IST on Sunday 14 February). The same date is TRIAL_EXPIRY_DATE in
+    .github/workflows/gcp-cost-controls.yml; keep the two in step.
+
+    History: the previous trial account (014C0A) ended on its stated expiry date, 2026-11-16, at about
+    18:50 UTC. Billing was disabled on both projects and production was down from 00:19 to 02:36 IST on
+    2026-11-17: both projects were relinked to the current account at 02:02 IST and Cloud Run took
+    another ~34 minutes to serve again. The stated date is the stop day, not the last full day.
   DESC
   type        = string
-  default     = "2026-11-16"
+  default     = "2027-02-13"
 
   validation {
     condition     = can(regex("^\\d{4}-\\d{2}-\\d{2}$", var.trial_expiry_date))
@@ -424,9 +439,10 @@ variable "enable_cost_analysis_collector" {
   description = <<-DESC
     Whether to run the daily per-service cost collector.
 
-    Independent of the billing export by design. The usage-cost export for this billing account cannot
-    be enabled -- a server-side fault confirmed across six configurations -- so cost is reconstructed
-    from Cloud Monitoring usage priced at real SKU rates instead. Enable in prod; dev's spend is a
+    Independent of the billing export by design: cost is reconstructed from Cloud Monitoring usage
+    priced at real SKU rates. It was written (2026-08-20) when the first trial account's usage-cost
+    export could not be enabled; that export was enabled on 2026-08-25. It still matters whenever an
+    export is missing or late, such as the current billing account's until its owner enables one. Enable in prod; dev's spend is a
     stopped database and is not worth a daily job.
   DESC
   type        = bool

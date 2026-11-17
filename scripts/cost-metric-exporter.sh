@@ -22,8 +22,8 @@ DATASET="${COST_METRIC_DATASET:-billing_export}"
 # Three separate concerns, because they are genuinely three different projects in the general case.
 #
 # A billing account exports to exactly ONE dataset, so environments sharing an account cannot each own
-# their own export -- custoking-dev and custoking-prod share account 014C0A, and the export lands in
-# custoking-prod. Dev therefore READS from prod's dataset, FILTERS to its own project, and PUBLISHES its
+# their own export -- custoking-dev and custoking-prod share one billing account, and its export lands
+# in custoking-prod. Dev therefore READS from prod's dataset, FILTERS to its own project, and PUBLISHES its
 # metric into its own project so its dashboard is self-contained.
 BQ_PROJECT="${COST_METRIC_BQ_PROJECT:-$PROJECT}"           # where the billing export dataset lives
 PUBLISH_PROJECT="${COST_METRIC_PUBLISH_PROJECT:-$PROJECT}" # where the custom metric is written

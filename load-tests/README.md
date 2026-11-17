@@ -182,6 +182,23 @@ a burst/mixed run) must remain at or below 80% of the budget by default. Missing
 fails closed. `-AllowBudgetOverrun` is reserved for explicit spending-owner approval and is recorded in
 the evidence JSON; it does not weaken CPU, memory, connection, or correctness thresholds.
 
+**This guard blocks certification today, for two independent reasons** (checked 2026-11-17).
+- **Stale cost data, since late August.** Spend comes from the `-BillingCostTable` source, by default
+  `custoking-dev.cost_analysis.daily_service_cost`, whose latest row is for 2026-08-23. With no
+  current-month row the wrapper stops with "has no current-month row", the fail-closed path.
+- **No budget, since 2026-11-16.** The wrapper reads the budget AMOUNT (not spend) from the billing
+  account linked to `custoking-dev`. The projects moved to a new account on 2026-11-16; no
+  `custoking-dev-monthly` budget exists there yet, and the ops identity cannot list budgets there
+  (Billing Account User only).
+
+Certification resumes only when both are fixed: the budget is re-created on the current account (see
+*Budget Setup* in `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`, including the open decision on the dev amount:
+dev's gross is about INR 2,292 per 30 days, so an INR 2,000 budget leaves no headroom under the 80% rule
+for part of every month), and a `-BillingCostTable` source carries current-month dev cost. Do not pass
+`-BillingAccount` with the closed first account to get past the first check: its budget no longer sees
+any spend. A blocked preflight writes the billing account ID into its evidence JSON, so keep that file
+out of committed files.
+
 The mixed profile itself performs only GET requests plus login POSTs. Its 300 VUs model 300 active
 browser sessions distributed over the 100 schools, not all 300,000 student records or a claim that
 300,000 students are concurrently online.

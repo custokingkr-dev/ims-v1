@@ -1,5 +1,13 @@
 # Alerting remediation plan
 
+> **Superseded trial facts (2026-11-17).** Billing account `014C0A-C6B9AF-5FABC0` expired on 2026-11-16
+> as described below. Production was down 00:19-02:36 IST on 2026-11-17, until both projects were
+> relinked to a second free-trial account, which expires about 2027-02-13. Everything below that names
+> `014C0A`, the 2026-11-16 date, the credit figures, the budgets on that account, its export table or
+> its budgets endpoint describes the closed first account. It is kept as the 2026-09-11 record. For
+> current facts and procedures see `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`, *Free-trial expiry*, *If
+> billing lapses again* and *Budget Setup*.
+
 Measured 2026-09-11 against `custoking-prod` (182609177023) and `custoking-dev` (1087017280590),
 billing account `014C0A-C6B9AF-5FABC0`. Every number below was queried, not estimated; where something
 could not be measured it says so. Companion changes in the same PR: `deploy/gcp/observability/budget.tf`,
@@ -228,6 +236,12 @@ Recommendation, in the order to do it (all Console-created; paste the channel na
 
 Ranked by (rupees or risk removed) / (minutes to do). Items 1-3 are this week.
 
+> **2026-11-17:** items 3 and 4 now concern the second trial account (see the runbook's *Free-trial
+> expiry*). **Do not do item 9 as written.** It names the closed first account's table. Pointing
+> `BILLING_EXPORT_TABLE` at the new account's table instead would print that account's ID in public run
+> logs, because repository variables are not masked. The egress report first needs to accept the
+> `gcp_billing_export_v1_*` wildcard; its table-name check rejects `*` today.
+
 | # | Action | Effort | Value | How |
 | --- | --- | --- | --- | --- |
 | 1 | **Apply this PR to prod** (budget credit fix, runway budget, 3 spend-anomaly policies) | 30 min | restores the only spend signals; makes the credit-exhaustion path visible | section 7 |
@@ -281,6 +295,10 @@ furniture and stop alerting on them.
 ---
 
 ## 7. Apply order for this PR (human, after merge)
+
+> **2026-11-17:** this is the 2026-09-11 apply order, kept as history. The budgets it created sit on the
+> closed first account and must be re-created on the account the projects bill to now. For the budgets,
+> use the targeted apply in the runbook's *Budget Setup*.
 
 ```powershell
 # prod root -- budgets need the Cloud Billing quota project or they 403 naming a random project number
