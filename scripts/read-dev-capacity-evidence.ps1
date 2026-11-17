@@ -24,10 +24,16 @@ $budgetInr = [double]$budget[0].amount.specifiedAmount.units + ([double]$budget[
 $sql = ((Get-Content -LiteralPath (Join-Path $PSScriptRoot 'sql/dev-capacity-cost-preflight.sql') |
     Where-Object { -not $_.TrimStart().StartsWith('--') }) -join ' ').Trim()
 if (-not $sql.StartsWith('SELECT', [StringComparison]::OrdinalIgnoreCase)) { throw 'Capacity cost probe must remain a read-only SELECT.' }
-$costRaw = & bq.cmd query --project_id=custoking-dev --use_legacy_sql=false --format=json --maximum_bytes_billed=104857600 $sql
+# The account ID reaches BigQuery only as a query parameter: freshness must come from the account dev bills
+# to now, and the committed SQL must never carry the ID (public repository).
+if ($account -notmatch '^[0-9A-Za-z]+(-[0-9A-Za-z]+)*$') { throw 'Unexpected billing account ID format; readiness unknown.' }
+$costRaw = & bq.cmd query --project_id=custoking-dev --use_legacy_sql=false --format=json --maximum_bytes_billed=104857600 "--parameter=billing_account_id:STRING:$account" $sql
 if ($LASTEXITCODE -ne 0) { throw 'Read-only billing export query failed; no workload may start.' }
 $cost = @((($costRaw -join "`n") | ConvertFrom-Json) | ForEach-Object { $_ })
 if ($cost.Count -ne 1 -or $cost[0].currency -ne 'INR' -or [long]$cost[0].matching_rows -le 0) { throw 'Require nonempty dev-only INR invoice rows.' }
+if ([string]::IsNullOrWhiteSpace([string]$cost[0].latest_export_time) -or [string]::IsNullOrWhiteSpace([string]$cost[0].latest_usage_end)) {
+    throw 'No current-month dev billing rows from the linked billing account yet (its export may not be delivering); no workload may start.'
+}
 
 $readOnlyToken = ((& gcloud.cmd auth print-access-token --project=custoking-dev) -join '').Trim()
 if ($LASTEXITCODE -ne 0 -or -not $readOnlyToken) { throw 'Monitoring read authentication unavailable.' }

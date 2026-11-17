@@ -182,21 +182,31 @@ a burst/mixed run) must remain at or below 80% of the budget by default. Missing
 fails closed. `-AllowBudgetOverrun` is reserved for explicit spending-owner approval and is recorded in
 the evidence JSON; it does not weaken CPU, memory, connection, or correctness thresholds.
 
-**This guard blocks certification today, for two independent reasons** (checked 2026-11-17).
-- **Stale cost data, since late August.** Spend comes from the `-BillingCostTable` source, by default
-  `custoking-dev.cost_analysis.daily_service_cost`, whose latest row is for 2026-08-23. With no
-  current-month row the wrapper stops with "has no current-month row", the fail-closed path.
-- **No budget, since 2026-11-16.** The wrapper reads the budget AMOUNT (not spend) from the billing
-  account linked to `custoking-dev`. The projects moved to a new account on 2026-11-16; no
-  `custoking-dev-monthly` budget exists there yet, and the ops identity cannot list budgets there
-  (Billing Account User only).
+**Where spend comes from (changed 2026-11-17).** By default the wrapper sums dev's gross for the
+current invoice month from the standard export, `custoking-prod.billing_export.gcp_billing_export_v1_*`.
+The wildcard covers every billing account's table, so the move to a new account on 2026-11-16 needs no
+change. Until then the default was `custoking-dev.cost_analysis.daily_service_cost`, which stopped on
+2026-08-23. The collector behind it is prod-only and prices prod's Cloud SQL tier, so it never described
+dev, and every certification since August failed closed with "has no current-month row".
+`-BillingCostTable` still accepts a table of that shape as an override.
 
-Certification resumes only when both are fixed: the budget is re-created on the current account (see
-*Budget Setup* in `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`, including the open decision on the dev amount:
-dev's gross is about INR 2,292 per 30 days, so an INR 2,000 budget leaves no headroom under the 80% rule
-for part of every month), and a `-BillingCostTable` source carries current-month dev cost. Do not pass
-`-BillingAccount` with the closed first account to get past the first check: its budget no longer sees
-any spend. A blocked preflight writes the billing account ID into its evidence JSON, so keep that file
+**The guard still fails closed in two cases:**
+- No `custoking-dev` row from the billing account it is linked to now has been exported within
+  `-MaximumBillingDataAgeHours` (24 h). Rows from the closed first account still count toward the
+  month's gross but never toward freshness: that table kept receiving late rows for hours after the
+  account closed on 2026-11-16, so it cannot hold the gate open. Certification therefore waits until
+  the current account's export is delivering (see *Billing Export* in
+  `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`). The account ID reaches BigQuery only as a query parameter.
+- There is no `custoking-dev-monthly` budget on the account `custoking-dev` bills to, or the operator
+  cannot list budgets there (see *Budget Setup*). The wrapper reads the budget's AMOUNT, not its spend.
+
+The dev budget is INR 3,000, so the 80% rule allows INR 2,400 of projected spend. Dev's gross runs about
+INR 2,292 per 30 days, so a soak (INR 1,200) fits only in roughly the first half of a month; a
+staff-workload run (INR 60) fits almost all month. Do not pass `-BillingAccount` with the closed first
+account to get past the budget check: the wrapper would then take the amount from the orphaned
+`custoking-dev-monthly` budget left there (the old INR 2,000, not the decided INR 3,000), and freshness
+would then come from that closed account's table, which is exactly the stale data the gate exists to
+refuse. A blocked preflight writes the billing account ID into its evidence JSON, so keep that file
 out of committed files.
 
 The mixed profile itself performs only GET requests plus login POSTs. Its 300 VUs model 300 active

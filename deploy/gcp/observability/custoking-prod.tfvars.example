@@ -69,11 +69,12 @@ billing_account_id = "REPLACE_WITH_BILLING_ACCOUNT_ID"
 # start date, read from Console -> Billing -> Credits; the balance is not available from any API.
 # Re-read and update both when the runway is re-based; set manage_trial_runway_budget = false once the
 # account has been upgraded off the free trial. The values below are the variables.tf defaults, re-based
-# 2026-11-17 to the current trial account (Console banner 2026-11-15; confirm the expiry in the Console).
+# 2026-11-17 to the current trial account (credit: Console banner 2026-11-15; expiry: Console -> Billing ->
+# Overview, 2026-11-17).
 # manage_trial_runway_budget = true
 # trial_credit_remaining_inr = 28569
 # trial_runway_start_date    = "2026-11-15"
-# trial_expiry_date          = "2027-02-13"
+# trial_expiry_date          = "2027-02-14"
 
 # Spend-anomaly policies. Defaults are sized from measured September 2026 data; see variables.tf.
 # enable_spend_anomaly_alerts               = true

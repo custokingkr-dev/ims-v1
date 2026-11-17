@@ -185,12 +185,11 @@ variable "trial_expiry_date" {
     data for deletion after a 30-day grace period. This is a hard shutdown date for the product, not a
     cost event.
 
-    Default 2027-02-13: the account was created on 2026-11-15 and the Console banner read "90 days
-    remaining" that day. Creation date + 90 days is the rule the previous account followed (created
-    2026-08-18, ended 2026-11-16). This is derived, not read: confirm it in Console -> Billing ->
-    Credits. 2027-02-13 is a Saturday; by the previous account's pattern Google stops resources around
-    18:50 UTC that day (about 00:20 IST on Sunday 14 February). The same date is TRIAL_EXPIRY_DATE in
-    .github/workflows/gcp-cost-controls.yml; keep the two in step.
+    Default 2027-02-14, read in Console -> Billing -> Overview on 2026-11-17: "Ends 14 February
+    2027", 89 days remaining. (The first re-base derived 2027-02-13 from creation + 90 days; the
+    Console date is one day later.) 2027-02-14 is a Sunday; by the previous account's pattern Google
+    stops resources around 18:50 UTC that day (about 00:20 IST on Monday 15 February). The same date
+    is TRIAL_EXPIRY_DATE in .github/workflows/gcp-cost-controls.yml; keep the two in step.
 
     History: the previous trial account (014C0A) ended on its stated expiry date, 2026-11-16, at about
     18:50 UTC. Billing was disabled on both projects and production was down from 00:19 to 02:36 IST on
@@ -198,7 +197,7 @@ variable "trial_expiry_date" {
     another ~34 minutes to serve again. The stated date is the stop day, not the last full day.
   DESC
   type        = string
-  default     = "2027-02-13"
+  default     = "2027-02-14"
 
   validation {
     condition     = can(regex("^\\d{4}-\\d{2}-\\d{2}$", var.trial_expiry_date))

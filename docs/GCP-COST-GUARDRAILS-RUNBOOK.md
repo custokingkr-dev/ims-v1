@@ -61,10 +61,11 @@ countdown job failed every weekday run in the final week. A reminder is not a de
 
 **The account the projects bill to now is ALSO a free trial.** Since 2026-11-16 `custoking-prod` and
 `custoking-dev` bill to a second Free Trial account. The Console banner read at 2026-11-15T19:31Z showed
-INR 28,569 of credit and 90 days remaining, so it expires on **2027-02-13** (creation date + 90 days,
-the same rule the first account followed; owner action 1 below confirms it). 2027-02-13 is a Saturday.
-If Google follows the first account's pattern, it stops resources at
-about 18:50 UTC that day, about 00:20 IST on Sunday 14 February. That is after the last weekday
+INR 28,569 of credit and 90 days remaining. It expires on **2027-02-14**: Console -> Billing ->
+Overview read "Ends 14 February 2027" (89 days remaining) on 2026-11-17. That is one day later than
+creation + 90 days, the rule the first account seemed to follow. 2027-02-14 is a Sunday. If Google
+follows the first account's pattern, it stops resources at
+about 18:50 UTC that day, about 00:20 IST on Monday 15 February. That is after the last weekday
 countdown run. On 2026-11-17 the owner chose not to upgrade yet.
 
 This repository is public. Never write the new account's ID, or any part of it, into a committed file, an
@@ -86,35 +87,35 @@ draws on the same credit. None of the following was measured on the new account:
 there until its export exists, so the rates come from the first account's export. The promotion draw was
 about INR 192/day over 2026-10-17..2026-11-15 (gross: prod ~INR 132/day, dev ~INR 76/day). Over
 2026-11-12..15 it was INR 230-302/day, because the monthly Cloud Run free tier ran out and dev Artifact
-Registry egress jumped. INR 28,569 over the 89 days from 2026-11-16 to 2027-02-13 covers up to about INR
-320/day. At ~INR 190/day, about 60% is used and the date is what ends the trial. At ~INR 300/day, about
-93% is used, which leaves less than a week of margin. A runaway (one always-on instance costs ~INR
+Registry egress jumped. INR 28,569 over the 90 days from 2026-11-16 to 2027-02-14 covers up to about INR
+317/day. At ~INR 190/day, about 60% is used and the date is what ends the trial. At ~INR 300/day, about
+95% is used, which leaves less than a week of margin. A runaway (one always-on instance costs ~INR
 240/day) ends the trial early.
 
 **Upgrading has no downside.** Remaining credit stays usable until its original expiry. It needs the
 account owner in the Console: Billing -> the account custoking-prod is linked to (see the lookup above)
 -> Activate / Upgrade. No API, no gcloud, no automation can do it.
 
-Owner actions still open on 2026-11-17. The ops identity holds only Billing Account User on the new
-account, so it cannot do 2 or 3. That role does include `billing.credits.list`, so the operator can
-probably read the Credits page and confirm 1 as well:
+Owner actions on 2026-11-17: 1 and 4 are done; 2, 3 and 5 are open. The ops identity holds only
+Billing Account User on the new account, so it cannot do 2 or 3:
 
-1. **Confirm the expiry date** in Console -> Billing -> Credits. If it is not 2027-02-13, change
-   `TRIAL_EXPIRY_DATE` in `.github/workflows/gcp-cost-controls.yml` and `trial_expiry_date` in
+1. **Confirm the expiry date.** Done 2026-11-17: Console -> Billing -> Overview shows "Ends 14
+   February 2027". If it ever changes, change `TRIAL_EXPIRY_DATE` in
+   `.github/workflows/gcp-cost-controls.yml` and `trial_expiry_date` in
    `deploy/gcp/observability/variables.tf` together. If unsure, use the earlier date.
 2. **Enable the BigQuery billing export before 2026-12-31.** See *Billing Export* for the target and
    for why the deadline exists.
 3. **Grant the ops identity Billing Account Costs Manager** (`roles/billing.costsManager`) on the account,
    so that the budgets can be re-created (see *Budget Setup*). Alternatively, create them in the Console.
-4. **Decide the dev monthly budget amount** before it is re-created (see *Budget Setup*).
+4. **Decide the dev monthly budget amount.** Done 2026-11-17: INR 3,000 (see *Budget Setup*).
 5. **Decide when to upgrade, and record that date here.**
 
 What reminds us, in order of reliability:
 
-1. **A human calendar.** The account owner and the operator each create three calendar events with
-   notifications: **2027-01-14** (one month out: upgrade now), **2027-01-29** (two weeks, a Friday:
-   confirm the upgrade is done), **2027-02-05** (one week out, a Friday: if not upgraded, nothing
-   else matters this week), and **2027-02-12** (the last working day before the Saturday expiry). This is the primary mechanism. Everything below is a backstop, because every
+1. **A human calendar.** The account owner and the operator each create four calendar events with
+   notifications: **2027-01-14** (one month out: upgrade now), **2027-01-29** (about two weeks, a Friday:
+   confirm the upgrade is done), **2027-02-05** (nine days out, a Friday: if not upgraded, nothing
+   else matters this week), and **2027-02-12** (the last working day before the Sunday expiry). This is the primary mechanism. Everything below is a backstop, because every
    automated path here depends on something that can silently stop: a workflow on a branch, a channel
    in a project, an export Google can break server-side.
 2. **The `trial-expiry-countdown` job** in `.github/workflows/gcp-cost-controls.yml`. It runs once each
@@ -127,13 +128,15 @@ What reminds us, in order of reliability:
    one open issue labelled `trial-expiry`, with the expiry date in its title, assigned to the repository
    owner. From 21 days it comments on that issue every run. From 10 days it fails the workflow. Once the
    date has passed, it fails with a message that says so.
-   Scheduled workflows run from `main`, so the version aimed at 2027-02-13 goes live only with the next
+   Scheduled workflows run from `main`, so the version aimed at 2027-02-14 goes live only with the next
    dev -> main promotion, and promotion is on hold. Until then, main's copy still counts down to
    2026-11-16, fails every weekday and comments "-N day(s)" on issue #308. **Leave #308 open.** If it is
    closed by hand, the old job opens a fresh issue naming the old account and date on its next run. The
-   first run of the new version closes #308 itself. Promote by **2026-12-15** to keep the full 60-day
-   lead. A later promotion still opens the issue on its first run.
-3. **The `custoking-trial-credit-runway-to-2027-02-13` budget** (Terraform, prod root). It is
+   first run of the new version closes #308 itself. Promote by **2026-12-15** (on 2026-12-16, only
+   before that day's 08:00 IST run) to keep the full 60-day lead. A later promotion still opens the
+   issue on its first run; to open it the same day, run the workflow by hand from `main`
+   (workflow_dispatch) right after the merge.
+3. **The `custoking-trial-credit-runway-to-2027-02-14` budget** (Terraform, prod root). It is
    account-wide, runs over a custom period from the day the balance was read (2026-11-15) to the expiry
    date, takes the credit remaining (INR 28,569) as its amount, and has thresholds at 50 / 75 / 90 / 100%
    of the runway. It is the only signal for the credit-exhaustion path, and **it does not exist yet**. A
@@ -227,8 +230,8 @@ account-wide runway budget above:
 | Budget | Scope | Amount | Thresholds |
 | --- | --- | --- | --- |
 | `custoking-prod-monthly` | project custoking-prod, calendar month, GROSS | INR 5,000 | 90%, 100%, 150% current; 100% forecast |
-| `custoking-dev-monthly` | project custoking-dev, calendar month, GROSS | INR 2,000 | same |
-| `custoking-trial-credit-runway-to-2027-02-13` | whole account, 2026-11-15..2027-02-13, net of every credit except the promotion | credit remaining (INR 28,569) | 50%, 75%, 90%, 100% current |
+| `custoking-dev-monthly` | project custoking-dev, calendar month, GROSS | INR 3,000 | same |
+| `custoking-trial-credit-runway-to-2027-02-14` | whole account, 2026-11-15..2027-02-14, net of every credit except the promotion | credit remaining (INR 28,569) | 50%, 75%, 90%, 100% current |
 
 **On 2026-11-17 none of these is watching anything.** A budget belongs to a billing account. The three
 that exist (`custoking-prod-monthly`, `custoking-dev-monthly`, `custoking-trial-credit-runway-to-2026-11-16`)
@@ -244,10 +247,11 @@ state rm 'google_billing_budget.environment[0]'` (and `'google_billing_budget.tr
 delete the orphaned budget on the closed first account in the Console, then `terraform import` the new
 budget into that address.
 
-**Dev budget: owner decision.** Since the dev database became always-on (~2026-10-15), dev's gross has
-been about INR 2,292 per 30 days, above its INR 2,000 budget. Re-created unchanged, that budget fires its
-90% and 100% rules every month, and the load-certification guard (`load-tests/README.md`) blocks for
-part of every month. The amount stays INR 2,000 until the owner decides otherwise.
+**Dev budget: INR 3,000 (owner's decision, 2026-11-17).** Since the dev database became always-on
+(~2026-10-15), dev's gross has been about INR 2,292 per 30 days. Re-created at the old INR 2,000, the
+budget would fire its 90% and 100% rules every month, and the load-certification guard
+(`load-tests/README.md`) would block for part of every month. At INR 3,000 the 90% rule fires at INR
+2,700, about 18% above a normal month.
 
 **Re-aiming, once the grant exists.** Use a checkout of `dev` that includes the 2026-11-17 re-base of
 the `trial_*` defaults and holds the gitignored `custoking-prod.tfvars` and `custoking-dev.tfvars`. Put
@@ -300,9 +304,12 @@ Every `creditTypesTreatment` must read `EXCLUDE_ALL_CREDITS` or `INCLUDE_SPECIFI
 `INCLUDE_ALL_CREDITS`.
 
 Sizing: the prod budget puts the measured run rate (INR 4,209/month, 2026-08-27..2026-09-09) at ~84%,
-so a normal month fires nothing and the 90% rule means ~7% real drift. Dev's honest floor with uptime
-probes off is ~INR 1,100/month; INR 2,000 leaves room for releases and still reports the cold-start
-loop (INR ~3,750/month) at 188%. Raise a budget when real load arrives, not when it alerts.
+so a normal month fires nothing and the 90% rule means ~7% real drift. Dev's floor with uptime probes
+off was ~INR 1,100/month while its database ran only about half the day, which is what the old INR
+2,000 was sized on. Since the database became always-on (~2026-10-15) dev runs about INR 2,292 per 30
+days, which INR 3,000 puts at ~76%, so a normal month fires nothing; a month the size of August 2026's
+cold-start loop (INR ~3,750) would read ~125%. Raise a budget when real load arrives, not when it
+alerts.
 
 Budget alerts do not stop spend. They are escalation triggers. They notify the operator email channels
 plus anything in `budget_notification_channel_ids`, and (unless `budget_notify_default_iam_recipients
@@ -417,7 +424,7 @@ start remains, so an instance stopped by hand comes back on the next working day
 
 **Cost:** dev Cloud SQL is `db-f1-micro` and now runs continuously rather than roughly half the
 day. Stop it by hand during any long idle period. Dev's gross measured INR 2,292 over the 30 days
-2026-10-17..2026-11-15. The projects bill to a second free trial that expires about 2027-02-13 (see
+2026-10-17..2026-11-15. The projects bill to a second free trial that expires on 2027-02-14 (see
 *Free-trial expiry*).
 
 The scheduled workflow runs from the repository default branch and intentionally does not target the

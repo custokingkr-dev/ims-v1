@@ -148,8 +148,8 @@ jobs:
   # grace period. For a product serving live schools that is a shutdown date, not a cost event. It has
   # already happened once: the previous trial account expired on 2026-11-16, Google disabled billing on
   # both projects, and production was down 00:19-02:36 IST on 2026-11-17 until they were relinked to a
-  # new billing account. That account is ALSO a free trial, and it expires on 2027-02-13 (created
-  # 2026-11-15 + 90 days; the owner should confirm the date in Console -> Billing -> Credits). Nothing in
+  # new billing account. That account is ALSO a free trial, and it expires on 2027-02-14 (read in
+  # Console -> Billing -> Overview on 2026-11-17: "Ends 14 February 2027", 89 days remaining). Nothing in
   # GCP will say so in advance: budgets measure money, not calendars, and Cloud Monitoring has no
   # date-based condition.
   #
@@ -160,17 +160,17 @@ jobs:
   #
   # This job is the automated backstop, not the primary reminder. The primary reminder is a human
   # calendar entry -- see docs/GCP-COST-GUARDRAILS-RUNBOOK.md, "Free-trial expiry". The cron runs once
-  # every weekday, never at weekends; 2027-02-13 is a Saturday, so the last run before it is Friday
+  # every weekday, never at weekends; 2027-02-14 is a Sunday, so the last run before it is Friday
   # 2027-02-12. What every run does:
   #
   #   - prints the countdown to the step summary;
   #   - closes, as superseded, every open `trial-expiry` issue whose title does not contain
   #     TRIAL_EXPIRY_DATE (this is what closes #308, the issue for the 2026-11-16 expiry);
-  #   - from 60 days out (2026-12-15) keeps ONE open issue labelled `trial-expiry`, with the date in
+  #   - from 60 days out (2026-12-16) keeps ONE open issue labelled `trial-expiry`, with the date in
   #     its title, assigned to the repository owner, so it appears in their notifications;
-  #   - from 21 days out (2027-01-23, a Saturday, so first on Monday 2027-01-25) comments on that issue
+  #   - from 21 days out (2027-01-24, a Sunday, so first on Monday 2027-01-25) comments on that issue
   #     on every run, which re-notifies;
-  #   - from 10 days out (2027-02-03) the job FAILS, so the workflow shows red and GitHub emails the
+  #   - from 10 days out (2027-02-04) the job FAILS, so the workflow shows red and GitHub emails the
   #     failure;
   #   - after the date has passed it fails with a message saying so, and comments "expired N day(s)
   #     ago": either the account was upgraded (remove this job) or the projects moved to another trial
@@ -198,7 +198,7 @@ jobs:
       contents: read
       issues: write
     env:
-      TRIAL_EXPIRY_DATE: "2027-02-13"
+      TRIAL_EXPIRY_DATE: "2027-02-14"
       # A description, not an ID, on purpose (see the header).
       BILLING_ACCOUNT_LABEL: "the billing account that custoking-prod and custoking-dev bill to"
       ISSUE_LABEL: trial-expiry

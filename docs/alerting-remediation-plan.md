@@ -2,7 +2,7 @@
 
 > **Superseded trial facts (2026-11-17).** Billing account `014C0A-C6B9AF-5FABC0` expired on 2026-11-16
 > as described below. Production was down 00:19-02:36 IST on 2026-11-17, until both projects were
-> relinked to a second free-trial account, which expires about 2027-02-13. Everything below that names
+> relinked to a second free-trial account, which expires on 2027-02-14. Everything below that names
 > `014C0A`, the 2026-11-16 date, the credit figures, the budgets on that account, its export table or
 > its budgets endpoint describes the closed first account. It is kept as the 2026-09-11 record. For
 > current facts and procedures see `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`, *Free-trial expiry*, *If
