@@ -669,6 +669,11 @@ jobs:
           exit-code: "0"
           format: sarif
           output: release-evidence/trivy/identity-service-${{ steps.images.outputs.identity_digest_key }}.sarif
+          # Reuse the gate step's Trivy install and the layers it already pulled. With the default
+          # cache: true this step restored the daily cache archive (built on main, without these
+          # images) over .cache/trivy and pulled the same image again: 2x registry egress per scan.
+          cache: "false"
+          skip-setup-trivy: "true"
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (school-core-service)
         id: trivy_gate_school_core
@@ -695,6 +700,11 @@ jobs:
           exit-code: "0"
           format: sarif
           output: release-evidence/trivy/school-core-service-${{ steps.images.outputs.school_core_digest_key }}.sarif
+          # Reuse the gate step's Trivy install and the layers it already pulled. With the default
+          # cache: true this step restored the daily cache archive (built on main, without these
+          # images) over .cache/trivy and pulled the same image again: 2x registry egress per scan.
+          cache: "false"
+          skip-setup-trivy: "true"
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (operations-service)
         id: trivy_gate_operations
@@ -721,6 +731,11 @@ jobs:
           exit-code: "0"
           format: sarif
           output: release-evidence/trivy/operations-service-${{ steps.images.outputs.operations_digest_key }}.sarif
+          # Reuse the gate step's Trivy install and the layers it already pulled. With the default
+          # cache: true this step restored the daily cache archive (built on main, without these
+          # images) over .cache/trivy and pulled the same image again: 2x registry egress per scan.
+          cache: "false"
+          skip-setup-trivy: "true"
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (platform-service)
         id: trivy_gate_platform
@@ -747,6 +762,11 @@ jobs:
           exit-code: "0"
           format: sarif
           output: release-evidence/trivy/platform-service-${{ steps.images.outputs.platform_digest_key }}.sarif
+          # Reuse the gate step's Trivy install and the layers it already pulled. With the default
+          # cache: true this step restored the daily cache archive (built on main, without these
+          # images) over .cache/trivy and pulled the same image again: 2x registry egress per scan.
+          cache: "false"
+          skip-setup-trivy: "true"
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (billing-service)
         id: trivy_gate_billing
@@ -773,6 +793,11 @@ jobs:
           exit-code: "0"
           format: sarif
           output: release-evidence/trivy/billing-service-${{ steps.images.outputs.billing_digest_key }}.sarif
+          # Reuse the gate step's Trivy install and the layers it already pulled. With the default
+          # cache: true this step restored the daily cache archive (built on main, without these
+          # images) over .cache/trivy and pulled the same image again: 2x registry egress per scan.
+          cache: "false"
+          skip-setup-trivy: "true"
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (frontend)
         id: trivy_gate_frontend
@@ -799,6 +824,11 @@ jobs:
           exit-code: "0"
           format: sarif
           output: release-evidence/trivy/frontend-${{ steps.images.outputs.frontend_digest_key }}.sarif
+          # Reuse the gate step's Trivy install and the layers it already pulled. With the default
+          # cache: true this step restored the daily cache archive (built on main, without these
+          # images) over .cache/trivy and pulled the same image again: 2x registry egress per scan.
+          cache: "false"
+          skip-setup-trivy: "true"
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (api-gateway)
         id: trivy_gate_api_gateway
@@ -825,6 +855,11 @@ jobs:
           exit-code: "0"
           format: sarif
           output: release-evidence/trivy/api-gateway-${{ steps.images.outputs.api_gateway_digest_key }}.sarif
+          # Reuse the gate step's Trivy install and the layers it already pulled. With the default
+          # cache: true this step restored the daily cache archive (built on main, without these
+          # images) over .cache/trivy and pulled the same image again: 2x registry egress per scan.
+          cache: "false"
+          skip-setup-trivy: "true"
 
       # Publish verdicts for digests scanned in this run so later runs, including the prod promotion
       # of an already-scanned dev image, can skip the registry pull. Only passes are stored: a failing

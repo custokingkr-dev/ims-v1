@@ -17,30 +17,40 @@ param(
   # No default. This used to name the pre-split project, so an unset value did not fail -- it silently
   # queried a table belonging to a project that is now deleted, and the error surfaced as an opaque
   # BigQuery failure rather than a missing-configuration one.
-  [string]$BillingTable = $(if ($env:BILLING_EXPORT_TABLE) { $env:BILLING_EXPORT_TABLE } else { throw "BillingTable is required: pass -BillingTable as project.dataset.table or set BILLING_EXPORT_TABLE." }),
+  # Use the wildcard custoking-prod.billing_export.gcp_billing_export_resource_v1_* so every billing
+  # account's detailed table is read and a move between accounts needs no change. Never name one
+  # account's table: the name carries the account ID, and this repository's run logs are public.
+  [string]$BillingTable = $(if ($env:BILLING_EXPORT_TABLE) { $env:BILLING_EXPORT_TABLE } else { throw "BillingTable is required: pass -BillingTable as project.dataset.table (a trailing * is allowed) or set BILLING_EXPORT_TABLE." }),
   [ValidateRange(1, 90)]
   [int]$Days = 14,
-  # A single uncached release run pulls all seven images, roughly 2 GB / INR 21. Warn near seven
-  # such runs in a day, which indicates the cache stopped being effective rather than a busy day.
-  [double]$WarnDailyInr = 150,
+  # A full uncached release scans all seven images. Until 2026-11-17 each was pulled twice (the SARIF
+  # scan restored a cache archive over the gate scan's layers): about 3.2 GiB / INR 37 per run, and up
+  # to INR 103 on a busy day. With one pull per image it is about 1.6 GiB / INR 19 per run. A daily
+  # total cannot tell one double-pull run (INR 37) from two normal runs (INR 38), so this warns only
+  # above roughly three normal runs in a day, or two double-pull runs. A single regressed run stays
+  # silent here; judge that per release run from exact-digest-scan.json.
+  [double]$WarnDailyInr = 60,
   [string]$SummaryPath = $env:GITHUB_STEP_SUMMARY
 )
 
 $ErrorActionPreference = "Stop"
 $BqCommand = if ($env:OS -eq "Windows_NT") { "bq.cmd" } else { "bq" }
 
-if ($BillingTable -notmatch '^[A-Za-z0-9_\-]+\.[A-Za-z0-9_]+\.[A-Za-z0-9_]+$') {
-  throw "BillingTable must be project.dataset.table, got '$BillingTable'."
+if ($BillingTable -notmatch '^[A-Za-z0-9_\-]+\.[A-Za-z0-9_]+\.[A-Za-z0-9_]+\*?$') {
+  throw "BillingTable must be project.dataset.table, optionally ending in *, got '$BillingTable'."
 }
 
 # Kept on one line deliberately. A multi-line query passed as an argument is truncated by the
 # bq.cmd batch wrapper on Windows, which fails with "Unexpected end of script".
+# The _PARTITIONTIME bound only prunes partitions (a row's export time is never earlier than its usage),
+# so a wildcard over every account's table stays a small scan.
+$windowStart = "LEAST(DATE_SUB(CURRENT_DATE(), INTERVAL $Days DAY), DATE_TRUNC(CURRENT_DATE(), MONTH))"
 $query = "SELECT FORMAT_DATE('%Y-%m-%d', DATE(usage_start_time)) AS day, " +
   "ROUND(SUM(usage.amount) / 1e9, 2) AS gb, ROUND(SUM(cost), 2) AS inr " +
   "FROM ``$BillingTable`` " +
   "WHERE service.description = 'Artifact Registry' AND sku.description LIKE '%Egress%' " +
-  "AND DATE(usage_start_time) >= LEAST(DATE_SUB(CURRENT_DATE(), INTERVAL $Days DAY), " +
-  "DATE_TRUNC(CURRENT_DATE(), MONTH)) GROUP BY day ORDER BY day DESC"
+  "AND DATE(_PARTITIONTIME) >= $windowStart AND DATE(usage_start_time) >= $windowStart " +
+  "GROUP BY day ORDER BY day DESC"
 
 # --headless suppresses the interactive first-run setup on a fresh runner. Without it bq prints a
 # "Welcome to BigQuery!" banner to stdout ahead of the payload.
@@ -93,7 +103,7 @@ if ($recent.Count -eq 0) {
 $lines += ""
 $lines += "Month to date: **INR $([math]::Round($monthToDate, 2))**."
 $lines += ""
-$lines += "A single uncached release pulls all seven images, about 2 GB / INR 21. Judge this per release run, not per day: a quiet day is cheap regardless of whether the cache works."
+$lines += "A full uncached release pulls all seven images once, about 1.6 GiB / INR 19 (twice that before 2026-11-17, when each image was pulled twice). Judge this per release run, not per day: a quiet day is cheap regardless of whether the cache works."
 
 $breaches = @($recent | Where-Object { [double]$_.inr -gt $WarnDailyInr })
 foreach ($breach in $breaches) {

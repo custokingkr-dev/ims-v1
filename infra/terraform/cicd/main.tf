@@ -580,7 +580,7 @@ resource "google_project_iam_member" "recovery_roles" {
 # roles/bigquery.jobUser above, which permits running a query but grants no data of its own.
 resource "google_bigquery_dataset_iam_member" "cost_controller_billing_export_viewer" {
   count      = var.billing_export_dataset == "" || !contains(var.environments, "dev") ? 0 : 1
-  project    = var.project_id
+  project    = var.billing_export_project != "" ? var.billing_export_project : var.project_id
   dataset_id = var.billing_export_dataset
   role       = "roles/bigquery.dataViewer"
   member     = "serviceAccount:${google_service_account.github["cost_controller"].email}"

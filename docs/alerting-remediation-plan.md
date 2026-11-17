@@ -240,10 +240,13 @@ Recommendation, in the order to do it (all Console-created; paste the channel na
 Ranked by (rupees or risk removed) / (minutes to do). Items 1-3 are this week.
 
 > **2026-11-17:** items 3 and 4 now concern the second trial account (see the runbook's *Free-trial
-> expiry*). **Do not do item 9 as written.** It names the closed first account's table. Pointing
-> `BILLING_EXPORT_TABLE` at the new account's table instead would print that account's ID in public run
-> logs, because repository variables are not masked. The egress report first needs to accept the
-> `gcp_billing_export_v1_*` wildcard; its table-name check rejects `*` today.
+> expiry*). **Do not do item 9 as written.** It names the closed first account's table.
+> `BILLING_EXPORT_TABLE` must never name one account's table: repository variables are not masked, so
+> the name would print that account's ID in public run logs. Since 2026-11-17 the egress report accepts a
+> trailing `*`: set the variable to `custoking-prod.billing_export.gcp_billing_export_resource_v1_*`. The
+> identity's dataViewer grant on that dataset comes from the dev cicd root (`billing_export_project =
+> "custoking-prod"` in `infra/terraform/cicd/custoking-dev.tfvars`). The job works only after dev is
+> promoted to main: scheduled runs use main's copy, and the identity trusts only main's workflow.
 
 | # | Action | Effort | Value | How |
 | --- | --- | --- | --- | --- |
